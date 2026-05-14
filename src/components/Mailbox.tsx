@@ -54,7 +54,7 @@ export function Mailbox() {
   const selectedMessage = MESSAGES.find(m => m.id === selectedId);
 
   return (
-    <div className="h-[calc(100vh-160px)] flex bg-vault rounded-[32px] border border-white/10 shadow-sm overflow-hidden">
+    <div className="h-[calc(100vh-160px)] flex bg-vault-bright rounded-[32px] border border-white/10 shadow-sm overflow-hidden">
       {/* Sidebar List */}
       <div className={cn(
         "w-full lg:w-[400px] border-r border-white/10 flex flex-col",

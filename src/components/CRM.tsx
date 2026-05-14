@@ -43,7 +43,7 @@ export function CRM() {
         </div>
       </div>
 
-      <div className="bg-vault rounded-2xl border border-white/10 shadow-sm overflow-hidden">
+      <div className="bg-vault-bright rounded-2xl border border-white/10 shadow-sm overflow-hidden">
         <div className="grid grid-cols-1 divide-y divide-white/[0.06]">
           <div className="bg-white/[0.03] px-8 py-3 grid grid-cols-1 md:grid-cols-4 gap-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
             <div className="md:col-span-1">Nom / Type</div>

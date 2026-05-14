@@ -248,7 +248,7 @@ export function Drive() {
       )}
 
       {/* Document list */}
-      <div className="rounded-[32px] border border-white/10 bg-vault shadow-[0_24px_70px_rgba(15,23,42,0.08)] overflow-hidden">
+      <div className="rounded-[32px] border border-white/10 bg-vault-bright shadow-[0_24px_70px_rgba(15,23,42,0.08)] overflow-hidden">
         <div className="flex items-center justify-between px-7 py-5 border-b border-white/10">
           <h2 className="text-base font-black italic tracking-tight uppercase text-white">
             {t('Documents récents', 'Recent documents')}
@@ -353,7 +353,7 @@ export function Drive() {
           return (
             <article
               key={card.title}
-              className="rounded-[32px] border border-white/10 bg-vault p-7 shadow-[0_24px_70px_rgba(15,23,42,0.08)]"
+              className="rounded-[32px] border border-white/10 bg-vault-bright p-7 shadow-[0_24px_70px_rgba(15,23,42,0.08)]"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-400">
                 <Icon className="h-6 w-6" />

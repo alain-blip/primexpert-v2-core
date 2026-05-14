@@ -159,6 +159,38 @@
     z-index: 1;
   }
 
+  /* ── Variant "Bright" : 2 tons plus clair que `.bg-vault` ──
+     Réservé aux éléments qui doivent ressortir (KPIs et tableaux
+     centraux). Garde la même grammaire (gradient diagonal + halo
+     cobalt en haut-droite), mais slate-700 au lieu de slate-900 en
+     dark, slate-600 au lieu de slate-800 en tamisé.
+     Le halo est aussi un cran plus présent pour amplifier l'effet. */
+  .bg-vault-bright {
+    position: relative;
+    background: linear-gradient(135deg,
+      rgba(51, 65, 85, 0.88) 0%,
+      rgba(37, 99, 235, 0.20) 50%,
+      rgba(51, 65, 85, 0.88) 100%);
+    overflow: hidden;
+  }
+  .bg-vault-bright::after {
+    content: '';
+    position: absolute;
+    top: -30px;
+    right: -30px;
+    width: 240px;
+    height: 240px;
+    background: rgb(59, 130, 246);
+    border-radius: 50%;
+    filter: blur(95px);
+    opacity: 0.28;
+    pointer-events: none;
+    z-index: 0;
+    transition: opacity 0.4s ease;
+  }
+  .bg-vault-bright:hover::after { opacity: 0.38; }
+  .bg-vault-bright > * { position: relative; z-index: 1; }
+
   .workhub-input {
     @apply w-full bg-[#020617]/40 border border-white/10 rounded-2xl px-4 py-3 text-[13px] text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20 transition backdrop-blur-md;
   }
@@ -295,6 +327,18 @@ html.light .bg-vault {
     rgba(37, 52, 99, 0.65) 50%,
     rgba(30, 41, 59, 0.88) 100%);
 }
+
+/* Variant "Bright" en tamisé : encore 2 tons au-dessus (slate-600).
+   C'est ici qu'on obtient l'effet de carte « lumineuse » au milieu
+   d'un fond gris-marine adouci. */
+html.light .bg-vault-bright {
+  background: linear-gradient(135deg,
+    rgba(71, 85, 105, 0.82) 0%,
+    rgba(59, 130, 246, 0.22) 50%,
+    rgba(71, 85, 105, 0.82) 100%);
+}
+html.light .bg-vault-bright::after { opacity: 0.22; }
+html.light .bg-vault-bright:hover::after { opacity: 0.32; }
 
 html.light .workhub-card {
   background: linear-gradient(135deg,

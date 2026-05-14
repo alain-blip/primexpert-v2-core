@@ -227,7 +227,7 @@ export function ACM() {
         <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
           {/* Prix suggéré + fourchette + positioning */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 bg-vault p-10 rounded-[32px] border border-white/10 shadow-sm">
+            <div className="md:col-span-2 bg-vault-bright p-10 rounded-[32px] border border-white/10 shadow-sm">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-blue-400" />
@@ -271,7 +271,7 @@ export function ACM() {
           {/* Ratios */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {ratios?.map((r) => (
-              <div key={r.label} className="rounded-2xl border border-white/10 bg-vault p-5">
+              <div key={r.label} className="rounded-2xl border border-white/10 bg-vault-bright p-5">
                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{r.label}</p>
                 <p className="mt-2 text-xl font-black italic tracking-tighter text-slate-300">{r.value}</p>
               </div>

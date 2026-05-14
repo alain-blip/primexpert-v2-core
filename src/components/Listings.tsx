@@ -137,7 +137,7 @@ export function Listings() {
                     key={l.id}
                     whileHover={{ y: -4, scale: 1.02 }}
                     className={cn(
-                      "bg-vault p-5 rounded-xl border-l-4 shadow-sm hover:shadow-xl transition-all cursor-pointer group",
+                      "bg-vault-bright p-5 rounded-xl border-l-4 shadow-sm hover:shadow-xl transition-all cursor-pointer group",
                       STATUS_BORDERS[key as keyof typeof STATUS_BORDERS]
                     )}
                   >
