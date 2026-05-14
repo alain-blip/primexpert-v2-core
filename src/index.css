@@ -10,18 +10,21 @@
 
 @layer base {
   html, body {
-    @apply antialiased;
+    @apply text-slate-100 antialiased;
     min-height: 100vh;
   }
 
-  /* Couleur de texte par défaut : claire en dark, foncée en light.
-     Évite que les composants sans text-* explicite affichent en noir
-     sur fond cobalt (et inversement en light). */
-  html.dark, html.dark body { @apply text-slate-100; background-color: #020617; }
-  html.light, html.light body { color: #1E293B; background-color: #F1F5FB; }
+  /* Deux variants du même thème "Navigateur Bleu" :
+     - dark  = profond (noir #020617, cobalt saturé)
+     - light = tamisé (gris-marine #0a1129, cobalt -20%)
+     Le texte reste CLAIR dans les deux modes. C'est un thème sombre
+     « 2 tons plus clair », pas un vrai mode clair. */
+  html.dark, html.dark body  { background-color: #020617; }
+  html.light, html.light body { background-color: #0a1129; }
 
-  html.dark input, html.dark textarea, html.dark select { color-scheme: dark; }
-  html.light input, html.light textarea, html.light select { color-scheme: light; }
+  /* Color-scheme reste dark partout : les champs natifs (scrollbar
+     native du select, autofill Chrome, etc.) doivent rester sombres. */
+  input, textarea, select { color-scheme: dark; }
 }
 
 @layer utilities {
@@ -205,11 +208,15 @@
       radial-gradient(ellipse 900px 600px at 50% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 65%),
       linear-gradient(135deg, #020617 0%, #050b1f 28%, #0a1129 58%, #0d1530 85%, #0f1738 100%);
   }
+  /* "Tamisé" : 1-2 tons plus clair, bleu moins agressif.
+     Le noir profond devient gris-marine, les halos cobalt sont
+     atténués (-30%). Reste un thème sombre. */
   html.light .app-bg {
     background:
-      radial-gradient(ellipse 1200px 800px at 0% 0%, rgba(59, 130, 246, 0.10) 0%, transparent 55%),
-      radial-gradient(ellipse 1000px 700px at 100% 100%, rgba(37, 99, 235, 0.08) 0%, transparent 60%),
-      linear-gradient(135deg, #EEF2FA 0%, #F1F5FB 50%, #E7EEF8 100%);
+      radial-gradient(ellipse 1200px 800px at 0% 0%, rgba(37, 99, 235, 0.20) 0%, transparent 55%),
+      radial-gradient(ellipse 1000px 700px at 100% 100%, rgba(30, 58, 138, 0.24) 0%, transparent 60%),
+      radial-gradient(ellipse 900px 600px at 50% 50%, rgba(59, 130, 246, 0.06) 0%, transparent 65%),
+      linear-gradient(135deg, #0a1129 0%, #0e1734 28%, #131e42 58%, #182552 85%, #1c2a5e 100%);
   }
 
   /* ── Sidebar gauche (Control Center) ───────────────────────── */
@@ -225,14 +232,14 @@
   }
 
   html.light .app-aside {
-    background-color: rgba(255, 255, 255, 0.78);
-    border-right: 1px solid rgba(15, 23, 42, 0.08);
-    box-shadow: 18px 0 70px rgba(15, 23, 42, 0.06);
+    background-color: rgba(13, 22, 50, 0.70);
+    border-right: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 18px 0 70px rgba(0, 0, 0, 0.40);
   }
   html.light .app-aside-glow {
     background:
-      radial-gradient(circle at 30% 0%, rgba(37, 99, 235, 0.10), transparent 40%),
-      linear-gradient(180deg, rgba(241, 245, 251, 0.92), rgba(255, 255, 255, 0.96));
+      radial-gradient(circle at 30% 0%, rgba(37, 99, 235, 0.24), transparent 38%),
+      linear-gradient(180deg, rgba(30, 41, 99, 0.85), rgba(13, 22, 50, 0.95));
   }
 
   /* ── Topbar + Footer (glassmorphism) ───────────────────────── */
@@ -241,8 +248,8 @@
     border-color: rgba(255, 255, 255, 0.10);
   }
   html.light .app-chrome-bar {
-    background-color: rgba(255, 255, 255, 0.62);
-    border-color: rgba(15, 23, 42, 0.08);
+    background-color: rgba(13, 22, 50, 0.55);
+    border-color: rgba(255, 255, 255, 0.10);
   }
 
   /* ── Panneau Assistant (droite) ────────────────────────────── */
@@ -256,142 +263,56 @@
       radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.58), transparent 42%),
       linear-gradient(180deg, #172554 0%, #0B122C 62%, #020617 100%);
   }
-  /* En light : on garde le panneau « brandé » bleu mais adouci (lisible
-     sur fond clair sans rompre l'identité PrimeXpert). */
+  /* Tamisé : navy un cran plus clair, glow cobalt -25%. */
   html.light .app-assistant {
-    background-color: #1E40AF;
-    border-left: 1px solid rgba(37, 99, 235, 0.30);
-    box-shadow: -28px 0 80px rgba(37, 99, 235, 0.18);
+    background-color: #1E3A8A;
+    border-left: 1px solid rgba(191, 219, 254, 0.20);
+    box-shadow: -28px 0 80px rgba(30, 58, 138, 0.28);
   }
   html.light .app-assistant-glow {
     background:
-      radial-gradient(circle at 50% 0%, rgba(147, 197, 253, 0.45), transparent 42%),
-      linear-gradient(180deg, #2563EB 0%, #1D4ED8 62%, #1E3A8A 100%);
+      radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.44), transparent 42%),
+      linear-gradient(180deg, #1E3A8A 0%, #131e42 62%, #0a1129 100%);
   }
 }
 
 /* ─────────────────────────────────────────────────────────────────────
-   MODE CLAIR ATTÉNUÉ — overrides des utilitaires existants.
-   Principe : on ne duplique pas, on adoucit.
-   - Cartes (`.bg-vault`, `.workhub-card`, `.workhub-card-glow`) :
-     gradient blanc cassé bleuté + halo cobalt diffus (au lieu de cobalt
-     opaque sur noir).
-   - Inputs : fond très subtil + texte slate-800.
-   - Titre gradient : slate-900 → bleu (au lieu de blanc → cobalt).
-   - Texte slate-100/200/300/400 : versions slate-800/700/600/500.
-   - Fonds translucides `bg-white/[...]` : remappés sur slate-900.
-   - Bordures `border-white/[...]` : remappés sur slate-900.
-   - Selectors « bouton actif » du Settings (`bg-[#020617]/...`) : remappés.
+   MODE TAMISÉ — overrides minimalistes.
+   On NE TOUCHE PAS au texte (reste clair), ni aux halos `::after` /
+   `::before` (déjà très atténués par le `mix-blend` du gradient parent),
+   ni aux fonds translucides `bg-white/[…]` (qui restent corrects sur
+   gris-marine), ni aux bordures `border-white/N`.
+   On adoucit uniquement les 3 fonds opaques qui « brillaient » trop :
+   - `.bg-vault`     : slate-900 → slate-800
+   - `.workhub-card` : slate-900 → slate-800
+   - `.workhub-card-glow` : slate-900 → slate-800
+   Le contraste reste un thème sombre, juste 1-2 tons plus clair.
 ─────────────────────────────────────────────────────────────────────── */
 
-/* Cartes Vault — variant clair */
 html.light .bg-vault {
   background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.96) 0%,
-    rgba(219, 234, 254, 0.55) 50%,
-    rgba(255, 255, 255, 0.96) 100%);
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.05);
+    rgba(30, 41, 59, 0.88) 0%,
+    rgba(37, 52, 99, 0.65) 50%,
+    rgba(30, 41, 59, 0.88) 100%);
 }
-html.light .bg-vault::after {
-  background: rgb(59, 130, 246);
-  opacity: 0.10;
-  filter: blur(110px);
-}
-html.light .bg-vault:hover::after { opacity: 0.16; }
 
-/* Workhub-card / workhub-card-glow — variant clair */
 html.light .workhub-card {
   background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.95) 0%,
-    rgba(219, 234, 254, 0.45) 50%,
-    rgba(255, 255, 255, 0.95) 100%);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow:
-    0 12px 32px rgba(15, 23, 42, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    rgba(30, 41, 59, 0.88) 0%,
+    rgba(37, 52, 99, 0.65) 50%,
+    rgba(30, 41, 59, 0.88) 100%);
 }
-html.light .workhub-card::before { opacity: 0.08; filter: blur(110px); }
-html.light .workhub-card:hover {
-  border-color: rgba(37, 99, 235, 0.22);
-  box-shadow:
-    0 18px 48px rgba(15, 23, 42, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-}
-html.light .workhub-card:hover::before { opacity: 0.14; }
 
 html.light .workhub-card-glow {
   background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.95) 0%,
-    rgba(191, 219, 254, 0.45) 50%,
-    rgba(255, 255, 255, 0.95) 100%);
-  border: 1px solid rgba(37, 99, 235, 0.14);
-  box-shadow:
-    0 18px 48px rgba(15, 23, 42, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-}
-html.light .workhub-card-glow::before { opacity: 0.12; filter: blur(130px); }
-
-/* Workhub-input — variant clair */
-html.light .workhub-input {
-  background-color: rgba(15, 23, 42, 0.04);
-  border-color: rgba(15, 23, 42, 0.10);
-  color: #1E293B;
-}
-html.light .workhub-input::placeholder { color: #94A3B8; }
-html.light .workhub-input:focus {
-  border-color: rgba(37, 99, 235, 0.50);
-  background-color: rgba(255, 255, 255, 0.8);
+    rgba(30, 41, 59, 0.88) 0%,
+    rgba(37, 99, 235, 0.26) 50%,
+    rgba(30, 41, 59, 0.88) 100%);
 }
 
-/* Titre gradient — slate-900 → cobalt en light */
-html.light .workhub-title-gradient {
-  background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 60%, #2563EB 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: none;
-}
-
-/* Texte par défaut blanc → slate foncé.
-   Hiérarchie préservée : -100 = le plus contrasté, -500 = le plus doux. */
-html.light .text-white    { color: #1E293B; }
-html.light .text-slate-100 { color: #1E293B; }
-html.light .text-slate-200 { color: #334155; }
-html.light .text-slate-300 { color: #475569; }
-html.light .text-slate-400 { color: #64748B; }
-html.light .text-slate-500 { color: #94A3B8; }
-
-/* Fonds translucides blanc/N en light → slate-900/N (subtil) */
-html.light .bg-white\/5            { background-color: rgba(15, 23, 42, 0.04); }
-html.light .bg-white\/10           { background-color: rgba(15, 23, 42, 0.05); }
-html.light .bg-white\/15           { background-color: rgba(15, 23, 42, 0.06); }
-html.light .bg-white\/\[0\.03\]    { background-color: rgba(15, 23, 42, 0.03); }
-html.light .bg-white\/\[0\.04\]    { background-color: rgba(15, 23, 42, 0.04); }
-html.light .bg-white\/\[0\.05\]    { background-color: rgba(15, 23, 42, 0.04); }
-html.light .bg-white\/\[0\.06\]    { background-color: rgba(15, 23, 42, 0.05); }
-html.light .bg-white\/\[0\.08\]    { background-color: rgba(15, 23, 42, 0.06); }
-html.light .hover\:bg-white\/5:hover  { background-color: rgba(15, 23, 42, 0.06); }
-html.light .hover\:bg-white\/10:hover { background-color: rgba(15, 23, 42, 0.08); }
-
-/* Bordures blanches/N → slate-900/N (légèrement plus marquées que le fond
-   pour rester visibles sur clair). */
-html.light .border-white\/5  { border-color: rgba(15, 23, 42, 0.06); }
-html.light .border-white\/10 { border-color: rgba(15, 23, 42, 0.08); }
-html.light .border-white\/15 { border-color: rgba(15, 23, 42, 0.10); }
-html.light .border-white\/20 { border-color: rgba(15, 23, 42, 0.14); }
-html.light .hover\:border-white\/30:hover { border-color: rgba(15, 23, 42, 0.18); }
-
-/* Boutons toggle (Langue / Thème dans Settings) :
-   en dark = `bg-[#020617]/60`, en light → `slate-100`. */
-html.light .bg-\[\#020617\]\/40,
-html.light .bg-\[\#020617\]\/50,
-html.light .bg-\[\#020617\]\/60,
-html.light .bg-\[\#020617\]\/70 {
-  background-color: rgba(241, 245, 251, 0.9);
-}
-
-/* Scrollbar custom : version claire */
-html.light .custom-scrollbar::-webkit-scrollbar-thumb { background: #CBD5E1; }
-html.light .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+/* Halos cobalt -25% pour suivre la baisse d'intensité du bleu */
+html.light .bg-vault::after,
+html.light .workhub-card::before { opacity: 0.16; }
+html.light .bg-vault:hover::after { opacity: 0.24; }
+html.light .workhub-card-glow::before { opacity: 0.19; }
 

@@ -186,8 +186,8 @@ export function Settings() {
             </div>
             <p className="text-[9px] text-blue-300/80 uppercase tracking-widest mt-2 font-black">
               {theme === 'dark'
-                ? t('Navigateur Bleu · cockpit 2026', 'Blue Browser · 2026 cockpit')
-                : t('Clair atténué · bleu adouci', 'Soft light · muted blue')}
+                ? t('Navigateur Bleu · profond', 'Blue Browser · deep')
+                : t('Navigateur Bleu · tamisé', 'Blue Browser · softened')}
             </p>
           </Field>
         </div>
