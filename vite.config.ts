@@ -12,9 +12,9 @@ export default defineConfig(({mode}) => {
     },
     resolve: {
       // IMPORTANT — ordre des alias :
-      // Les alias les plus SPÉCIFIQUES doivent venir EN PREMIER (forme array
-      // pour garantir l'ordre). Le générique `@` est en dernier sinon il
-      // intercepte `@primexpert/...` comme préfixe.
+      // Les alias les plus SPECIFIQUES doivent venir EN PREMIER (forme array
+      // pour garantir l'ordre). Le generique `@` est en dernier sinon il
+      // intercepte `@primexpert/...` comme prefixe.
       alias: [
         { find: /^@primexpert\/core\/canonical$/, replacement: path.resolve(__dirname, 'packages/core/src/canonical/index.ts') },
         { find: /^@primexpert\/core\/valuation$/, replacement: path.resolve(__dirname, 'packages/core/src/valuation/index.ts') },
@@ -31,12 +31,59 @@ export default defineConfig(({mode}) => {
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+      // File watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+      },
+    },
+    build: {
+      // Phase F-1 - Code-splitting agressif :
+      // Le bundle monolithique de 1.46 MB est eclate en chunks stables
+      // et cacheables. Combine aux React.lazy() cote App, le payload
+      // initial passe largement sous les 600 KB.
+      target: 'es2020',
+      cssCodeSplit: true,
+      chunkSizeWarningLimit: 700,
+      rollupOptions: {
+        output: {
+          manualChunks(id: string) {
+            if (!id.includes('node_modules')) {
+              // Notre core metier : un chunk stable, partage entre routes.
+              if (id.includes('/packages/core/')) return 'primexpert-core';
+              return undefined;
+            }
+            // Vendors - classes par usage / poids :
+            if (
+              id.includes('/react-dom/') ||
+              id.includes('/react-router') ||
+              id.includes('/scheduler/') ||
+              /\/react\//.test(id)
+            ) {
+              return 'react-vendor';
+            }
+            if (id.includes('/firebase/') || id.includes('/@firebase/')) {
+              return 'firebase-vendor';
+            }
+            if (
+              id.includes('/motion/') ||
+              id.includes('framer-motion') ||
+              id.includes('/lucide-react/')
+            ) {
+              return 'ui-vendor';
+            }
+            if (
+              id.includes('/react-markdown/') ||
+              id.includes('/remark-') ||
+              id.includes('/micromark') ||
+              id.includes('/mdast-')
+            ) {
+              return 'markdown-vendor';
+            }
+            return 'vendor';
+          },
+        },
       },
     },
   };

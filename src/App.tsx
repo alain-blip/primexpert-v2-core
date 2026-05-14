@@ -3,22 +3,26 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
 import { Layout } from './components/Layout';
-import { Dashboard } from './components/Dashboard';
-import { Listings } from './components/Listings';
-import { CRM } from './components/CRM';
-import { ACM } from './components/ACM';
-import { ContentGen } from './components/ContentGen';
-import { Mailbox } from './components/Mailbox';
-import { Drive } from './components/Drive/Drive';
-import { Softphone } from './components/Softphone/Softphone';
-import { Settings } from './components/Settings';
 import { LanguageProvider, useLanguage } from './lib/i18n';
 import { LogIn, TrendingUp, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+
+// Phase F-1 — Code-splitting par route.
+// Chaque composant lourd est charge a la demande (chunk JS dedie).
+// Le payload initial du Workhub se limite a Layout + Dashboard + vendors.
+const Dashboard  = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
+const Listings   = lazy(() => import('./components/Listings').then(m => ({ default: m.Listings })));
+const CRM        = lazy(() => import('./components/CRM').then(m => ({ default: m.CRM })));
+const ACM        = lazy(() => import('./components/ACM').then(m => ({ default: m.ACM })));
+const ContentGen = lazy(() => import('./components/ContentGen').then(m => ({ default: m.ContentGen })));
+const Mailbox    = lazy(() => import('./components/Mailbox').then(m => ({ default: m.Mailbox })));
+const Drive      = lazy(() => import('./components/Drive/Drive').then(m => ({ default: m.Drive })));
+const Softphone  = lazy(() => import('./components/Softphone/Softphone').then(m => ({ default: m.Softphone })));
+const Settings   = lazy(() => import('./components/Settings').then(m => ({ default: m.Settings })));
 
 function LoadingScreen() {
   return (
@@ -27,6 +31,20 @@ function LoadingScreen() {
         animate={{ rotate: 360 }}
         transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
         className="w-12 h-12 border-2 border-[#D4AF37] border-t-transparent rounded-full"
+      />
+    </div>
+  );
+}
+
+// Fallback Suspense pour chargements de routes lazy (F-1).
+// Compact, palette Vault, animation discrete pour ne pas distraire.
+function RouteSuspense() {
+  return (
+    <div className="h-[420px] w-full flex items-center justify-center" aria-label="Chargement…">
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
+        className="w-8 h-8 border-2 border-blue-400/40 border-t-blue-300 rounded-full"
       />
     </div>
   );
@@ -224,7 +242,9 @@ function Workhub() {
           transition={{ duration: 0.2 }}
           className="h-full"
         >
-          {renderContent()}
+          <Suspense fallback={<RouteSuspense />}>
+            {renderContent()}
+          </Suspense>
         </motion.div>
       </AnimatePresence>
     </Layout>
