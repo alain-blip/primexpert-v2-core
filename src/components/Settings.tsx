@@ -169,7 +169,7 @@ export function Settings() {
               <button
                 type="button"
                 disabled
-                className="flex-1 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl text-slate-600 cursor-not-allowed"
+                className="flex-1 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl text-slate-300 cursor-not-allowed"
                 title="Phase E"
               >
                 {t('Mode clair', 'Light mode')}
@@ -370,7 +370,7 @@ export function Settings() {
               <div className="w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.6)]" />
               {t('courtiersResponsables', 'courtiersResponsables')}
             </span>
-            <span className="text-slate-700">·</span>
+            <span className="text-slate-300">·</span>
             <span className="flex items-center gap-1.5 text-blue-400">
               <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.6)]" />
               {t('organizationId · prêt', 'organizationId · ready')}

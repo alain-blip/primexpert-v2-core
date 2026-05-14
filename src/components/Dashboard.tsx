@@ -67,7 +67,7 @@ export function Dashboard() {
               </p>
             </div>
             <button className="px-6 py-4 bg-blue-600 text-white text-[11px] font-black rounded-[22px] uppercase tracking-[0.2em] shadow-[0_22px_55px_rgba(37,99,235,0.45)] hover:bg-blue-500 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-3">
-              <div className="w-1.5 h-1.5 bg-blue-200 rounded-full animate-pulse" />
+              <div className="w-1.5 h-1.5 bg-blue-500/20 rounded-full animate-pulse" />
               {t('Nouvelle mission', 'New_Mission')}
             </button>
           </div>

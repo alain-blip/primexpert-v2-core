@@ -75,7 +75,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
                 {isActive && (
                   <motion.div 
                     layoutId="active-pill"
-                    className="ml-auto w-1 h-4 bg-blue-100 rounded-full"
+                    className="ml-auto w-1 h-4 bg-blue-500/15 rounded-full"
                   />
                 )}
               </button>
@@ -170,7 +170,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
            <span className="flex items-center gap-1.5"><div className="w-1 h-1 bg-slate-600" /> {t('COUCHE_SECURITE_OACIQ: CONFORME', 'OACIQ_SECURITY_LAYER: COMPLIANT')}</span>
          </div>
          <div className="flex gap-4">
-           <span className="text-slate-600 italic tracking-[0.3em]">REF_ID: PRO_774</span>
+           <span className="text-slate-300 italic tracking-[0.3em]">REF_ID: PRO_774</span>
            <span className="text-blue-400 font-mono">{t('SYNCHRO_PILOTE', 'PILOT_SYNC')}: {new Date().toLocaleTimeString()}</span>
          </div>
        </footer>
@@ -240,7 +240,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
             </div>
           </div>
 
-          <button className="mt-auto w-full py-4 rounded-[24px] bg-white text-[#172554] text-[11px] font-black uppercase tracking-[0.22em] shadow-[0_24px_60px_rgba(59,130,246,0.35)] hover:bg-blue-50 transition-all">
+          <button className="mt-auto w-full py-4 rounded-[24px] bg-white text-[#172554] text-[11px] font-black uppercase tracking-[0.22em] shadow-[0_24px_60px_rgba(59,130,246,0.35)] hover:bg-blue-500/[0.08] transition-all">
             {t('Demander une analyse IA', 'Request AI Analysis')}
           </button>
         </div>

@@ -79,33 +79,33 @@ export function ContentGen() {
 
   const scoreColor =
     !lintResult ? '' :
-    lintResult.qualityScore >= 90 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' :
-    lintResult.qualityScore >= 70 ? 'text-blue-300 bg-blue-500/10 border-blue-200' :
+    lintResult.qualityScore >= 90 ? 'text-emerald-300 bg-emerald-500/[0.08] border-emerald-400/30' :
+    lintResult.qualityScore >= 70 ? 'text-blue-300 bg-blue-500/10 border-blue-400/30' :
     lintResult.qualityScore >= 50 ? 'text-amber-400 bg-amber-500/[0.06] border-amber-500/20' :
-                                    'text-red-700 bg-red-50 border-red-200';
+                                    'text-red-300 bg-red-500/[0.08] border-red-400/30';
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 min-h-[600px]">
       {/* Editor Side */}
       <div className="space-y-8">
-        <div className="bg-vault p-10 rounded-[32px] border border-gray-200 shadow-sm space-y-8">
+        <div className="bg-vault p-10 rounded-[32px] border border-white/10 shadow-sm space-y-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
                 <Signature className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="text-2xl font-black italic text-gray-900 tracking-tighter uppercase">
+                <h3 className="text-2xl font-black italic text-slate-300 tracking-tighter uppercase">
                   {t('CONFIGURATEUR', 'CONFIGURATOR')}<span className="text-blue-400">_CENTRIS</span>
                 </h3>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
                   {t('Gemini · Lint OACIQ @primexpert/core', 'Gemini · OACIQ Lint @primexpert/core')}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1.5">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-              <span className="text-[9px] font-black uppercase tracking-widest text-emerald-700">
+            <div className="flex items-center gap-2 rounded-full bg-emerald-500/[0.08] border border-emerald-400/30 px-3 py-1.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-emerald-300">
                 {t('Lint OACIQ actif', 'OACIQ Lint Active')}
               </span>
             </div>
@@ -113,36 +113,36 @@ export function ContentGen() {
 
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2 col-span-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">{t('Adresse Complète', 'Full Address')}</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{t('Adresse Complète', 'Full Address')}</label>
               <input
                 value={formData.address}
                 onChange={e => setFormData({...formData, address: e.target.value})}
-                className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl text-sm font-bold uppercase tracking-tight focus:ring-blue-500 focus:border-blue-500 transition-all"
+                className="workhub-input w-full p-4 rounded-xl text-sm font-bold uppercase tracking-tight"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">Type</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Type</label>
               <input
                 value={formData.type}
                 onChange={e => setFormData({...formData, type: e.target.value})}
-                className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl text-sm font-bold uppercase tracking-tight focus:ring-blue-500"
+                className="workhub-input w-full p-4 rounded-xl text-sm font-bold uppercase tracking-tight"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">{t('Prix ($)', 'Price ($)')}</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{t('Prix ($)', 'Price ($)')}</label>
               <input
                 value={formData.price}
                 onChange={e => setFormData({...formData, price: e.target.value})}
-                className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl text-sm font-bold tracking-tight focus:ring-blue-500"
+                className="workhub-input w-full p-4 rounded-xl text-sm font-bold tracking-tight"
               />
             </div>
             <div className="space-y-2 col-span-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">{t('Atouts principaux', 'Key Assets')}</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{t('Atouts principaux', 'Key Assets')}</label>
               <textarea
                 rows={3}
                 value={formData.features}
                 onChange={e => setFormData({...formData, features: e.target.value})}
-                className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl text-sm font-bold tracking-tight focus:ring-blue-500"
+                className="workhub-input w-full p-4 rounded-xl text-sm font-bold tracking-tight"
               />
             </div>
           </div>
@@ -192,9 +192,9 @@ export function ContentGen() {
 
       {/* Output Side */}
       <div className="relative">
-        <div className="h-full bg-vault rounded-[40px] border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
-          <div className="bg-gray-50 px-10 py-5 border-b border-gray-100 flex justify-between items-center">
-            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+        <div className="h-full bg-vault rounded-[40px] border border-white/10 shadow-2xl overflow-hidden flex flex-col">
+          <div className="bg-white/[0.03] px-10 py-5 border-b border-white/10 flex justify-between items-center">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
               {t('Prévisualisation du brouillon Centris', 'Centris_Draft Preview')}
             </span>
 
@@ -221,16 +221,16 @@ export function ContentGen() {
 
           {/* Lint Banner — mots interdits détectés */}
           {lintResult && !lintResult.isValid && (
-            <div className="px-10 py-4 bg-red-50 border-b border-red-200 flex items-start gap-3">
-              <ShieldAlert className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+            <div className="px-10 py-4 bg-red-500/[0.08] border-b border-red-400/30 flex items-start gap-3">
+              <ShieldAlert className="h-4 w-4 text-red-300 mt-0.5 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-800">
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-300">
                   {t('Lint OACIQ — mots à éviter détectés', 'OACIQ Lint — discouraged words detected')}
                 </p>
-                <p className="text-[11px] font-bold text-red-900 mt-1 leading-relaxed">
+                <p className="text-[11px] font-bold text-red-300 mt-1 leading-relaxed">
                   {lintResult.foundWords.map((w, i) => (
                     <span key={w}>
-                      <code className="bg-red-100 px-1.5 py-0.5 rounded">{w}</code>
+                      <code className="bg-red-500/15 px-1.5 py-0.5 rounded">{w}</code>
                       {i < lintResult.foundWords.length - 1 ? ' · ' : ''}
                     </span>
                   ))}
@@ -238,7 +238,7 @@ export function ContentGen() {
               </div>
               <button
                 onClick={handleSanitize}
-                className="shrink-0 rounded-xl border border-red-300 bg-vault px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-red-700 hover:bg-red-50 transition"
+                className="shrink-0 rounded-xl border border-red-300 bg-vault px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-red-300 hover:bg-red-500/[0.08] transition"
               >
                 <BadgeAlert className="inline h-3 w-3 mr-1" />
                 {t('Corriger auto.', 'Auto-fix')}
@@ -248,8 +248,8 @@ export function ContentGen() {
 
           {/* Recommended expressions used (positive feedback) */}
           {lintResult && lintResult.usedRecommendedExpressions.length > 0 && (
-            <div className="px-10 py-3 bg-emerald-50/60 border-b border-emerald-100">
-              <p className="text-[10px] font-bold tracking-widest text-emerald-800">
+            <div className="px-10 py-3 bg-emerald-500/[0.08] border-b border-emerald-400/30">
+              <p className="text-[10px] font-bold tracking-widest text-emerald-300">
                 <Sparkles className="inline h-3 w-3 mr-1" />
                 {t('Expressions OACIQ utilisées', 'OACIQ expressions used')} ·{' '}
                 <span className="font-mono">{lintResult.usedRecommendedExpressions.join(' · ')}</span>
@@ -259,12 +259,12 @@ export function ContentGen() {
 
           <div className="flex-1 p-12 overflow-y-auto">
             {description ? (
-              <div className="prose prose-blue max-w-none prose-headings:font-black prose-headings:italic prose-headings:tracking-tighter prose-headings:text-gray-900 prose-p:text-gray-700 prose-p:leading-relaxed prose-p:font-medium">
+              <div className="prose prose-blue max-w-none prose-headings:font-black prose-headings:italic prose-headings:tracking-tighter prose-headings:text-slate-300 prose-p:text-slate-300 prose-p:leading-relaxed prose-p:font-medium">
                 <ReactMarkdown>{description}</ReactMarkdown>
               </div>
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-6 opacity-10">
-                <FileText className="w-24 h-24 text-gray-400" />
+                <FileText className="w-24 h-24 text-slate-400" />
                 <p className="text-2xl font-black uppercase tracking-tighter italic font-serif">
                   {t('En attente de génération', 'Awaiting_Generation')}
                 </p>
@@ -272,7 +272,7 @@ export function ContentGen() {
             )}
           </div>
 
-          <div className="p-8 bg-gray-50 border-t border-gray-100 italic font-black uppercase tracking-widest text-[9px] text-gray-300 flex justify-between">
+          <div className="p-8 bg-white/[0.03] border-t border-white/10 italic font-black uppercase tracking-widest text-[9px] text-slate-300 flex justify-between">
             <span>{t('Validation humaine obligatoire', 'HUMAN_IN_THE_LOOP_VALIDATION_REQUIRED')}</span>
             <span className="text-blue-500">{t('v2.0 · OACIQ Core Lint', 'v2.0 · OACIQ Core Lint')}</span>
           </div>

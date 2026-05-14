@@ -16,12 +16,12 @@ const STATUS_LABELS = {
 };
 
 const STATUS_COLORS = {
-  prospect: "bg-orange-50 text-orange-700 border-orange-200",
-  mandate: "bg-blue-500/10 text-blue-300 border-blue-200",
+  prospect: "bg-orange-500/[0.08] text-orange-300 border-orange-400/30",
+  mandate: "bg-blue-500/10 text-blue-300 border-blue-400/30",
   promise: "bg-amber-500/[0.06] text-amber-400 border-amber-500/20",
-  expired: "bg-red-50 text-red-700 border-red-200",
-  unsigned: "bg-gray-100 text-gray-700 border-gray-200",
-  sold: "bg-green-500/10 text-green-700 border-green-200"
+  expired: "bg-red-500/[0.08] text-red-300 border-red-400/30",
+  unsigned: "bg-white/[0.04] text-slate-300 border-white/10",
+  sold: "bg-green-500/10 text-green-300 border-green-400/30"
 };
 
 const STATUS_BORDERS = {
@@ -80,8 +80,8 @@ export function Listings() {
         className={cn(
           'flex items-center gap-3 rounded-2xl border px-5 py-3 shadow-sm',
           usingDemo
-            ? 'border-amber-500/20 bg-amber-50/70 text-amber-300'
-            : 'border-emerald-200 bg-emerald-50/70 text-emerald-900'
+            ? 'border-amber-500/20 bg-amber-500/[0.08] text-amber-300'
+            : 'border-emerald-400/30 bg-emerald-500/[0.08] text-emerald-300'
         )}
       >
         {usingDemo ? <AlertTriangle className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
@@ -99,17 +99,17 @@ export function Listings() {
 
       {/* Header Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4 bg-vault px-5 py-2.5 rounded-xl border border-gray-200 shadow-sm w-full md:w-96 group focus-within:border-blue-400 transition-colors">
-          <Search className="w-4 h-4 text-gray-400 group-focus-within:text-blue-400" />
+        <div className="flex items-center gap-4 bg-vault px-5 py-2.5 rounded-xl border border-white/10 shadow-sm w-full md:w-96 group focus-within:border-blue-400 transition-colors">
+          <Search className="w-4 h-4 text-slate-400 group-focus-within:text-blue-400" />
           <input 
             type="text" 
             placeholder="Rechercher une propriété..." 
-            className="text-[10px] font-black uppercase tracking-widest bg-transparent border-none focus:ring-0 w-full placeholder:text-gray-300"
+            className="text-[10px] font-black uppercase tracking-widest bg-transparent border-none focus:ring-0 w-full placeholder:text-slate-300"
           />
         </div>
         
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-6 py-3 bg-vault text-gray-900 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-gray-50 transition-all border border-gray-200 shadow-sm">
+          <button className="flex items-center gap-2 px-6 py-3 bg-vault text-slate-300 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-white/[0.03] transition-all border border-white/10 shadow-sm">
             <Filter className="w-4 h-4" />
             Filtres
           </button>
@@ -126,9 +126,9 @@ export function Listings() {
           const count = listings.filter(l => l.status === key).length;
           return (
             <div key={key} className="space-y-4">
-              <div className="flex items-center justify-between px-1 border-b-2 border-gray-200 pb-2">
-                <span className="text-[11px] font-black uppercase tracking-tighter text-gray-900">{label}</span>
-                <span className="bg-gray-900 text-white text-[9px] font-black w-5 h-5 rounded flex items-center justify-center italic">{count}</span>
+              <div className="flex items-center justify-between px-1 border-b-2 border-white/10 pb-2">
+                <span className="text-[11px] font-black uppercase tracking-tighter text-slate-300">{label}</span>
+                <span className="bg-slate-800 text-white text-[9px] font-black w-5 h-5 rounded flex items-center justify-center italic">{count}</span>
               </div>
 
               <div className="space-y-4">
@@ -145,11 +145,11 @@ export function Listings() {
                       <div className="w-9 h-9 rounded bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-600 transition-colors">
                         <Home className="w-4 h-4 text-blue-400 group-hover:text-white" />
                       </div>
-                      <MoreVertical className="w-4 h-4 text-gray-300 hover:text-gray-900" />
+                      <MoreVertical className="w-4 h-4 text-slate-300 hover:text-slate-300" />
                     </div>
-                    <p className="text-sm font-black text-gray-900 italic tracking-tighter mb-1 leading-tight">{l.address}</p>
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{l.city}</p>
-                    <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-50">
+                    <p className="text-sm font-black text-slate-300 italic tracking-tighter mb-1 leading-tight">{l.address}</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{l.city}</p>
+                    <div className="flex items-center justify-between pt-4 mt-4 border-t border-white/10">
                       <span className="text-xs font-black text-blue-300 italic">{formatCurrency(l.price)}</span>
                       <ChevronRight className="w-4 h-4 text-gray-200 group-hover:text-blue-400" />
                     </div>
@@ -157,8 +157,8 @@ export function Listings() {
                 ))}
                 
                 {count === 0 && (
-                  <div className="py-12 text-center border border-dashed border-gray-300 rounded-xl bg-gray-50/50">
-                    <p className="text-[9px] text-gray-300 font-black uppercase tracking-[0.2em] italic">{t('AUCUN ACTIF', '0_ACTIVE')}</p>
+                  <div className="py-12 text-center border border-dashed border-white/10 rounded-xl bg-white/[0.03]">
+                    <p className="text-[9px] text-slate-300 font-black uppercase tracking-[0.2em] italic">{t('AUCUN ACTIF', '0_ACTIVE')}</p>
                   </div>
                 )}
               </div>

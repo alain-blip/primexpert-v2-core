@@ -177,7 +177,7 @@ export function Drive() {
       </div>
 
       {/* Tenant pill */}
-      <div className="flex items-center gap-3 rounded-xl border border-blue-500/20 bg-blue-50/40 px-4 py-3">
+      <div className="flex items-center gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3">
         <ShieldCheck className="h-4 w-4 text-blue-400" />
         <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">
           {t('Espace cloisonné', 'Scoped workspace')} · brokerId ={' '}
@@ -188,7 +188,7 @@ export function Drive() {
       </div>
 
       {/* Contexte upload — sélecteur résidence + extraction IA */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl border border-white/10 bg-white/70 px-5 py-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl border border-white/10 bg-vault px-5 py-4">
         <label className="flex items-center gap-3">
           <Home className="h-4 w-4 text-blue-400 shrink-0" />
           <div className="flex-1 min-w-0">
@@ -220,7 +220,7 @@ export function Drive() {
             className="h-4 w-4 accent-blue-600"
           />
           <div className="flex-1">
-            <span className="block text-[10px] font-black uppercase tracking-widest text-slate-700">
+            <span className="block text-[10px] font-black uppercase tracking-widest text-slate-300">
               <Sparkles className="inline h-3 w-3 mr-1" />
               {t("Extraction IA automatique après upload", 'Automatic AI extraction after upload')}
             </span>
@@ -235,20 +235,20 @@ export function Drive() {
       </div>
 
       {extracting && (
-        <div className="flex items-center gap-3 rounded-xl border border-purple-200 bg-purple-50/60 px-4 py-3 text-[11px] font-semibold text-purple-800">
+        <div className="flex items-center gap-3 rounded-xl border border-purple-400/30 bg-purple-500/[0.08] px-4 py-3 text-[11px] font-semibold text-purple-200">
           <Loader2 className="h-4 w-4 animate-spin" />
           {t('Extraction IA en cours — Gemini lit le document…', 'AI extraction in progress — Gemini is reading the document…')}
         </div>
       )}
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50/60 px-4 py-3 text-[11px] font-semibold text-red-700">
+        <div className="rounded-xl border border-red-400/30 bg-red-500/[0.08] px-4 py-3 text-[11px] font-semibold text-red-300">
           {error}
         </div>
       )}
 
       {/* Document list */}
-      <div className="rounded-[32px] border border-white bg-white/90 shadow-[0_24px_70px_rgba(15,23,42,0.08)] overflow-hidden">
+      <div className="rounded-[32px] border border-white/10 bg-vault shadow-[0_24px_70px_rgba(15,23,42,0.08)] overflow-hidden">
         <div className="flex items-center justify-between px-7 py-5 border-b border-white/10">
           <h2 className="text-base font-black italic tracking-tight uppercase text-white">
             {t('Documents récents', 'Recent documents')}
@@ -273,11 +273,11 @@ export function Drive() {
             </p>
           </div>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-white/[0.06]">
             {documents.map((doc) => {
               const residence = doc.residenceId ? residences.find((r) => r.id === doc.residenceId) : null;
               return (
-              <li key={doc.id} className="flex items-center gap-5 px-7 py-4 hover:bg-blue-50/30 transition">
+              <li key={doc.id} className="flex items-center gap-5 px-7 py-4 hover:bg-blue-500/10 transition">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 shrink-0">
                   <FileText className="h-5 w-5" />
                 </div>
@@ -295,13 +295,13 @@ export function Drive() {
                     </p>
                   )}
                   {doc.status === 'processing' && (
-                    <p className="text-[10px] font-mono uppercase tracking-widest text-purple-600 mt-1">
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-purple-300 mt-1">
                       <Loader2 className="inline h-3 w-3 animate-spin mr-1" />
                       {t('extraction IA…', 'AI extracting…')}
                     </p>
                   )}
                   {doc.status === 'failed' && (
-                    <p className="text-[10px] font-mono uppercase tracking-widest text-red-600 mt-1">
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-red-300 mt-1">
                       {t('extraction IA échouée', 'AI extraction failed')}
                     </p>
                   )}
@@ -309,7 +309,7 @@ export function Drive() {
                 <button
                   type="button"
                   onClick={() => handleDownload(doc)}
-                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-vault px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-blue-400 hover:text-blue-300 transition"
+                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-vault px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:border-blue-400 hover:text-blue-300 transition"
                 >
                   <Download className="h-3.5 w-3.5" />
                   {t('Télécharger', 'Download')}
@@ -353,7 +353,7 @@ export function Drive() {
           return (
             <article
               key={card.title}
-              className="rounded-[32px] border border-white bg-white/90 p-7 shadow-[0_24px_70px_rgba(15,23,42,0.08)]"
+              className="rounded-[32px] border border-white/10 bg-vault p-7 shadow-[0_24px_70px_rgba(15,23,42,0.08)]"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-400">
                 <Icon className="h-6 w-6" />
