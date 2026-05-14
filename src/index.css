@@ -124,6 +124,42 @@
     z-index: 1;
   }
 
+  /* Utility universelle "Look Vault" : gradient diagonal navy-marine-navy
+     + halo bleu floutée top-right. À appliquer sur n'importe quelle carte
+     (Dashboard KPIs, tables, Drive, ACM, etc.) pour avoir le rendu
+     identique à la carte 'Conformité_ACTIVE'. */
+  .bg-vault {
+    position: relative;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(23, 37, 84, 0.68) 50%, rgba(15, 23, 42, 0.92) 100%);
+    overflow: hidden;
+  }
+
+  .bg-vault::after {
+    content: '';
+    position: absolute;
+    top: -30px;
+    right: -30px;
+    width: 224px;
+    height: 224px;
+    background: rgb(59, 130, 246);
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.22;
+    pointer-events: none;
+    z-index: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .bg-vault:hover::after {
+    opacity: 0.32;
+  }
+
+  /* S'assurer que tout enfant direct passe au-dessus de la lueur. */
+  .bg-vault > * {
+    position: relative;
+    z-index: 1;
+  }
+
   .workhub-input {
     @apply w-full bg-[#020617]/40 border border-white/10 rounded-2xl px-4 py-3 text-[13px] text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20 transition backdrop-blur-md;
   }
