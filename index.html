@@ -1,10 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/logo.png" />
     <title>PRIMEXPERT | GPS Immobilier</title>
+    <script>
+      // Anti-flash : applique le thème AVANT le rendu React.
+      // Source unique de vérité : localStorage.theme ('dark' | 'light').
+      (function () {
+        try {
+          var t = localStorage.getItem('theme');
+          if (t !== 'light' && t !== 'dark') t = 'dark';
+          var r = document.documentElement;
+          r.classList.remove('dark', 'light');
+          r.classList.add(t);
+        } catch (_) { /* mode privé : on garde la classe par défaut */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

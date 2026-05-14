@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../lib/i18n';
 import { useAuth } from '../lib/auth';
+import { useTheme } from '../lib/useTheme';
 import {
   Settings as SettingsIcon,
   ShieldCheck,
@@ -22,6 +23,7 @@ type CreativityLevel = 'precise' | 'creative';
 export function Settings() {
   const { language, setLanguage, t } = useLanguage();
   const { profile } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   const [firstName, setFirstName] = useState(profile?.displayName?.split(' ')[0] ?? '');
   const [lastName, setLastName] = useState(profile?.displayName?.split(' ').slice(1).join(' ') ?? '');
@@ -160,23 +162,32 @@ export function Settings() {
 
           <Field label={t('Thème', 'Theme')} className="mt-4">
             <div className="flex bg-[#020617]/60 rounded-2xl p-1 border border-white/10">
-              <button
-                type="button"
-                className="flex-1 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl bg-[#172554] text-white shadow-[0_8px_20px_rgba(23,37,84,0.6)]"
-              >
-                {t('Mode sombre', 'Dark mode')}
-              </button>
-              <button
-                type="button"
-                disabled
-                className="flex-1 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl text-slate-300 cursor-not-allowed"
-                title="Phase E"
-              >
-                {t('Mode clair', 'Light mode')}
-              </button>
+              {(['dark', 'light'] as const).map((mode) => {
+                const isActive = theme === mode;
+                const label = mode === 'dark'
+                  ? t('Mode sombre', 'Dark mode')
+                  : t('Mode clair', 'Light mode');
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setTheme(mode)}
+                    aria-pressed={isActive}
+                    className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition ${
+                      isActive
+                        ? 'bg-[#172554] text-white shadow-[0_8px_20px_rgba(23,37,84,0.6)]'
+                        : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
-            <p className="text-[9px] text-amber-400/80 uppercase tracking-widest mt-2 font-black">
-              {t('Mode sombre permanent · cockpit 2026', 'Dark mode permanent · 2026 cockpit')}
+            <p className="text-[9px] text-blue-300/80 uppercase tracking-widest mt-2 font-black">
+              {theme === 'dark'
+                ? t('Navigateur Bleu · cockpit 2026', 'Blue Browser · 2026 cockpit')
+                : t('Clair atténué · bleu adouci', 'Soft light · muted blue')}
             </p>
           </Field>
         </div>

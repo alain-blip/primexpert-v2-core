@@ -31,23 +31,13 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
 
   return (
     <div className="relative flex h-screen text-slate-100 font-sans selection:bg-blue-500/30 overflow-hidden text-sm">
-      {/* Dégradé "Navigateur Bleu" — fond fixe garanti, indépendant des wrappers */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 -z-10"
-        style={{
-          background: [
-            'radial-gradient(ellipse 1200px 800px at 0% 0%, rgba(37, 99, 235, 0.28) 0%, transparent 55%)',
-            'radial-gradient(ellipse 1000px 700px at 100% 100%, rgba(30, 58, 138, 0.35) 0%, transparent 60%)',
-            'radial-gradient(ellipse 900px 600px at 50% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 65%)',
-            'linear-gradient(135deg, #020617 0%, #050b1f 28%, #0a1129 58%, #0d1530 85%, #0f1738 100%)',
-          ].join(', '),
-        }}
-      />
+      {/* Dégradé global — la couleur est définie dans index.css (.app-bg)
+          pour pouvoir basculer Sombre ↔ Clair atténué via html.dark / html.light. */}
+      <div aria-hidden="true" className="app-bg pointer-events-none fixed inset-0 -z-10" />
 
       {/* Sidebar - Control Center */}
-      <aside className="w-[218px] bg-[#020617]/70 backdrop-blur-md text-white flex flex-col shrink-0 relative z-40 shadow-[18px_0_70px_rgba(0,0,0,0.55)] border-r border-white/10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_0%,rgba(37,99,235,0.32),transparent_36%),linear-gradient(180deg,rgba(23,37,84,0.88),rgba(2,6,23,0.96))]" />
+      <aside className="app-aside w-[218px] backdrop-blur-md text-white flex flex-col shrink-0 relative z-40">
+        <div aria-hidden="true" className="app-aside-glow absolute inset-0" />
         <div className="relative p-6 pb-8">
           <div className="flex flex-col gap-1">
             <img src="/logo-primexpert-blanc.png" alt="Primexpert" className="mb-3 h-auto w-full max-w-[150px] rounded-xl shadow-[0_18px_35px_rgba(37,99,235,0.2)]" />
@@ -112,7 +102,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
       {/* Zone principale */}
       <main className="flex-1 flex flex-col min-w-0 bg-transparent">
         {/* Top Intelligence Bar */}
-        <header className="h-18 bg-[#020617]/50 backdrop-blur-md border-b border-white/10 flex items-center justify-between px-7 z-30 sticky top-0 shrink-0">
+        <header className="app-chrome-bar h-18 backdrop-blur-md border-b flex items-center justify-between px-7 z-30 sticky top-0 shrink-0">
            <div className="flex items-center gap-4">
              <h2 className="text-2xl font-black italic tracking-tighter uppercase">
                <span className="workhub-title-gradient">{navItems.find(i => i.id === activeTab)?.label}</span> <span className="text-blue-400/40">/</span> <span className="text-blue-400 font-mono text-[10px] not-italic tracking-[0.2em]">01_ALPHA</span>
@@ -143,7 +133,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
                </button>
                <button className="p-2.5 text-slate-400 hover:text-blue-300 transition-all hover:bg-white/5 rounded-xl relative">
                  <Bell className="w-4 h-4" />
-                 <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full border-2 border-[#020617]" />
+                 <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full ring-2 ring-white/10" />
                </button>
              </div>
            </div>
@@ -164,7 +154,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
         </div>
 
         {/* Barre d'état */}
-        <footer className="bg-[#020617]/50 backdrop-blur-md border-t border-white/10 px-7 py-2 flex justify-between items-center text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 shrink-0 select-none">
+        <footer className="app-chrome-bar backdrop-blur-md border-t px-7 py-2 flex justify-between items-center text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 shrink-0 select-none">
          <div className="flex gap-6 items-center">
            <span className="flex items-center gap-1.5"><div className="w-1 h-1 bg-blue-400" /> {t('Gemini en langue stricte', 'GEMINI_STRICT_NLP')}</span>
            <span className="flex items-center gap-1.5"><div className="w-1 h-1 bg-slate-600" /> {t('COUCHE_SECURITE_OACIQ: CONFORME', 'OACIQ_SECURITY_LAYER: COMPLIANT')}</span>
@@ -176,8 +166,8 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
        </footer>
       </main>
 
-      <aside className="hidden xl:flex w-[360px] shrink-0 bg-[#172554] text-white relative overflow-hidden border-l border-blue-200/20 shadow-[-28px_0_80px_rgba(23,37,84,0.28)]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.58),transparent_42%),linear-gradient(180deg,#172554_0%,#0B122C_62%,#020617_100%)]" />
+      <aside className="app-assistant hidden xl:flex w-[360px] shrink-0 text-white relative overflow-hidden">
+        <div aria-hidden="true" className="app-assistant-glow absolute inset-0" />
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-blue-400/30 rounded-full blur-[90px]" />
         <div className="absolute bottom-0 left-0 right-0 h-72 bg-[radial-gradient(circle_at_50%_100%,rgba(37,99,235,0.28),transparent_62%)]" />
 
