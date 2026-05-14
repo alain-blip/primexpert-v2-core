@@ -19,8 +19,8 @@
  * Vendeur" du rapport ACM (cf. D-1b).
  */
 
-import React, { useMemo, useState } from 'react';
-import { FileText, Wand2, Copy, Check, ShieldCheck, Signature, BadgeAlert, ShieldAlert, Sparkles } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { FileText, Wand2, Copy, Check, ShieldCheck, Signature, BadgeAlert, ShieldAlert, Sparkles, Home } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { generateListingDescription } from '../services/gemini';
 import ReactMarkdown from 'react-markdown';
@@ -31,13 +31,21 @@ import {
   validateAndFixNarrative,
   type NarrativeLintResult,
 } from '@primexpert/core/narrative';
+import { listResidences, type Residence } from '../services/residences';
 
 export function ContentGen() {
   const { profile } = useAuth();
+  const brokerId = profile?.uid;
   const { language, t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [description, setDescription] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // Phase E-1b — Sélecteur de résidence (tenant-filtered) pour auto-remplir
+  // l'adresse et le prix. Le courtier valide les inclusions / atouts ensuite.
+  const [residences, setResidences] = useState<Residence[]>([]);
+  const [selectedResidenceId, setSelectedResidenceId] = useState<string>('');
+  const [residencesLoading, setResidencesLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     address: "789 Ave Mont-Royal E, Montréal",
@@ -46,6 +54,37 @@ export function ContentGen() {
     features: "Plafonds 10 pieds, Luminosité exceptionnelle, Vue sur le Parc",
     inclusions: "Électroménagers, Luminaires, Rideaux"
   });
+
+  useEffect(() => {
+    if (!brokerId) return;
+    let cancelled = false;
+    setResidencesLoading(true);
+    listResidences({ tenantId: brokerId, mode: 'strict' })
+      .then((rows) => {
+        if (!cancelled) setResidences(rows);
+      })
+      .catch((e) => {
+        console.error('[ContentGen] listResidences failed', e);
+      })
+      .finally(() => {
+        if (!cancelled) setResidencesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [brokerId]);
+
+  const handleResidenceSelect = (id: string) => {
+    setSelectedResidenceId(id);
+    if (!id) return;
+    const r = residences.find((x) => x.id === id);
+    if (!r) return;
+    setFormData((prev) => ({
+      ...prev,
+      address: r.city ? `${r.address}, ${r.city}` : r.address,
+      price: r.price ? r.price.toLocaleString('fr-CA') : prev.price,
+    }));
+  };
 
   // Lint OACIQ en temps réel sur le texte affiché
   const lintResult: NarrativeLintResult | null = useMemo(() => {
@@ -109,6 +148,43 @@ export function ContentGen() {
                 {t('Lint OACIQ actif', 'OACIQ Lint Active')}
               </span>
             </div>
+          </div>
+
+          {/* Sélecteur de résidence — auto-remplit adresse + prix.
+              Pattern identique au Softphone (tenant-filtered strict). */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 flex items-center gap-3">
+            <Home className="h-4 w-4 text-blue-400 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="block text-[10px] font-black uppercase tracking-widest text-blue-300/70">
+                {t('Pré-remplir depuis une résidence', 'Pre-fill from a residence')}
+              </span>
+              <select
+                value={selectedResidenceId}
+                onChange={(e) => handleResidenceSelect(e.target.value)}
+                className="mt-1.5 w-full text-[12px] font-bold bg-transparent text-slate-200 border-b border-white/10 py-1.5 focus:outline-none focus:border-blue-500"
+              >
+                <option value="" className="bg-slate-900">
+                  — {residencesLoading
+                    ? t('Chargement…', 'Loading…')
+                    : residences.length === 0
+                      ? t('Aucune résidence — saisir manuellement', 'No residence — fill manually')
+                      : t('Choisir une résidence (optionnel)', 'Pick a residence (optional)')} —
+                </option>
+                {residences.map((r) => (
+                  <option key={r.id} value={r.id} className="bg-slate-900">
+                    {r.address} · {r.city}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {selectedResidenceId && (
+              <button
+                onClick={() => handleResidenceSelect('')}
+                className="text-[9px] font-black uppercase tracking-widest text-blue-300/60 hover:text-blue-300 transition shrink-0"
+              >
+                {t('Effacer', 'Clear')}
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-6">

@@ -294,19 +294,20 @@ export function ACM() {
             </div>
           )}
 
-          {/* Lecture Vendeur — NarrativeEngine du Core (Phase D-1b) */}
+          {/* Lecture Vendeur — NarrativeEngine du Core (Phase D-1b)
+              Palette indigo claire remplacée par cobalt dark (cohérence Look Vault). */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-[28px] border border-white/10 bg-vault p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]"
+            className="rounded-[28px] border border-white/10 bg-vault p-8 shadow-[0_20px_60px_rgba(0,0,0,0.4)]"
           >
             <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-500/15 border border-blue-400/30 text-blue-300">
                   <BookOpen className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-300/70">
                     {t('Lecture Vendeur', 'Seller Reading')}
                   </p>
                   <p className="text-sm font-black italic tracking-tight text-white">
@@ -315,9 +316,9 @@ export function ACM() {
                 </div>
               </div>
               {narrative && (
-                <div className="flex items-center gap-2 rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1">
-                  <Sparkles className="h-3 w-3 text-indigo-600" />
-                  <span className="text-[9px] font-black uppercase tracking-widest text-indigo-700 font-mono">
+                <div className="flex items-center gap-2 rounded-full bg-blue-500/10 border border-blue-400/30 px-3 py-1">
+                  <Sparkles className="h-3 w-3 text-blue-300" />
+                  <span className="text-[9px] font-black uppercase tracking-widest text-blue-300 font-mono">
                     {narrative.source} · {narrative.confidence}
                   </span>
                 </div>
@@ -325,24 +326,24 @@ export function ACM() {
             </div>
 
             {narrativeLoading && (
-              <p className="text-[11px] font-semibold text-slate-500">
+              <p className="text-[11px] font-semibold text-blue-300/70">
                 {t('Génération de la lecture…', 'Generating reading…')}
               </p>
             )}
 
             {narrative && !narrativeLoading && (
               <div className="space-y-5">
-                <p className="text-[11px] font-bold italic text-indigo-700">{narrative.readingAngle}</p>
-                <p className="text-[13px] leading-relaxed font-medium text-slate-300 whitespace-pre-wrap">
+                <p className="text-[11px] font-bold italic text-blue-300">{narrative.readingAngle}</p>
+                <p className="text-[13px] leading-relaxed font-medium text-slate-200 whitespace-pre-wrap">
                   {narrative.signedReading}
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-white/10">
                   {narrative.talkTrackBullets.map((b, i) => (
-                    <div key={i} className="rounded-xl bg-white/[0.03] px-4 py-3">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                    <div key={i} className="rounded-xl bg-white/[0.04] border border-white/10 px-4 py-3">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-blue-300/70 mb-1">
                         {t('Argument', 'Pitch')} {i + 1}
                       </p>
-                      <p className="text-[11px] font-semibold text-slate-300 leading-snug">{b}</p>
+                      <p className="text-[11px] font-semibold text-slate-200 leading-snug">{b}</p>
                     </div>
                   ))}
                 </div>
