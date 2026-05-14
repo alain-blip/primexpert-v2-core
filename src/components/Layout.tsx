@@ -154,8 +154,8 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
            </div>
         </header>
 
-        {/* Viewport content */}
-        <div className="flex-1 overflow-y-auto p-7 custom-scrollbar">
+        {/* Viewport content — pt réduit pour rapprocher le contenu de la topbar */}
+        <div className="flex-1 overflow-y-auto px-7 pt-4 pb-7 custom-scrollbar">
            <div className="max-w-[1500px] mx-auto">
              <motion.div
                key={activeTab}

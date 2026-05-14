@@ -146,31 +146,31 @@ export function Dashboard() {
              </div>
           </div>
 
-          {/* Carte de commande de conformité */}
-          <div className="bg-vault p-8 rounded-[36px] text-white shadow-[0_30px_90px_rgba(0,0,0,0.6)] relative overflow-hidden group border border-white/10">
-            <div className="absolute top-0 right-0 w-56 h-56 bg-blue-500 rounded-full blur-[90px] opacity-25 pointer-events-none group-hover:opacity-40 transition-opacity" />
-
-            <div className="flex justify-between items-start mb-8">
-              <div>
+          {/* Carte de commande de conformité — halo inline supprimé
+              (doublon avec bg-vault::after) + padding/mb réduits pour
+              éliminer le « grand vide bleu » au-dessus du titre. */}
+          <div className="bg-vault p-6 rounded-[28px] text-white shadow-[0_24px_70px_rgba(0,0,0,0.55)] relative overflow-hidden group border border-white/10">
+            <div className="flex justify-between items-start mb-5">
+              <div className="min-w-0">
                 <p className="text-[10px] font-black text-blue-300 tracking-[0.3em] uppercase">{t('Protection du coffre', 'Vault_Guard')}</p>
-                <h3 className="text-4xl font-black italic tracking-tighter uppercase mt-1 leading-[0.92]">Conformité<br/><span className="text-blue-300">_ACTIVE</span></h3>
+                <h3 className="text-3xl font-black italic tracking-tighter uppercase mt-1 leading-[0.92]">Conformité<br/><span className="text-blue-300">_ACTIVE</span></h3>
               </div>
-              <div className="w-10 h-10 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10">
-                <Compass className="w-5 h-5 text-blue-400 animate-[spin_10s_linear_infinite]" />
+              <div className="w-9 h-9 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 shrink-0">
+                <Compass className="w-4 h-4 text-blue-400 animate-[spin_10s_linear_infinite]" />
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="bg-white/5 p-5 rounded-2xl border border-white/10 backdrop-blur-sm">
-                <p className="text-[9px] font-black uppercase text-blue-300/70 mb-3 tracking-widest">{t('Garde-fou prioritaire', 'Priority guardrail')}</p>
+            <div className="space-y-3">
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
+                <p className="text-[9px] font-black uppercase text-blue-300/70 mb-2 tracking-widest">{t('Garde-fou prioritaire', 'Priority guardrail')}</p>
                 <p className="text-xs font-bold leading-relaxed italic text-slate-200">
                   "{t('Aucun document final ne doit sortir du coffre-fort sans conservation 6 ans, journal d’audit et validation humaine.', 'No final document may leave the Vault without 6-year retention, audit log and human validation.')}"
                 </p>
               </div>
 
               <div className="flex flex-col gap-2">
-                <button className="w-full py-4 bg-blue-600 text-[11px] font-black uppercase rounded-2xl shadow-xl hover:bg-blue-500 transition-all tracking-widest">{t('Vérifier le coffre', 'Check_Vault')}</button>
-                <button className="w-full py-4 bg-white/5 text-[11px] font-black uppercase rounded-2xl border border-white/10 hover:bg-white/10 transition-all tracking-widest">{t('Journal d’audit', 'Audit_Log')}</button>
+                <button className="w-full py-3 bg-blue-600 text-[11px] font-black uppercase rounded-2xl shadow-xl hover:bg-blue-500 transition-all tracking-widest">{t('Vérifier le coffre', 'Check_Vault')}</button>
+                <button className="w-full py-3 bg-white/5 text-[11px] font-black uppercase rounded-2xl border border-white/10 hover:bg-white/10 transition-all tracking-widest">{t('Journal d’audit', 'Audit_Log')}</button>
               </div>
             </div>
           </div>

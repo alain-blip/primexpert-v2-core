@@ -157,11 +157,10 @@ export function ACM() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
-      {/* Header */}
-      <div className="bg-vault text-white p-10 rounded-[40px] shadow-2xl relative overflow-hidden border border-white/10">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-[100px] opacity-20 pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col gap-8">
+      {/* Header — halo inline supprimé (doublon avec bg-vault::after),
+          padding et rayon réduits pour éliminer le vide haut. */}
+      <div className="bg-vault text-white p-6 rounded-[28px] shadow-[0_24px_70px_rgba(0,0,0,0.55)] relative overflow-hidden border border-white/10">
+        <div className="relative z-10 flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
