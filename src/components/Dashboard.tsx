@@ -27,7 +27,7 @@ export function Dashboard() {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="bg-[#0F172A]/65 backdrop-blur-md p-7 rounded-[32px] border border-white/10 shadow-[0_24px_70px_rgba(0,0,0,0.45)] relative group hover:-translate-y-1 hover:shadow-[0_30px_90px_rgba(37,99,235,0.25)] hover:border-blue-500/30 transition-all duration-300 overflow-hidden"
+              className="bg-gradient-to-br from-[#0F172A] via-[#172554] to-[#0F172A] p-7 rounded-[32px] border border-white/10 shadow-[0_24px_70px_rgba(0,0,0,0.45)] relative group hover:-translate-y-1 hover:shadow-[0_30px_90px_rgba(37,99,235,0.25)] hover:border-blue-500/30 transition-all duration-300 overflow-hidden"
             >
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_10%,rgba(37,99,235,0.16),transparent_34%)] opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="relative flex justify-between items-start mb-5">
@@ -57,7 +57,7 @@ export function Dashboard() {
 
       <div className="grid grid-cols-1 2xl:grid-cols-3 gap-8">
         {/* Central Intelligence Table */}
-        <div className="2xl:col-span-2 flex flex-col bg-[#0F172A]/65 backdrop-blur-md rounded-[36px] border border-white/10 shadow-[0_28px_90px_rgba(0,0,0,0.5)] overflow-hidden group">
+        <div className="2xl:col-span-2 flex flex-col bg-gradient-to-br from-[#0F172A] via-[#172554] to-[#0F172A] rounded-[36px] border border-white/10 shadow-[0_28px_90px_rgba(0,0,0,0.5)] overflow-hidden group">
           <div className="p-8 border-b border-white/10 flex justify-between items-start bg-[radial-gradient(circle_at_100%_0%,rgba(37,99,235,0.18),transparent_34%)]">
             <div>
               <h2 className="text-5xl font-black italic tracking-tighter uppercase leading-none"><span className="workhub-title-gradient">{t('Tableau de bord', 'WORK_HUB')}</span><span className="text-blue-400 opacity-50">.V2</span></h2>
@@ -176,7 +176,7 @@ export function Dashboard() {
           </div>
 
           {/* Signature rapide */}
-          <div className="bg-[#0F172A]/65 backdrop-blur-md p-8 rounded-[32px] border border-white/10 shadow-[0_22px_65px_rgba(0,0,0,0.4)] relative overflow-hidden group">
+          <div className="bg-gradient-to-br from-[#0F172A] via-[#172554] to-[#0F172A] p-8 rounded-[32px] border border-white/10 shadow-[0_22px_65px_rgba(0,0,0,0.4)] relative overflow-hidden group">
              <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500 scale-y-0 group-hover:scale-y-100 transition-transform duration-500 origin-top" />
              <div className="flex gap-4">
                <div className="w-14 h-14 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 group-hover:border-blue-500 transition-colors duration-500">

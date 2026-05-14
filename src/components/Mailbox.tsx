@@ -54,7 +54,7 @@ export function Mailbox() {
   const selectedMessage = MESSAGES.find(m => m.id === selectedId);
 
   return (
-    <div className="h-[calc(100vh-160px)] flex bg-[#0F172A]/65 backdrop-blur-md rounded-[32px] border border-gray-200 shadow-sm overflow-hidden">
+    <div className="h-[calc(100vh-160px)] flex bg-gradient-to-br from-[#0F172A] via-[#172554] to-[#0F172A] rounded-[32px] border border-gray-200 shadow-sm overflow-hidden">
       {/* Sidebar List */}
       <div className={cn(
         "w-full lg:w-[400px] border-r border-gray-100 flex flex-col",
@@ -72,7 +72,7 @@ export function Mailbox() {
             <input 
               type="text" 
               placeholder={t('RECHERCHER_ARCHIVES', 'SEARCH_ARCHIVES')}
-              className="w-full bg-[#0F172A]/65 backdrop-blur-md border border-gray-200 rounded-xl py-2 pl-10 pr-4 text-[10px] font-black uppercase tracking-widest focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-gray-300" 
+              className="w-full bg-gradient-to-br from-[#0F172A] via-[#172554] to-[#0F172A] border border-gray-200 rounded-xl py-2 pl-10 pr-4 text-[10px] font-black uppercase tracking-widest focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-gray-300" 
             />
           </div>
         </div>
@@ -112,7 +112,7 @@ export function Mailbox() {
 
       {/* Detail View */}
       <div className={cn(
-        "flex-1 flex flex-col bg-[#0F172A]/65 backdrop-blur-md",
+        "flex-1 flex flex-col bg-gradient-to-br from-[#0F172A] via-[#172554] to-[#0F172A]",
         !selectedId && "hidden lg:flex"
       )}>
         <AnimatePresence mode="wait">
@@ -134,10 +134,10 @@ export function Mailbox() {
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <div className="flex gap-2">
-                    <button className="p-2 hover:bg-[#0F172A]/65 backdrop-blur-md hover:shadow-sm rounded-lg transition-all text-gray-400 hover:text-blue-400 border border-transparent hover:border-gray-100">
+                    <button className="p-2 hover:bg-gradient-to-br from-[#0F172A] via-[#172554] to-[#0F172A] hover:shadow-sm rounded-lg transition-all text-gray-400 hover:text-blue-400 border border-transparent hover:border-gray-100">
                       <Archive className="w-4 h-4" />
                     </button>
-                    <button className="p-2 hover:bg-[#0F172A]/65 backdrop-blur-md hover:shadow-sm rounded-lg transition-all text-gray-400 hover:text-red-500 border border-transparent hover:border-gray-100">
+                    <button className="p-2 hover:bg-gradient-to-br from-[#0F172A] via-[#172554] to-[#0F172A] hover:shadow-sm rounded-lg transition-all text-gray-400 hover:text-red-500 border border-transparent hover:border-gray-100">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -179,7 +179,7 @@ export function Mailbox() {
 
                   <div className="mt-12 pt-8 border-t border-gray-100">
                     <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 border-dashed group cursor-pointer hover:border-blue-300 transition-colors">
-                      <div className="p-3 bg-[#0F172A]/65 backdrop-blur-md rounded-lg shadow-sm">
+                      <div className="p-3 bg-gradient-to-br from-[#0F172A] via-[#172554] to-[#0F172A] rounded-lg shadow-sm">
                         <Paperclip className="w-5 h-5 text-blue-400" />
                       </div>
                       <div>

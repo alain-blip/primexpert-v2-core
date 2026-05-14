@@ -44,37 +44,84 @@
     background: #334155;
   }
 
-  /* Signature "Navigateur Bleu" : bleu de minuit satiné solide,
-     bordure blanche neutre fine, ombre douce. Pas trop transparent. */
+  /* Signature "Navigateur Bleu" : gradient diagonal navy → marine → navy
+     + lueur bleue floutée en haut-droite (effet Vault), bordure blanche
+     neutre fine. Solid-but-deep. */
   .workhub-card {
-    background: linear-gradient(165deg, rgba(15, 23, 42, 0.72) 0%, rgba(15, 23, 42, 0.62) 100%);
+    position: relative;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(23, 37, 84, 0.70) 50%, rgba(15, 23, 42, 0.92) 100%);
     backdrop-filter: blur(14px) saturate(135%);
     -webkit-backdrop-filter: blur(14px) saturate(135%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.10);
     box-shadow:
-      0 16px 40px rgba(0, 0, 0, 0.40),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      0 16px 40px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
     transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+    overflow: hidden;
+  }
+
+  .workhub-card::before {
+    content: '';
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    width: 220px;
+    height: 220px;
+    background: rgb(59, 130, 246);
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.18;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .workhub-card > * {
+    position: relative;
+    z-index: 1;
   }
 
   .workhub-card:hover {
-    border-color: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.16);
     box-shadow:
-      0 20px 55px rgba(0, 0, 0, 0.55),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      0 22px 60px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
   }
 
-  /* Variant pour formulaires hero : touche cobalt plus visible
-     mais sans glow néon excessif. */
+  .workhub-card:hover::before {
+    opacity: 0.28;
+  }
+
+  /* Variant pour formulaires hero : marine plus visible + glow plus présent. */
   .workhub-card-glow {
-    background: linear-gradient(165deg, rgba(15, 23, 42, 0.78) 0%, rgba(23, 37, 84, 0.55) 100%);
+    position: relative;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(29, 78, 216, 0.32) 50%, rgba(15, 23, 42, 0.92) 100%);
     backdrop-filter: blur(16px) saturate(140%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
-    border: 1px solid rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow:
-      0 20px 55px rgba(0, 0, 0, 0.50),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06),
-      0 0 40px rgba(37, 99, 235, 0.06);
+      0 22px 60px rgba(0, 0, 0, 0.50),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+  }
+
+  .workhub-card-glow::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 280px;
+    height: 280px;
+    background: rgb(37, 99, 235);
+    border-radius: 50%;
+    filter: blur(110px);
+    opacity: 0.25;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .workhub-card-glow > * {
+    position: relative;
+    z-index: 1;
   }
 
   .workhub-input {

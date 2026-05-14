@@ -32,7 +32,7 @@ export function CRM() {
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{t('Traçabilité conforme et suivi CRM', 'Compliant traceability & CRM pipeline')}</p>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 bg-[#0F172A]/65 backdrop-blur-md rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-900 hover:bg-gray-50 transition-all shadow-sm">
+          <button className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 bg-gradient-to-br from-[#0F172A] via-[#172554] to-[#0F172A] rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-900 hover:bg-gray-50 transition-all shadow-sm">
             <FileDown className="w-4 h-4" />
             Exporter CSV
           </button>
@@ -43,7 +43,7 @@ export function CRM() {
         </div>
       </div>
 
-      <div className="bg-[#0F172A]/65 backdrop-blur-md rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-gradient-to-br from-[#0F172A] via-[#172554] to-[#0F172A] rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="grid grid-cols-1 divide-y divide-gray-100">
           <div className="bg-gray-50 px-8 py-3 grid grid-cols-1 md:grid-cols-4 gap-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
             <div className="md:col-span-1">Nom / Type</div>
