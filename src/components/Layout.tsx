@@ -30,9 +30,23 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
   ];
 
   return (
-    <div className="flex h-screen text-slate-100 font-sans selection:bg-blue-500/30 overflow-hidden text-sm">
+    <div className="relative flex h-screen text-slate-100 font-sans selection:bg-blue-500/30 overflow-hidden text-sm">
+      {/* Dégradé "Navigateur Bleu" — fond fixe garanti, indépendant des wrappers */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 -z-10"
+        style={{
+          background: [
+            'radial-gradient(ellipse 1200px 800px at 0% 0%, rgba(37, 99, 235, 0.28) 0%, transparent 55%)',
+            'radial-gradient(ellipse 1000px 700px at 100% 100%, rgba(30, 58, 138, 0.35) 0%, transparent 60%)',
+            'radial-gradient(ellipse 900px 600px at 50% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 65%)',
+            'linear-gradient(135deg, #020617 0%, #050b1f 28%, #0a1129 58%, #0d1530 85%, #0f1738 100%)',
+          ].join(', '),
+        }}
+      />
+
       {/* Sidebar - Control Center */}
-      <aside className="w-[218px] bg-[#020617]/55 backdrop-blur-2xl text-white flex flex-col shrink-0 relative z-40 shadow-[18px_0_70px_rgba(0,0,0,0.55)] border-r border-white/10">
+      <aside className="w-[218px] bg-[#020617]/70 backdrop-blur-md text-white flex flex-col shrink-0 relative z-40 shadow-[18px_0_70px_rgba(0,0,0,0.55)] border-r border-white/10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_0%,rgba(37,99,235,0.32),transparent_36%),linear-gradient(180deg,rgba(23,37,84,0.88),rgba(2,6,23,0.96))]" />
         <div className="relative p-6 pb-8">
           <div className="flex flex-col gap-1">
@@ -98,7 +112,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
       {/* Zone principale */}
       <main className="flex-1 flex flex-col min-w-0 bg-transparent">
         {/* Top Intelligence Bar */}
-        <header className="h-18 bg-[#020617]/30 backdrop-blur-2xl border-b border-white/10 flex items-center justify-between px-7 z-30 sticky top-0 shrink-0">
+        <header className="h-18 bg-[#020617]/50 backdrop-blur-md border-b border-white/10 flex items-center justify-between px-7 z-30 sticky top-0 shrink-0">
            <div className="flex items-center gap-4">
              <h2 className="text-2xl font-black italic tracking-tighter uppercase">
                <span className="workhub-title-gradient">{navItems.find(i => i.id === activeTab)?.label}</span> <span className="text-blue-400/40">/</span> <span className="text-blue-400 font-mono text-[10px] not-italic tracking-[0.2em]">01_ALPHA</span>
@@ -150,7 +164,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
         </div>
 
         {/* Barre d'état */}
-        <footer className="bg-[#020617]/40 backdrop-blur-2xl border-t border-white/10 px-7 py-2 flex justify-between items-center text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 shrink-0 select-none">
+        <footer className="bg-[#020617]/50 backdrop-blur-md border-t border-white/10 px-7 py-2 flex justify-between items-center text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 shrink-0 select-none">
          <div className="flex gap-6 items-center">
            <span className="flex items-center gap-1.5"><div className="w-1 h-1 bg-blue-400" /> {t('Gemini en langue stricte', 'GEMINI_STRICT_NLP')}</span>
            <span className="flex items-center gap-1.5"><div className="w-1 h-1 bg-slate-600" /> {t('COUCHE_SECURITE_OACIQ: CONFORME', 'OACIQ_SECURITY_LAYER: COMPLIANT')}</span>
