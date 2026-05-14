@@ -280,7 +280,7 @@ export function Softphone() {
               {t('Phase D-2.C-lite · Direct Drive Auto', 'Phase D-2.C-lite · Direct Drive Auto')}
             </p>
             <h2 className="text-4xl font-black italic tracking-tighter uppercase">
-              {t('Softphone', 'Softphone')}
+              {t('Téléphonie logicielle', 'Softphone')}
               <span className="text-blue-500">.V2_LITE</span>
             </h2>
             <p className="mt-3 text-[12px] font-semibold text-blue-200/80 max-w-xl">
@@ -442,7 +442,7 @@ export function Softphone() {
           ) : state === 'uploading' ? (
             <div className="col-span-2 flex items-center justify-center gap-3 rounded-2xl bg-blue-500/10 px-6 py-5 text-blue-300 text-[11px] font-black uppercase tracking-[0.2em] border border-blue-400/30">
               <Loader2 className="h-4 w-4 animate-spin" />
-              {t('Envoi au Drive…', 'Uploading to Drive…')}
+              {t('Envoi vers l’espace documents…', 'Uploading to Drive…')}
             </div>
           ) : null}
         </div>
@@ -473,7 +473,7 @@ export function Softphone() {
           <CheckCircle2 className="h-4 w-4 text-emerald-300 mt-0.5 shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-300">
-              {t('Enregistrement archivé dans le Drive', 'Recording archived in Drive')}
+              {t('Enregistrement archivé dans l’espace documents', 'Recording archived in Drive')}
             </p>
             <p className="text-[12px] font-bold text-emerald-300 mt-1 truncate font-mono">
               {selectedResidence?.address ?? '—'} / recordings / {lastSaved.fileName}
@@ -513,7 +513,7 @@ export function Softphone() {
           <li>{t('Tu composes un numéro.', 'You enter a phone number.')}</li>
           <li>{t('Tu cliques « Appeler & Enregistrer ». Le navigateur demande le micro.', 'You click « Call & Record ». The browser asks for microphone access.')}</li>
           <li>{t('Ton app téléphone (Mac/iPhone) s\'ouvre et compose. Le micro capte en parallèle.', 'Your phone app (Mac/iPhone) opens and dials. The microphone records in parallel.')}</li>
-          <li>{t('Tu cliques « Arrêter & Sauvegarder » à la fin. Le fichier .webm part vers le Drive.', 'You click « Stop & Save » at the end. The .webm file is uploaded to the Drive.')}</li>
+          <li>{t('Tu cliques « Arrêter & Sauvegarder » à la fin. Le fichier .webm est envoyé vers l’espace documents.', 'You click « Stop & Save » at the end. The .webm file is uploaded to the Drive.')}</li>
         </ol>
       </div>
     </div>

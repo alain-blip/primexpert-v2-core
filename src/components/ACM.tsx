@@ -151,7 +151,7 @@ export function ACM() {
       { label: t('TGA implicite', 'Implied cap rate'), value: result.capRateImpliedAtAsking !== undefined ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%` : '—' },
       { label: t('MRB réel', 'Actual MRB'), value: result.actualMrbAtAsking.toFixed(2) },
       { label: t('DSCR (prix demandé)', 'DSCR (asking)'), value: result.dscrAtAsking.toFixed(2) },
-      { label: t('NOI comptable', 'Accounting NOI'), value: formatCurrency(result.noiAccounting) },
+      { label: t('NOI comptable', 'Accounting NOI'), value: formatCurrency(result.noiAccounting, { maxDecimals: 2 }) },
     ];
   }, [result, t]);
 
@@ -237,8 +237,7 @@ export function ACM() {
 
               <div className="flex items-end gap-3 mb-8">
                 <span className="text-6xl font-black italic tracking-tighter text-slate-300 leading-none">
-                  {result.suggestedPrice.toLocaleString('fr-CA')}{' '}
-                  <span className="text-3xl text-blue-400">$</span>
+                  {formatCurrency(result.suggestedPrice)}
                 </span>
               </div>
 

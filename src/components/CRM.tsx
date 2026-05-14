@@ -134,7 +134,7 @@ export function CRM() {
           <div className="bg-white/[0.03] px-8 py-3 grid grid-cols-1 md:grid-cols-4 gap-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
             <div className="md:col-span-1">Nom / Type</div>
             <div className="md:col-span-1">Coordonnées</div>
-            <div className="md:col-span-1">{t('Statut du suivi', 'Pipeline Status')}</div>
+            <div className="md:col-span-1">{t('Suivi commercial', 'Pipeline status')}</div>
             <div className="md:col-span-1 text-right">Actions</div>
           </div>
           {contacts.map((contact, i) => (

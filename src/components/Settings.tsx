@@ -160,23 +160,36 @@ export function Settings() {
             </h3>
           </div>
 
-          <Field label={t('Langue', 'Language')}>
+          <Field label={t('Langue de l’interface', 'Interface language')}>
             <div className="flex bg-[#020617]/60 rounded-2xl p-1 border border-white/10">
               {(['fr', 'en'] as const).map((lang) => (
                 <button
                   key={lang}
                   type="button"
                   onClick={() => setLanguage(lang)}
+                  title={
+                    lang === 'fr'
+                      ? t('Français (Canada) — langue par défaut (Loi 101)', 'French (Canada) — default language')
+                      : t('Anglais — langue secondaire', 'English — secondary language')
+                  }
                   className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition ${
                     language === lang
                       ? 'bg-[#172554] text-white shadow-[0_8px_20px_rgba(23, 37, 84,0.6)]'
                       : 'text-slate-500 hover:text-slate-300'
                   }`}
                 >
-                  {lang}
+                  {lang === 'fr'
+                    ? t('Français (Canada)', 'French (Canada)')
+                    : t('Anglais', 'English')}
                 </button>
               ))}
             </div>
+            <p className="text-[9px] text-slate-500 mt-2 leading-relaxed font-semibold">
+              {t(
+                'Primexpert affiche l’interface en français par défaut, conformément à la Charte de la langue française au travail. L’anglais demeure offert pour les équipes bilingues.',
+                'Primexpert defaults the interface to French per Quebec workplace language standards. English remains available for bilingual teams.'
+              )}
+            </p>
           </Field>
 
           <Field label={t('Thème', 'Theme')} className="mt-4">

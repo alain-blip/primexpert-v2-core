@@ -84,9 +84,14 @@ function LandingPage() {
                   key={nextLanguage}
                   type="button"
                   onClick={() => setLanguage(nextLanguage)}
+                  title={
+                    nextLanguage === 'fr'
+                      ? t('Français (Canada) — défaut', 'French (Canada) — default')
+                      : t('Anglais', 'English')
+                  }
                   className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${language === nextLanguage ? 'bg-neutral-900 text-white' : 'text-neutral-700 hover:bg-neutral-100'}`}
                 >
-                  {nextLanguage.toUpperCase()}
+                  {nextLanguage === 'fr' ? 'FR' : 'EN'}
                 </button>
               ))}
             </div>
@@ -94,6 +99,7 @@ function LandingPage() {
               type="button"
               onClick={handleInitializeSession}
               className="rounded-lg px-3 py-2 text-sm font-semibold text-neutral-800 hover:bg-neutral-100"
+              title={t('Entrer dans le cockpit Primexpert (GPS immobilier)', 'Enter the Primexpert cockpit')}
             >
               GPS
             </button>

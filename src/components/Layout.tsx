@@ -16,16 +16,16 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
   const { language, setLanguage, t } = useLanguage();
 
   const navItems = [
-    { id: 'dashboard', label: t('Espace de travail', 'Workhub'), icon: Compass },
+    { id: 'dashboard', label: t('Tableau de bord', 'Dashboard'), icon: Compass },
     { id: 'pipeline', label: t('Suivi des dossiers', 'Pipeline'), icon: TrendingUp },
     { id: 'listings', label: t('Inventaire', 'Inventory'), icon: Home },
-    { id: 'acm', label: t('ACM Prédictive', 'Predictive CMA'), icon: Calculator },
+    { id: 'acm', label: t('ACM prédictive', 'Predictive CMA'), icon: Calculator },
     { id: 'stats', label: t('Statistiques', 'Statistics'), icon: BarChart3 },
-    { id: 'crm', label: 'Clients', icon: Users },
+    { id: 'crm', label: t('Répertoire clients', 'CRM'), icon: Users },
     { id: 'content', label: t('Rédacteur IA', 'AI Writer'), icon: FileText },
-    { id: 'drive', label: 'Drive', icon: FolderOpen },
-    { id: 'phone', label: t('Softphone', 'Softphone'), icon: Phone },
-    { id: 'mail', label: 'Messages', icon: Bell },
+    { id: 'drive', label: t('Espace documents', 'Documents'), icon: FolderOpen },
+    { id: 'phone', label: t('Téléphonie logicielle', 'Softphone'), icon: Phone },
+    { id: 'mail', label: t('Boîte de courriels', 'Mailbox'), icon: Bell },
     // Paramètres est volontairement hors navItems : il est rendu dans
     // le footer de la sidebar, entre la user-profile card et le bouton
     // Déconnexion, pour rapprocher les actions « identité ».
@@ -82,7 +82,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
              </div>
              <div className="flex-1 min-w-0">
                <p className="text-[10px] font-black truncate uppercase tracking-tight italic">{profile?.displayName}</p>
-               <p className="text-[8px] font-bold text-blue-400/40 uppercase tracking-widest leading-none mt-1">{t('Courtier Principal', 'Lead Broker')}</p>
+               <p className="text-[8px] font-bold text-blue-400/40 uppercase tracking-widest leading-none mt-1">{t('Courtier principal', 'Principal broker')}</p>
              </div>
           </div>
           <button
@@ -120,24 +120,35 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
         <header className="app-chrome-bar h-18 backdrop-blur-md border-b flex items-center justify-between px-7 z-30 sticky top-0 shrink-0">
            <div className="flex items-center gap-4">
              <h2 className="text-2xl font-black italic tracking-tighter uppercase">
-               <span className="workhub-title-gradient">{navItems.find(i => i.id === activeTab)?.label}</span> <span className="text-blue-400/40">/</span> <span className="text-blue-400 font-mono text-[10px] not-italic tracking-[0.2em]">01_ALPHA</span>
+               <span className="workhub-title-gradient">
+                 {activeTab === 'settings'
+                   ? t('Paramètres', 'Settings')
+                   : navItems.find((i) => i.id === activeTab)?.label ?? t('Tableau de bord', 'Dashboard')}
+               </span>{' '}
+               <span className="text-blue-400/40">/</span>{' '}
+               <span className="text-blue-400 font-mono text-[10px] not-italic tracking-[0.2em]">01_ALPHA</span>
              </h2>
            </div>
 
            <div className="flex items-center gap-6">
              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-xl border border-green-500/20">
                <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-              <span className="text-[9px] font-black text-green-300 uppercase tracking-widest">{t('Système en ligne', 'System_Online')}</span>
+              <span className="text-[9px] font-black text-green-300 uppercase tracking-widest">{t('Système en ligne', 'Online')}</span>
              </div>
-             <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.03] p-0.5">
+             <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.03] p-0.5" role="group" aria-label={t('Choisir la langue de l’interface', 'Choose interface language')}>
                {(['fr', 'en'] as const).map((nextLanguage) => (
                  <button
                    key={nextLanguage}
                    type="button"
                    onClick={() => setLanguage(nextLanguage)}
+                   title={
+                     nextLanguage === 'fr'
+                       ? t('Français (Canada) — défaut', 'French (Canada) — default')
+                       : t('Anglais', 'English')
+                   }
                    className={`rounded-lg px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest transition ${language === nextLanguage ? 'bg-blue-600 text-white shadow-[0_8px_24px_rgba(37, 99, 235,0.35)]' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
                  >
-                   {nextLanguage}
+                   {nextLanguage === 'fr' ? 'FR' : 'EN'}
                  </button>
                ))}
              </div>

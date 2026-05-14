@@ -145,7 +145,7 @@ export function Drive() {
             {t('Phase B — Drive multi-tenant', 'Phase B — Multi-tenant Drive')}
           </p>
           <h1 className="mt-2 text-5xl font-black italic tracking-tighter uppercase text-white">
-            {t('Drive PrimeXpert', 'PrimeXpert Drive')}
+            {t('Espace documents PrimeXpert', 'PrimeXpert Drive')}
             <span className="text-blue-400 opacity-30">.2026</span>
           </h1>
           <p className="mt-3 text-[12px] font-semibold text-slate-500 max-w-2xl">

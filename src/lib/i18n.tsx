@@ -10,6 +10,10 @@ interface LanguageContextValue {
 
 const LanguageContext = createContext<LanguageContextValue | undefined>(undefined);
 
+/**
+ * Langue par défaut : français (Canada), conformément à la Loi 101 / usage en milieu de travail québécois.
+ * L’anglais reste disponible à la demande (égalité d’accès).
+ */
 function getInitialLanguage(): Language {
   if (typeof window === 'undefined') {
     return 'fr';
@@ -27,7 +31,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem('primexpert-language', language);
-    document.documentElement.lang = language;
+    document.documentElement.lang = language === 'fr' ? 'fr-CA' : 'en-CA';
   }, [language]);
 
   const value = useMemo<LanguageContextValue>(() => ({

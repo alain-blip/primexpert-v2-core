@@ -26,7 +26,7 @@ export async function generateListingDescription(details: any, language: Languag
     Générer une description immobilière professionnelle pour Centris (Québec) basée sur ces détails:
     Adresse: ${details.address}
     Type: ${details.type}
-    Prix demandé: ${details.price} $
+    Prix demandé: ${details.price}
     Caractéristiques: ${details.features}
     Inclusions: ${details.inclusions}
     

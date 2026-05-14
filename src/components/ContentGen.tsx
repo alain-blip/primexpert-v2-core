@@ -32,6 +32,7 @@ import {
   type NarrativeLintResult,
 } from '@primexpert/core/narrative';
 import { listResidences, type Residence } from '../services/residences';
+import { formatCurrency } from '../lib/utils';
 
 export function ContentGen() {
   const { profile } = useAuth();
@@ -50,7 +51,7 @@ export function ContentGen() {
   const [formData, setFormData] = useState({
     address: "789 Ave Mont-Royal E, Montréal",
     type: "Condo",
-    price: "650 000",
+    price: formatCurrency(650_000),
     features: "Plafonds 10 pieds, Luminosité exceptionnelle, Vue sur le Parc",
     inclusions: "Électroménagers, Luminaires, Rideaux"
   });
@@ -82,7 +83,7 @@ export function ContentGen() {
     setFormData((prev) => ({
       ...prev,
       address: r.city ? `${r.address}, ${r.city}` : r.address,
-      price: r.price ? r.price.toLocaleString('fr-CA') : prev.price,
+      price: r.price ? formatCurrency(r.price) : prev.price,
     }));
   };
 
@@ -205,7 +206,7 @@ export function ContentGen() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{t('Prix ($)', 'Price ($)')}</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">{t('Prix demandé', 'Asking price')}</label>
               <input
                 value={formData.price}
                 onChange={e => setFormData({...formData, price: e.target.value})}

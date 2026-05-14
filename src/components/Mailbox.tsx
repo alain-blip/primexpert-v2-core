@@ -126,7 +126,7 @@ function intentLabel(
   t: (fr: string, en: string) => string
 ): string {
   const m: Record<MailParseResult['lead']['intent'], [string, string]> = {
-    buyer: ['Acheteur potentiel', 'Buyer lead'],
+    buyer: ['Client potentiel', 'Buyer prospect'],
     seller: ['Vendeur potentiel', 'Seller lead'],
     peer: ['Courtier / collègue', 'Peer broker'],
     agency: ['Service / portail', 'Service / portal'],
@@ -556,7 +556,7 @@ export function Mailbox() {
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-300/90 flex items-center gap-2">
                           <Sparkles className="w-4 h-4" />
-                          {t('Triage IA (lead + résidence)', 'AI triage (lead + property)')}
+                          {t('Triage IA (client potentiel + résidence)', 'AI triage (lead + property)')}
                         </p>
                         {urgencyBadge(selectedMessage.mergedParse.urgency, t)}
                       </div>

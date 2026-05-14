@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="fr-CA" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,6 +16,14 @@
           r.classList.remove('dark', 'light');
           r.classList.add(t);
         } catch (_) { /* mode privé : on garde la classe par défaut */ }
+      })();
+    </script>
+    <script>
+      (function () {
+        try {
+          var L = localStorage.getItem('primexpert-language');
+          document.documentElement.lang = L === 'en' ? 'en-CA' : 'fr-CA';
+        } catch (_) {}
       })();
     </script>
   </head>
