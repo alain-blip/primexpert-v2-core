@@ -26,7 +26,9 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
     { id: 'drive', label: 'Drive', icon: FolderOpen },
     { id: 'phone', label: t('Softphone', 'Softphone'), icon: Phone },
     { id: 'mail', label: 'Messages', icon: Bell },
-    { id: 'settings', label: t('Paramètres', 'Settings'), icon: SettingsIcon },
+    // Paramètres est volontairement hors navItems : il est rendu dans
+    // le footer de la sidebar, entre la user-profile card et le bouton
+    // Déconnexion, pour rapprocher les actions « identité ».
   ];
 
   return (
@@ -83,6 +85,19 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
                <p className="text-[8px] font-bold text-blue-400/40 uppercase tracking-widest leading-none mt-1">{t('Courtier Principal', 'Lead Broker')}</p>
              </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('settings')}
+            className={cn(
+              "w-full flex items-center justify-center gap-2 py-3 mb-2 rounded-2xl border text-[9px] font-black uppercase tracking-widest transition-colors group",
+              activeTab === 'settings'
+                ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white border-transparent shadow-[0_16px_38px_rgba(37,99,235,0.32)]"
+                : "bg-white/5 text-slate-400 border-white/5 hover:text-white hover:border-blue-500/30 hover:bg-blue-500/[0.08]"
+            )}
+          >
+            <SettingsIcon className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-500" />
+            {t('Paramètres', 'Settings')}
+          </button>
           <button 
             onClick={logOut}
             className="w-full flex items-center justify-center gap-2 py-3 text-slate-500 hover:text-white transition-colors text-[9px] font-black uppercase tracking-widest bg-white/5 rounded-2xl border border-white/5 hover:border-red-500/20 hover:bg-red-500/5 group"
