@@ -230,7 +230,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
             </div>
           </div>
 
-          <button className="mt-auto w-full py-4 rounded-[24px] bg-white text-[#002f8f] text-[11px] font-black uppercase tracking-[0.22em] shadow-[0_24px_60px_rgba(19,16,237,0.35)] hover:bg-blue-500/[0.08] transition-all">
+          <button className="mt-auto w-full py-4 rounded-[24px] bg-white text-[#254cf6] text-[11px] font-black uppercase tracking-[0.22em] shadow-[0_24px_60px_rgba(19,16,237,0.35)] hover:bg-blue-500/[0.08] transition-all">
             {t('Demander une analyse IA', 'Request AI Analysis')}
           </button>
         </div>

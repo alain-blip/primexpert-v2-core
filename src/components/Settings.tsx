@@ -116,7 +116,7 @@ export function Settings() {
           </Field>
 
           <Field label={t('Photo de profil', 'Profile picture')} className="mt-4">
-            <button className="w-full px-4 py-3 bg-[#002f8f] text-white text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-700 transition border border-blue-500/20 flex items-center justify-center gap-2">
+            <button className="w-full px-4 py-3 bg-[#254cf6] text-white text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-700 transition border border-blue-500/20 flex items-center justify-center gap-2">
               <ImagePlus className="w-4 h-4" />
               {t('Téléverser une image', 'Upload an image')}
             </button>
@@ -150,7 +150,7 @@ export function Settings() {
                   onClick={() => setLanguage(lang)}
                   className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition ${
                     language === lang
-                      ? 'bg-[#002f8f] text-white shadow-[0_8px_20px_rgba(0,47,143,0.6)]'
+                      ? 'bg-[#254cf6] text-white shadow-[0_8px_20px_rgba(37, 76, 246,0.6)]'
                       : 'text-slate-500 hover:text-slate-300'
                   }`}
                 >
@@ -175,7 +175,7 @@ export function Settings() {
                     aria-pressed={isActive}
                     className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition ${
                       isActive
-                        ? 'bg-[#002f8f] text-white shadow-[0_8px_20px_rgba(0,47,143,0.6)]'
+                        ? 'bg-[#254cf6] text-white shadow-[0_8px_20px_rgba(37, 76, 246,0.6)]'
                         : 'text-slate-500 hover:text-slate-300'
                     }`}
                   >
@@ -210,7 +210,7 @@ export function Settings() {
                   onClick={() => setCreativity(level)}
                   className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition ${
                     creativity === level
-                      ? 'bg-[#002f8f] text-white shadow-[0_8px_20px_rgba(0,47,143,0.6)]'
+                      ? 'bg-[#254cf6] text-white shadow-[0_8px_20px_rgba(37, 76, 246,0.6)]'
                       : 'text-slate-500 hover:text-slate-300'
                   }`}
                 >
@@ -293,7 +293,7 @@ export function Settings() {
         </Field>
 
         <Field label={t('Signature image', 'Signature image')} className="mt-4">
-          <button className="px-5 py-3 bg-[#002f8f] text-white text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-700 transition border border-blue-500/20 flex items-center gap-2">
+          <button className="px-5 py-3 bg-[#254cf6] text-white text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-700 transition border border-blue-500/20 flex items-center gap-2">
             <ImagePlus className="w-4 h-4" />
             {t('Téléverser une image', 'Upload an image')}
           </button>
