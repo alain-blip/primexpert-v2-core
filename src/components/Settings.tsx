@@ -45,7 +45,7 @@ export function Settings() {
   return (
     <div className="space-y-6">
       {/* Header bandeau sombre */}
-      <div className="bg-gradient-to-br from-[#0F172A] via-[#172554] to-[#0F172A] p-8 rounded-[32px] text-white shadow-[0_30px_90px_rgba(0,0,0,0.55)] border border-white/[0.06] relative overflow-hidden">
+      <div className="workhub-card-glow p-8 rounded-[32px] text-white shadow-[0_30px_90px_rgba(0,0,0,0.55)] relative overflow-hidden">
         <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500 rounded-full blur-[120px] opacity-20 pointer-events-none" />
         <div className="relative flex items-start justify-between gap-6 flex-wrap">
           <div className="flex items-center gap-4">
@@ -56,7 +56,7 @@ export function Settings() {
               <p className="text-[10px] font-black text-blue-300/80 tracking-[0.3em] uppercase">
                 {t('Paramètres utilisateur', 'User settings')}
               </p>
-              <h2 className="text-4xl md:text-5xl font-black italic tracking-tighter text-white mt-1 leading-none">
+              <h2 className="text-4xl md:text-5xl font-black italic tracking-tighter workhub-title-gradient mt-1 leading-none">
                 {t('Profil et accréditations', 'Profile & accreditations')}
               </h2>
             </div>
@@ -239,7 +239,7 @@ export function Settings() {
             {t('Conformité professionnelle', 'Professional compliance')}
           </p>
         </div>
-        <h3 className="text-2xl font-black italic tracking-tighter text-white uppercase mb-6">
+        <h3 className="text-2xl font-black italic tracking-tighter workhub-title-gradient uppercase mb-6">
           {t('Profil et accréditations', 'Profile & accreditations')}
         </h3>
 
@@ -307,7 +307,7 @@ export function Settings() {
             {t('Délégation contrôlée', 'Controlled delegation')}
           </p>
         </div>
-        <h3 className="text-2xl font-black italic tracking-tighter text-white uppercase mb-6">
+        <h3 className="text-2xl font-black italic tracking-tighter workhub-title-gradient uppercase mb-6">
           {t('Collaborateur / Adjointe', 'Collaborator / Assistant')}
         </h3>
 

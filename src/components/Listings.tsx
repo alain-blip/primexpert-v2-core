@@ -99,7 +99,7 @@ export function Listings() {
 
       {/* Header Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4 bg-[#0F172A] px-5 py-2.5 rounded-xl border border-gray-200 shadow-sm w-full md:w-96 group focus-within:border-blue-400 transition-colors">
+        <div className="flex items-center gap-4 bg-[#0F172A]/55 backdrop-blur-xl px-5 py-2.5 rounded-xl border border-gray-200 shadow-sm w-full md:w-96 group focus-within:border-blue-400 transition-colors">
           <Search className="w-4 h-4 text-gray-400 group-focus-within:text-blue-400" />
           <input 
             type="text" 
@@ -109,7 +109,7 @@ export function Listings() {
         </div>
         
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-6 py-3 bg-[#0F172A] text-gray-900 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-gray-50 transition-all border border-gray-200 shadow-sm">
+          <button className="flex items-center gap-2 px-6 py-3 bg-[#0F172A]/55 backdrop-blur-xl text-gray-900 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-gray-50 transition-all border border-gray-200 shadow-sm">
             <Filter className="w-4 h-4" />
             Filtres
           </button>
@@ -137,7 +137,7 @@ export function Listings() {
                     key={l.id}
                     whileHover={{ y: -4, scale: 1.02 }}
                     className={cn(
-                      "bg-[#0F172A] p-5 rounded-xl border-l-4 shadow-sm hover:shadow-xl transition-all cursor-pointer group",
+                      "bg-[#0F172A]/55 backdrop-blur-xl p-5 rounded-xl border-l-4 shadow-sm hover:shadow-xl transition-all cursor-pointer group",
                       STATUS_BORDERS[key as keyof typeof STATUS_BORDERS]
                     )}
                   >

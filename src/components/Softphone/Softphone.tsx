@@ -377,7 +377,7 @@ export function Softphone() {
             type="button"
             onClick={backspace}
             disabled={!number || state === 'recording' || state === 'uploading'}
-            className="flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-[#0F172A] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-slate-400 disabled:opacity-30 transition"
+            className="flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-[#0F172A]/55 backdrop-blur-xl px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-slate-400 disabled:opacity-30 transition"
           >
             <Delete className="h-3.5 w-3.5" />
             {t('Effacer', 'Backspace')}
@@ -386,7 +386,7 @@ export function Softphone() {
             type="button"
             onClick={clear}
             disabled={!number || state === 'recording' || state === 'uploading'}
-            className="rounded-2xl border border-white/[0.06] bg-[#0F172A] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-slate-400 disabled:opacity-30 transition"
+            className="rounded-2xl border border-white/[0.06] bg-[#0F172A]/55 backdrop-blur-xl px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-slate-400 disabled:opacity-30 transition"
           >
             {t('Réinitialiser', 'Clear')}
           </button>
@@ -409,7 +409,7 @@ export function Softphone() {
                 href={number ? buildTelHref(number) : undefined}
                 aria-disabled={!number}
                 onClick={(e) => { if (!number) e.preventDefault(); }}
-                className={`flex items-center justify-center gap-3 rounded-2xl border-2 border-white/[0.06] bg-[#0F172A] px-6 py-5 text-slate-700 text-[11px] font-black uppercase tracking-[0.2em] hover:border-blue-300 hover:text-blue-300 transition ${!number ? 'opacity-40 cursor-not-allowed' : ''}`}
+                className={`flex items-center justify-center gap-3 rounded-2xl border-2 border-white/[0.06] bg-[#0F172A]/55 backdrop-blur-xl px-6 py-5 text-slate-700 text-[11px] font-black uppercase tracking-[0.2em] hover:border-blue-300 hover:text-blue-300 transition ${!number ? 'opacity-40 cursor-not-allowed' : ''}`}
               >
                 <Phone className="h-4 w-4" />
                 {t('Appeler (sans rec.)', 'Call (no rec.)')}
@@ -433,7 +433,7 @@ export function Softphone() {
               <button
                 type="button"
                 onClick={handleCancelRecording}
-                className="flex items-center justify-center gap-3 rounded-2xl border-2 border-white/[0.06] bg-[#0F172A] px-6 py-5 text-slate-600 text-[11px] font-black uppercase tracking-[0.2em] hover:border-red-300 hover:text-red-700 transition"
+                className="flex items-center justify-center gap-3 rounded-2xl border-2 border-white/[0.06] bg-[#0F172A]/55 backdrop-blur-xl px-6 py-5 text-slate-600 text-[11px] font-black uppercase tracking-[0.2em] hover:border-red-300 hover:text-red-700 transition"
               >
                 <PhoneOff className="h-4 w-4" />
                 {t('Annuler', 'Cancel')}

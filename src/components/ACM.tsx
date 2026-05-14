@@ -206,7 +206,7 @@ export function ACM() {
 
           <button
             onClick={handleCompute}
-            className="w-full py-4 bg-[#0F172A] text-blue-300 font-black rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-xl uppercase text-[11px] tracking-widest"
+            className="w-full py-4 bg-[#0F172A]/55 backdrop-blur-xl text-blue-300 font-black rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-xl uppercase text-[11px] tracking-widest"
           >
             <Calculator className="w-5 h-5" />
             {t('Calculer la valorisation', 'Run valuation')}
@@ -227,7 +227,7 @@ export function ACM() {
         <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
           {/* Prix suggéré + fourchette + positioning */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 bg-[#0F172A] p-10 rounded-[32px] border border-gray-200 shadow-sm">
+            <div className="md:col-span-2 bg-[#0F172A]/55 backdrop-blur-xl p-10 rounded-[32px] border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-blue-400" />
@@ -271,7 +271,7 @@ export function ACM() {
           {/* Ratios */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {ratios?.map((r) => (
-              <div key={r.label} className="rounded-2xl border border-gray-200 bg-[#0F172A] p-5">
+              <div key={r.label} className="rounded-2xl border border-gray-200 bg-[#0F172A]/55 backdrop-blur-xl p-5">
                 <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">{r.label}</p>
                 <p className="mt-2 text-xl font-black italic tracking-tighter text-gray-900">{r.value}</p>
               </div>
@@ -299,7 +299,7 @@ export function ACM() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-[28px] border border-white bg-[#0F172A] p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]"
+            className="rounded-[28px] border border-white bg-[#0F172A]/55 backdrop-blur-xl p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]"
           >
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">

@@ -309,7 +309,7 @@ export function Drive() {
                 <button
                   type="button"
                   onClick={() => handleDownload(doc)}
-                  className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-[#0F172A] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-blue-400 hover:text-blue-300 transition"
+                  className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-[#0F172A]/55 backdrop-blur-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-blue-400 hover:text-blue-300 transition"
                 >
                   <Download className="h-3.5 w-3.5" />
                   {t('Télécharger', 'Download')}
