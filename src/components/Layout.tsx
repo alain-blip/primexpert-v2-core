@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../lib/auth';
 import { useLanguage } from '../lib/i18n';
-import { Compass, Home, Users, Calculator, FileText, LogOut, Bell, TrendingUp, BarChart3, Search, Sparkles, ShieldCheck, Zap, MessageSquare, FolderOpen, Phone } from 'lucide-react';
+import { Compass, Home, Users, Calculator, FileText, LogOut, Bell, TrendingUp, BarChart3, Search, Sparkles, ShieldCheck, Zap, MessageSquare, FolderOpen, Phone, Settings as SettingsIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
 
@@ -26,6 +26,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
     { id: 'drive', label: 'Drive', icon: FolderOpen },
     { id: 'phone', label: t('Softphone', 'Softphone'), icon: Phone },
     { id: 'mail', label: 'Messages', icon: Bell },
+    { id: 'settings', label: t('Paramètres', 'Settings'), icon: SettingsIcon },
   ];
 
   return (

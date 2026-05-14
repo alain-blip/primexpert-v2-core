@@ -15,6 +15,7 @@ import { ContentGen } from './components/ContentGen';
 import { Mailbox } from './components/Mailbox';
 import { Drive } from './components/Drive/Drive';
 import { Softphone } from './components/Softphone/Softphone';
+import { Settings } from './components/Settings';
 import { LanguageProvider, useLanguage } from './lib/i18n';
 import { LogIn, TrendingUp, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -207,6 +208,7 @@ function Workhub() {
       case 'mail': return <Mailbox />;
       case 'drive': return <Drive />;
       case 'phone': return <Softphone />;
+      case 'settings': return <Settings />;
       default: return <Dashboard />;
     }
   };
