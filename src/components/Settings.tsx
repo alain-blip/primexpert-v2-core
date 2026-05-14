@@ -63,29 +63,30 @@ export function Settings() {
 
   return (
     <div className="space-y-6">
-      {/* Header bandeau sombre */}
-      <div className="workhub-card-glow px-7 py-6 rounded-[28px] text-white shadow-[0_30px_90px_rgba(0,0,0,0.55)] relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500 rounded-full blur-[120px] opacity-20 pointer-events-none" />
-        <div className="relative flex items-center justify-between gap-6 flex-wrap">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center backdrop-blur-sm shrink-0">
-              <span className="font-black italic tracking-tighter text-[14px]">PX</span>
+      {/* Header bandeau sombre — flex-col par défaut (évite le wrap qui
+          créait un grand vide haut sur écrans laptop) + flex-row sur ≥xl. */}
+      <div className="workhub-card-glow px-6 py-4 rounded-[20px] text-white shadow-[0_24px_60px_rgba(0,0,0,0.45)] relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-56 h-56 bg-blue-500 rounded-full blur-[100px] opacity-20 pointer-events-none" />
+        <div className="relative flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center backdrop-blur-sm shrink-0">
+              <span className="font-black italic tracking-tighter text-[13px]">PX</span>
             </div>
-            <div className="flex flex-col justify-center leading-tight">
-              <p className="text-[10px] font-black text-blue-300/80 tracking-[0.3em] uppercase">
+            <div className="min-w-0 leading-tight">
+              <p className="text-[9px] font-black text-blue-300/80 tracking-[0.3em] uppercase">
                 {t('Paramètres utilisateur', 'User settings')}
               </p>
-              <h2 className="text-3xl md:text-4xl font-black italic tracking-tighter workhub-title-gradient leading-none mt-0.5">
+              <h2 className="text-2xl md:text-3xl font-black italic tracking-tighter workhub-title-gradient leading-none mt-0.5 truncate">
                 {t('Profil et accréditations', 'Profile & accreditations')}
               </h2>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="px-5 py-3 bg-white/[0.06] text-slate-200 text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-white/10 transition border border-white/10 flex items-center gap-2">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button className="px-4 py-2.5 bg-white/[0.06] text-slate-200 text-[10px] font-black rounded-xl uppercase tracking-[0.2em] hover:bg-white/10 transition border border-white/10 flex items-center gap-2">
               <RotateCcw className="w-3.5 h-3.5" />
               {t("Réinitialiser l'interface", 'Reset interface')}
             </button>
-            <button className="px-5 py-3 bg-blue-600 text-white text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-500 transition shadow-[0_18px_40px_rgba(37, 99, 235,0.45)] flex items-center gap-2">
+            <button className="px-4 py-2.5 bg-blue-600 text-white text-[10px] font-black rounded-xl uppercase tracking-[0.2em] hover:bg-blue-500 transition shadow-[0_14px_32px_rgba(37,99,235,0.45)] flex items-center gap-2">
               <Save className="w-3.5 h-3.5" />
               {t('Enregistrer les modifications', 'Save changes')}
             </button>
