@@ -300,7 +300,7 @@ export function Softphone() {
       </div>
 
       {/* Sélecteur résidence — OBLIGATOIRE pour archiver */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/70 px-5 py-4 flex items-center gap-3">
+      <div className="rounded-2xl border border-white/10 bg-white/70 px-5 py-4 flex items-center gap-3">
         <Home className="h-4 w-4 text-blue-400 shrink-0" />
         <div className="flex-1 min-w-0">
           <span className="block text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -310,7 +310,7 @@ export function Softphone() {
             value={selectedResidenceId}
             onChange={(e) => setSelectedResidenceId(e.target.value)}
             disabled={state === 'recording' || state === 'uploading' || state === 'requesting'}
-            className="mt-1.5 w-full text-[12px] font-bold bg-transparent border-b border-white/[0.06] py-1.5 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+            className="mt-1.5 w-full text-[12px] font-bold bg-transparent border-b border-white/10 py-1.5 focus:outline-none focus:border-blue-500 disabled:opacity-50"
           >
             <option value="">— {residencesLoading ? t('Chargement…', 'Loading…') : t('Choisis une résidence', 'Pick a residence')} —</option>
             {residences.map((r) => (
@@ -354,7 +354,7 @@ export function Softphone() {
             onChange={(e) => setNumber(e.target.value)}
             placeholder="+1 (514) ..."
             disabled={state === 'recording' || state === 'uploading' || state === 'requesting'}
-            className="mt-2 w-full text-4xl font-black tracking-tight bg-transparent border-b-2 border-white/[0.06] py-3 focus:outline-none focus:border-blue-600 disabled:opacity-60"
+            className="mt-2 w-full text-4xl font-black tracking-tight bg-transparent border-b-2 border-white/10 py-3 focus:outline-none focus:border-blue-600 disabled:opacity-60"
           />
         </label>
 
@@ -365,7 +365,7 @@ export function Softphone() {
               type="button"
               onClick={() => append(digit)}
               disabled={state === 'recording' || state === 'uploading' || state === 'requesting'}
-              className="aspect-square rounded-2xl bg-white/[0.03] hover:bg-blue-500/10 active:bg-blue-100 border border-white/[0.06] hover:border-blue-300 text-2xl font-black italic tracking-tight text-slate-100 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="aspect-square rounded-2xl bg-white/[0.03] hover:bg-blue-500/10 active:bg-blue-100 border border-white/10 hover:border-blue-300 text-2xl font-black italic tracking-tight text-slate-100 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {digit}
             </button>
@@ -377,7 +377,7 @@ export function Softphone() {
             type="button"
             onClick={backspace}
             disabled={!number || state === 'recording' || state === 'uploading'}
-            className="flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-[#0F172A]/55 backdrop-blur-xl px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-slate-400 disabled:opacity-30 transition"
+            className="flex items-center gap-2 rounded-2xl border border-white/10 bg-[#0F172A]/65 backdrop-blur-md px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-slate-400 disabled:opacity-30 transition"
           >
             <Delete className="h-3.5 w-3.5" />
             {t('Effacer', 'Backspace')}
@@ -386,7 +386,7 @@ export function Softphone() {
             type="button"
             onClick={clear}
             disabled={!number || state === 'recording' || state === 'uploading'}
-            className="rounded-2xl border border-white/[0.06] bg-[#0F172A]/55 backdrop-blur-xl px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-slate-400 disabled:opacity-30 transition"
+            className="rounded-2xl border border-white/10 bg-[#0F172A]/65 backdrop-blur-md px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-slate-400 disabled:opacity-30 transition"
           >
             {t('Réinitialiser', 'Clear')}
           </button>
@@ -409,7 +409,7 @@ export function Softphone() {
                 href={number ? buildTelHref(number) : undefined}
                 aria-disabled={!number}
                 onClick={(e) => { if (!number) e.preventDefault(); }}
-                className={`flex items-center justify-center gap-3 rounded-2xl border-2 border-white/[0.06] bg-[#0F172A]/55 backdrop-blur-xl px-6 py-5 text-slate-700 text-[11px] font-black uppercase tracking-[0.2em] hover:border-blue-300 hover:text-blue-300 transition ${!number ? 'opacity-40 cursor-not-allowed' : ''}`}
+                className={`flex items-center justify-center gap-3 rounded-2xl border-2 border-white/10 bg-[#0F172A]/65 backdrop-blur-md px-6 py-5 text-slate-700 text-[11px] font-black uppercase tracking-[0.2em] hover:border-blue-300 hover:text-blue-300 transition ${!number ? 'opacity-40 cursor-not-allowed' : ''}`}
               >
                 <Phone className="h-4 w-4" />
                 {t('Appeler (sans rec.)', 'Call (no rec.)')}
@@ -433,7 +433,7 @@ export function Softphone() {
               <button
                 type="button"
                 onClick={handleCancelRecording}
-                className="flex items-center justify-center gap-3 rounded-2xl border-2 border-white/[0.06] bg-[#0F172A]/55 backdrop-blur-xl px-6 py-5 text-slate-600 text-[11px] font-black uppercase tracking-[0.2em] hover:border-red-300 hover:text-red-700 transition"
+                className="flex items-center justify-center gap-3 rounded-2xl border-2 border-white/10 bg-[#0F172A]/65 backdrop-blur-md px-6 py-5 text-slate-600 text-[11px] font-black uppercase tracking-[0.2em] hover:border-red-300 hover:text-red-700 transition"
               >
                 <PhoneOff className="h-4 w-4" />
                 {t('Annuler', 'Cancel')}
@@ -503,7 +503,7 @@ export function Softphone() {
       </div>
 
       {/* Note technique */}
-      <div className="rounded-[20px] border border-white/[0.06] bg-slate-50/50 p-5 text-[11px] leading-relaxed text-slate-600">
+      <div className="rounded-[20px] border border-white/10 bg-slate-50/50 p-5 text-[11px] leading-relaxed text-slate-600">
         <p className="font-black uppercase tracking-widest text-[9px] text-slate-500 mb-2 flex items-center gap-1.5">
           <Sparkles className="h-3 w-3" />
           {t('Comment ça marche', 'How it works')}

@@ -188,7 +188,7 @@ export function Drive() {
       </div>
 
       {/* Contexte upload — sélecteur résidence + extraction IA */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl border border-white/[0.06] bg-white/70 px-5 py-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl border border-white/10 bg-white/70 px-5 py-4">
         <label className="flex items-center gap-3">
           <Home className="h-4 w-4 text-blue-400 shrink-0" />
           <div className="flex-1 min-w-0">
@@ -199,7 +199,7 @@ export function Drive() {
               value={selectedResidenceId}
               onChange={(e) => setSelectedResidenceId(e.target.value)}
               disabled={uploading || extracting}
-              className="mt-1.5 w-full text-[11px] font-bold bg-transparent border-b border-white/[0.06] py-1.5 focus:outline-none focus:border-blue-500"
+              className="mt-1.5 w-full text-[11px] font-bold bg-transparent border-b border-white/10 py-1.5 focus:outline-none focus:border-blue-500"
             >
               <option value="">— {t('Aucune (dossier général)', 'None (general folder)')} —</option>
               {residences.map((r) => (
@@ -249,7 +249,7 @@ export function Drive() {
 
       {/* Document list */}
       <div className="rounded-[32px] border border-white bg-white/90 shadow-[0_24px_70px_rgba(15,23,42,0.08)] overflow-hidden">
-        <div className="flex items-center justify-between px-7 py-5 border-b border-white/[0.06]">
+        <div className="flex items-center justify-between px-7 py-5 border-b border-white/10">
           <h2 className="text-base font-black italic tracking-tight uppercase text-white">
             {t('Documents récents', 'Recent documents')}
           </h2>
@@ -309,7 +309,7 @@ export function Drive() {
                 <button
                   type="button"
                   onClick={() => handleDownload(doc)}
-                  className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-[#0F172A]/55 backdrop-blur-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-blue-400 hover:text-blue-300 transition"
+                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#0F172A]/65 backdrop-blur-md px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-blue-400 hover:text-blue-300 transition"
                 >
                   <Download className="h-3.5 w-3.5" />
                   {t('Télécharger', 'Download')}

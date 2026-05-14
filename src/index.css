@@ -44,36 +44,37 @@
     background: #334155;
   }
 
+  /* Signature "Navigateur Bleu" : bleu de minuit satiné solide,
+     bordure blanche neutre fine, ombre douce. Pas trop transparent. */
   .workhub-card {
-    background: linear-gradient(165deg, rgba(15, 23, 42, 0.55) 0%, rgba(15, 23, 42, 0.40) 100%);
-    backdrop-filter: blur(22px) saturate(140%);
-    -webkit-backdrop-filter: blur(22px) saturate(140%);
-    border: 1px solid rgba(96, 165, 250, 0.10);
+    background: linear-gradient(165deg, rgba(15, 23, 42, 0.72) 0%, rgba(15, 23, 42, 0.62) 100%);
+    backdrop-filter: blur(14px) saturate(135%);
+    -webkit-backdrop-filter: blur(14px) saturate(135%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow:
-      0 18px 50px rgba(0, 0, 0, 0.45),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05),
-      0 0 35px rgba(37, 99, 235, 0.04);
+      0 16px 40px rgba(0, 0, 0, 0.40),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
     transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
   }
 
   .workhub-card:hover {
-    border-color: rgba(96, 165, 250, 0.25);
+    border-color: rgba(255, 255, 255, 0.14);
     box-shadow:
-      0 22px 60px rgba(0, 0, 0, 0.55),
-      inset 0 1px 0 rgba(255, 255, 255, 0.07),
-      0 0 50px rgba(37, 99, 235, 0.12);
+      0 20px 55px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
   }
 
+  /* Variant pour formulaires hero : touche cobalt plus visible
+     mais sans glow néon excessif. */
   .workhub-card-glow {
-    background: linear-gradient(165deg, rgba(15, 23, 42, 0.60) 0%, rgba(23, 37, 84, 0.35) 100%);
-    backdrop-filter: blur(24px) saturate(150%);
-    -webkit-backdrop-filter: blur(24px) saturate(150%);
-    border: 1px solid rgba(96, 165, 250, 0.22);
+    background: linear-gradient(165deg, rgba(15, 23, 42, 0.78) 0%, rgba(23, 37, 84, 0.55) 100%);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.10);
     box-shadow:
-      0 24px 70px rgba(0, 0, 0, 0.55),
+      0 20px 55px rgba(0, 0, 0, 0.50),
       inset 0 1px 0 rgba(255, 255, 255, 0.06),
-      0 0 60px rgba(37, 99, 235, 0.14),
-      0 0 0 1px rgba(96, 165, 250, 0.06);
+      0 0 40px rgba(37, 99, 235, 0.06);
   }
 
   .workhub-input {
@@ -84,13 +85,15 @@
     @apply text-[10px] font-black text-slate-400 uppercase tracking-[0.22em];
   }
 
+  /* Typographie Royale "Navigateur Bleu" : blanc dominant
+     avec une trace cobalt subtile en fin de course. */
   .workhub-title-gradient {
-    background: linear-gradient(135deg, #ffffff 0%, #dbeafe 35%, #93c5fd 65%, #60a5fa 100%);
+    background: linear-gradient(135deg, #ffffff 0%, #ffffff 55%, #e0e7ff 80%, #bfdbfe 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
-    filter: drop-shadow(0 2px 16px rgba(96, 165, 250, 0.20));
+    filter: drop-shadow(0 1px 12px rgba(96, 165, 250, 0.14));
   }
 }
 

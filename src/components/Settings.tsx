@@ -120,7 +120,7 @@ export function Settings() {
             </button>
           </Field>
 
-          <div className="mt-5 pt-4 border-t border-white/[0.06]">
+          <div className="mt-5 pt-4 border-t border-white/10">
             <p className="text-[10px] text-slate-500">
               {t("Nom affiché dans l'Espace de travail", 'Display name in Workhub')} :{' '}
               <span className="font-black text-slate-300">
@@ -223,7 +223,7 @@ export function Settings() {
             </label>
           </Field>
 
-          <div className="mt-5 pt-4 border-t border-white/[0.06]">
+          <div className="mt-5 pt-4 border-t border-white/10">
             <p className="text-[9px] font-black text-blue-300/70 uppercase tracking-widest">
               {t('Moteur Gemini · OACIQ guardrails actifs', 'Gemini engine · OACIQ guardrails active')}
             </p>
@@ -288,7 +288,7 @@ export function Settings() {
           </button>
         </Field>
 
-        <div className="mt-6 pt-5 border-t border-white/[0.06] flex items-center gap-3">
+        <div className="mt-6 pt-5 border-t border-white/10 flex items-center gap-3">
           <button className="px-5 py-3 bg-blue-600 text-white text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-500 transition shadow-[0_18px_40px_rgba(37,99,235,0.45)] flex items-center gap-2">
             <Save className="w-3.5 h-3.5" />
             {t('Enregistrer les modifications', 'Save changes')}

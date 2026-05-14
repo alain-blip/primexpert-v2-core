@@ -27,7 +27,7 @@ export function Dashboard() {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="bg-[#0F172A]/55 backdrop-blur-xl p-7 rounded-[32px] border border-white/[0.06] shadow-[0_24px_70px_rgba(0,0,0,0.45)] relative group hover:-translate-y-1 hover:shadow-[0_30px_90px_rgba(37,99,235,0.25)] hover:border-blue-500/30 transition-all duration-300 overflow-hidden"
+              className="bg-[#0F172A]/65 backdrop-blur-md p-7 rounded-[32px] border border-white/10 shadow-[0_24px_70px_rgba(0,0,0,0.45)] relative group hover:-translate-y-1 hover:shadow-[0_30px_90px_rgba(37,99,235,0.25)] hover:border-blue-500/30 transition-all duration-300 overflow-hidden"
             >
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_10%,rgba(37,99,235,0.16),transparent_34%)] opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="relative flex justify-between items-start mb-5">
@@ -36,7 +36,7 @@ export function Dashboard() {
                   "px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-tighter border",
                   stat.trend === 'up'
                     ? "bg-green-500/10 text-green-400 border-green-500/20"
-                    : "bg-white/[0.03] text-slate-500 border-white/[0.06]"
+                    : "bg-white/[0.03] text-slate-500 border-white/10"
                 )}>
                   {stat.change}
                 </div>
@@ -44,7 +44,7 @@ export function Dashboard() {
               <div className="relative flex items-end justify-between">
                 <div>
                   <p className="text-6xl font-black italic tracking-tighter text-white group-hover:text-blue-300 transition-colors">{stat.value}</p>
-                  <p className="text-[10px] font-black text-slate-500 mt-4 border-t border-white/[0.06] pt-3 uppercase tracking-widest">{stat.sub}</p>
+                  <p className="text-[10px] font-black text-slate-500 mt-4 border-t border-white/10 pt-3 uppercase tracking-widest">{stat.sub}</p>
                 </div>
                 <div className="w-[52px] h-[52px] rounded-[24px] bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-500 transition-colors">
                   <Icon className="w-6 h-6" />
@@ -57,8 +57,8 @@ export function Dashboard() {
 
       <div className="grid grid-cols-1 2xl:grid-cols-3 gap-8">
         {/* Central Intelligence Table */}
-        <div className="2xl:col-span-2 flex flex-col bg-[#0F172A]/55 backdrop-blur-xl rounded-[36px] border border-white/[0.06] shadow-[0_28px_90px_rgba(0,0,0,0.5)] overflow-hidden group">
-          <div className="p-8 border-b border-white/[0.06] flex justify-between items-start bg-[radial-gradient(circle_at_100%_0%,rgba(37,99,235,0.18),transparent_34%)]">
+        <div className="2xl:col-span-2 flex flex-col bg-[#0F172A]/65 backdrop-blur-md rounded-[36px] border border-white/10 shadow-[0_28px_90px_rgba(0,0,0,0.5)] overflow-hidden group">
+          <div className="p-8 border-b border-white/10 flex justify-between items-start bg-[radial-gradient(circle_at_100%_0%,rgba(37,99,235,0.18),transparent_34%)]">
             <div>
               <h2 className="text-5xl font-black italic tracking-tighter uppercase leading-none"><span className="workhub-title-gradient">{t('Tableau de bord', 'WORK_HUB')}</span><span className="text-blue-400 opacity-50">.V2</span></h2>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-4 flex items-center gap-2">
@@ -75,7 +75,7 @@ export function Dashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="bg-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 border-b border-white/[0.06]">
+                <tr className="bg-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 border-b border-white/10">
                   <th className="px-10 py-5">{t('Identifiant du dossier', 'File_ID')}</th>
                   <th className="px-10 py-5 text-center">{t('Statut', 'Status_Logik')}</th>
                   <th className="px-10 py-5 text-right">{t('Indicateur clé', 'Alpha_Metric')}</th>
@@ -91,7 +91,7 @@ export function Dashboard() {
                   <tr key={l.id} className="hover:bg-blue-500/[0.06] transition-all group/row cursor-pointer">
                     <td className="px-10 py-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center font-mono text-[10px] font-black text-slate-400 group-hover/row:bg-blue-600 group-hover/row:text-white group-hover/row:border-blue-500 transition-all">
+                        <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center font-mono text-[10px] font-black text-slate-400 group-hover/row:bg-blue-600 group-hover/row:text-white group-hover/row:border-blue-500 transition-all">
                           {l.city[0].toUpperCase()}
                         </div>
                         <div>
@@ -105,7 +105,7 @@ export function Dashboard() {
                         "px-3 py-1.5 text-[9px] font-black rounded-lg border uppercase tracking-widest",
                         l.level === 100 ? "bg-green-500/10 text-green-400 border-green-500/20" :
                         l.level > 80 ? "bg-blue-500/10 text-blue-300 border-blue-500/20 animate-pulse" :
-                        "bg-white/[0.03] text-slate-500 border-white/[0.06]"
+                        "bg-white/[0.03] text-slate-500 border-white/10"
                       )}>
                         {l.status}
                       </span>
@@ -147,7 +147,7 @@ export function Dashboard() {
           </div>
 
           {/* Carte de commande de conformité */}
-          <div className="bg-gradient-to-br from-[#0F172A] via-[#172554] to-[#0F172A] p-8 rounded-[36px] text-white shadow-[0_30px_90px_rgba(0,0,0,0.6)] relative overflow-hidden group border border-white/[0.06]">
+          <div className="bg-gradient-to-br from-[#0F172A] via-[#172554] to-[#0F172A] p-8 rounded-[36px] text-white shadow-[0_30px_90px_rgba(0,0,0,0.6)] relative overflow-hidden group border border-white/10">
             <div className="absolute top-0 right-0 w-56 h-56 bg-blue-500 rounded-full blur-[90px] opacity-25 pointer-events-none group-hover:opacity-40 transition-opacity" />
 
             <div className="flex justify-between items-start mb-8">
@@ -176,7 +176,7 @@ export function Dashboard() {
           </div>
 
           {/* Signature rapide */}
-          <div className="bg-[#0F172A]/55 backdrop-blur-xl p-8 rounded-[32px] border border-white/[0.06] shadow-[0_22px_65px_rgba(0,0,0,0.4)] relative overflow-hidden group">
+          <div className="bg-[#0F172A]/65 backdrop-blur-md p-8 rounded-[32px] border border-white/10 shadow-[0_22px_65px_rgba(0,0,0,0.4)] relative overflow-hidden group">
              <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500 scale-y-0 group-hover:scale-y-100 transition-transform duration-500 origin-top" />
              <div className="flex gap-4">
                <div className="w-14 h-14 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 group-hover:border-blue-500 transition-colors duration-500">

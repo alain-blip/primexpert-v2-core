@@ -88,7 +88,7 @@ export function ContentGen() {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 min-h-[600px]">
       {/* Editor Side */}
       <div className="space-y-8">
-        <div className="bg-[#0F172A]/55 backdrop-blur-xl p-10 rounded-[32px] border border-gray-200 shadow-sm space-y-8">
+        <div className="bg-[#0F172A]/65 backdrop-blur-md p-10 rounded-[32px] border border-gray-200 shadow-sm space-y-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
@@ -192,7 +192,7 @@ export function ContentGen() {
 
       {/* Output Side */}
       <div className="relative">
-        <div className="h-full bg-[#0F172A]/55 backdrop-blur-xl rounded-[40px] border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
+        <div className="h-full bg-[#0F172A]/65 backdrop-blur-md rounded-[40px] border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
           <div className="bg-gray-50 px-10 py-5 border-b border-gray-100 flex justify-between items-center">
             <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
               {t('Prévisualisation du brouillon Centris', 'Centris_Draft Preview')}
@@ -238,7 +238,7 @@ export function ContentGen() {
               </div>
               <button
                 onClick={handleSanitize}
-                className="shrink-0 rounded-xl border border-red-300 bg-[#0F172A]/55 backdrop-blur-xl px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-red-700 hover:bg-red-50 transition"
+                className="shrink-0 rounded-xl border border-red-300 bg-[#0F172A]/65 backdrop-blur-md px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-red-700 hover:bg-red-50 transition"
               >
                 <BadgeAlert className="inline h-3 w-3 mr-1" />
                 {t('Corriger auto.', 'Auto-fix')}
