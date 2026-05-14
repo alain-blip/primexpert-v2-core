@@ -80,23 +80,23 @@ export function ContentGen() {
   const scoreColor =
     !lintResult ? '' :
     lintResult.qualityScore >= 90 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' :
-    lintResult.qualityScore >= 70 ? 'text-blue-700 bg-blue-50 border-blue-200' :
-    lintResult.qualityScore >= 50 ? 'text-amber-700 bg-amber-50 border-amber-200' :
+    lintResult.qualityScore >= 70 ? 'text-blue-300 bg-blue-500/10 border-blue-200' :
+    lintResult.qualityScore >= 50 ? 'text-amber-400 bg-amber-500/[0.06] border-amber-500/20' :
                                     'text-red-700 bg-red-50 border-red-200';
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 min-h-[600px]">
       {/* Editor Side */}
       <div className="space-y-8">
-        <div className="bg-white p-10 rounded-[32px] border border-gray-200 shadow-sm space-y-8">
+        <div className="bg-[#0F172A] p-10 rounded-[32px] border border-gray-200 shadow-sm space-y-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
+              <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
                 <Signature className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h3 className="text-2xl font-black italic text-gray-900 tracking-tighter uppercase">
-                  {t('CONFIGURATEUR', 'CONFIGURATOR')}<span className="text-blue-600">_CENTRIS</span>
+                  {t('CONFIGURATEUR', 'CONFIGURATOR')}<span className="text-blue-400">_CENTRIS</span>
                 </h3>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
                   {t('Gemini · Lint OACIQ @primexpert/core', 'Gemini · OACIQ Lint @primexpert/core')}
@@ -150,7 +150,7 @@ export function ContentGen() {
           <button
             onClick={handleGenerate}
             disabled={loading}
-            className="w-full py-4 bg-blue-700 text-white font-black rounded-2xl hover:bg-blue-800 transition-all flex items-center justify-center gap-3 group relative overflow-hidden shadow-xl uppercase text-[11px] tracking-widest active:scale-95"
+            className="w-full py-4 bg-blue-500 text-white font-black rounded-2xl hover:bg-blue-800 transition-all flex items-center justify-center gap-3 group relative overflow-hidden shadow-xl uppercase text-[11px] tracking-widest active:scale-95"
           >
             <AnimatePresence mode="wait">
               {loading ? (
@@ -192,7 +192,7 @@ export function ContentGen() {
 
       {/* Output Side */}
       <div className="relative">
-        <div className="h-full bg-white rounded-[40px] border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
+        <div className="h-full bg-[#0F172A] rounded-[40px] border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
           <div className="bg-gray-50 px-10 py-5 border-b border-gray-100 flex justify-between items-center">
             <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
               {t('Prévisualisation du brouillon Centris', 'Centris_Draft Preview')}
@@ -210,7 +210,7 @@ export function ContentGen() {
                 )}
                 <button
                   onClick={handleCopy}
-                  className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-blue-700 hover:text-blue-900 transition-all font-mono"
+                  className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-blue-300 hover:text-blue-300 transition-all font-mono"
                 >
                   {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
                   {copied ? t('Copie réussie', 'COPIED_OK') : t('Copier', 'COPY_CLIPBOARD')}
@@ -238,7 +238,7 @@ export function ContentGen() {
               </div>
               <button
                 onClick={handleSanitize}
-                className="shrink-0 rounded-xl border border-red-300 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-red-700 hover:bg-red-50 transition"
+                className="shrink-0 rounded-xl border border-red-300 bg-[#0F172A] px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-red-700 hover:bg-red-50 transition"
               >
                 <BadgeAlert className="inline h-3 w-3 mr-1" />
                 {t('Corriger auto.', 'Auto-fix')}

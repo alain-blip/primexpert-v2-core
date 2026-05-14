@@ -30,7 +30,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
   ];
 
   return (
-    <div className="flex h-screen bg-[#EAF0FF] text-[#0F172A] font-sans selection:bg-blue-100 overflow-hidden text-sm">
+    <div className="flex h-screen bg-[#020617] text-slate-100 font-sans selection:bg-blue-500/30 overflow-hidden text-sm">
       {/* Sidebar - Control Center */}
       <aside className="w-[218px] bg-[#020617] text-white flex flex-col shrink-0 relative z-40 shadow-[18px_0_70px_rgba(15,23,42,0.35)]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_0%,rgba(37,99,235,0.32),transparent_36%),linear-gradient(180deg,rgba(23,37,84,0.88),rgba(2,6,23,0.96))]" />
@@ -96,27 +96,27 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
       </aside>
 
       {/* Zone principale */}
-      <main className="flex-1 flex flex-col min-w-0 bg-[radial-gradient(circle_at_20%_0%,rgba(37,99,235,0.14),transparent_32%),#F8FAFC]">
+      <main className="flex-1 flex flex-col min-w-0 bg-[radial-gradient(circle_at_15%_0%,rgba(37,99,235,0.28),transparent_38%),radial-gradient(circle_at_85%_100%,rgba(23,37,84,0.45),transparent_45%),linear-gradient(165deg,#020617_0%,#0a1024_55%,#0d1530_100%)]">
         {/* Top Intelligence Bar */}
-        <header className="h-18 bg-white/80 backdrop-blur-xl border-b border-white/70 flex items-center justify-between px-7 z-30 sticky top-0 shrink-0 shadow-sm">
+        <header className="h-18 bg-[#020617]/80 backdrop-blur-xl border-b border-white/[0.06] flex items-center justify-between px-7 z-30 sticky top-0 shrink-0">
            <div className="flex items-center gap-4">
-             <h2 className="text-2xl font-black italic tracking-tighter text-[#172554] uppercase">
-               {navItems.find(i => i.id === activeTab)?.label} <span className="text-blue-600 opacity-20">/</span> <span className="text-blue-600 font-mono text-[10px] not-italic tracking-[0.2em]">01_ALPHA</span>
+             <h2 className="text-2xl font-black italic tracking-tighter text-white uppercase">
+               {navItems.find(i => i.id === activeTab)?.label} <span className="text-blue-400/40">/</span> <span className="text-blue-400 font-mono text-[10px] not-italic tracking-[0.2em]">01_ALPHA</span>
              </h2>
            </div>
 
            <div className="flex items-center gap-6">
-             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-xl border border-green-100 shadow-sm">
-               <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-              <span className="text-[9px] font-black text-green-700 uppercase tracking-widest">{t('Système en ligne', 'System_Online')}</span>
+             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-xl border border-green-500/20">
+               <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+              <span className="text-[9px] font-black text-green-300 uppercase tracking-widest">{t('Système en ligne', 'System_Online')}</span>
              </div>
-             <div className="flex items-center rounded-xl border border-slate-200 bg-white p-0.5">
+             <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.03] p-0.5">
                {(['fr', 'en'] as const).map((nextLanguage) => (
                  <button
                    key={nextLanguage}
                    type="button"
                    onClick={() => setLanguage(nextLanguage)}
-                   className={`rounded-lg px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest transition ${language === nextLanguage ? 'bg-[#172554] text-white' : 'text-slate-400 hover:bg-slate-50 hover:text-blue-700'}`}
+                   className={`rounded-lg px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest transition ${language === nextLanguage ? 'bg-blue-600 text-white shadow-[0_8px_24px_rgba(37,99,235,0.35)]' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
                  >
                    {nextLanguage}
                  </button>
@@ -124,12 +124,12 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
              </div>
              
              <div className="flex gap-1">
-               <button className="p-2.5 text-slate-400 hover:text-blue-600 transition-all hover:bg-blue-50 rounded-xl">
+               <button className="p-2.5 text-slate-400 hover:text-blue-300 transition-all hover:bg-white/5 rounded-xl">
                  <Search className="w-4 h-4" />
                </button>
-               <button className="p-2.5 text-slate-400 hover:text-blue-600 transition-all hover:bg-blue-50 rounded-xl relative">
+               <button className="p-2.5 text-slate-400 hover:text-blue-300 transition-all hover:bg-white/5 rounded-xl relative">
                  <Bell className="w-4 h-4" />
-                 <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full border-2 border-white" />
+                 <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full border-2 border-[#020617]" />
                </button>
              </div>
            </div>
@@ -150,16 +150,16 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
         </div>
 
         {/* Barre d'état */}
-        <footer className="bg-white/90 backdrop-blur-xl border-t border-white/70 px-7 py-2 flex justify-between items-center text-[8px] font-black uppercase tracking-[0.2em] text-slate-400 shrink-0 select-none">
-          <div className="flex gap-6 items-center">
-            <span className="flex items-center gap-1.5"><div className="w-1 h-1 bg-blue-600" /> {t('Gemini en langue stricte', 'GEMINI_STRICT_NLP')}</span>
-            <span className="flex items-center gap-1.5"><div className="w-1 h-1 bg-slate-300" /> {t('COUCHE_SECURITE_OACIQ: CONFORME', 'OACIQ_SECURITY_LAYER: COMPLIANT')}</span>
-          </div>
-          <div className="flex gap-4">
-            <span className="text-slate-300 italic tracking-[0.3em]">REF_ID: PRO_774</span>
-            <span className="text-blue-600 font-mono">{t('SYNCHRO_PILOTE', 'PILOT_SYNC')}: {new Date().toLocaleTimeString()}</span>
-          </div>
-        </footer>
+        <footer className="bg-[#020617]/90 backdrop-blur-xl border-t border-white/[0.06] px-7 py-2 flex justify-between items-center text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 shrink-0 select-none">
+         <div className="flex gap-6 items-center">
+           <span className="flex items-center gap-1.5"><div className="w-1 h-1 bg-blue-400" /> {t('Gemini en langue stricte', 'GEMINI_STRICT_NLP')}</span>
+           <span className="flex items-center gap-1.5"><div className="w-1 h-1 bg-slate-600" /> {t('COUCHE_SECURITE_OACIQ: CONFORME', 'OACIQ_SECURITY_LAYER: COMPLIANT')}</span>
+         </div>
+         <div className="flex gap-4">
+           <span className="text-slate-600 italic tracking-[0.3em]">REF_ID: PRO_774</span>
+           <span className="text-blue-400 font-mono">{t('SYNCHRO_PILOTE', 'PILOT_SYNC')}: {new Date().toLocaleTimeString()}</span>
+         </div>
+       </footer>
       </main>
 
       <aside className="hidden xl:flex w-[360px] shrink-0 bg-[#172554] text-white relative overflow-hidden border-l border-blue-200/20 shadow-[-28px_0_80px_rgba(23,37,84,0.28)]">

@@ -17,11 +17,11 @@ const STATUS_LABELS = {
 
 const STATUS_COLORS = {
   prospect: "bg-orange-50 text-orange-700 border-orange-200",
-  mandate: "bg-blue-50 text-blue-700 border-blue-200",
-  promise: "bg-amber-50 text-amber-700 border-amber-200",
+  mandate: "bg-blue-500/10 text-blue-300 border-blue-200",
+  promise: "bg-amber-500/[0.06] text-amber-400 border-amber-500/20",
   expired: "bg-red-50 text-red-700 border-red-200",
   unsigned: "bg-gray-100 text-gray-700 border-gray-200",
-  sold: "bg-green-50 text-green-700 border-green-200"
+  sold: "bg-green-500/10 text-green-700 border-green-200"
 };
 
 const STATUS_BORDERS = {
@@ -80,7 +80,7 @@ export function Listings() {
         className={cn(
           'flex items-center gap-3 rounded-2xl border px-5 py-3 shadow-sm',
           usingDemo
-            ? 'border-amber-200 bg-amber-50/70 text-amber-900'
+            ? 'border-amber-500/20 bg-amber-50/70 text-amber-300'
             : 'border-emerald-200 bg-emerald-50/70 text-emerald-900'
         )}
       >
@@ -99,8 +99,8 @@ export function Listings() {
 
       {/* Header Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4 bg-white px-5 py-2.5 rounded-xl border border-gray-200 shadow-sm w-full md:w-96 group focus-within:border-blue-400 transition-colors">
-          <Search className="w-4 h-4 text-gray-400 group-focus-within:text-blue-600" />
+        <div className="flex items-center gap-4 bg-[#0F172A] px-5 py-2.5 rounded-xl border border-gray-200 shadow-sm w-full md:w-96 group focus-within:border-blue-400 transition-colors">
+          <Search className="w-4 h-4 text-gray-400 group-focus-within:text-blue-400" />
           <input 
             type="text" 
             placeholder="Rechercher une propriété..." 
@@ -109,11 +109,11 @@ export function Listings() {
         </div>
         
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-6 py-3 bg-white text-gray-900 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-gray-50 transition-all border border-gray-200 shadow-sm">
+          <button className="flex items-center gap-2 px-6 py-3 bg-[#0F172A] text-gray-900 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-gray-50 transition-all border border-gray-200 shadow-sm">
             <Filter className="w-4 h-4" />
             Filtres
           </button>
-          <button className="flex items-center gap-2 px-6 py-3 bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-800 transition-all shadow-lg hover:scale-105 active:scale-95">
+          <button className="flex items-center gap-2 px-6 py-3 bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-800 transition-all shadow-lg hover:scale-105 active:scale-95">
             <Plus className="w-4 h-4" />
             Nouv. Inscription
           </button>
@@ -137,21 +137,21 @@ export function Listings() {
                     key={l.id}
                     whileHover={{ y: -4, scale: 1.02 }}
                     className={cn(
-                      "bg-white p-5 rounded-xl border-l-4 shadow-sm hover:shadow-xl transition-all cursor-pointer group",
+                      "bg-[#0F172A] p-5 rounded-xl border-l-4 shadow-sm hover:shadow-xl transition-all cursor-pointer group",
                       STATUS_BORDERS[key as keyof typeof STATUS_BORDERS]
                     )}
                   >
                     <div className="flex justify-between items-start mb-3">
-                      <div className="w-9 h-9 rounded bg-blue-50 flex items-center justify-center group-hover:bg-blue-600 transition-colors">
-                        <Home className="w-4 h-4 text-blue-600 group-hover:text-white" />
+                      <div className="w-9 h-9 rounded bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-600 transition-colors">
+                        <Home className="w-4 h-4 text-blue-400 group-hover:text-white" />
                       </div>
                       <MoreVertical className="w-4 h-4 text-gray-300 hover:text-gray-900" />
                     </div>
                     <p className="text-sm font-black text-gray-900 italic tracking-tighter mb-1 leading-tight">{l.address}</p>
                     <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{l.city}</p>
                     <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-50">
-                      <span className="text-xs font-black text-blue-700 italic">{formatCurrency(l.price)}</span>
-                      <ChevronRight className="w-4 h-4 text-gray-200 group-hover:text-blue-600" />
+                      <span className="text-xs font-black text-blue-300 italic">{formatCurrency(l.price)}</span>
+                      <ChevronRight className="w-4 h-4 text-gray-200 group-hover:text-blue-400" />
                     </div>
                   </motion.div>
                 ))}

@@ -18,7 +18,7 @@ export function CRM() {
     switch (status) {
       case 'Chaud': return 'bg-orange-100 text-orange-700 border-orange-200';
       case 'Actif': return 'bg-green-100 text-green-700 border-green-200';
-      case 'Partenaire': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'Partenaire': return 'bg-blue-100 text-blue-300 border-blue-200';
       case 'Nouveau': return 'bg-purple-100 text-purple-700 border-purple-200';
       default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
@@ -28,22 +28,22 @@ export function CRM() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h2 className="text-4xl font-black italic text-gray-900 tracking-tighter uppercase">RÉPERTOIRE<span className="text-blue-600">_CRM</span></h2>
+          <h2 className="text-4xl font-black italic text-gray-900 tracking-tighter uppercase">RÉPERTOIRE<span className="text-blue-400">_CRM</span></h2>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{t('Traçabilité conforme et suivi CRM', 'Compliant traceability & CRM pipeline')}</p>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 bg-white rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-900 hover:bg-gray-50 transition-all shadow-sm">
+          <button className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 bg-[#0F172A] rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-900 hover:bg-gray-50 transition-all shadow-sm">
             <FileDown className="w-4 h-4" />
             Exporter CSV
           </button>
-          <button className="flex items-center gap-2 px-6 py-3 bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-blue-800 hover:scale-105 active:scale-95 transition-all">
+          <button className="flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-blue-800 hover:scale-105 active:scale-95 transition-all">
             <UserPlus className="w-4 h-4" />
             Nouv. Contact
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-[#0F172A] rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="grid grid-cols-1 divide-y divide-gray-100">
           <div className="bg-gray-50 px-8 py-3 grid grid-cols-1 md:grid-cols-4 gap-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
             <div className="md:col-span-1">Nom / Type</div>
@@ -59,14 +59,14 @@ export function CRM() {
               transition={{ delay: i * 0.05 }}
               className="flex items-center px-8 py-5 hover:bg-blue-50/30 transition-all cursor-pointer group"
             >
-              <div className="w-12 h-12 bg-blue-900 text-blue-300 rounded-lg flex items-center justify-center font-black italic text-lg mr-8 shadow-sm group-hover:bg-blue-700 group-hover:text-white transition-colors">
+              <div className="w-12 h-12 bg-blue-900 text-blue-300 rounded-lg flex items-center justify-center font-black italic text-lg mr-8 shadow-sm group-hover:bg-blue-500 group-hover:text-white transition-colors">
                 {contact.initials}
               </div>
               
               <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                 <div>
                   <h4 className="text-sm font-black text-gray-900 tracking-tight">{contact.name}</h4>
-                  <p className="text-[10px] text-blue-600 font-bold uppercase tracking-tighter">{contact.type}</p>
+                  <p className="text-[10px] text-blue-400 font-bold uppercase tracking-tighter">{contact.type}</p>
                 </div>
                 
                 <div className="flex flex-col gap-0.5">

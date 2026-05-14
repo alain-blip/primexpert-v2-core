@@ -67,7 +67,7 @@ function buildInputs(form: SimpleForm): ValuationInputs {
 function PositioningBadge({ positioning, t }: { positioning: ValuationOutputs['pricePositioning']; t: ReturnType<typeof useLanguage>['t'] }) {
   const meta = {
     'sous-évalué': { Icon: TrendingDown, label: t('Sous-évalué', 'Underpriced'), color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    'bien-positionné': { Icon: CheckCircle2, label: t('Bien positionné', 'Well priced'), color: 'bg-blue-50 text-blue-700 border-blue-200' },
+    'bien-positionné': { Icon: CheckCircle2, label: t('Bien positionné', 'Well priced'), color: 'bg-blue-500/10 text-blue-300 border-blue-200' },
     'surévalué': { Icon: TrendingUp, label: t('Surévalué', 'Overpriced'), color: 'bg-red-50 text-red-700 border-red-200' },
   }[positioning];
   const Icon = meta.Icon;
@@ -206,7 +206,7 @@ export function ACM() {
 
           <button
             onClick={handleCompute}
-            className="w-full py-4 bg-white text-blue-900 font-black rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-xl uppercase text-[11px] tracking-widest"
+            className="w-full py-4 bg-[#0F172A] text-blue-300 font-black rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-xl uppercase text-[11px] tracking-widest"
           >
             <Calculator className="w-5 h-5" />
             {t('Calculer la valorisation', 'Run valuation')}
@@ -227,10 +227,10 @@ export function ACM() {
         <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
           {/* Prix suggéré + fourchette + positioning */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 bg-white p-10 rounded-[32px] border border-gray-200 shadow-sm">
+            <div className="md:col-span-2 bg-[#0F172A] p-10 rounded-[32px] border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                  <CheckCircle2 className="w-4 h-4 text-blue-400" />
                   {t('Prix suggéré (Core OACIQ)', 'Suggested price (OACIQ Core)')}
                 </h3>
                 <PositioningBadge positioning={result.pricePositioning} t={t} />
@@ -239,7 +239,7 @@ export function ACM() {
               <div className="flex items-end gap-3 mb-8">
                 <span className="text-6xl font-black italic tracking-tighter text-gray-900 leading-none">
                   {result.suggestedPrice.toLocaleString('fr-CA')}{' '}
-                  <span className="text-3xl text-blue-600">$</span>
+                  <span className="text-3xl text-blue-400">$</span>
                 </span>
               </div>
 
@@ -248,15 +248,15 @@ export function ACM() {
                   <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">{t('Plancher', 'Floor')}</span>
                   <p className="font-mono text-sm font-black text-gray-900 mt-1">{formatCurrency(result.suggestedLow)}</p>
                 </div>
-                <div className="p-5 bg-blue-50 rounded-xl border border-blue-100">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-blue-600">{t('Plafond', 'Ceiling')}</span>
-                  <p className="font-mono text-sm font-black text-blue-900 mt-1">{formatCurrency(result.suggestedHigh)}</p>
+                <div className="p-5 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-blue-400">{t('Plafond', 'Ceiling')}</span>
+                  <p className="font-mono text-sm font-black text-blue-300 mt-1">{formatCurrency(result.suggestedHigh)}</p>
                 </div>
               </div>
             </div>
 
             {/* Banque */}
-            <div className="bg-blue-700 text-white p-8 rounded-[32px] shadow-lg flex flex-col gap-5 relative overflow-hidden">
+            <div className="bg-blue-500 text-white p-8 rounded-[32px] shadow-lg flex flex-col gap-5 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-24 h-24 bg-white/20 rounded-full blur-[40px] -mr-10 -mt-10" />
               <p className="text-[10px] font-black uppercase tracking-widest text-blue-200">{t('Valeur banquable', 'Bankable value')}</p>
               <p className="text-3xl font-black italic tracking-tight leading-none">{formatCurrency(result.bankableValue)}</p>
@@ -271,7 +271,7 @@ export function ACM() {
           {/* Ratios */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {ratios?.map((r) => (
-              <div key={r.label} className="rounded-2xl border border-gray-200 bg-white p-5">
+              <div key={r.label} className="rounded-2xl border border-gray-200 bg-[#0F172A] p-5">
                 <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">{r.label}</p>
                 <p className="mt-2 text-xl font-black italic tracking-tighter text-gray-900">{r.value}</p>
               </div>
@@ -280,16 +280,16 @@ export function ACM() {
 
           {/* Warnings */}
           {result.warnings.length > 0 && (
-            <div className="rounded-[24px] border border-amber-200 bg-amber-50/70 p-6 space-y-3">
+            <div className="rounded-[24px] border border-amber-500/20 bg-amber-50/70 p-6 space-y-3">
               <div className="flex items-center gap-2">
-                <BadgeAlert className="h-4 w-4 text-amber-700" />
+                <BadgeAlert className="h-4 w-4 text-amber-400" />
                 <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-800">
                   {t('Avertissements moteur', 'Engine warnings')}
                 </p>
               </div>
               <ul className="space-y-1.5">
                 {result.warnings.map((w, i) => (
-                  <li key={i} className="text-[12px] font-semibold leading-relaxed text-amber-900">— {w}</li>
+                  <li key={i} className="text-[12px] font-semibold leading-relaxed text-amber-300">— {w}</li>
                 ))}
               </ul>
             </div>
@@ -299,7 +299,7 @@ export function ACM() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-[28px] border border-white bg-white p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]"
+            className="rounded-[28px] border border-white bg-[#0F172A] p-8 shadow-[0_20px_60px_rgba(15,23,42,0.06)]"
           >
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
@@ -310,7 +310,7 @@ export function ACM() {
                   <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
                     {t('Lecture Vendeur', 'Seller Reading')}
                   </p>
-                  <p className="text-sm font-black italic tracking-tight text-[#172554]">
+                  <p className="text-sm font-black italic tracking-tight text-white">
                     {t('NarrativeEngine · @primexpert/core/narrative', 'NarrativeEngine · @primexpert/core/narrative')}
                   </p>
                 </div>
@@ -337,9 +337,9 @@ export function ACM() {
                 <p className="text-[13px] leading-relaxed font-medium text-slate-800 whitespace-pre-wrap">
                   {narrative.signedReading}
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-slate-100">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-white/[0.06]">
                   {narrative.talkTrackBullets.map((b, i) => (
-                    <div key={i} className="rounded-xl bg-slate-50 px-4 py-3">
+                    <div key={i} className="rounded-xl bg-white/[0.03] px-4 py-3">
                       <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
                         {t('Argument', 'Pitch')} {i + 1}
                       </p>
@@ -352,7 +352,7 @@ export function ACM() {
           </motion.div>
 
           {/* HITL — Garde-fou OACIQ */}
-          <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-6">
+          <div className="rounded-[24px] border border-white/[0.06] bg-slate-50/70 p-6">
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-600">
               {t('Charte OACIQ §IV — Validation humaine requise', 'OACIQ Charter §IV — Human validation required')}
             </p>

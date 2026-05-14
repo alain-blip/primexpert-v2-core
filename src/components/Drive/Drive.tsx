@@ -144,9 +144,9 @@ export function Drive() {
           <p className="text-[10px] font-black uppercase tracking-[0.32em] text-blue-200/70">
             {t('Phase B — Drive multi-tenant', 'Phase B — Multi-tenant Drive')}
           </p>
-          <h1 className="mt-2 text-5xl font-black italic tracking-tighter uppercase text-[#172554]">
+          <h1 className="mt-2 text-5xl font-black italic tracking-tighter uppercase text-white">
             {t('Drive PrimeXpert', 'PrimeXpert Drive')}
-            <span className="text-blue-600 opacity-30">.2026</span>
+            <span className="text-blue-400 opacity-30">.2026</span>
           </h1>
           <p className="mt-3 text-[12px] font-semibold text-slate-500 max-w-2xl">
             {t(
@@ -177,9 +177,9 @@ export function Drive() {
       </div>
 
       {/* Tenant pill */}
-      <div className="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/40 px-4 py-3">
-        <ShieldCheck className="h-4 w-4 text-blue-600" />
-        <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">
+      <div className="flex items-center gap-3 rounded-xl border border-blue-500/20 bg-blue-50/40 px-4 py-3">
+        <ShieldCheck className="h-4 w-4 text-blue-400" />
+        <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">
           {t('Espace cloisonné', 'Scoped workspace')} · brokerId ={' '}
           <span className="font-mono normal-case tracking-normal">{brokerId || '<non chargé>'}</span>
           {' · '}
@@ -188,9 +188,9 @@ export function Drive() {
       </div>
 
       {/* Contexte upload — sélecteur résidence + extraction IA */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl border border-slate-200 bg-white/70 px-5 py-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl border border-white/[0.06] bg-white/70 px-5 py-4">
         <label className="flex items-center gap-3">
-          <Home className="h-4 w-4 text-blue-600 shrink-0" />
+          <Home className="h-4 w-4 text-blue-400 shrink-0" />
           <div className="flex-1 min-w-0">
             <span className="block text-[10px] font-black uppercase tracking-widest text-slate-500">
               {t('Rattacher à une résidence (optionnel)', 'Attach to a residence (optional)')}
@@ -199,7 +199,7 @@ export function Drive() {
               value={selectedResidenceId}
               onChange={(e) => setSelectedResidenceId(e.target.value)}
               disabled={uploading || extracting}
-              className="mt-1.5 w-full text-[11px] font-bold bg-transparent border-b border-slate-200 py-1.5 focus:outline-none focus:border-blue-500"
+              className="mt-1.5 w-full text-[11px] font-bold bg-transparent border-b border-white/[0.06] py-1.5 focus:outline-none focus:border-blue-500"
             >
               <option value="">— {t('Aucune (dossier général)', 'None (general folder)')} —</option>
               {residences.map((r) => (
@@ -249,8 +249,8 @@ export function Drive() {
 
       {/* Document list */}
       <div className="rounded-[32px] border border-white bg-white/90 shadow-[0_24px_70px_rgba(15,23,42,0.08)] overflow-hidden">
-        <div className="flex items-center justify-between px-7 py-5 border-b border-slate-100">
-          <h2 className="text-base font-black italic tracking-tight uppercase text-[#172554]">
+        <div className="flex items-center justify-between px-7 py-5 border-b border-white/[0.06]">
+          <h2 className="text-base font-black italic tracking-tight uppercase text-white">
             {t('Documents récents', 'Recent documents')}
           </h2>
           <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400">
@@ -278,18 +278,18 @@ export function Drive() {
               const residence = doc.residenceId ? residences.find((r) => r.id === doc.residenceId) : null;
               return (
               <li key={doc.id} className="flex items-center gap-5 px-7 py-4 hover:bg-blue-50/30 transition">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shrink-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 shrink-0">
                   <FileText className="h-5 w-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black italic tracking-tight text-slate-900 truncate">
+                  <p className="text-sm font-black italic tracking-tight text-slate-100 truncate">
                     {doc.fileName}
                   </p>
                   <p className="text-[10px] font-mono uppercase tracking-widest text-slate-400 mt-0.5">
                     {formatDate(doc.uploadedAtMillis, language)} · {formatSize(doc.size)} · {doc.mime}
                   </p>
                   {residence && (
-                    <p className="text-[10px] font-bold text-blue-700 mt-1 truncate">
+                    <p className="text-[10px] font-bold text-blue-300 mt-1 truncate">
                       <Home className="inline h-3 w-3 mr-1" />
                       {residence.address} · {residence.city}
                     </p>
@@ -309,7 +309,7 @@ export function Drive() {
                 <button
                   type="button"
                   onClick={() => handleDownload(doc)}
-                  className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-blue-400 hover:text-blue-700 transition"
+                  className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-[#0F172A] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:border-blue-400 hover:text-blue-300 transition"
                 >
                   <Download className="h-3.5 w-3.5" />
                   {t('Télécharger', 'Download')}
@@ -355,10 +355,10 @@ export function Drive() {
               key={card.title}
               className="rounded-[32px] border border-white bg-white/90 p-7 shadow-[0_24px_70px_rgba(15,23,42,0.08)]"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-400">
                 <Icon className="h-6 w-6" />
               </div>
-              <h2 className="mt-5 text-base font-black italic tracking-tight uppercase text-[#172554]">
+              <h2 className="mt-5 text-base font-black italic tracking-tight uppercase text-white">
                 {card.title}
               </h2>
               <p className="mt-2 text-[12px] leading-relaxed text-slate-500">{card.desc}</p>

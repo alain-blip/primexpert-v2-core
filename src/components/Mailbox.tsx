@@ -54,7 +54,7 @@ export function Mailbox() {
   const selectedMessage = MESSAGES.find(m => m.id === selectedId);
 
   return (
-    <div className="h-[calc(100vh-160px)] flex bg-white rounded-[32px] border border-gray-200 shadow-sm overflow-hidden">
+    <div className="h-[calc(100vh-160px)] flex bg-[#0F172A] rounded-[32px] border border-gray-200 shadow-sm overflow-hidden">
       {/* Sidebar List */}
       <div className={cn(
         "w-full lg:w-[400px] border-r border-gray-100 flex flex-col",
@@ -62,8 +62,8 @@ export function Mailbox() {
       )}>
         <div className="p-6 border-b border-gray-100 bg-gray-50/50">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-3xl font-black italic tracking-tighter uppercase">{t('MESSAGERIE', 'INBOX')}<span className="text-blue-600">{t(' SYNCHRONISÉE', '_SYNC')}</span></h2>
-            <button className="p-2 bg-blue-700 text-white rounded-lg shadow-lg hover:scale-105 active:scale-95 transition-all">
+            <h2 className="text-3xl font-black italic tracking-tighter uppercase">{t('MESSAGERIE', 'INBOX')}<span className="text-blue-400">{t(' SYNCHRONISÉE', '_SYNC')}</span></h2>
+            <button className="p-2 bg-blue-500 text-white rounded-lg shadow-lg hover:scale-105 active:scale-95 transition-all">
               <Send className="w-4 h-4" />
             </button>
           </div>
@@ -72,7 +72,7 @@ export function Mailbox() {
             <input 
               type="text" 
               placeholder={t('RECHERCHER_ARCHIVES', 'SEARCH_ARCHIVES')}
-              className="w-full bg-white border border-gray-200 rounded-xl py-2 pl-10 pr-4 text-[10px] font-black uppercase tracking-widest focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-gray-300" 
+              className="w-full bg-[#0F172A] border border-gray-200 rounded-xl py-2 pl-10 pr-4 text-[10px] font-black uppercase tracking-widest focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-gray-300" 
             />
           </div>
         </div>
@@ -102,7 +102,7 @@ export function Mailbox() {
               </div>
               <h4 className={cn(
                 "text-sm font-black italic tracking-tighter mb-1",
-                !msg.isRead ? "text-blue-900" : "text-gray-600"
+                !msg.isRead ? "text-blue-300" : "text-gray-600"
               )}>{msg.subject}</h4>
               <p className="text-[10px] text-gray-400 line-clamp-1 font-medium">{msg.preview}</p>
             </div>
@@ -112,7 +112,7 @@ export function Mailbox() {
 
       {/* Detail View */}
       <div className={cn(
-        "flex-1 flex flex-col bg-white",
+        "flex-1 flex flex-col bg-[#0F172A]",
         !selectedId && "hidden lg:flex"
       )}>
         <AnimatePresence mode="wait">
@@ -134,17 +134,17 @@ export function Mailbox() {
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <div className="flex gap-2">
-                    <button className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all text-gray-400 hover:text-blue-600 border border-transparent hover:border-gray-100">
+                    <button className="p-2 hover:bg-[#0F172A] hover:shadow-sm rounded-lg transition-all text-gray-400 hover:text-blue-400 border border-transparent hover:border-gray-100">
                       <Archive className="w-4 h-4" />
                     </button>
-                    <button className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all text-gray-400 hover:text-red-500 border border-transparent hover:border-gray-100">
+                    <button className="p-2 hover:bg-[#0F172A] hover:shadow-sm rounded-lg transition-all text-gray-400 hover:text-red-500 border border-transparent hover:border-gray-100">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('ID TRANSACTION', 'TRANSACTION ID')}: #XP-2026</span>
-                  <button className="px-5 py-2.5 bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-xl hover:bg-blue-800 active:scale-95 transition-all">
+                  <button className="px-5 py-2.5 bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-xl hover:bg-blue-800 active:scale-95 transition-all">
                     RÉPONDRE
                   </button>
                 </div>
@@ -159,7 +159,7 @@ export function Mailbox() {
                     </div>
                     <div>
                       <h2 className="text-4xl font-black italic tracking-tighter text-gray-900 uppercase">{selectedMessage.sender}</h2>
-                      <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mt-1">{selectedMessage.time} • {t('VIA PRIMEXPERT_NET', 'VIA PRIMEXPERT_NET')}</p>
+                      <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mt-1">{selectedMessage.time} • {t('VIA PRIMEXPERT_NET', 'VIA PRIMEXPERT_NET')}</p>
                     </div>
                   </div>
 
@@ -179,8 +179,8 @@ export function Mailbox() {
 
                   <div className="mt-12 pt-8 border-t border-gray-100">
                     <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 border-dashed group cursor-pointer hover:border-blue-300 transition-colors">
-                      <div className="p-3 bg-white rounded-lg shadow-sm">
-                        <Paperclip className="w-5 h-5 text-blue-600" />
+                      <div className="p-3 bg-[#0F172A] rounded-lg shadow-sm">
+                        <Paperclip className="w-5 h-5 text-blue-400" />
                       </div>
                       <div>
                         <p className="text-[11px] font-black uppercase tracking-tight text-gray-900 italic">Mise_a_Jour_OACIQ_2026.pdf</p>
