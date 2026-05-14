@@ -68,7 +68,7 @@ export function Settings() {
               <RotateCcw className="w-3.5 h-3.5" />
               {t("Réinitialiser l'interface", 'Reset interface')}
             </button>
-            <button className="px-5 py-3 bg-blue-600 text-white text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-500 transition shadow-[0_18px_40px_rgba(19,16,237,0.45)] flex items-center gap-2">
+            <button className="px-5 py-3 bg-blue-600 text-white text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-500 transition shadow-[0_18px_40px_rgba(37, 99, 235,0.45)] flex items-center gap-2">
               <Save className="w-3.5 h-3.5" />
               {t('Enregistrer les modifications', 'Save changes')}
             </button>
@@ -116,7 +116,7 @@ export function Settings() {
           </Field>
 
           <Field label={t('Photo de profil', 'Profile picture')} className="mt-4">
-            <button className="w-full px-4 py-3 bg-[#254cf6] text-white text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-700 transition border border-blue-500/20 flex items-center justify-center gap-2">
+            <button className="w-full px-4 py-3 bg-[#172554] text-white text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-700 transition border border-blue-500/20 flex items-center justify-center gap-2">
               <ImagePlus className="w-4 h-4" />
               {t('Téléverser une image', 'Upload an image')}
             </button>
@@ -150,7 +150,7 @@ export function Settings() {
                   onClick={() => setLanguage(lang)}
                   className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition ${
                     language === lang
-                      ? 'bg-[#254cf6] text-white shadow-[0_8px_20px_rgba(37, 76, 246,0.6)]'
+                      ? 'bg-[#172554] text-white shadow-[0_8px_20px_rgba(23, 37, 84,0.6)]'
                       : 'text-slate-500 hover:text-slate-300'
                   }`}
                 >
@@ -175,7 +175,7 @@ export function Settings() {
                     aria-pressed={isActive}
                     className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition ${
                       isActive
-                        ? 'bg-[#254cf6] text-white shadow-[0_8px_20px_rgba(37, 76, 246,0.6)]'
+                        ? 'bg-[#172554] text-white shadow-[0_8px_20px_rgba(23, 37, 84,0.6)]'
                         : 'text-slate-500 hover:text-slate-300'
                     }`}
                   >
@@ -210,7 +210,7 @@ export function Settings() {
                   onClick={() => setCreativity(level)}
                   className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition ${
                     creativity === level
-                      ? 'bg-[#254cf6] text-white shadow-[0_8px_20px_rgba(37, 76, 246,0.6)]'
+                      ? 'bg-[#172554] text-white shadow-[0_8px_20px_rgba(23, 37, 84,0.6)]'
                       : 'text-slate-500 hover:text-slate-300'
                   }`}
                 >
@@ -293,14 +293,14 @@ export function Settings() {
         </Field>
 
         <Field label={t('Signature image', 'Signature image')} className="mt-4">
-          <button className="px-5 py-3 bg-[#254cf6] text-white text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-700 transition border border-blue-500/20 flex items-center gap-2">
+          <button className="px-5 py-3 bg-[#172554] text-white text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-700 transition border border-blue-500/20 flex items-center gap-2">
             <ImagePlus className="w-4 h-4" />
             {t('Téléverser une image', 'Upload an image')}
           </button>
         </Field>
 
         <div className="mt-6 pt-5 border-t border-white/10 flex items-center gap-3">
-          <button className="px-5 py-3 bg-blue-600 text-white text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-500 transition shadow-[0_18px_40px_rgba(19,16,237,0.45)] flex items-center gap-2">
+          <button className="px-5 py-3 bg-blue-600 text-white text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-500 transition shadow-[0_18px_40px_rgba(37, 99, 235,0.45)] flex items-center gap-2">
             <Save className="w-3.5 h-3.5" />
             {t('Enregistrer les modifications', 'Save changes')}
           </button>

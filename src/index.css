@@ -5,7 +5,7 @@
   --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
   
   --color-brand-blue: #1d4ed8;
-  --color-brand-navy: #254cf6;
+  --color-brand-navy: #172554;
 }
 
 @layer base {
@@ -48,7 +48,7 @@
      neutre fine. Solid-but-deep. */
   .workhub-card {
     position: relative;
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(37, 76, 246, 0.70) 50%, rgba(15, 23, 42, 0.92) 100%);
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(23, 37, 84, 0.70) 50%, rgba(15, 23, 42, 0.92) 100%);
     backdrop-filter: blur(14px) saturate(135%);
     -webkit-backdrop-filter: blur(14px) saturate(135%);
     border: 1px solid rgba(255, 255, 255, 0.10);
@@ -66,7 +66,7 @@
     right: -40px;
     width: 220px;
     height: 220px;
-    background: rgb(19, 16, 237);
+    background: rgb(59, 130, 246);
     border-radius: 50%;
     filter: blur(90px);
     opacity: 0.18;
@@ -93,7 +93,7 @@
   /* Variant pour formulaires hero : marine plus visible + glow plus présent. */
   .workhub-card-glow {
     position: relative;
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(19, 16, 237, 0.32) 50%, rgba(15, 23, 42, 0.92) 100%);
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(37, 99, 235, 0.32) 50%, rgba(15, 23, 42, 0.92) 100%);
     backdrop-filter: blur(16px) saturate(140%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -110,7 +110,7 @@
     right: -50px;
     width: 280px;
     height: 280px;
-    background: rgb(19, 16, 237);
+    background: rgb(59, 130, 246);
     border-radius: 50%;
     filter: blur(110px);
     opacity: 0.25;
@@ -129,7 +129,7 @@
      identique à la carte 'Conformité_ACTIVE'. */
   .bg-vault {
     position: relative;
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(37, 76, 246, 0.68) 50%, rgba(15, 23, 42, 0.92) 100%);
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(23, 37, 84, 0.68) 50%, rgba(15, 23, 42, 0.92) 100%);
     overflow: hidden;
   }
 
@@ -140,7 +140,7 @@
     right: -30px;
     width: 224px;
     height: 224px;
-    background: rgb(19, 16, 237);
+    background: rgb(59, 130, 246);
     border-radius: 50%;
     filter: blur(90px);
     opacity: 0.22;
@@ -160,16 +160,17 @@
   }
 
   /* ── Variant "Bright" : 2 tons plus clair que `.bg-vault` ──
-     Réservé aux éléments qui doivent ressortir (KPIs et tableaux
-     centraux). Garde la même grammaire (gradient diagonal + halo
-     cobalt en haut-droite), mais slate-700 au lieu de slate-900 en
-     dark, slate-600 au lieu de slate-800 en tamisé.
-     Le halo est aussi un cran plus présent pour amplifier l'effet. */
+     Reservée aux éléments qui doivent ressortir (KPIs et tableaux
+     centraux). Cette variant est aussi le SEUL endroit où l'on utilise
+     la palette signature 2026 :
+       - #254cf6 (cobalt vif)     pour le gradient stop intermédiaire
+       - #1310ed (bleu électrique) pour le halo
+     Slate-700 base en dark, slate-600 en tamisé. */
   .bg-vault-bright {
     position: relative;
     background: linear-gradient(135deg,
       rgba(51, 65, 85, 0.88) 0%,
-      rgba(19, 16, 237, 0.20) 50%,
+      rgba(37, 76, 246, 0.22) 50%,
       rgba(51, 65, 85, 0.88) 100%);
     overflow: hidden;
   }
@@ -183,12 +184,12 @@
     background: rgb(19, 16, 237);
     border-radius: 50%;
     filter: blur(95px);
-    opacity: 0.28;
+    opacity: 0.30;
     pointer-events: none;
     z-index: 0;
     transition: opacity 0.4s ease;
   }
-  .bg-vault-bright:hover::after { opacity: 0.38; }
+  .bg-vault-bright:hover::after { opacity: 0.42; }
   .bg-vault-bright > * { position: relative; z-index: 1; }
 
   .workhub-input {
@@ -235,9 +236,9 @@
   /* ── Dégradé global du Layout ─────────────────────────────── */
   html.dark .app-bg {
     background:
-      radial-gradient(ellipse 1200px 800px at 0% 0%, rgba(19, 16, 237, 0.28) 0%, transparent 55%),
-      radial-gradient(ellipse 1000px 700px at 100% 100%, rgba(37, 76, 246, 0.35) 0%, transparent 60%),
-      radial-gradient(ellipse 900px 600px at 50% 50%, rgba(19, 16, 237, 0.08) 0%, transparent 65%),
+      radial-gradient(ellipse 1200px 800px at 0% 0%, rgba(37, 99, 235, 0.28) 0%, transparent 55%),
+      radial-gradient(ellipse 1000px 700px at 100% 100%, rgba(23, 37, 84, 0.35) 0%, transparent 60%),
+      radial-gradient(ellipse 900px 600px at 50% 50%, rgba(37, 99, 235, 0.08) 0%, transparent 65%),
       linear-gradient(135deg, #020617 0%, #050b1f 28%, #0a1129 58%, #0d1530 85%, #0f1738 100%);
   }
   /* "Tamisé" : 1-2 tons plus clair, bleu moins agressif.
@@ -245,9 +246,9 @@
      atténués (-30%). Reste un thème sombre. */
   html.light .app-bg {
     background:
-      radial-gradient(ellipse 1200px 800px at 0% 0%, rgba(19, 16, 237, 0.20) 0%, transparent 55%),
-      radial-gradient(ellipse 1000px 700px at 100% 100%, rgba(37, 76, 246, 0.24) 0%, transparent 60%),
-      radial-gradient(ellipse 900px 600px at 50% 50%, rgba(19, 16, 237, 0.06) 0%, transparent 65%),
+      radial-gradient(ellipse 1200px 800px at 0% 0%, rgba(37, 99, 235, 0.20) 0%, transparent 55%),
+      radial-gradient(ellipse 1000px 700px at 100% 100%, rgba(23, 37, 84, 0.24) 0%, transparent 60%),
+      radial-gradient(ellipse 900px 600px at 50% 50%, rgba(37, 99, 235, 0.06) 0%, transparent 65%),
       linear-gradient(135deg, #0a1129 0%, #0e1734 28%, #131e42 58%, #182552 85%, #1c2a5e 100%);
   }
 
@@ -259,8 +260,8 @@
   }
   html.dark .app-aside-glow {
     background:
-      radial-gradient(circle at 30% 0%, rgba(19, 16, 237, 0.32), transparent 36%),
-      linear-gradient(180deg, rgba(37, 76, 246, 0.88), rgba(2, 6, 23, 0.96));
+      radial-gradient(circle at 30% 0%, rgba(37, 99, 235, 0.32), transparent 36%),
+      linear-gradient(180deg, rgba(23, 37, 84, 0.88), rgba(2, 6, 23, 0.96));
   }
 
   html.light .app-aside {
@@ -270,8 +271,8 @@
   }
   html.light .app-aside-glow {
     background:
-      radial-gradient(circle at 30% 0%, rgba(19, 16, 237, 0.24), transparent 38%),
-      linear-gradient(180deg, rgba(37, 76, 246, 0.85), rgba(13, 22, 50, 0.95));
+      radial-gradient(circle at 30% 0%, rgba(37, 99, 235, 0.24), transparent 38%),
+      linear-gradient(180deg, rgba(23, 37, 84, 0.85), rgba(13, 22, 50, 0.95));
   }
 
   /* ── Topbar + Footer (glassmorphism) ───────────────────────── */
@@ -286,25 +287,25 @@
 
   /* ── Panneau Assistant (droite) ────────────────────────────── */
   html.dark .app-assistant {
-    background-color: #254cf6;
+    background-color: #172554;
     border-left: 1px solid rgba(191, 219, 254, 0.20);
-    box-shadow: -28px 0 80px rgba(37, 76, 246, 0.28);
+    box-shadow: -28px 0 80px rgba(23, 37, 84, 0.28);
   }
   html.dark .app-assistant-glow {
     background:
-      radial-gradient(circle at 50% 0%, rgba(19, 16, 237, 0.58), transparent 42%),
-      linear-gradient(180deg, #254cf6 0%, #1a3ec3 62%, #020617 100%);
+      radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.58), transparent 42%),
+      linear-gradient(180deg, #172554 0%, #0B122C 62%, #020617 100%);
   }
   /* Tamisé : navy un cran plus clair, glow cobalt -25%. */
   html.light .app-assistant {
-    background-color: #254cf6;
+    background-color: #172554;
     border-left: 1px solid rgba(191, 219, 254, 0.20);
-    box-shadow: -28px 0 80px rgba(37, 76, 246, 0.28);
+    box-shadow: -28px 0 80px rgba(23, 37, 84, 0.28);
   }
   html.light .app-assistant-glow {
     background:
-      radial-gradient(circle at 50% 0%, rgba(19, 16, 237, 0.44), transparent 42%),
-      linear-gradient(180deg, #254cf6 0%, #131e42 62%, #0a1129 100%);
+      radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.44), transparent 42%),
+      linear-gradient(180deg, #172554 0%, #131e42 62%, #0a1129 100%);
   }
 }
 
@@ -324,33 +325,35 @@
 html.light .bg-vault {
   background: linear-gradient(135deg,
     rgba(30, 41, 59, 0.88) 0%,
-    rgba(37, 76, 246, 0.65) 50%,
+    rgba(23, 37, 84, 0.65) 50%,
     rgba(30, 41, 59, 0.88) 100%);
 }
 
 /* Variant "Bright" en tamisé : encore 2 tons au-dessus (slate-600).
    C'est ici qu'on obtient l'effet de carte « lumineuse » au milieu
-   d'un fond gris-marine adouci. */
+   d'un fond gris-marine adouci.
+   Palette signature 2026 : #254cf6 (cobalt vif) en gradient stop,
+   #1310ed (bleu électrique) en halo (hérité du dark via ::after). */
 html.light .bg-vault-bright {
   background: linear-gradient(135deg,
     rgba(71, 85, 105, 0.82) 0%,
-    rgba(19, 16, 237, 0.22) 50%,
+    rgba(37, 76, 246, 0.24) 50%,
     rgba(71, 85, 105, 0.82) 100%);
 }
-html.light .bg-vault-bright::after { opacity: 0.22; }
-html.light .bg-vault-bright:hover::after { opacity: 0.32; }
+html.light .bg-vault-bright::after { opacity: 0.24; }
+html.light .bg-vault-bright:hover::after { opacity: 0.34; }
 
 html.light .workhub-card {
   background: linear-gradient(135deg,
     rgba(30, 41, 59, 0.88) 0%,
-    rgba(37, 76, 246, 0.65) 50%,
+    rgba(23, 37, 84, 0.65) 50%,
     rgba(30, 41, 59, 0.88) 100%);
 }
 
 html.light .workhub-card-glow {
   background: linear-gradient(135deg,
     rgba(30, 41, 59, 0.88) 0%,
-    rgba(19, 16, 237, 0.26) 50%,
+    rgba(37, 99, 235, 0.26) 50%,
     rgba(30, 41, 59, 0.88) 100%);
 }
 

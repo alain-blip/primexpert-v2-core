@@ -168,7 +168,7 @@ export function Drive() {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading || !brokerId}
-            className="flex items-center gap-3 rounded-2xl bg-[#254cf6] px-6 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-white shadow-[0_18px_38px_rgba(37, 76, 246,0.25)] hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className="flex items-center gap-3 rounded-2xl bg-[#172554] px-6 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-white shadow-[0_18px_38px_rgba(23, 37, 84,0.25)] hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
             {uploading ? t('Téléversement…', 'Uploading…') : t('Téléverser un document', 'Upload a document')}

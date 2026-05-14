@@ -40,7 +40,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
         <div aria-hidden="true" className="app-aside-glow absolute inset-0" />
         <div className="relative p-6 pb-8">
           <div className="flex flex-col gap-1">
-            <img src="/logo-primexpert-blanc.png" alt="Primexpert" className="mb-3 h-auto w-full max-w-[150px] rounded-xl shadow-[0_18px_35px_rgba(19,16,237,0.2)]" />
+            <img src="/logo-primexpert-blanc.png" alt="Primexpert" className="mb-3 h-auto w-full max-w-[150px] rounded-xl shadow-[0_18px_35px_rgba(37, 99, 235,0.2)]" />
             <p className="text-[8px] font-black uppercase tracking-[0.26em] text-blue-300/70">{t('GPS Immobilier v2.5', 'Real Estate GPS v2.5')}</p>
           </div>
         </div>
@@ -56,7 +56,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
                 className={cn(
                   "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl transition-all duration-300 group relative text-left",
                   isActive 
-                    ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_16px_38px_rgba(19,16,237,0.32)]" 
+                    ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_16px_38px_rgba(37, 99, 235,0.32)]" 
                     : "text-slate-400 hover:text-white hover:bg-white/5"
                 )}
               >
@@ -120,7 +120,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
                    key={nextLanguage}
                    type="button"
                    onClick={() => setLanguage(nextLanguage)}
-                   className={`rounded-lg px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest transition ${language === nextLanguage ? 'bg-blue-600 text-white shadow-[0_8px_24px_rgba(19,16,237,0.35)]' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                   className={`rounded-lg px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest transition ${language === nextLanguage ? 'bg-blue-600 text-white shadow-[0_8px_24px_rgba(37, 99, 235,0.35)]' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
                  >
                    {nextLanguage}
                  </button>
@@ -169,7 +169,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
       <aside className="app-assistant hidden xl:flex w-[360px] shrink-0 text-white relative overflow-hidden">
         <div aria-hidden="true" className="app-assistant-glow absolute inset-0" />
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-blue-400/30 rounded-full blur-[90px]" />
-        <div className="absolute bottom-0 left-0 right-0 h-72 bg-[radial-gradient(circle_at_50%_100%,rgba(19,16,237,0.28),transparent_62%)]" />
+        <div className="absolute bottom-0 left-0 right-0 h-72 bg-[radial-gradient(circle_at_50%_100%,rgba(37, 99, 235,0.28),transparent_62%)]" />
 
         <div className="relative z-10 flex flex-col w-full p-7">
           <div className="flex items-start justify-between mb-10">
@@ -179,7 +179,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
                 {t('Le Navigateur', 'Blue')}<br />{t('Bleu', 'Navigator')}
               </h3>
             </div>
-            <div className="w-[52px] h-[52px] rounded-[24px] bg-white/10 border border-white/15 flex items-center justify-center shadow-[0_20px_55px_rgba(19,16,237,0.26)]">
+            <div className="w-[52px] h-[52px] rounded-[24px] bg-white/10 border border-white/15 flex items-center justify-center shadow-[0_20px_55px_rgba(37, 99, 235,0.26)]">
               <Sparkles className="w-6 h-6 text-blue-200" />
             </div>
           </div>
@@ -230,7 +230,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
             </div>
           </div>
 
-          <button className="mt-auto w-full py-4 rounded-[24px] bg-white text-[#254cf6] text-[11px] font-black uppercase tracking-[0.22em] shadow-[0_24px_60px_rgba(19,16,237,0.35)] hover:bg-blue-500/[0.08] transition-all">
+          <button className="mt-auto w-full py-4 rounded-[24px] bg-white text-[#172554] text-[11px] font-black uppercase tracking-[0.22em] shadow-[0_24px_60px_rgba(37, 99, 235,0.35)] hover:bg-blue-500/[0.08] transition-all">
             {t('Demander une analyse IA', 'Request AI Analysis')}
           </button>
         </div>
