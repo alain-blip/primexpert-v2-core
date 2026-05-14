@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@primexpert/core": [
+        "./packages/core/src/index.ts"
+      ],
+      "@primexpert/core/utils/formatting": [
+        "./packages/core/src/utils/formatting.ts"
+      ],
+      "@primexpert/core/services/aiNarrativeService": [
+        "./packages/core/src/services/aiNarrativeService.ts"
+      ],
+      "@primexpert/core/*": [
+        "./packages/core/src/*/index.ts"
+      ]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  }
+}

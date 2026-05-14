@@ -1,0 +1,88 @@
+# ============================================================
+#  PrimeXpert V2 (Silo 2026) — .gitignore haute sécurité
+#  Charte : ZÉRO secret dans le repo. Tout ce qui contient une clé
+#  API, un token, ou un cache local de déploiement est exclu.
+# ============================================================
+
+# --- Dependencies ---
+node_modules/
+packages/*/node_modules/
+.pnp
+.pnp.js
+
+# --- Build outputs ---
+dist/
+build/
+out/
+.next/
+*.tsbuildinfo
+
+# --- Vite / Cache ---
+.vite/
+.cache/
+.turbo/
+.parcel-cache/
+
+# --- Environment / SECRETS (CRITIQUE) ---
+.env
+.env.*
+!.env.example
+*.env.local
+
+# --- Firebase secrets & cache deploy ---
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+firebase-applet-config.json
+*-service-account*.json
+*-adminsdk-*.json
+serviceAccountKey.json
+
+# --- Logs ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --- IDE / Editor ---
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.example.json
+.idea/
+*.swp
+*.swo
+*~
+.cursor/
+.aider*
+
+# --- OS ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# --- Coverage / Tests ---
+coverage/
+.nyc_output/
+*.lcov
+
+# --- Temporary ---
+*.tmp
+*.temp
+.tmp/
+tmp/
+
+# --- TypeScript ---
+*.tsbuildinfo
+.tscache/
+
+# --- Local overrides ---
+*.local
+local.json
+config.local.*

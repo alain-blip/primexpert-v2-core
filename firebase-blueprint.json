@@ -1,0 +1,98 @@
+{
+  "entities": {
+    "Organization": {
+      "title": "Organization",
+      "description": "A multi-tenant organization representing a brokerage or team.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "createdAt"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Represents a real estate broker.",
+      "type": "object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "licenseName": { "type": "string", "description": "Nom au permis" },
+        "title": { "type": "string", "description": "Titre (e.g. Courtier immobilier)" },
+        "agency": { "type": "string", "description": "Agence" },
+        "photoUrl": { "type": "string" },
+        "photoUpdatedAt": { "type": "string", "format": "date-time" },
+        "role": { "type": "string", "enum": ["admin", "member"] }
+      },
+      "required": ["orgId", "displayName", "email", "role"]
+    },
+    "Listing": {
+      "title": "Listing",
+      "description": "A property listing.",
+      "type": "object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "address": { "type": "string" },
+        "city": { "type": "string" },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["prospect", "mandate", "promise", "expired", "unsigned", "sold"] },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["orgId", "address", "status", "createdAt"]
+    },
+    "Contact": {
+      "title": "Contact",
+      "description": "A contact in the CRM.",
+      "type": "object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "type": { "type": "string", "enum": ["client", "collaborator", "other"] }
+      },
+      "required": ["orgId", "firstName", "lastName"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A transaction linking listings and contacts.",
+      "type": "object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "listingId": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "buyerId": { "type": "string" },
+        "status": { "type": "string" },
+        "amount": { "type": "number" },
+        "closeDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["orgId", "listingId", "sellerId"]
+    }
+  },
+  "firestore": {
+    "/organizations/{orgId}": {
+      "schema": "Organization",
+      "description": "Root organization data."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile and organization membership."
+    },
+    "/organizations/{orgId}/listings/{listingId}": {
+      "schema": "Listing",
+      "description": "Property listings for an organization."
+    },
+    "/organizations/{orgId}/contacts/{contactId}": {
+      "schema": "Contact",
+      "description": "CRM contacts for an organization."
+    },
+    "/organizations/{orgId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Real estate transactions."
+    }
+  }
+}
