@@ -6,6 +6,7 @@
 import React, { Suspense, lazy, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
+import { WorkhubNavProvider } from './lib/workhubNav';
 import { Layout } from './components/Layout';
 import { LanguageProvider, useLanguage } from './lib/i18n';
 import { LogIn, TrendingUp, BarChart3 } from 'lucide-react';
@@ -232,22 +233,24 @@ function Workhub() {
   };
 
   return (
-    <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, x: 10 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -10 }}
-          transition={{ duration: 0.2 }}
-          className="h-full"
-        >
-          <Suspense fallback={<RouteSuspense />}>
-            {renderContent()}
-          </Suspense>
-        </motion.div>
-      </AnimatePresence>
-    </Layout>
+    <WorkhubNavProvider setActiveTab={setActiveTab}>
+      <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ duration: 0.2 }}
+            className="h-full"
+          >
+            <Suspense fallback={<RouteSuspense />}>
+              {renderContent()}
+            </Suspense>
+          </motion.div>
+        </AnimatePresence>
+      </Layout>
+    </WorkhubNavProvider>
   );
 }
 

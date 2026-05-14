@@ -15,3 +15,4 @@ export * as quality from './quality';
 export * as sources from './sources';
 export * as exportDataset from './export';
 export * as tenant from './tenant';
+export * as mail from './mail';
