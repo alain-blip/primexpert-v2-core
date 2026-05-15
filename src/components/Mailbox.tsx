@@ -34,6 +34,11 @@ import {
   analyzeMailboxMessageForLeads,
   generateMailboxReplyDraft,
 } from '../services/gemini';
+import { getMailboxAnalysis, saveMailboxAnalysis } from '../services/mailboxAnalysis';
+import {
+  buildSoftFollowUpParagraph,
+  shouldSuggestDraftFollowUp,
+} from '../services/followUpIntel';
 
 type IaStatus = 'idle' | 'loading' | 'done' | 'error';
 
@@ -50,6 +55,8 @@ interface InboxMessage {
   iaStatus?: IaStatus;
   mergedParse?: MailParseResult;
   replyDraft?: string;
+  /** Horodatage du brouillon IA (E-4 relance douce). */
+  replyDraftAtMillis?: number;
 }
 
 const INITIAL_MESSAGES: InboxMessage[] = [
@@ -197,10 +204,47 @@ export function Mailbox() {
     };
   }, [brokerId]);
 
+  // Hydrate depuis Firestore : analyses déjà calculées (pas de second passage Gemini).
+  useEffect(() => {
+    if (!brokerId) return;
+    let cancelled = false;
+    const ids = INITIAL_MESSAGES.map((m) => m.id);
+    (async () => {
+      const results = await Promise.all(ids.map((id) => getMailboxAnalysis(brokerId, id)));
+      if (cancelled) return;
+      const byId = new Map(ids.map((id, i) => [id, results[i]] as const));
+      setMessages((prev) =>
+        prev.map((m) => {
+          const doc = byId.get(m.id);
+          if (!doc?.mergedParse) return m;
+          return {
+            ...m,
+            iaStatus: 'done',
+            mergedParse: doc.mergedParse,
+            replyDraft: doc.replyDraft ?? undefined,
+            replyDraftAtMillis: doc.replyDraftAtMillis,
+            isRead: true,
+          };
+        })
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [brokerId]);
+
   const selectedMessage = useMemo(
     () => messages.find((m) => m.id === selectedId) ?? null,
     [messages, selectedId]
   );
+
+  const suggestDraftFollowUp = useMemo(() => {
+    if (!selectedMessage) return false;
+    return shouldSuggestDraftFollowUp(
+      selectedMessage.replyDraft,
+      selectedMessage.replyDraftAtMillis
+    );
+  }, [selectedMessage]);
 
   const hasGeminiKey = Boolean(import.meta.env.VITE_GEMINI_API_KEY);
 
@@ -212,6 +256,24 @@ export function Mailbox() {
     if (!selectedMessage) return;
     const id = selectedMessage.id;
     setIaError(null);
+
+    if (brokerId) {
+      try {
+        const cached = await getMailboxAnalysis(brokerId, id);
+        if (cached?.mergedParse) {
+          patchMessage(id, {
+            iaStatus: 'done',
+            mergedParse: cached.mergedParse,
+            replyDraft: cached.replyDraft ?? undefined,
+            replyDraftAtMillis: cached.replyDraftAtMillis,
+            isRead: true,
+          });
+          return;
+        }
+      } catch (e) {
+        console.error('[Mailbox] load cached analysis failed', e);
+      }
+    }
 
     patchMessage(id, { iaStatus: 'loading' });
 
@@ -239,6 +301,17 @@ export function Mailbox() {
         mergedParse: merged,
         isRead: true,
       });
+
+      if (brokerId) {
+        try {
+          await saveMailboxAnalysis(brokerId, id, {
+            mergedParse: merged,
+            replyDraft: selectedMessage.replyDraft ?? null,
+          });
+        } catch (persistErr) {
+          console.error('[Mailbox] persist analysis failed', persistErr);
+        }
+      }
     } catch (e) {
       console.error('[Mailbox] analysis failed', e);
       patchMessage(id, { iaStatus: 'error' });
@@ -275,7 +348,17 @@ export function Mailbox() {
         patchMessage(selectedMessage.id, { replyDraft: '' });
         return;
       }
-      patchMessage(selectedMessage.id, { replyDraft: text });
+      patchMessage(selectedMessage.id, { replyDraft: text, replyDraftAtMillis: Date.now() });
+      if (brokerId) {
+        try {
+          await saveMailboxAnalysis(brokerId, selectedMessage.id, {
+            mergedParse: selectedMessage.mergedParse,
+            replyDraft: text,
+          });
+        } catch (persistErr) {
+          console.error('[Mailbox] persist draft failed', persistErr);
+        }
+      }
     } finally {
       setDraftLoading(false);
     }
@@ -286,6 +369,31 @@ export function Mailbox() {
     await navigator.clipboard.writeText(selectedMessage.replyDraft);
     setCopyDraftOk(true);
     setTimeout(() => setCopyDraftOk(false), 2000);
+  };
+
+  const handleInsertSoftFollowUp = async () => {
+    if (!selectedMessage?.mergedParse) return;
+    const id = selectedMessage.id;
+    const para = buildSoftFollowUpParagraph(
+      selectedMessage.mergedParse.lead.contactName,
+      language
+    );
+    const next = selectedMessage.replyDraft?.trim()
+      ? `${para}\n\n${selectedMessage.replyDraft.trim()}`
+      : para;
+    const at = Date.now();
+    patchMessage(id, { replyDraft: next, replyDraftAtMillis: at });
+    if (brokerId) {
+      try {
+        await saveMailboxAnalysis(brokerId, id, {
+          mergedParse: selectedMessage.mergedParse,
+          replyDraft: next,
+          replyDraftAtMillis: at,
+        });
+      } catch (e) {
+        console.error('[Mailbox] persist soft follow-up failed', e);
+      }
+    }
   };
 
   const handleCreateCrm = () => {
@@ -525,8 +633,8 @@ export function Mailbox() {
               {!hasGeminiKey && (
                 <p className="mx-6 mt-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   {t(
-                    'Sans VITE_GEMINI_API_KEY : heuristiques locales + inventaire uniquement.',
-                    'Without VITE_GEMINI_API_KEY: local heuristics + inventory matching only.'
+                    'Sans VITE_GEMINI_API_KEY : heuristiques locales + correspondance sur tes inscriptions uniquement.',
+                    'Without VITE_GEMINI_API_KEY: local heuristics + your listings matching only.'
                   )}
                 </p>
               )}
@@ -584,7 +692,7 @@ export function Mailbox() {
                         <div className="rounded-xl border border-white/10 bg-vault px-4 py-3">
                           <p className="text-[9px] font-black uppercase text-slate-500 mb-1 flex items-center gap-1">
                             <Home className="w-3 h-3" />
-                            {t('Résidence (inventaire)', 'Property (inventory)')}
+                            {t('Résidence (mes inscriptions)', 'Property (my listings)')}
                           </p>
                           <p className="text-sm font-bold text-slate-200">
                             {selectedMessage.mergedParse.residence.mentionedAddress ??
@@ -601,6 +709,23 @@ export function Mailbox() {
 
                   {selectedMessage.replyDraft && (
                     <div className="rounded-2xl border border-emerald-400/25 bg-emerald-500/[0.06] p-5 space-y-3">
+                      {suggestDraftFollowUp && (
+                        <div className="flex flex-col gap-2 rounded-xl border border-sky-400/30 bg-sky-500/10 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+                          <p className="text-[10px] font-bold text-sky-100 leading-snug">
+                            {t(
+                              'Magic follow-up : ce brouillon date de plus de 24 h — une relance douce peut aider.',
+                              'Magic follow-up: this draft is older than 24 hours — a gentle nudge may help.'
+                            )}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleInsertSoftFollowUp}
+                            className="shrink-0 rounded-lg border border-sky-400/40 bg-sky-600/80 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-white hover:bg-sky-500 transition"
+                          >
+                            {t('Insérer relance douce', 'Insert soft follow-up')}
+                          </button>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300">
                           {t('Brouillon de réponse (IA)', 'AI reply draft')}

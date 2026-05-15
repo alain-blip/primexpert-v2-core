@@ -31,6 +31,7 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { fetchBinaryAsBase64 } from '../lib/fetchBinaryAsBase64';
 import { getDriveDocumentUrl } from './driveStorage';
 
 let ai: GoogleGenAI | null = null;
@@ -102,21 +103,6 @@ Tu dois :
 
 IMPORTANT : ne JAMAIS renommer les champs. Garder les slugs exacts (Zone Rouge §V).`;
 
-async function fetchAsBase64(url: string): Promise<{ data: string; mime: string }> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Téléchargement du document échoué: ${response.status}`);
-  }
-  const mime = response.headers.get('content-type') || 'application/octet-stream';
-  const buffer = await response.arrayBuffer();
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return { data: btoa(binary), mime };
-}
-
 /**
  * Extrait les champs canoniques d'un document via Gemini Vision.
  * Met à jour le doc Firestore `drive_documents` avec les résultats.
@@ -134,7 +120,7 @@ export async function extractDriveDocument(params: {
   try {
     // 2. Récupérer le contenu via URL signée → base64
     const downloadUrl = await getDriveDocumentUrl(storagePath);
-    const { data, mime: detectedMime } = await fetchAsBase64(downloadUrl);
+    const { data, mime: detectedMime } = await fetchBinaryAsBase64(downloadUrl);
 
     // 3. Appel Gemini Vision avec inline data
     const client = getGeminiClient();

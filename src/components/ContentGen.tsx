@@ -19,7 +19,7 @@
  * Vendeur" du rapport ACM (cf. D-1b).
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FileText, Wand2, Copy, Check, ShieldCheck, Signature, BadgeAlert, ShieldAlert, Sparkles, Home } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { generateListingDescription } from '../services/gemini';
@@ -33,6 +33,7 @@ import {
 } from '@primexpert/core/narrative';
 import { listResidences, type Residence } from '../services/residences';
 import { formatCurrency } from '../lib/utils';
+import { consumeContentGenPrefill } from '../lib/contentGenPrefill';
 
 export function ContentGen() {
   const { profile } = useAuth();
@@ -47,6 +48,7 @@ export function ContentGen() {
   const [residences, setResidences] = useState<Residence[]>([]);
   const [selectedResidenceId, setSelectedResidenceId] = useState<string>('');
   const [residencesLoading, setResidencesLoading] = useState(false);
+  const prefillConsumedRef = useRef(false);
 
   const [formData, setFormData] = useState({
     address: "789 Ave Mont-Royal E, Montréal",
@@ -73,6 +75,31 @@ export function ContentGen() {
     return () => {
       cancelled = true;
     };
+  }, [brokerId]);
+
+  /** Préremplissage depuis fiche résidence (E-3 « Rédiger une mise à jour »). */
+  useEffect(() => {
+    if (!brokerId || prefillConsumedRef.current) return;
+    const pre = consumeContentGenPrefill();
+    if (!pre) return;
+    prefillConsumedRef.current = true;
+    if (pre.addressLine) {
+      setFormData((prev) => ({ ...prev, address: pre.addressLine! }));
+    }
+    if (pre.priceHint) {
+      setFormData((prev) => ({ ...prev, price: pre.priceHint! }));
+    }
+    if (pre.briefingBlock) {
+      setFormData((prev) => ({
+        ...prev,
+        features: prev.features.trim()
+          ? `${pre.briefingBlock}\n\n---\n\n${prev.features}`
+          : pre.briefingBlock,
+      }));
+    }
+    if (pre.residenceId) {
+      setSelectedResidenceId(pre.residenceId);
+    }
   }, [brokerId]);
 
   const handleResidenceSelect = (id: string) => {

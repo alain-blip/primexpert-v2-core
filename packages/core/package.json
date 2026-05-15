@@ -13,7 +13,8 @@
     "./quality": "./src/quality/index.ts",
     "./sources": "./src/sources/index.ts",
     "./export": "./src/export/index.ts",
-    "./tenant": "./src/tenant/index.ts"
+    "./tenant": "./src/tenant/index.ts",
+    "./audio": "./src/audio/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

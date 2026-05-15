@@ -26,6 +26,29 @@ service cloud.firestore {
         incoming().role == 'admin'; // First user is admin
       allow update: if isOwner(userId) &&
         incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoUrl', 'licenseName', 'title', 'agency', 'photoUpdatedAt', 'role']);
+
+      // Analyses IA Mailbox (E-2 persistance) — une doc par messageId, propriétaire = courtier.
+      match /mailbox_analyses/{messageId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) &&
+          incoming().messageId == messageId &&
+          incoming().mergedParse is map &&
+          incoming().analyzedAtMillis is int &&
+          incoming().matchedResidenceId is string &&
+          (!incoming().keys().hasAny(['replyDraftAtMillis']) ||
+            incoming().replyDraftAtMillis is int ||
+            incoming().replyDraftAtMillis == null);
+      }
+
+      // E-3 — Comptes-rendus d’appels (une doc par driveDocumentId, liée à residenceId).
+      match /call_analyses/{analysisId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) &&
+          incoming().driveDocumentId == analysisId &&
+          incoming().residenceId is string &&
+          incoming().updatedAtMillis is int &&
+          incoming().pipelineStatus in ['recorded', 'transcribing', 'analyzing', 'analyzed', 'failed'];
+      }
     }
 
     // Organizations

@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "call_analyses",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "residenceId", "order": "ASCENDING" },
+        { "fieldPath": "updatedAtMillis", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "mailbox_analyses",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "matchedResidenceId", "order": "ASCENDING" },
+        { "fieldPath": "analyzedAtMillis", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

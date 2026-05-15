@@ -1,10 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Home, Plus, Search, Filter, MoreVertical, MapPin, ChevronRight, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Home, Plus, Search, Filter, MoreVertical, ChevronRight, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { formatCurrency, cn } from '../lib/utils';
 import { useLanguage } from '../lib/i18n';
 import { useAuth } from '../lib/auth';
+import { peekListingsFocusResidenceId, consumeListingsFocusResidenceId } from '../lib/listingsFocus';
 import { listResidences, type Residence } from '../services/residences';
+import { fetchRecentCallAnalyses, type CallAnalysisRow } from '../services/transcriptionService';
+import { fetchRecentMailboxAnalyses, type SavedMailboxAnalysis } from '../services/mailboxAnalysis';
+import {
+  isListingStale,
+  sentimentDailyAvgsLast7Days,
+} from '../services/followUpIntel';
+import { ResidenceIntelligencePanel } from './ResidenceIntelligencePanel';
 
 const STATUS_LABELS = {
   prospect: "01 / Prospection",
@@ -47,6 +55,9 @@ export function Listings() {
   const [filter, setFilter] = useState('all');
   const [firestoreListings, setFirestoreListings] = useState<Residence[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedResidence, setSelectedResidence] = useState<Residence | null>(null);
+  const [intelCalls, setIntelCalls] = useState<CallAnalysisRow[]>([]);
+  const [intelMails, setIntelMails] = useState<SavedMailboxAnalysis[]>([]);
 
   useEffect(() => {
     if (!profile?.uid) {
@@ -73,6 +84,56 @@ export function Listings() {
     [usingDemo, firestoreListings]
   );
 
+  useEffect(() => {
+    if (!profile?.uid || loading) return;
+    if (usingDemo) {
+      setIntelCalls([]);
+      setIntelMails([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const [calls, mails] = await Promise.all([
+        fetchRecentCallAnalyses(profile.uid, 500),
+        fetchRecentMailboxAnalyses(profile.uid, 500),
+      ]);
+      if (!cancelled) {
+        setIntelCalls(calls);
+        setIntelMails(mails);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.uid, loading, usingDemo]);
+
+  useEffect(() => {
+    if (!profile?.uid || loading) return;
+    const id = peekListingsFocusResidenceId();
+    if (!id) return;
+    const match = listings.find((l) => l.id === id);
+    if (match) {
+      consumeListingsFocusResidenceId();
+      setSelectedResidence(match);
+      return;
+    }
+    if (usingDemo || firestoreListings !== null) {
+      consumeListingsFocusResidenceId();
+    }
+  }, [profile?.uid, loading, usingDemo, listings, firestoreListings]);
+
+  if (selectedResidence && profile?.uid) {
+    return (
+      <div className="space-y-8">
+        <ResidenceIntelligencePanel
+          brokerId={profile.uid}
+          residence={selectedResidence}
+          onClose={() => setSelectedResidence(null)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Multi-tenant status banner — preuve de vie Phase B */}
@@ -92,8 +153,17 @@ export function Listings() {
               : t('Multi-tenant actif — résidences filtrées par courtiersResponsables', 'Multi-tenant active — listings scoped by courtiersResponsables')}
           </p>
           <p className="text-[10px] font-mono tracking-tight mt-0.5 opacity-70">
-            brokerId={profile?.uid ?? '<non chargé>'} · {liveCount} {t('résidence(s) Firestore', 'Firestore listing(s)')}
+            brokerId={profile?.uid ?? '<non chargé>'} · {liveCount}{' '}
+            {t('inscription(s) Firestore', 'Firestore listing(s)')}
           </p>
+          {!usingDemo && (
+            <p className="text-[10px] font-semibold text-emerald-200/80 mt-2 leading-relaxed">
+              {t(
+                'Astuce : clique une carte pour ouvrir la vue 360° (appels + courriels IA pour cette propriété).',
+                'Tip: click a card to open the 360° view (calls + AI emails for this property).'
+              )}
+            </p>
+          )}
         </div>
       </div>
 
@@ -132,12 +202,29 @@ export function Listings() {
               </div>
 
               <div className="space-y-4">
-                {listings.filter(l => l.status === key).map((l) => (
+                {listings.filter(l => l.status === key).map((l) => {
+                  const stale = !usingDemo && isListingStale(l, intelCalls, intelMails);
+                  const daily = !usingDemo
+                    ? sentimentDailyAvgsLast7Days(intelCalls, l.id)
+                    : [0, 0, 0, 0, 0, 0, 0];
+                  const hasSentimentSignal = daily.some((v) => v > 0);
+                  return (
                   <motion.div
                     key={l.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                      if (profile?.uid) setSelectedResidence(l);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        if (profile?.uid) setSelectedResidence(l);
+                      }
+                    }}
                     whileHover={{ y: -4, scale: 1.02 }}
                     className={cn(
-                      "bg-vault-bright p-5 rounded-xl border-l-4 shadow-sm hover:shadow-xl transition-all cursor-pointer group",
+                      "bg-vault-bright p-5 rounded-xl border-l-4 shadow-sm hover:shadow-xl transition-all cursor-pointer group text-left w-full",
                       STATUS_BORDERS[key as keyof typeof STATUS_BORDERS]
                     )}
                   >
@@ -145,16 +232,68 @@ export function Listings() {
                       <div className="w-9 h-9 rounded bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-600 transition-colors">
                         <Home className="w-4 h-4 text-blue-400 group-hover:text-white" />
                       </div>
-                      <MoreVertical className="w-4 h-4 text-slate-300 hover:text-slate-300" />
+                      <button
+                        type="button"
+                        className="p-1 rounded-lg text-slate-300 hover:text-white hover:bg-white/10"
+                        aria-label={t('Actions', 'Actions')}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
                     </div>
+                    {stale && (
+                      <div className="mb-2 flex items-center gap-1.5 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-amber-200">
+                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                        {t('Action requise — 48 h+ sans IA', 'Action — 48h+ no IA')}
+                      </div>
+                    )}
                     <p className="text-sm font-black text-slate-300 italic tracking-tighter mb-1 leading-tight">{l.address}</p>
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{l.city}</p>
+                    {!usingDemo && (
+                      <div className="mt-3" title={t('Sentiment client (appels analysés, 7 j)', 'Client sentiment from analyzed calls, 7d')}>
+                        <p className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                          {t('Sentiment 7 j', '7d sentiment')}
+                        </p>
+                        <div className="flex h-7 items-end gap-0.5">
+                          {daily.map((v, i) => (
+                            <div
+                              key={i}
+                              className="flex h-7 min-w-0 flex-1 flex-col justify-end rounded-sm bg-white/[0.06]"
+                              style={{ maxWidth: 14 }}
+                            >
+                              <div
+                                className={cn(
+                                  'w-full rounded-sm',
+                                  v <= 0
+                                    ? 'h-0.5 bg-slate-600'
+                                    : v >= 0.66
+                                      ? 'bg-emerald-400/80'
+                                      : v >= 0.4
+                                        ? 'bg-amber-400/75'
+                                        : 'bg-rose-400/80'
+                                )}
+                                style={{
+                                  height:
+                                    v > 0
+                                      ? `${Math.max(15, Math.min(100, Math.round(v * 100)))}%`
+                                      : undefined,
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        {!hasSentimentSignal && (
+                          <p className="text-[8px] text-slate-600 mt-0.5 font-semibold">—</p>
+                        )}
+                      </div>
+                    )}
                     <div className="flex items-center justify-between pt-4 mt-4 border-t border-white/10">
                       <span className="text-xs font-black text-blue-300 italic">{formatCurrency(l.price)}</span>
                       <ChevronRight className="w-4 h-4 text-gray-200 group-hover:text-blue-400" />
                     </div>
                   </motion.div>
-                ))}
+                  );
+                })}
                 
                 {count === 0 && (
                   <div className="py-12 text-center border border-dashed border-white/10 rounded-xl bg-white/[0.03]">

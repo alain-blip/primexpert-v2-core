@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Language } from "../lib/i18n";
 import type { InventoryResidenceRef, MailParseResult } from "@primexpert/core/mail";
+import type { ClientSentiment } from "@primexpert/core/audio";
 
 let ai: GoogleGenAI | null = null;
 
@@ -166,7 +167,7 @@ Corps:
 ${input.body}
 """
 
-Inventaire résidences (choisir matchedResidenceId UNIQUEMENT parmi ces id, sinon chaîne vide):
+Inscriptions / résidences (choisir matchedResidenceId UNIQUEMENT parmi ces id, sinon chaîne vide) :
 ${invJson}
 
 Règles:
@@ -187,7 +188,7 @@ Body:
 ${input.body}
 """
 
-Residence inventory (matchedResidenceId MUST be one of these ids or empty string):
+Listings / residences (matchedResidenceId MUST be one of these ids or empty string):
 ${invJson}
 
 Rules: same as French version — intent buyer|seller|peer|agency|unknown; urgency low|medium|high; matchConfidence high|medium|low|none; do not invent facts.
@@ -267,5 +268,257 @@ Requirements: OACIQ-safe wording (no guarantees, no artificial urgency). Prefer 
   } catch (e) {
     console.error("[Mailbox] Gemini reply draft failed:", e);
     return "";
+  }
+}
+
+const AUDIO_TRANSCRIPT_ONLY_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    transcriptPlain: { type: Type.STRING },
+  },
+  required: ["transcriptPlain"],
+};
+
+/**
+ * E-3a — Speech-to-text uniquement (audio → texte), sans analyse métier.
+ */
+export async function transcribeAudioPlainTextWithGemini(input: {
+  base64: string;
+  mime: string;
+  locale: Language;
+  meta?: { fileName?: string; durationMs?: number; dialedNumber?: string };
+}): Promise<{ transcriptPlain: string }> {
+  const model = "gemini-3-flash-preview";
+  const langLabel = input.locale === "fr" ? "français du Québec" : "English";
+  const m = input.meta ?? {};
+  const metaBlock = [
+    m.fileName ? `Fichier: ${m.fileName}` : "",
+    m.durationMs != null ? `Durée (ms): ${m.durationMs}` : "",
+    m.dialedNumber ? `Numéro: ${m.dialedNumber}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const promptFr = `Transcription fidèle d'un enregistrement d'appel (courtier immobilier Québec).
+Micro local : souvent une seule voix dominante ; l'autre partie peut être absente ou faible.
+
+Métadonnées:
+${metaBlock || "(aucune)"}
+
+Consignes:
+- Sortie en ${langLabel}.
+- Segments courts ; [inaudible] si nécessaire.
+- Ne pas inventer de propos.
+
+Réponds UNIQUEMENT en JSON selon le schéma (champ transcriptPlain uniquement).`;
+
+  const promptEn = `Faithful transcript of a real-estate call recording (local mic; other party may be weak or absent).
+
+Metadata:
+${metaBlock || "(none)"}
+
+Output in ${langLabel}. Short segments; [inaudible] if needed. Do not invent speech.
+
+Reply ONLY in JSON per schema (transcriptPlain only).`;
+
+  const prompt = input.locale === "fr" ? promptFr : promptEn;
+
+  try {
+    const response = await getGeminiClient().models.generateContent({
+      model,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType: input.mime || "audio/webm", data: input.base64 } },
+          ],
+        },
+      ],
+      config: {
+        temperature: 0.08,
+        responseMimeType: "application/json",
+        responseSchema: AUDIO_TRANSCRIPT_ONLY_SCHEMA,
+      },
+    });
+    const text = response.text;
+    if (!text) return { transcriptPlain: "" };
+    const parsed = JSON.parse(text) as { transcriptPlain?: string };
+    return { transcriptPlain: (parsed.transcriptPlain ?? "").trim() };
+  } catch (e) {
+    console.error("[E-3] transcribeAudioPlainTextWithGemini failed:", e);
+    throw e;
+  }
+}
+
+const CALL_BUSINESS_ANALYSIS_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    executiveSummary: { type: Type.STRING },
+    commitments: { type: Type.ARRAY, items: { type: Type.STRING } },
+    clientProfile: {
+      type: Type.OBJECT,
+      properties: {
+        needs: { type: Type.STRING },
+        budgetHint: { type: Type.STRING },
+        urgency: { type: Type.STRING },
+      },
+    },
+    keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
+    actionItems: { type: Type.ARRAY, items: { type: Type.STRING } },
+    clientSentiment: {
+      type: Type.STRING,
+      enum: ["positive", "neutral", "negative", "unknown"],
+    },
+  },
+  required: [
+    "executiveSummary",
+    "commitments",
+    "clientProfile",
+    "keyPoints",
+    "actionItems",
+    "clientSentiment",
+  ],
+};
+
+export interface QuebecCallBusinessAnalysis {
+  executiveSummary: string;
+  commitments: string[];
+  clientProfile: { needs?: string; budgetHint?: string; urgency?: string };
+  keyPoints: string[];
+  actionItems: string[];
+  clientSentiment: ClientSentiment;
+}
+
+/**
+ * E-3b — Analyse métier « courtier Québec » à partir du texte (post-Whisper / STT).
+ */
+export async function analyzeQuebecBrokerCallTranscript(input: {
+  transcriptPlain: string;
+  locale: Language;
+  meta?: { fileName?: string; durationMs?: number; dialedNumber?: string };
+}): Promise<QuebecCallBusinessAnalysis> {
+  const model = "gemini-3-flash-preview";
+  const lang = input.locale === "fr" ? "français du Québec" : "English";
+  const m = input.meta ?? {};
+  const metaBlock = [
+    m.fileName ? `Fichier: ${m.fileName}` : "",
+    m.durationMs != null ? `Durée (ms): ${m.durationMs}` : "",
+    m.dialedNumber ? `Numéro composé: ${m.dialedNumber}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const promptFr = `Tu es l'analyste Primexpert (courtier immobilier OACIQ, Québec).
+On te fournit la TRANSCRIPTION brute d'un appel (peut être partielle — micro local).
+
+Métadonnées:
+${metaBlock || "(aucune)"}
+
+Transcription:
+"""
+${input.transcriptPlain.slice(0, 120_000)}
+"""
+
+Produis UNIQUEMENT un JSON selon le schéma :
+- executiveSummary : exactement l'essentiel en DEUX phrases maximum, ton professionnel, ${lang}.
+- commitments : ce que le courtier s'est engagé à faire (formulations factuelles ; liste courte ; vide si rien d'explicite).
+- clientProfile : needs (besoins exprimés), budgetHint (fourchette ou mention budget si présente), urgency (bas / moyen / élevé ou inconnu).
+- keyPoints : 3 à 10 puces factuelles.
+- actionItems : tâches concrètes pour le courtier.
+- clientSentiment : positive | neutral | negative | unknown.
+
+Ne pas inventer de faits absents de la transcription.`;
+
+  const promptEn = `You are Primexpert's analyst (Quebec real estate, OACIQ-aware). Raw call transcript (may be partial).
+
+Metadata:
+${metaBlock || "(none)"}
+
+Transcript:
+"""
+${input.transcriptPlain.slice(0, 120_000)}
+"""
+
+Return ONLY JSON per schema: executiveSummary (max TWO sentences), commitments, clientProfile (needs, budgetHint, urgency), keyPoints, actionItems, clientSentiment. Do not invent facts. Language: ${lang}.`;
+
+  const prompt = input.locale === "fr" ? promptFr : promptEn;
+
+  try {
+    const response = await getGeminiClient().models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        temperature: 0.18,
+        responseMimeType: "application/json",
+        responseSchema: CALL_BUSINESS_ANALYSIS_SCHEMA,
+      },
+    });
+    const text = response.text;
+    if (!text) {
+      return {
+        executiveSummary: "",
+        commitments: [],
+        clientProfile: {},
+        keyPoints: [],
+        actionItems: [],
+        clientSentiment: "unknown",
+      };
+    }
+    const parsed = JSON.parse(text) as {
+      executiveSummary?: string;
+      commitments?: unknown;
+      clientProfile?: Record<string, unknown>;
+      keyPoints?: unknown;
+      actionItems?: unknown;
+      clientSentiment?: string;
+    };
+
+    const commitments = Array.isArray(parsed.commitments)
+      ? parsed.commitments
+          .filter((x): x is string => typeof x === "string")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+    const keyPoints = Array.isArray(parsed.keyPoints)
+      ? parsed.keyPoints
+          .filter((x): x is string => typeof x === "string")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+    const actionItems = Array.isArray(parsed.actionItems)
+      ? parsed.actionItems
+          .filter((x): x is string => typeof x === "string")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+
+    const cp = parsed.clientProfile && typeof parsed.clientProfile === "object" ? parsed.clientProfile : {};
+    const clientProfile = {
+      needs: typeof cp.needs === "string" ? cp.needs : undefined,
+      budgetHint: typeof cp.budgetHint === "string" ? cp.budgetHint : undefined,
+      urgency: typeof cp.urgency === "string" ? cp.urgency : undefined,
+    };
+
+    const sentimentRaw = (parsed.clientSentiment ?? "unknown").toLowerCase();
+    const clientSentiment: ClientSentiment =
+      sentimentRaw === "positive" ||
+      sentimentRaw === "neutral" ||
+      sentimentRaw === "negative" ||
+      sentimentRaw === "unknown"
+        ? sentimentRaw
+        : "unknown";
+
+    return {
+      executiveSummary: (parsed.executiveSummary ?? "").trim(),
+      commitments,
+      clientProfile,
+      keyPoints,
+      actionItems,
+      clientSentiment,
+    };
+  } catch (e) {
+    console.error("[E-3] analyzeQuebecBrokerCallTranscript failed:", e);
+    throw e;
   }
 }

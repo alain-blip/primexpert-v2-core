@@ -16,3 +16,4 @@ export * as sources from './sources';
 export * as exportDataset from './export';
 export * as tenant from './tenant';
 export * as mail from './mail';
+export * as audio from './audio';

@@ -16,7 +16,8 @@
  *      a. Stop le MediaRecorder
  *      b. Upload du Blob via driveStorage.uploadDriveRecording()
  *      c. Atterrit dans Drive > [Résidence] > recordings/Appel_2026-05-14T18-05.webm
- *      d. Métadonnée Firestore enrichie (documentType: 'recording', durationMs, dialedNumber)
+ *         (Storage : primexpert/{brokerId}/residences/{residenceId}/recordings/…)
+ *      d. Métadonnée Firestore `drive_documents` + compte-rendu `users/{brokerId}/call_analyses/{id}`
  *
  * Conformité OACIQ §IV :
  *   - Bandeau "Annoncer verbalement l'enregistrement" affiché en permanence
@@ -39,6 +40,11 @@ import { useLanguage } from '../../lib/i18n';
 import { useAuth } from '../../lib/auth';
 import { listResidences, type Residence } from '../../services/residences';
 import { uploadDriveRecording, type DriveDocument } from '../../services/driveStorage';
+import {
+  startCallAnalysisAfterUpload,
+  subscribeRecentCallAnalyses,
+  type CallAnalysisRow,
+} from '../../services/transcriptionService';
 
 const KEYPAD = [
   ['1', '2', '3'],
@@ -71,10 +77,22 @@ function buildTelHref(raw: string): string {
   return `tel:${digits}`;
 }
 
+function formatCallListTime(ms: number, locale: 'fr' | 'en'): string {
+  if (!ms) return '—';
+  try {
+    return new Date(ms).toLocaleString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    });
+  } catch {
+    return '—';
+  }
+}
+
 type RecordingState = 'idle' | 'requesting' | 'recording' | 'uploading' | 'saved' | 'error';
 
 export function Softphone() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { profile } = useAuth();
   const brokerId = profile?.uid;
 
@@ -87,6 +105,7 @@ export function Softphone() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [lastSaved, setLastSaved] = useState<DriveDocument | null>(null);
+  const [recentCalls, setRecentCalls] = useState<CallAnalysisRow[]>([]);
 
   // Refs pour MediaRecorder (pas de re-render à chaque chunk)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -113,6 +132,16 @@ export function Softphone() {
     return () => {
       cancelled = true;
     };
+  }, [brokerId]);
+
+  // E-3 — Appels récents & comptes-rendus (Firestore call_analyses)
+  useEffect(() => {
+    if (!brokerId) {
+      setRecentCalls([]);
+      return;
+    }
+    const unsub = subscribeRecentCallAnalyses(brokerId, setRecentCalls);
+    return unsub;
   }, [brokerId]);
 
   // Cleanup au démontage
@@ -239,6 +268,17 @@ export function Softphone() {
         dialedNumber: number,
         ctx: { tenantId: brokerId, mode: 'strict' },
       });
+      void startCallAnalysisAfterUpload({
+        brokerId,
+        driveDocumentId: saved.id,
+        storagePath: saved.storagePath,
+        fileName: saved.fileName,
+        residenceId: selectedResidenceId,
+        mime: saved.mime,
+        durationMs: saved.durationMs ?? durationMs,
+        dialedNumber: number,
+        locale: language,
+      });
       setLastSaved(saved);
       setState('saved');
       setElapsedMs(0);
@@ -247,7 +287,7 @@ export function Softphone() {
       setErrorMsg(e instanceof Error ? e.message : String(e));
       setState('error');
     }
-  }, [state, brokerId, selectedResidenceId, number]);
+  }, [state, brokerId, selectedResidenceId, number, language]);
 
   // Cancel pendant requesting/recording (sans sauvegarder)
   const handleCancelRecording = useCallback(() => {
@@ -484,6 +524,82 @@ export function Softphone() {
             </p>
           </div>
         </motion.div>
+      )}
+
+      {/* E-3 — Appels récents & comptes-rendus (Firestore call_analyses) */}
+      {brokerId && (
+        <div className="rounded-2xl border border-white/10 bg-vault px-5 py-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <Mic className="h-4 w-4 text-violet-400 shrink-0" />
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                {t('Phase E-3 · Intelligence vocale', 'Phase E-3 · Voice intelligence')}
+              </p>
+              <h3 className="text-lg font-black text-slate-100 tracking-tight">
+                {t('Appels récents & Comptes-rendus', 'Recent calls & debriefs')}
+              </h3>
+            </div>
+          </div>
+          {recentCalls.length === 0 ? (
+            <p className="text-[12px] text-slate-400 font-semibold leading-relaxed">
+              {t(
+                'Aucun appel archivé pour l’instant. Enregistre un appel pour voir le statut ici.',
+                'No archived calls yet. Save a recording to see status here.'
+              )}
+            </p>
+          ) : (
+            <ul className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
+              {recentCalls.map((row) => {
+                const statusPiece =
+                  row.pipelineStatus === 'recorded'
+                    ? { emoji: '🎙️', label: t('Enregistré', 'Recorded') }
+                    : row.pipelineStatus === 'transcribing' || row.pipelineStatus === 'analyzing'
+                      ? { emoji: '⚙️', label: t('Transcription', 'Transcribing') }
+                      : row.pipelineStatus === 'analyzed'
+                        ? { emoji: '✨', label: t('Analysé', 'Analyzed') }
+                        : { emoji: '⚠️', label: t('Échec', 'Failed') };
+                const resLabel =
+                  residences.find((r) => r.id === row.residenceId)?.address ?? row.residenceId;
+                return (
+                  <li
+                    key={row.driveDocumentId}
+                    className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-mono font-bold text-slate-200 truncate">
+                          {row.fileName}
+                        </p>
+                        <p className="text-[10px] text-slate-500 font-semibold truncate">{resLabel}</p>
+                        <p className="text-[9px] text-slate-600 mt-1">
+                          {formatCallListTime(row.updatedAtMillis, language)}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <span className="text-lg leading-none" aria-hidden>
+                          {statusPiece.emoji}
+                        </span>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1">
+                          {statusPiece.label}
+                        </p>
+                      </div>
+                    </div>
+                    {row.pipelineStatus === 'analyzed' && row.executiveSummary?.trim() ? (
+                      <p className="mt-2 text-[11px] text-slate-300 leading-snug line-clamp-3 border-t border-white/5 pt-2">
+                        {row.executiveSummary}
+                      </p>
+                    ) : null}
+                    {row.pipelineStatus === 'failed' && row.errorMessage ? (
+                      <p className="mt-2 text-[10px] text-red-400/90 font-mono line-clamp-2">
+                        {row.errorMessage}
+                      </p>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       )}
 
       {/* Bandeau Compliance OACIQ — TOUJOURS VISIBLE pendant un recording */}

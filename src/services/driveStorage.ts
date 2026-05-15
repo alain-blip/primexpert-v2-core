@@ -47,6 +47,7 @@ import {
   TENANT_FIELD,
   type TenantContext,
 } from '@primexpert/core/tenant';
+import { fetchBinaryAsBase64 } from '../lib/fetchBinaryAsBase64';
 
 const DRIVE_COLLECTION = 'drive_documents';
 
@@ -54,6 +55,9 @@ export type DriveDocumentStatus = 'pending' | 'processing' | 'ready' | 'failed';
 
 /** Phase D-2 — Type de document Drive (recording, upload manuel, etc.) */
 export type DriveDocumentType = 'document' | 'recording';
+
+/** E-3 — état persistant sur `drive_documents` pour la transcription Gemini. */
+export type DriveTranscriptionStatus = 'pending' | 'processing' | 'ready' | 'failed';
 
 export interface DriveDocument {
   id: string;
@@ -70,6 +74,16 @@ export interface DriveDocument {
   documentType?: DriveDocumentType;
   /** Phase D-2 — durée du recording en ms (pour les recordings uniquement) */
   durationMs?: number;
+  /** E-3 — transcription + résumé (après upload recording) */
+  transcriptionStatus?: DriveTranscriptionStatus;
+  transcriptionPlain?: string;
+  recordingSummary?: {
+    keyPoints: string[];
+    actionItems: string[];
+    clientSentiment: string;
+  };
+  transcribedAtMillis?: number;
+  transcriptionError?: string;
 }
 
 export interface UploadParams {
@@ -179,6 +193,19 @@ export async function listDriveDocuments(ctx: TenantContext): Promise<DriveDocum
       uploadedAtMillis,
       uploadedBy: String(data.uploadedBy ?? ''),
       status: (data.status ?? 'ready') as DriveDocumentStatus,
+      documentType: data.documentType as DriveDocumentType | undefined,
+      durationMs: typeof data.durationMs === 'number' ? data.durationMs : undefined,
+      transcriptionStatus: data.transcriptionStatus as DriveTranscriptionStatus | undefined,
+      transcriptionPlain:
+        typeof data.transcriptionPlain === 'string' ? data.transcriptionPlain : undefined,
+      recordingSummary:
+        data.recordingSummary && typeof data.recordingSummary === 'object'
+          ? (data.recordingSummary as DriveDocument['recordingSummary'])
+          : undefined,
+      transcribedAtMillis:
+        typeof data.transcribedAtMillis === 'number' ? data.transcribedAtMillis : undefined,
+      transcriptionError:
+        typeof data.transcriptionError === 'string' ? data.transcriptionError : undefined,
     } satisfies DriveDocument;
   });
 }
@@ -188,6 +215,16 @@ export async function listDriveDocuments(ctx: TenantContext): Promise<DriveDocum
  */
 export async function getDriveDocumentUrl(storagePath: string): Promise<string> {
   return getDownloadURL(ref(storage, storagePath));
+}
+
+/**
+ * Télécharge un objet Storage (URL signée) en base64 — pour pipeline IA (E-3, Drive C).
+ */
+export async function fetchStoragePathAsBase64(
+  storagePath: string
+): Promise<{ data: string; mime: string }> {
+  const url = await getDriveDocumentUrl(storagePath);
+  return fetchBinaryAsBase64(url);
 }
 
 // ============================================================================

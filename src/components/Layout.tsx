@@ -18,7 +18,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
   const navItems = [
     { id: 'dashboard', label: t('Tableau de bord', 'Dashboard'), icon: Compass },
     { id: 'pipeline', label: t('Suivi des dossiers', 'Pipeline'), icon: TrendingUp },
-    { id: 'listings', label: t('Inventaire', 'Inventory'), icon: Home },
+    { id: 'listings', label: t('Mes inscriptions', 'My listings'), icon: Home },
     { id: 'acm', label: t('ACM prédictive', 'Predictive CMA'), icon: Calculator },
     { id: 'stats', label: t('Statistiques', 'Statistics'), icon: BarChart3 },
     { id: 'crm', label: t('Répertoire clients', 'CRM'), icon: Users },
