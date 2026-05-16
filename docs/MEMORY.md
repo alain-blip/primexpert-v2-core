@@ -4,29 +4,97 @@
 > `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`  
 > Miroir possible : `00_PRIMEXPERT_SYSTEME_APP/docs/` sur le disque de sauvegarde.
 
+---
+
+## Règle #0 — SSOT métier
+
+- **Toute logique financière, identité, valuation, mail parser** vit dans `packages/core/` (`@primexpert/core`).
+- Les composants React **ne calculent pas** : ils consomment des view models (`computeBilanCfoViewModel`, `buildRevenusDepensesGrid`, `buildIdentityViewModel`, etc.).
+- Firestore listeners : `FinancialDataContext` → `residences/{id}/financial/dataV2` ; `ResidenceDocumentContext` → `residences/{id}`.
+
+---
+
+## Charte visuelle — fiche résidence (2026-05-16)
+
+**Étalon : onglet Identité** — outil de travail CPA / auditeur.
+
+| Token | Usage |
+|-------|--------|
+| Fond page | `bg-slate-50` / blanc |
+| Cartes | `bg-white`, `border-slate-200`, `shadow-sm` |
+| Valeurs chiffrées | `text-[#000000]` font-black |
+| Labels | `text-slate-600` |
+| Accent or (signature) | `#D4AF37` — statuts Déclaration / onglet actif uniquement |
+| Interdit | `bg-vault`, dégradés sombres, texte blanc sur fond noir dans les onglets fiche |
+
+Kit partagé : `src/components/residence/institutional/InstitutionalUi.tsx` (`inst`, `InstitutionalKpi`, `InstitutionalSection`, `InstitutionalPlaceholder`).
+
+**Hotfix prod (2026-05-16) :** l’onglet Déclaration référençait encore `PlaceholderPanel` (supprimé) → `InstitutionalPlaceholder` ; commit `0a65adf`.
+
+---
+
+## Fiche résidence V2 — phases livrées
+
+### Phase 3 — Hub Finance (`FinanceHubTab`)
+
+| Sous-onglet | Phase | Core |
+|-------------|-------|------|
+| Bilan exécutif | 3a | `bilanCfoView.ts` |
+| Revenus & Dépenses | 3b | `revenusDepensesGrid.ts` |
+| Finançabilité | 3c | `computeFinancabilite.ts` (SCHL Standard / APH Select) |
+| Ratios performance | 3d | `performanceRatios.ts` |
+| Audit 360° | 3d | `financialOptimization360.ts` |
+
+Données : sous-collection **`residences/{id}/financial/dataV2`** (migration depuis Copilote via `migrate_financial_subcollections.js`).
+
+### Phase 4a — Identité fusionnée
+
+- Package `packages/core/src/identity/`
+- UI : `IdentiteImmeubleTab` + sections (`BuildingTechnicalSection`, `CapacityClienteleSection`, etc.)
+- Badge MSSS : `RaphaelBadge.tsx`
+- Contexte : `ResidenceDocumentProvider`
+
+### Placeholders (phases futures)
+
+- **Synthèse** : bilan CFO agrégé (à brancher sur Hub Finance)
+- **Déclaration** : Gold Signature `#D4AF37`
+- **Marché** : géointelligence, Haversine, entrée visiteurs
+- **Documents** : métadonnées `residences/{id}/documents/`
+
+### Intelligence (`ResidenceIntelligencePanel`)
+
+- Chronologie **appels** (`users/{uid}/call_analyses`) + **courriels** (`mailbox_analyses`)
+- Boutons : rapport vendeur / mise à jour → `contentGenPrefill` + onglet ContentGen
+- Thème institutionnel clair (2026-05-16)
+
+---
+
 ## Navigation & UI (2026-05-15)
 
 ### Tour de contrôle — Finance
 
 - **Retirée de la sidebar** (menu gauche = Radar / dossiers uniquement).
-- **Déplacée dans Paramètres** : bandeau *Profil et accréditations*, bouton **« Tour de contrôle — Finance »** (icône bouclier), **à gauche de « Réinitialiser »**.
-- Visibilité : `showFinanceButton = (user.role === 'admin_system')` dans `Settings.tsx`.
+- **Déplacée dans Paramètres** : bandeau *Profil et accréditations*, bouton **« Tour de contrôle — Finance »**, visibilité `admin_system` uniquement.
 - Navigation : `useWorkhubNav().setActiveTab('admin-billing')`.
 
 ### Sidebar
 
-- **Fixe** : colonne `h-screen`, header et pied `shrink-0`, nav `flex-1 min-h-0 overflow-y-auto` (pas de rollup qui masque des entrées).
-- Logos silo **RPA / CPE / PLEX** : espacement **`gap-3`** (réduction ~50 % vs `gap-8`).
+- Colonne fixe `h-screen`, nav scrollable.
+- Logos silo **RPA / CPE / PLEX** : `gap-3`.
 
 ### Essai 45 jours
 
-- Campagne et compteurs UI validés ; champ **`trialStartDate`** à l’inscription.
+- Champ **`trialStartDate`** à l’inscription ; compteurs UI via `trialTimeline.ts`.
 
 ### Rôles
 
-- **`admin_system`** : KPIs Finance + bouton Paramètres.
-- **`admin`** : équipe sans Finance.
-- **`member`** : courtier standard.
+| Rôle | Accès |
+|------|--------|
+| `admin_system` | KPIs Finance + bouton Paramètres, jamais bloqué par Chérif |
+| `admin` | Équipe sans Finance |
+| `member` | Courtier standard |
+
+---
 
 ## Chantier 1 — Chérif & Ghost Billing (2026-05-16)
 
@@ -34,31 +102,45 @@
 
 | État | Comportement |
 |------|----------------|
-| `active` | Accès Radar complet |
-| `grace_period` | 72 h après échec de paiement ; bandeau d’avertissement, accès conservé |
-| `suspended` | Écran plein écran `<SuspendedAccountScreen />`, pas de sidebar, bouton Stripe |
+| `active` | Workhub complet |
+| `grace_period` | 72 h après échec ; `GracePeriodBanner`, accès conservé |
+| `suspended` | `SuspendedAccountScreen`, portail Stripe |
 
-Transitions prévues (Stripe webhooks + Cloud Functions) :
-
-1. Échec prélèvement J45 → `grace_period` + `gracePeriodStartedAt`
-2. Après **72 h** sans régularisation → `suspended`
-3. Paiement réussi → `active`
-
-Côté client : `resolveEffectiveBillingStatus()` applique la règle des 72 h si Firestore est en retard.
+Côté client : `resolveEffectiveBillingStatus()` — règle 72 h si Firestore en retard.
 
 ### Ghost Billing
 
-- `src/config/companyConfig.ts` — placeholders `[NEQ EN ATTENTE]`, etc.
-- `src/lib/quebecInvoiceTax.ts` — TPS 5 %, TVQ 9,975 %
-- `src/services/invoicePdfService.ts` — PDF `jspdf` (ex. 175 $ → 201,21 $)
+- `companyConfig.ts`, `quebecInvoiceTax.ts`, `invoicePdfService.ts` (ex. 175 $ → 201,21 $ TTC)
 
-### Relances J7 & J21 (2026-05-16)
+### Relances J7 & J21
 
-- **J7** : `J7SurveyModal` au jour 7+ ; options B/C → alerte `supportEmail` ; `j7Survey` + `lastEmailSent: J7`.
-- **J21** : template CMA/Radar ; envoi auto J+21 via `maybeSendJ21NurtureEmail` ; file `email_outbox`.
-- Env : `VITE_SUPPORT_EMAIL`, `VITE_NURTURE_EMAIL_API_URL` (optionnel).
+- **J7** : `J7SurveyModal` ; `j7Survey` + `lastEmailSent: J7`
+- **J21** : `maybeSendJ21NurtureEmail` ; file `email_outbox`
+- Env : `VITE_SUPPORT_EMAIL`, `VITE_NURTURE_EMAIL_API_URL`
 
-### Déploiement
+---
 
-- Hosting : `primexpert-app-v2` — `firebase deploy --only hosting`
-- Règles : `firebase deploy --only firestore:rules` (incl. `email_outbox`, champs `j7Survey`)
+## Messagerie — comptes courriel (en cours)
+
+- `EmailAccountsSettings.tsx` — intégration Nylas multi-inbox (travail parallèle).
+- Functions : `functions/src/nylas/` (OAuth, webhook, sync).
+- Firestore : `users/{uid}/email_threads`, `emailAccounts` (champ profil).
+
+---
+
+## Déploiement
+
+```bash
+cd "01_PRIMEXPERT_SYSTEME_APP_STABLE_V2"
+npm run build
+firebase deploy --only hosting          # primexpert-app-v2
+firebase deploy --only firestore:rules  # si règles modifiées
+```
+
+**Derniers déploiements hosting :** 2026-05-16 (harmonisation fiche + hotfix `PlaceholderPanel`).
+
+**Repo :** https://github.com/alain-blip/primexpert-v2-core.git — branche `main`.
+
+---
+
+*Journal mis à jour : 2026-05-16.*

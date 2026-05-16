@@ -1,97 +1,141 @@
-# Pipeline GPS — abonnements, essai 45 j et facturation
+# Pipeline GPS — abonnements, essai 45 j, facturation & fiche résidence
 
-Vision produit Primexpert V2.5. Une partie est **implémentée en UI** ; Stripe, courriels et cron sont **à brancher** (Cloud Functions).
+Vision produit Primexpert V2.5.  
+**Hosting prod :** https://primexpert-app-v2.web.app
 
 ---
 
-## Flux principal (courtier)
+## A. Flux courtier — abonnement (billing)
 
 ```text
 Inscription (Auth + users/{uid})
     ↓
 Saisie carte Stripe (Customer + PaymentMethod)     [futur]
     ↓
-trialStartDate enregistré → Essai 45 jours gratuits
+trialStartDate → Essai 45 jours gratuits
     ↓
-Relances courriel J+7, J+21, J+30, J+40          [futur — lastEmailSent]
+Relances J+7, J+21, J+30, J+40                    [partiel — voir ci-dessous]
     ↓
-J+38 (fin essai − 7 j) : envoi facture PDF       [Ghost Billing — invoicePdfService]
+J+38 : facture PDF Ghost Billing                   [PDF manuel / sample OK]
     ↓
-J+45 (J-0 prélèvement) : tentative Stripe
-    ├─ Succès → billingStatus: active, accès maintenu
-    └─ Échec  → billingStatus: grace_period (+ gracePeriodStartedAt)
+J+45 : prélèvement Stripe
+    ├─ Succès → billingStatus: active
+    └─ Échec  → grace_period + gracePeriodStartedAt
                     ↓
               72 h sans régularisation
                     ↓
-              billingStatus: suspended → SuspendedAccountScreen
+              suspended → SuspendedAccountScreen
                     ↓
-              Paiement via portail Stripe → active (webhook)
+              Paiement portail Stripe → active (webhook)
 ```
 
----
+### États `billingStatus` (Chérif)
 
-## États `billingStatus` (Chérif)
+| État | Expérience |
+|------|------------|
+| `active` | Workhub normal |
+| `grace_period` | `GracePeriodBanner`, accès 72 h |
+| `suspended` | Écran plein écran + Stripe Portal |
 
-| État | Déclencheur | Expérience utilisateur |
-|------|-------------|------------------------|
-| `active` | Paiement OK ou essai en cours sans échec | Workhub normal |
-| `grace_period` | Échec prélèvement (ex. J45) | Bandeau 72 h, accès conservé |
-| `suspended` | 72 h après `gracePeriodStartedAt` sans paiement | Écran de blocage, bouton « Mettre à jour ma carte » |
+**Exemption :** `role === admin_system`.
 
-**Exemption :** `role === admin_system` (direction) — jamais bloqué.
+### Relances courriel
 
----
+| Jalon | `lastEmailSent` | Statut code |
+|--------|-----------------|-------------|
+| J+7 | `J7` | ✅ Modal + enquête + outbox support |
+| J+21 | `J21` | ✅ `maybeSendJ21NurtureEmail` + templates |
+| J+30 | `J30` | ⏳ |
+| J+40 | `J40` | ⏳ |
 
-## Séquence de relance (courriels)
+Transport : Postmark / SendGrid ou `email_outbox` + Function expéditeur.
 
-| Jalon | Champ `lastEmailSent` | Objectif |
-|--------|----------------------|----------|
-| J+7 | `J7` | Première semaine — aide |
-| J+21 | `J21` | Valeur Radar / mandat |
-| J+30 | `J30` | Transition (15 j restants) |
-| J+40 | `J40` | Urgence paiement |
-
-Transporteur prévu : Postmark ou SendGrid. Mise à jour Firestore après chaque envoi.
-
----
-
-## Facturation (Ghost Billing)
-
-### Calcul taxes Québec (exemple forfait mensuel)
+### Facturation Ghost Billing
 
 | Ligne | Montant |
 |--------|---------|
 | Sous-total | 175,00 $ |
-| TPS (5 %) | 8,75 $ |
-| TVQ (9,975 %) | 17,46 $ |
+| TPS 5 % | 8,75 $ |
+| TVQ 9,975 % | 17,46 $ |
 | **Total** | **201,21 $** |
 
-Implémentation : `computeQuebecTaxes()` dans `src/lib/quebecInvoiceTax.ts`.
-
-### PDF
-
-- Génération : `downloadInvoicePdf()` / `downloadSampleMonthlyInvoice()` dans `src/services/invoicePdfService.ts`.
-- En-tête légal : `src/config/companyConfig.ts` (placeholders jusqu’à incorporation).
+Code : `computeQuebecTaxes()`, `downloadInvoicePdf()`.
 
 ---
 
-## Intégration actuelle (code)
+## B. Pipeline fiche résidence (Radar → CFO)
+
+```text
+Prospection / mandat (residences/{id} — status pipeline)
+    ↓
+Migration Copilote (optionnel)
+    migrate_financial_subcollections.js
+    → financial/dataV2 + documents/*
+    ↓
+Fiche V2 (Listings → ResidenceDetail)
+    ├─ Identité          [✅ doc racine + core/identity]
+    ├─ Hub Finance       [✅ dataV2 + 5 sous-onglets]
+    ├─ Intelligence      [✅ call_analyses + mailbox_analyses]
+    ├─ Synthèse          [⏳ placeholder]
+    ├─ Déclaration       [⏳ Gold Signature]
+    ├─ Marché            [⏳ géointelligence]
+    └─ Documents         [⏳ bibliothèque]
+```
+
+### Statuts pipeline (`ResidenceStatus`)
+
+`prospect` → `mandate` → `promise` → `sold`  
+Branches : `expired`, `unsigned`
+
+**Ne pas renommer** (charte Copilote / export).
+
+### Données financières (Hub)
+
+```text
+financial/dataV2 (Firestore)
+    ↓
+normalizeFinancialData()
+    ↓
+├─ Bilan exécutif (KPI CFO, TP70, rapports)
+├─ Revenus & Dépenses (grille CPA, preuves A2)
+├─ Finançabilité (DSCR, SCHL / APH Select)
+├─ Ratios performance
+└─ Audit 360° (manque à gagner, capitalisation)
+```
+
+Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquement où applicable.
+
+---
+
+## C. Intégration actuelle (code)
 
 | Composant | Statut |
 |-----------|--------|
-| Garde `/workhub` + `SuspendedAccountScreen` | ✅ |
+| Garde billing + suspension | ✅ |
 | Bandeau `grace_period` | ✅ |
-| Résolution 72 h côté client | ✅ `resolveEffectiveBillingStatus` |
-| PDF + taxes | ✅ |
+| Résolution 72 h client | ✅ |
+| PDF + taxes QC | ✅ |
+| Fiche résidence + Hub Finance | ✅ |
+| Identité fusionnée | ✅ |
+| Intelligence chronologie | ✅ |
+| UI institutionnelle claire | ✅ |
 | Webhooks Stripe → Firestore | ⏳ |
-| Cron relances + `lastEmailSent` | ⏳ |
-| Envoi facture automatique J−7 | ⏳ |
+| Cron relances J30/J40 | ⏳ |
+| Stripe Customer Portal prod | ⏳ env |
+| Cloud Functions Nylas deploy | ⏳ |
 
 ---
 
-## Prochaines étapes techniques
+## D. Prochaines étapes techniques
 
-1. Cloud Function : webhook `invoice.payment_failed` → `grace_period` + `gracePeriodStartedAt`.
-2. Cloud Function : cron quotidien → `grace_period` → `suspended` après 72 h ; relances J7–J40.
-3. Stripe Customer Portal : `VITE_STRIPE_CUSTOMER_PORTAL_URL`.
-4. Déployer `firestore.rules` ( `billingStatus` non modifiable par le client ).
+1. **Stripe** : webhook `invoice.payment_failed` → `grace_period` ; succès → `active`.
+2. **Cron** : `grace_period` → `suspended` après 72 h ; relances J30/J40.
+3. **Synthèse** : agrégat CFO depuis Hub Finance (onglet placeholder).
+4. **Déclaration vendeur** : parcours Gold Signature + verrou post-certification.
+5. **Marché** : carte, comparables Haversine, forces/faiblesses.
+6. **Documents** : UI sur `residences/{id}/documents/`.
+7. **Déployer** Functions Nylas si messagerie prod activée.
+
+---
+
+*Dernière mise à jour : 2026-05-16.*
