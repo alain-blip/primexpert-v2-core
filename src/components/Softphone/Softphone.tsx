@@ -38,6 +38,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../../lib/i18n';
 import { useAuth } from '../../lib/auth';
+import { useSilo } from '../../context/SiloContext';
 import { listResidences, type Residence } from '../../services/residences';
 import { uploadDriveRecording, type DriveDocument } from '../../services/driveStorage';
 import {
@@ -94,6 +95,7 @@ type RecordingState = 'idle' | 'requesting' | 'recording' | 'uploading' | 'saved
 export function Softphone() {
   const { t, language } = useLanguage();
   const { profile } = useAuth();
+  const { activeSilo } = useSilo();
   const brokerId = profile?.uid;
 
   const [number, setNumber] = useState('');
@@ -119,7 +121,7 @@ export function Softphone() {
     if (!brokerId) return;
     let cancelled = false;
     setResidencesLoading(true);
-    listResidences({ tenantId: brokerId, mode: 'strict' })
+    listResidences({ tenantId: brokerId, mode: 'strict' }, { silo: activeSilo })
       .then((rows) => {
         if (!cancelled) setResidences(rows);
       })
@@ -132,9 +134,8 @@ export function Softphone() {
     return () => {
       cancelled = true;
     };
-  }, [brokerId]);
+  }, [brokerId, activeSilo]);
 
-  // E-3 — Appels récents & comptes-rendus (Firestore call_analyses)
   useEffect(() => {
     if (!brokerId) {
       setRecentCalls([]);

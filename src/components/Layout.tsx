@@ -1,9 +1,18 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useAuth } from '../lib/auth';
 import { useLanguage } from '../lib/i18n';
 import { Compass, Home, Users, Calculator, FileText, LogOut, Bell, TrendingUp, BarChart3, Search, Sparkles, ShieldCheck, Zap, MessageSquare, FolderOpen, Phone, Settings as SettingsIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
+import { useSilo } from '../context/SiloContext';
+import { type AssetNiche } from '../types/residence';
+
+/** Logos silo (fichiers `public/`, noms avec espaces). */
+const SILO_LOGO_SRC: Record<AssetNiche, string> = {
+  RPA: encodeURI('/RPA Logo 2026 - blanc.png'),
+  CPE: encodeURI('/CPE Logo 2026/CPE Logo Blanc 2026.png'),
+  PLEX: encodeURI('/PLEX Logo 2026/PLEX Logo Blanc 2026.png'),
+};
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,22 +23,30 @@ interface LayoutProps {
 export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
   const { profile, logOut } = useAuth();
   const { language, setLanguage, t } = useLanguage();
+  const { activeSilo, setActiveSilo, canAccess } = useSilo();
 
-  const navItems = [
-    { id: 'dashboard', label: t('Tableau de bord', 'Dashboard'), icon: Compass },
-    { id: 'pipeline', label: t('Suivi des dossiers', 'Pipeline'), icon: TrendingUp },
-    { id: 'listings', label: t('Mes inscriptions', 'My listings'), icon: Home },
-    { id: 'acm', label: t('ACM prédictive', 'Predictive CMA'), icon: Calculator },
-    { id: 'stats', label: t('Statistiques', 'Statistics'), icon: BarChart3 },
-    { id: 'crm', label: t('Répertoire clients', 'CRM'), icon: Users },
-    { id: 'content', label: t('Rédacteur IA', 'AI Writer'), icon: FileText },
-    { id: 'drive', label: t('Espace documents', 'Documents'), icon: FolderOpen },
-    { id: 'phone', label: t('Téléphonie logicielle', 'Softphone'), icon: Phone },
-    { id: 'mail', label: t('Boîte de courriels', 'Mailbox'), icon: Bell },
-    // Paramètres est volontairement hors navItems : il est rendu dans
-    // le footer de la sidebar, entre la user-profile card et le bouton
-    // Déconnexion, pour rapprocher les actions « identité ».
-  ];
+  const nicheConfig: Record<AssetNiche, { labelFr: string; labelEn: string }> = {
+    RPA: { labelFr: 'RPA — Résidences', labelEn: 'RPA — Care homes' },
+    CPE: { labelFr: 'CPE — Places', labelEn: 'CPE — Childcare' },
+    PLEX: { labelFr: 'Plex — Multilogement', labelEn: 'Plex — Multi-unit' },
+  };
+
+  const navItems = useMemo(
+    () =>
+      [
+        { id: 'dashboard', label: t('Tableau de bord', 'Dashboard'), icon: Compass },
+        { id: 'pipeline', label: t('Suivi des dossiers', 'Pipeline'), icon: TrendingUp },
+        { id: 'listings', label: t('Mes inscriptions', 'My listings'), icon: Home },
+        { id: 'acm', label: t('ACM prédictive', 'Predictive CMA'), icon: Calculator },
+        { id: 'stats', label: t('Statistiques', 'Statistics'), icon: BarChart3 },
+        { id: 'crm', label: t('Répertoire clients', 'CRM'), icon: Users },
+        { id: 'content', label: t('Rédacteur IA', 'AI Writer'), icon: FileText },
+        { id: 'drive', label: t('Espace documents', 'Documents'), icon: FolderOpen },
+        { id: 'phone', label: t('Téléphonie logicielle', 'Softphone'), icon: Phone },
+        { id: 'mail', label: t('Boîte de courriels', 'Mailbox'), icon: Bell },
+      ] as { id: string; label: string; icon: typeof Compass }[],
+    [t]
+  );
 
   return (
     <div className="relative flex h-screen text-slate-100 font-sans selection:bg-blue-500/30 overflow-hidden text-sm">
@@ -38,28 +55,84 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
       <div aria-hidden="true" className="app-bg pointer-events-none fixed inset-0 -z-10" />
 
       {/* Sidebar - Control Center */}
-      <aside className="app-aside w-[218px] backdrop-blur-md text-white flex flex-col shrink-0 relative z-40">
-        <div aria-hidden="true" className="app-aside-glow absolute inset-0" />
-        <div className="relative p-6 pb-8">
+      <aside className="app-aside flex h-screen max-h-screen w-[218px] shrink-0 flex-col overflow-hidden backdrop-blur-md text-white relative z-40">
+        <div aria-hidden="true" className="app-aside-glow pointer-events-none absolute inset-0" />
+        <div className="relative shrink-0 p-5 pb-3">
           <div className="flex flex-col gap-1">
-            <img src="/logo-primexpert-blanc.png" alt="Primexpert" className="mb-3 h-auto w-full max-w-[150px] rounded-xl shadow-[0_18px_35px_rgba(37, 99, 235,0.2)]" />
+            <img src="/logo-primexpert-blanc.png" alt="Primexpert" className="mb-2 h-auto w-full max-w-[150px] rounded-xl shadow-[0_18px_35px_rgba(37, 99, 235,0.2)]" />
             <p className="text-[8px] font-black uppercase tracking-[0.26em] text-blue-300/70">{t('GPS Immobilier v2.5', 'Real Estate GPS v2.5')}</p>
+          </div>
+          <div className="mt-3 border-t border-white/10 pt-3">
+            <p className="mb-2 px-1 text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">
+              {t('Vue données', 'Data view')}
+            </p>
+            <div
+              className="flex flex-col items-center gap-3 py-1 pl-1"
+              role="radiogroup"
+              aria-label={t('Choisir la niche RPA, CPE ou Plex', 'Choose RPA, CPE or Plex niche')}
+            >
+              {(['RPA', 'CPE', 'PLEX'] as const).map((id) => {
+                const cfg = nicheConfig[id];
+                const isNicheActive = activeSilo === id;
+                const allowed = canAccess(id);
+                const label = t(cfg.labelFr, cfg.labelEn);
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="radio"
+                    aria-checked={isNicheActive}
+                    aria-label={label}
+                    title={allowed ? label : t('Sil non attribué à ce profil', 'Silo not assigned to this profile')}
+                    disabled={!allowed}
+                    onClick={() => allowed && setActiveSilo(id)}
+                    className={cn(
+                      'relative flex w-20 shrink-0 flex-col items-center justify-center rounded-xl transition-all duration-300 outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
+                      !allowed && 'cursor-not-allowed opacity-[0.12] grayscale',
+                      allowed &&
+                        !isNicheActive &&
+                        'cursor-pointer opacity-40 grayscale hover:opacity-80 hover:grayscale-0',
+                      isNicheActive &&
+                        allowed &&
+                        'scale-110 cursor-pointer opacity-100 drop-shadow-[0_0_14px_rgba(255,255,255,0.55)]'
+                    )}
+                  >
+                    {isNicheActive && allowed ? (
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute -left-2.5 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.45)]"
+                      />
+                    ) : null}
+                    <img
+                      src={SILO_LOGO_SRC[id]}
+                      alt=""
+                      decoding="async"
+                      className="h-auto w-full max-w-[4.25rem] object-contain object-center"
+                    />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        <nav className="relative flex-1 px-3 space-y-1 overflow-y-auto custom-scrollbar">
+        <nav
+          className="relative flex min-h-0 flex-1 flex-col gap-0.5 overflow-x-hidden overflow-y-auto px-3 py-1 custom-scrollbar"
+          aria-label={t('Navigation principale', 'Main navigation')}
+        >
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => setActiveTab(item.id)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl transition-all duration-300 group relative text-left",
-                  isActive 
-                    ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_16px_38px_rgba(37, 99, 235,0.32)]" 
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                  'flex w-full shrink-0 items-center gap-3 rounded-2xl px-3.5 py-2 text-left transition-all duration-300 group relative',
+                  isActive
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_16px_38px_rgba(37, 99, 235,0.32)]'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
                 )}
               >
                 <Icon className={cn("w-4 h-4 stroke-[1.8] transition-transform", isActive ? "scale-110" : "group-hover:scale-110")} />
@@ -75,7 +148,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
           })}
         </nav>
 
-        <div className="relative p-4 border-t border-white/5 bg-black/20">
+        <div className="relative shrink-0 border-t border-white/5 bg-black/20 p-3 pt-3">
           <div className="flex items-center gap-3 p-3 bg-white/5 rounded-[22px] mb-3 border border-white/10 group cursor-pointer hover:bg-white/10 transition-all">
              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-700 flex items-center justify-center font-black shadow-lg uppercase text-[10px]">
                 {profile?.displayName?.[0] || 'A'}
@@ -105,7 +178,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
             <LogOut className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
             {t('Déconnexion', 'Sign out')}
           </button>
-          <p className="mt-4 text-center text-[8px] font-semibold leading-relaxed text-white/35">
+          <p className="mt-2 text-center text-[8px] font-semibold leading-relaxed text-white/35">
             {t(
               'Tous droits réservés. Toute reproduction, distribution ou utilisation, en tout ou en partie, est strictement interdite sans autorisation écrite préalable.',
               'All rights reserved. Any reproduction, distribution, or use, in whole or in part, is strictly prohibited without prior written authorization.'
@@ -123,9 +196,14 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
                <span className="workhub-title-gradient">
                  {activeTab === 'settings'
                    ? t('Paramètres', 'Settings')
-                   : navItems.find((i) => i.id === activeTab)?.label ?? t('Tableau de bord', 'Dashboard')}
+                   : activeTab === 'admin-billing'
+                     ? t('Tour de contrôle — Finance', 'Control tower — Finance')
+                     : navItems.find((i) => i.id === activeTab)?.label ?? t('Tableau de bord', 'Dashboard')}
                </span>{' '}
                <span className="text-blue-400/40">/</span>{' '}
+               <span className="rounded-lg border border-blue-500/30 bg-blue-500/15 px-2 py-0.5 font-mono text-[9px] font-black tracking-widest text-blue-200 not-italic">
+                 {activeSilo}
+               </span>{' '}
                <span className="text-blue-400 font-mono text-[10px] not-italic tracking-[0.2em]">01_ALPHA</span>
              </h2>
            </div>

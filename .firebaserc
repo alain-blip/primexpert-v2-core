@@ -1,1 +1,7 @@
-{"projects":{"default":"primexpert-app"}}
+{
+  "projects": {
+    "default": "primexpert-app-v2"
+  },
+  "targets": {},
+  "etags": {}
+}

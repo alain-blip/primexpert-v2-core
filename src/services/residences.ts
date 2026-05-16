@@ -11,9 +11,36 @@
  * Firestore Security Rules côté serveur (à mettre en place en Phase C).
  */
 
-import { collection, query, where, getDocs, type DocumentData, type QuerySnapshot } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  documentId,
+  getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  startAfter,
+  where,
+  type DocumentData,
+  type DocumentSnapshot,
+  type QueryDocumentSnapshot,
+  type QuerySnapshot,
+} from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { tenantConstraints, TENANT_FIELD, type TenantContext } from '@primexpert/core/tenant';
+import type { AssetNiche, AssetNicheMetadata, AssetSyndication } from '../types/residence';
+import { parseAssetNiche, residenceMatchesNiche } from '../types/residence';
+
+/** Options requêtes résidences — cloison silo (CPE/Plex indexés ; RPA inclut legacy sans champ). */
+export interface ResidenceQueryOpts {
+  silo?: AssetNiche;
+}
+
+function applySiloFilter(rows: Residence[], silo: AssetNiche | undefined): Residence[] {
+  if (!silo) return rows;
+  return rows.filter((r) => residenceMatchesNiche(r.assetNiche, silo));
+}
 
 /**
  * Statut canonique pipeline (Charte §V Zone Rouge — ne JAMAIS renommer).
@@ -39,6 +66,171 @@ export interface Residence {
   date: string;
   /** Multi-tenant : doit toujours contenir le brokerId du propriétaire de la fiche. */
   courtiersResponsables?: string;
+  /** Niche active (RPA / CPE / PLEX). Absent = visible dans toutes les vues. */
+  assetNiche?: AssetNiche;
+  nicheMetadata?: AssetNicheMetadata;
+  syndication?: AssetSyndication;
+}
+
+/** Statuts visibles dans le pipeline « chaud » (hors archive non signé). */
+export const PIPELINE_ACTIVE_STATUSES: ResidenceStatus[] = [
+  'prospect',
+  'mandate',
+  'promise',
+  'expired',
+  'sold',
+];
+
+const PAGE_SIZE_DEFAULT = 50;
+
+/** Valeurs `status` côté Firestore pour `in` (charte + héritage Copilote / FR). Max 30 pour Firestore. */
+const FIRESTORE_PIPELINE_STATUS_IN: readonly string[] = [
+  ...PIPELINE_ACTIVE_STATUSES,
+  'Prospection',
+  'prospection',
+  'Mandat',
+  'mandat',
+  'Promesse',
+  'promesse',
+  'Expiré',
+  'expiré',
+  'Expirée',
+  'expirée',
+  'Vendu',
+  'vendu',
+  'Vendue',
+  'vendue',
+  'En prospection',
+  'en prospection',
+  'En mandat',
+  'en mandat',
+  'En promesse',
+  'en promesse',
+];
+
+function stripDiacritics(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function mapLegacyPrice(data: DocumentData): number {
+  const candidates: unknown[] = [
+    data.price,
+    data.prixAnnonce,
+    data.askingPrice,
+    data.estimatedValue,
+    data.estimated_value,
+    data.valeurEstimee,
+    data.valeur_estimee,
+    data.prixDemande,
+    data.prixListe,
+    data.listPrice,
+    data.prix,
+    data.montant,
+    data.asking,
+    data.prixAffiche,
+  ];
+  for (const c of candidates) {
+    if (c === undefined || c === null || c === '') continue;
+    if (typeof c === 'number' && Number.isFinite(c) && c >= 0) return c;
+    if (typeof c === 'string') {
+      const cleaned = c
+        .trim()
+        .replace(/\s/g, '')
+        .replace(/[^\d.,-]/g, '')
+        .replace(',', '.');
+      const n = Number(cleaned);
+      if (Number.isFinite(n) && n >= 0) return n;
+    }
+  }
+  return 0;
+}
+
+function mapLegacyStatus(data: DocumentData): ResidenceStatus {
+  const raw =
+    data.status ??
+    data.pipelineStatus ??
+    data.etat ??
+    data.phase ??
+    data.stage ??
+    data.statut ??
+    '';
+  if (typeof raw !== 'string') {
+    return 'prospect';
+  }
+  const trimmed = raw.trim();
+  if (!trimmed) return 'prospect';
+
+  const lower = trimmed.toLowerCase();
+  if ((PIPELINE_ACTIVE_STATUSES as readonly string[]).includes(lower)) {
+    return lower as ResidenceStatus;
+  }
+  if (lower === 'unsigned' || lower === 'non signé' || stripDiacritics(lower) === 'non signe') {
+    return 'unsigned';
+  }
+
+  const slug = stripDiacritics(lower).replace(/[^a-z0-9]+/g, '');
+
+  const table: Record<string, ResidenceStatus> = {
+    prospect: 'prospect',
+    prospection: 'prospect',
+    lead: 'prospect',
+    enprospection: 'prospect',
+    mandate: 'mandate',
+    mandat: 'mandate',
+    enmandat: 'mandate',
+    listed: 'mandate',
+    promise: 'promise',
+    promesse: 'promise',
+    enpromesse: 'promise',
+    expired: 'expired',
+    expire: 'expired',
+    expires: 'expired',
+    sold: 'sold',
+    vendu: 'sold',
+    vendue: 'sold',
+    succes: 'sold',
+    success: 'sold',
+  };
+
+  if (table[slug]) return table[slug];
+
+  if (slug.includes('mandat')) return 'mandate';
+  if (slug.includes('promess')) return 'promise';
+  if (slug.includes('vendu') || slug.includes('vendue') || slug.includes('sold')) return 'sold';
+  if (slug.includes('expir')) return 'expired';
+  if (slug.includes('prospect') || slug.includes('prosp')) return 'prospect';
+
+  return 'prospect';
+}
+
+function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
+  const data = doc.data();
+  const metaRaw = data.nicheMetadata;
+  const meta =
+    metaRaw && typeof metaRaw === 'object' && !Array.isArray(metaRaw)
+      ? (metaRaw as AssetNicheMetadata)
+      : undefined;
+  const synRaw = data.syndication ?? data.marketingSyndication;
+  const syndication =
+    synRaw && typeof synRaw === 'object' && !Array.isArray(synRaw)
+      ? (synRaw as AssetSyndication)
+      : undefined;
+  return {
+    id: doc.id,
+    address: String(data.address ?? data.adresse ?? '—'),
+    city: String(data.city ?? data.ville ?? '—'),
+    price: mapLegacyPrice(data),
+    status: mapLegacyStatus(data),
+    date: String(data.date ?? data.updatedAt ?? ''),
+    courtiersResponsables: data[TENANT_FIELD],
+    assetNiche: parseAssetNiche(data.assetNiche ?? data.niche),
+    nicheMetadata: meta,
+    syndication,
+  } satisfies Residence;
+}
+
+function mapSnapshot(snapshot: QuerySnapshot<DocumentData>): Residence[] {
+  return snapshot.docs.map(mapResidenceDoc);
 }
 
 /**
@@ -47,13 +239,25 @@ export interface Residence {
  * @param ctx contexte tenant — `{ tenantId: profile.uid, mode: 'strict' }`
  * @returns liste filtrée par `courtiersResponsables == ctx.tenantId`
  */
-export async function listResidences(ctx: TenantContext): Promise<Residence[]> {
+export async function listResidences(
+  ctx: TenantContext,
+  opts: ResidenceQueryOpts = {}
+): Promise<Residence[]> {
+  const { silo } = opts;
   const constraints = tenantConstraints(ctx);
 
   const baseRef = collection(db, 'residences');
-  const q = constraints.length === 0
-    ? query(baseRef)
-    : query(baseRef, ...constraints.map((c) => where(c.field, c.op, c.value)));
+  const siloWhere =
+    silo && silo !== 'RPA' ? [where('assetNiche', '==', silo)] : [];
+
+  const q =
+    constraints.length === 0 && siloWhere.length === 0
+      ? query(baseRef)
+      : query(
+          baseRef,
+          ...constraints.map((c) => where(c.field, c.op, c.value)),
+          ...siloWhere
+        );
 
   let snapshot: QuerySnapshot<DocumentData>;
   try {
@@ -63,16 +267,146 @@ export async function listResidences(ctx: TenantContext): Promise<Residence[]> {
     return [];
   }
 
-  return snapshot.docs.map((doc) => {
-    const data = doc.data();
-    return {
-      id: doc.id,
-      address: String(data.address ?? data.adresse ?? '—'),
-      city: String(data.city ?? data.ville ?? '—'),
-      price: Number(data.price ?? data.prixAnnonce ?? data.askingPrice ?? 0),
-      status: (data.status ?? data.pipelineStatus ?? 'prospect') as ResidenceStatus,
-      date: String(data.date ?? data.updatedAt ?? ''),
-      courtiersResponsables: data[TENANT_FIELD],
-    } satisfies Residence;
-  });
+  return applySiloFilter(mapSnapshot(snapshot), silo);
+}
+
+/**
+ * Pipeline « chaud » : uniquement les statuts actifs (exclut `unsigned`).
+ * Préfère une requête indexée `status in [...]` ; repli sur filtre client.
+ */
+export async function listResidencesPipeline(
+  ctx: TenantContext,
+  opts: ResidenceQueryOpts = {}
+): Promise<Residence[]> {
+  const { silo } = opts;
+  const siloWhere = silo && silo !== 'RPA' ? [where('assetNiche', '==', silo)] : [];
+
+  if (ctx.mode === 'admin') {
+    const rows = await listResidences(ctx, opts);
+    return rows.filter((r) => PIPELINE_ACTIVE_STATUSES.includes(r.status));
+  }
+
+  const constraints = tenantConstraints(ctx);
+  const baseRef = collection(db, 'residences');
+
+  try {
+    const qy = query(
+      baseRef,
+      ...constraints.map((c) => where(c.field, c.op, c.value)),
+      ...siloWhere,
+      where('status', 'in', [...FIRESTORE_PIPELINE_STATUS_IN]),
+      orderBy(documentId())
+    );
+    const snapshot = await getDocs(qy);
+    return applySiloFilter(mapSnapshot(snapshot), silo).filter((r) =>
+      PIPELINE_ACTIVE_STATUSES.includes(r.status)
+    );
+  } catch (e) {
+    console.warn('[residences.listResidencesPipeline] indexed query failed, fallback:', e);
+    const rows = await listResidences(ctx, opts);
+    return rows.filter((r) => PIPELINE_ACTIVE_STATUSES.includes(r.status));
+  }
+}
+
+export interface FetchResidencesPageResult {
+  rows: Residence[];
+  lastDoc: QueryDocumentSnapshot<DocumentData> | null;
+  hasMore: boolean;
+}
+
+/**
+ * Page d’inventaire complet (tous statuts), ordre stable `documentId`, pagination curseur.
+ */
+export async function fetchResidencesPage(
+  ctx: TenantContext,
+  opts: {
+    pageSize?: number;
+    startAfterDoc?: QueryDocumentSnapshot<DocumentData> | null;
+    silo?: AssetNiche;
+  } = {}
+): Promise<FetchResidencesPageResult> {
+  const pageSize = opts.pageSize ?? PAGE_SIZE_DEFAULT;
+  const silo = opts.silo;
+  const siloWhere = silo && silo !== 'RPA' ? [where('assetNiche', '==', silo)] : [];
+  const constraints = tenantConstraints(ctx);
+  const baseRef = collection(db, 'residences');
+
+  try {
+    const qy = query(
+      baseRef,
+      ...constraints.map((c) => where(c.field, c.op, c.value)),
+      ...siloWhere,
+      orderBy(documentId()),
+      ...(opts.startAfterDoc ? [startAfter(opts.startAfterDoc)] : []),
+      limit(pageSize)
+    );
+    const snapshot = await getDocs(qy);
+    const rows = applySiloFilter(mapSnapshot(snapshot), silo);
+    const lastDoc = snapshot.docs[snapshot.docs.length - 1] ?? null;
+    const hasMore = snapshot.docs.length === pageSize;
+    return { rows, lastDoc, hasMore };
+  } catch (e) {
+    console.error('[residences.fetchResidencesPage] failed:', e);
+    return { rows: [], lastDoc: null, hasMore: false };
+  }
+}
+
+/**
+ * Lecture directe d’une fiche (navigation profonde / focus hors page chargée).
+ * `silo` : refus si la fiche n’appartient pas au silo actif (héritage sans niche = RPA).
+ */
+export async function getResidenceById(
+  ctx: TenantContext,
+  residenceId: string,
+  opts: ResidenceQueryOpts = {}
+): Promise<Residence | null> {
+  if (!residenceId) return null;
+  const { silo } = opts;
+  try {
+    const ref = doc(db, 'residences', residenceId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    const row = mapResidenceDoc(snap);
+    if (ctx.mode !== 'admin') {
+      if (row.courtiersResponsables !== ctx.tenantId) return null;
+    }
+    if (silo && !residenceMatchesNiche(row.assetNiche, silo)) return null;
+    return row;
+  } catch (e) {
+    console.error('[residences.getResidenceById] failed:', e);
+    return null;
+  }
+}
+
+export async function searchResidencesByAddressPrefix(
+  ctx: TenantContext,
+  prefixRaw: string,
+  limitN = 80,
+  opts: ResidenceQueryOpts = {}
+): Promise<Residence[]> {
+  const prefix = prefixRaw.trim();
+  if (!prefix) return [];
+
+  const { silo } = opts;
+  const siloWhere = silo && silo !== 'RPA' ? [where('assetNiche', '==', silo)] : [];
+  const constraints = tenantConstraints(ctx);
+  const baseRef = collection(db, 'residences');
+
+  try {
+    const end = prefix + '\uf8ff';
+    const qy = query(
+      baseRef,
+      ...constraints.map((c) => where(c.field, c.op, c.value)),
+      ...siloWhere,
+      where('address', '>=', prefix),
+      where('address', '<=', end),
+      orderBy('address'),
+      limit(limitN)
+    );
+    const snapshot = await getDocs(qy);
+    return applySiloFilter(mapSnapshot(snapshot), silo);
+  } catch (e) {
+    console.warn('[residences.searchResidencesByAddressPrefix] query failed, empty:', e);
+    return [];
+  }
 }

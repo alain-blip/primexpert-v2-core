@@ -7,9 +7,11 @@ import React, { useState } from 'react';
 import { useLanguage } from '../lib/i18n';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/useTheme';
+import { useWorkhubNav } from '../lib/workhubNav';
 import {
   Settings as SettingsIcon,
   ShieldCheck,
+  Shield,
   Sparkles,
   Users,
   UserCog,
@@ -28,6 +30,7 @@ type CreativityLevel = 'precise' | 'creative';
 export function Settings() {
   const { language, setLanguage, t } = useLanguage();
   const { profile } = useAuth();
+  const workhubNav = useWorkhubNav();
   const { theme, setTheme } = useTheme();
 
   const [firstName, setFirstName] = useState(profile?.displayName?.split(' ')[0] ?? '');
@@ -82,12 +85,30 @@ export function Settings() {
               </h2>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-            <button className="px-3 py-2 bg-white/[0.06] text-slate-200 text-[10px] font-black rounded-lg uppercase tracking-[0.2em] hover:bg-white/10 transition border border-white/10 flex items-center gap-2 whitespace-nowrap">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:justify-end">
+            {profile?.role === 'admin_system' ? (
+              <button
+                type="button"
+                onClick={() => workhubNav?.setActiveTab('admin-billing')}
+                className="max-w-full px-2.5 py-2 bg-amber-500/15 text-[#FACC15] text-[8px] font-black rounded-lg uppercase tracking-[0.12em] hover:bg-amber-500/25 transition border border-[#FACC15]/35 flex items-center gap-1.5 sm:max-w-[min(100%,14rem)] sm:leading-tight"
+              >
+                <Shield className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span className="text-balance">
+                  {t('Tour de contrôle — Finance', 'Control tower — Finance')}
+                </span>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="px-3 py-2 bg-white/[0.06] text-slate-200 text-[10px] font-black rounded-lg uppercase tracking-[0.2em] hover:bg-white/10 transition border border-white/10 flex items-center gap-2 whitespace-nowrap"
+            >
               <RotateCcw className="w-3.5 h-3.5" />
               {t('Réinitialiser', 'Reset')}
             </button>
-            <button className="px-3 py-2 bg-blue-600 text-white text-[10px] font-black rounded-lg uppercase tracking-[0.2em] hover:bg-blue-500 transition shadow-[0_12px_28px_rgba(37,99,235,0.45)] flex items-center gap-2 whitespace-nowrap">
+            <button
+              type="button"
+              className="px-3 py-2 bg-blue-600 text-white text-[10px] font-black rounded-lg uppercase tracking-[0.2em] hover:bg-blue-500 transition shadow-[0_12px_28px_rgba(37,99,235,0.45)] flex items-center gap-2 whitespace-nowrap"
+            >
               <Save className="w-3.5 h-3.5" />
               {t('Enregistrer', 'Save')}
             </button>

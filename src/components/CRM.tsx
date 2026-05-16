@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Users, Mail, Phone, ChevronRight, UserPlus, FileDown } from 'lucide-react';
+import { Users, Mail, Phone, ChevronRight, UserPlus, FileDown, Filter } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useLanguage } from '../lib/i18n';
 import { CRM_INBOUND_QUEUE_KEY, type CrmInboundDraft } from '../lib/crmInboundQueue';
+import { ASSET_NICHE_IDS, type AssetNiche } from '../types/residence';
+import { useSilo } from '../context/SiloContext';
 
 interface CrmRow {
   id: number;
@@ -13,14 +15,67 @@ interface CrmRow {
   phone: string;
   status: string;
   initials: string;
+  investorProfiles: AssetNiche[];
+  /** `global` = répertoire partagé ; niche = fiche privée à ce silo. */
+  siloScope?: 'global' | AssetNiche;
 }
 
 const SEED_CONTACTS: CrmRow[] = [
-  { id: 1, name: 'Jean Tremblay', type: 'Vendeur', email: 'jean@tremblay.com', phone: '514-555-0101', status: 'Chaud', initials: 'JT' },
-  { id: 2, name: 'Sophie Martin', type: 'Acheteur', email: 'sophie.m@gmail.com', phone: '438-555-0202', status: 'Actif', initials: 'SM' },
-  { id: 3, name: 'Marc-André Roy', type: 'Collaborateur', email: 'roy@immobilier.ca', phone: '450-555-0303', status: 'Partenaire', initials: 'MR' },
-  { id: 4, name: 'Lucie Gagnon', type: 'Vendeur', email: 'lg@videotron.ca', phone: '514-555-0404', status: 'Froid', initials: 'LG' },
-  { id: 5, name: 'Pierre Lefebvre', type: 'Acheteur', email: 'pierre.le@outlook.com', phone: '514-555-0505', status: 'Nouveau', initials: 'PL' },
+  {
+    id: 1,
+    name: 'Jean Tremblay',
+    type: 'Vendeur',
+    email: 'jean@tremblay.com',
+    phone: '514-555-0101',
+    status: 'Chaud',
+    initials: 'JT',
+    investorProfiles: ['RPA', 'PLEX'],
+    siloScope: 'global',
+  },
+  {
+    id: 2,
+    name: 'Sophie Martin',
+    type: 'Acheteur',
+    email: 'sophie.m@gmail.com',
+    phone: '438-555-0202',
+    status: 'Actif',
+    initials: 'SM',
+    investorProfiles: ['RPA'],
+    siloScope: 'global',
+  },
+  {
+    id: 3,
+    name: 'Marc-André Roy',
+    type: 'Collaborateur',
+    email: 'roy@immobilier.ca',
+    phone: '450-555-0303',
+    status: 'Partenaire',
+    initials: 'MR',
+    investorProfiles: ['CPE'],
+    siloScope: 'CPE',
+  },
+  {
+    id: 4,
+    name: 'Lucie Gagnon',
+    type: 'Vendeur',
+    email: 'lg@videotron.ca',
+    phone: '514-555-0404',
+    status: 'Froid',
+    initials: 'LG',
+    investorProfiles: ['PLEX', 'CPE'],
+    siloScope: 'global',
+  },
+  {
+    id: 5,
+    name: 'Pierre Lefebvre',
+    type: 'Acheteur',
+    email: 'pierre.le@outlook.com',
+    phone: '514-555-0505',
+    status: 'Nouveau',
+    initials: 'PL',
+    investorProfiles: ['CPE', 'RPA'],
+    siloScope: 'PLEX',
+  },
 ];
 
 function initialsFromName(name: string): string {
@@ -31,6 +86,8 @@ function initialsFromName(name: string): string {
 }
 
 function draftToRow(d: CrmInboundDraft, id: number): CrmRow {
+  const profiles: AssetNiche[] =
+    d.investorProfiles && d.investorProfiles.length > 0 ? d.investorProfiles : ['RPA'];
   return {
     id,
     name: d.name,
@@ -39,12 +96,29 @@ function draftToRow(d: CrmInboundDraft, id: number): CrmRow {
     phone: d.phone,
     status: d.status,
     initials: initialsFromName(d.name),
+    investorProfiles: profiles,
+    siloScope: d.contactSiloScope ?? 'global',
   };
+}
+
+function nichePillClass(n: AssetNiche): string {
+  switch (n) {
+    case 'RPA':
+      return 'border-emerald-400/35 bg-emerald-500/12 text-emerald-200';
+    case 'CPE':
+      return 'border-sky-400/35 bg-sky-500/12 text-sky-200';
+    case 'PLEX':
+      return 'border-amber-400/35 bg-amber-500/12 text-amber-200';
+    default:
+      return 'border-white/15 bg-white/[0.06] text-slate-300';
+  }
 }
 
 export function CRM() {
   const { t } = useLanguage();
+  const { activeSilo } = useSilo();
   const [contacts, setContacts] = useState<CrmRow[]>(SEED_CONTACTS);
+  const [profileFilter, setProfileFilter] = useState<AssetNiche | 'all' | 'cockpit'>('cockpit');
 
   useEffect(() => {
     try {
@@ -71,6 +145,19 @@ export function CRM() {
     }
   }, []);
 
+  const visibleContacts = useMemo(() => {
+    const scoped = contacts.filter((c) => {
+      const s = c.siloScope ?? 'global';
+      if (s === 'global') return true;
+      return s === activeSilo;
+    });
+    if (profileFilter === 'all') return scoped;
+    if (profileFilter === 'cockpit') {
+      return scoped.filter((c) => c.investorProfiles.includes(activeSilo));
+    }
+    return scoped.filter((c) => c.investorProfiles.includes(profileFilter));
+  }, [contacts, profileFilter, activeSilo]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Chaud':
@@ -93,11 +180,17 @@ export function CRM() {
   const inboundHint = useMemo(
     () =>
       t(
-        'Les fiches créées depuis la messagerie (Phase E-2) apparaissent en tête de liste.',
-        'Records created from Mailbox (Phase E-2) appear at the top of the list.'
+        'Filtrer par profil investisseur : repère qui suit RPA, CPE ou Plex. Les fiches Messagerie héritent du silo cockpit ; les fiches « privées silo » n’apparaissent que dans leur niche.',
+        'Filter by investor profile: who tracks RPA, CPE or Plex. Mailbox-created records inherit the cockpit silo; private silo-scoped rows only appear in that niche.'
       ),
     [t]
   );
+
+  const filterButtons: { key: AssetNiche | 'all' | 'cockpit'; label: string }[] = [
+    { key: 'cockpit', label: t(`Cockpit (${activeSilo})`, `Cockpit (${activeSilo})`) },
+    { key: 'all', label: t('Tous', 'All') },
+    ...ASSET_NICHE_IDS.map((id) => ({ key: id, label: id })),
+  ];
 
   return (
     <div className="space-y-8">
@@ -129,15 +222,41 @@ export function CRM() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-vault-bright px-4 py-3">
+        <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
+          <Filter className="h-3.5 w-3.5" />
+          {t('Profil investisseur', 'Investor profile')}
+        </div>
+        {filterButtons.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setProfileFilter(key)}
+            className={cn(
+              'rounded-xl border px-3 py-1.5 text-[9px] font-black uppercase tracking-widest transition',
+              profileFilter === key
+                ? 'border-blue-400/50 bg-blue-600 text-white'
+                : 'border-white/10 bg-white/[0.04] text-slate-400 hover:border-white/20 hover:text-slate-200'
+            )}
+          >
+            {label}
+          </button>
+        ))}
+        <span className="ml-auto font-mono text-[9px] text-slate-500">
+          {visibleContacts.length} / {contacts.length}
+        </span>
+      </div>
+
       <div className="bg-vault-bright rounded-2xl border border-white/10 shadow-sm overflow-hidden">
         <div className="grid grid-cols-1 divide-y divide-white/[0.06]">
-          <div className="bg-white/[0.03] px-8 py-3 grid grid-cols-1 md:grid-cols-4 gap-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
-            <div className="md:col-span-1">Nom / Type</div>
-            <div className="md:col-span-1">Coordonnées</div>
-            <div className="md:col-span-1">{t('Suivi commercial', 'Pipeline status')}</div>
-            <div className="md:col-span-1 text-right">Actions</div>
+          <div className="bg-white/[0.03] px-8 py-3 grid grid-cols-1 lg:grid-cols-5 gap-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <div className="lg:col-span-1">{t('Nom / Type', 'Name / Type')}</div>
+            <div className="lg:col-span-1">{t('Coordonnées', 'Contact')}</div>
+            <div className="lg:col-span-1">{t('Profils niche', 'Niche profiles')}</div>
+            <div className="lg:col-span-1">{t('Suivi commercial', 'Pipeline status')}</div>
+            <div className="lg:col-span-1 text-right">{t('Actions', 'Actions')}</div>
           </div>
-          {contacts.map((contact, i) => (
+          {visibleContacts.map((contact, i) => (
             <motion.div
               key={contact.id}
               initial={{ opacity: 0, x: -20 }}
@@ -149,7 +268,7 @@ export function CRM() {
                 {contact.initials}
               </div>
 
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+              <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-4 items-center">
                 <div>
                   <h4 className="text-sm font-black text-slate-300 tracking-tight">{contact.name}</h4>
                   <p className="text-[10px] text-blue-400 font-bold uppercase tracking-tighter">{contact.type}</p>
@@ -164,6 +283,20 @@ export function CRM() {
                     <Phone className="w-3 h-3 text-blue-400 shrink-0" />
                     <span>{contact.phone}</span>
                   </div>
+                </div>
+
+                <div className="flex flex-wrap gap-1">
+                  {contact.investorProfiles.map((n) => (
+                    <span
+                      key={n}
+                      className={cn(
+                        'rounded-lg border px-2 py-0.5 text-[8px] font-black tracking-wider',
+                        nichePillClass(n)
+                      )}
+                    >
+                      {n}
+                    </span>
+                  ))}
                 </div>
 
                 <div className="flex items-center">

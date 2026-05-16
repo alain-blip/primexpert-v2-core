@@ -6,8 +6,9 @@ import {
   signOut, 
   User as FirebaseUser 
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocFromServer, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import type { AssetNiche } from '../types/residence';
 
 interface UserProfile {
   uid: string;
@@ -15,10 +16,15 @@ interface UserProfile {
   displayName: string;
   photoUrl: string;
   orgId: string;
-  role: 'admin' | 'member';
+  /** `admin_system` = direction (KPIs finance) ; `admin` = personnel (liste sans montants agrégés). */
+  role: 'admin' | 'admin_system' | 'member';
+  /** Début essai 45 j (yyyy-mm-dd), aligné Firestore `trialStartDate`. */
+  trialStartDate?: string;
   licenseName?: string;
   title?: string;
   agency?: string;
+  /** RBAC multi-niches : silos visibles pour ce courtier (absent = tous). */
+  accessibleSilos?: AssetNiche[];
 }
 
 interface AuthContextType {
@@ -40,26 +46,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        const profileDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        let profileDoc;
+        try {
+          profileDoc = await getDocFromServer(doc(db, 'users', firebaseUser.uid));
+        } catch {
+          profileDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        }
         if (profileDoc.exists()) {
           setProfile(profileDoc.data() as UserProfile);
         } else {
           // New user - auto-create organization for now (or join existing if we had invites)
           const newOrgId = `org_${firebaseUser.uid}`;
+          const trialStartDate = new Date().toISOString().slice(0, 10);
           const newProfile: UserProfile = {
             uid: firebaseUser.uid,
             email: firebaseUser.email || '',
             displayName: firebaseUser.displayName || 'Courtier Primexpert',
             photoUrl: firebaseUser.photoURL || '',
             orgId: newOrgId,
-            role: 'admin'
+            role: 'admin',
+            trialStartDate,
           };
-          
+
           await setDoc(doc(db, 'organizations', newOrgId), {
             name: `${newProfile.displayName}'s Team`,
             createdAt: serverTimestamp()
           });
-          
+
           await setDoc(doc(db, 'users', firebaseUser.uid), {
             ...newProfile,
             createdAt: serverTimestamp()

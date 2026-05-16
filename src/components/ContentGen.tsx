@@ -34,9 +34,11 @@ import {
 import { listResidences, type Residence } from '../services/residences';
 import { formatCurrency } from '../lib/utils';
 import { consumeContentGenPrefill } from '../lib/contentGenPrefill';
+import { useSilo } from '../context/SiloContext';
 
 export function ContentGen() {
   const { profile } = useAuth();
+  const { activeSilo } = useSilo();
   const brokerId = profile?.uid;
   const { language, t } = useLanguage();
   const [loading, setLoading] = useState(false);
@@ -62,7 +64,7 @@ export function ContentGen() {
     if (!brokerId) return;
     let cancelled = false;
     setResidencesLoading(true);
-    listResidences({ tenantId: brokerId, mode: 'strict' })
+    listResidences({ tenantId: brokerId, mode: 'strict' }, { silo: activeSilo })
       .then((rows) => {
         if (!cancelled) setResidences(rows);
       })
@@ -75,9 +77,7 @@ export function ContentGen() {
     return () => {
       cancelled = true;
     };
-  }, [brokerId]);
-
-  /** Préremplissage depuis fiche résidence (E-3 « Rédiger une mise à jour »). */
+  }, [brokerId, activeSilo]);
   useEffect(() => {
     if (!brokerId || prefillConsumedRef.current) return;
     const pre = consumeContentGenPrefill();

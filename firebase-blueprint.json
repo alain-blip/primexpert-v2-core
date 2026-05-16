@@ -23,7 +23,8 @@
         "agency": { "type": "string", "description": "Agence" },
         "photoUrl": { "type": "string" },
         "photoUpdatedAt": { "type": "string", "format": "date-time" },
-        "role": { "type": "string", "enum": ["admin", "member"] }
+        "role": { "type": "string", "enum": ["admin", "admin_system", "member"] },
+        "trialStartDate": { "type": "string", "description": "Début essai 45 j (yyyy-mm-dd)" }
       },
       "required": ["orgId", "displayName", "email", "role"]
     },

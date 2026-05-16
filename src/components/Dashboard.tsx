@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   TrendingUp,
   Users,
@@ -10,54 +10,112 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, formatCurrency } from '../lib/utils';
 import { useAuth } from '../lib/auth';
 import { useLanguage } from '../lib/i18n';
 import { useWorkhubNav } from '../lib/workhubNav';
 import { stashListingsFocusResidenceId } from '../lib/listingsFocus';
-import { listResidences } from '../services/residences';
+import { listResidences, type Residence } from '../services/residences';
 import { fetchRecentCallAnalyses } from '../services/transcriptionService';
 import { fetchRecentMailboxAnalyses } from '../services/mailboxAnalysis';
 import {
   computeFollowUpPriorities,
   type FollowUpPriorityItem,
 } from '../services/followUpIntel';
+import { useSilo } from '../context/SiloContext';
 
 export function Dashboard() {
   const { profile } = useAuth();
+  const { activeSilo } = useSilo();
   const { t } = useLanguage();
   const workhubNav = useWorkhubNav();
   const [followUpPriorities, setFollowUpPriorities] = useState<FollowUpPriorityItem[]>([]);
-  const [prioritiesLoading, setPrioritiesLoading] = useState(false);
+  const [residences, setResidences] = useState<Residence[]>([]);
+  const [dashboardDataLoading, setDashboardDataLoading] = useState(false);
 
   useEffect(() => {
     const uid = profile?.uid;
-    if (!uid) return;
+    if (!uid) {
+      setResidences([]);
+      setFollowUpPriorities([]);
+      setDashboardDataLoading(false);
+      return;
+    }
     let cancelled = false;
-    setPrioritiesLoading(true);
+    setDashboardDataLoading(true);
+    setResidences([]);
     (async () => {
       try {
-        const [residences, calls, mails] = await Promise.all([
-          listResidences({ tenantId: uid, mode: 'strict' }),
+        const [resList, calls, mails] = await Promise.all([
+          listResidences({ tenantId: uid, mode: 'strict' }, { silo: activeSilo }),
           fetchRecentCallAnalyses(uid, 400),
           fetchRecentMailboxAnalyses(uid, 400),
         ]);
         if (cancelled) return;
-        setFollowUpPriorities(computeFollowUpPriorities(residences, calls, mails));
+        setResidences(resList);
+        setFollowUpPriorities(computeFollowUpPriorities(resList, calls, mails));
       } finally {
-        if (!cancelled) setPrioritiesLoading(false);
+        if (!cancelled) setDashboardDataLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [profile?.uid]);
-  const stats = [
-    { label: t("01 / Prospection", "01 / Prospecting"), value: "24", change: "+12%", trend: "up", sub: t("Qualifiés: 15", "Qualified: 15"), icon: Users },
-    { label: t("02 / Mandats Actifs", "02 / Active Listings"), value: "12", change: "+4%", trend: "up", sub: t("Moy: 42j", "Avg: 42d"), icon: Home },
-    { label: t("06 / Succès Vendu", "06 / Sold Success"), value: "08", change: t("Stable", "Stable"), trend: "neutral", sub: "Ratio: 98%", icon: TrendingUp },
-    { label: t("09 / Volume Total", "09 / Total Volume"), value: "14.2M", change: "+2.4M", trend: "up", sub: t("Obj: 15M", "Target: 15M"), icon: DollarSign },
-  ];
+  }, [profile?.uid, activeSilo]);
+
+  const stats = useMemo(() => {
+    const loading = dashboardDataLoading;
+    const prospect = residences.filter((r) => r.status === 'prospect').length;
+    const mandate = residences.filter((r) => r.status === 'mandate').length;
+    const sold = residences.filter((r) => r.status === 'sold').length;
+    const pipeVol = residences
+      .filter((r) => r.status === 'prospect' || r.status === 'mandate' || r.status === 'promise')
+      .reduce((s, r) => s + (Number(r.price) || 0), 0);
+
+    const formatVolShort = (n: number) => {
+      if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace('.', ',')} M$`;
+      if (n >= 1000) return `${Math.round(n / 1000)} k$`;
+      return formatCurrency(n, { maxDecimals: 0 });
+    };
+
+    const dash = '—';
+    const silo = activeSilo;
+
+    return [
+      {
+        label: t('01 / Prospection', '01 / Prospecting'),
+        value: loading ? dash : String(prospect),
+        change: loading ? dash : `${residences.length} ${t('fiches silo', 'silo listings')}`,
+        trend: 'up' as const,
+        sub: `${t('Silo', 'Silo')} ${silo} · ${t('Données Firestore', 'Firestore data')}`,
+        icon: Users,
+      },
+      {
+        label: t('02 / Mandats Actifs', '02 / Active Listings'),
+        value: loading ? dash : String(mandate),
+        change: loading ? dash : t('Temps réel', 'Live'),
+        trend: 'up' as const,
+        sub: t('Statut mandate dans résidences', 'Mandate status on residences'),
+        icon: Home,
+      },
+      {
+        label: t('06 / Succès Vendu', '06 / Sold Success'),
+        value: loading ? dash : String(sold),
+        change: sold > 0 ? t('Actif', 'Active') : t('—', '—'),
+        trend: 'neutral' as const,
+        sub: t('Basé sur statut vendu', 'Based on sold status'),
+        icon: TrendingUp,
+      },
+      {
+        label: t('09 / Volume pipeline', '09 / Pipeline volume'),
+        value: loading ? dash : formatVolShort(pipeVol),
+        change: loading ? dash : t('Prospection + mandat + promesse', 'Prospect + mandate + promise'),
+        trend: 'up' as const,
+        sub: `${t('Prix affiché cumulé', 'Sum of list prices')} (${silo})`,
+        icon: DollarSign,
+      },
+    ];
+  }, [residences, dashboardDataLoading, activeSilo, t]);
 
   return (
     <div className="space-y-8">
@@ -119,7 +177,7 @@ export function Dashboard() {
             </div>
           </div>
         </div>
-        {prioritiesLoading ? (
+        {dashboardDataLoading ? (
           <p className="text-[11px] font-semibold text-slate-500 py-4">{t('Chargement…', 'Loading…')}</p>
         ) : followUpPriorities.length === 0 ? (
           <p className="text-[12px] font-semibold text-slate-400 py-2 leading-relaxed">

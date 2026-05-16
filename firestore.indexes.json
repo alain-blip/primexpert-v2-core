@@ -15,6 +15,43 @@
         { "fieldPath": "matchedResidenceId", "order": "ASCENDING" },
         { "fieldPath": "analyzedAtMillis", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "residences",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "courtiersResponsables", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "residences",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "courtiersResponsables", "order": "ASCENDING" },
+        { "fieldPath": "assetNiche", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "residences",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "courtiersResponsables", "order": "ASCENDING" },
+        { "fieldPath": "assetNiche", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "residences",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "courtiersResponsables", "order": "ASCENDING" },
+        { "fieldPath": "assetNiche", "order": "ASCENDING" },
+        { "fieldPath": "address", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

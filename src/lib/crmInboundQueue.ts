@@ -3,6 +3,8 @@
  * Pas de duplication Firestore tant que le CRM n'est pas persisté.
  */
 
+import type { AssetNiche } from '../types/residence';
+
 export const CRM_INBOUND_QUEUE_KEY = 'primexpert_crm_draft_queue';
 
 export interface CrmInboundDraft {
@@ -13,6 +15,10 @@ export interface CrmInboundDraft {
   status: string;
   notes: string;
   sourceMessageId: string;
+  /** Profils investisseur (traversant RPA / CPE / Plex). */
+  investorProfiles?: AssetNiche[];
+  /** Absent ou `global` = répertoire partagé ; sinon fiche cloisonnée à ce silo uniquement. */
+  contactSiloScope?: 'global' | AssetNiche;
 }
 
 export function appendCrmInboundDraft(draft: CrmInboundDraft): void {

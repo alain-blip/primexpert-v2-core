@@ -39,6 +39,7 @@ import {
   buildSoftFollowUpParagraph,
   shouldSuggestDraftFollowUp,
 } from '../services/followUpIntel';
+import { useSilo } from '../context/SiloContext';
 
 type IaStatus = 'idle' | 'loading' | 'done' | 'error';
 
@@ -176,6 +177,7 @@ function urgencyBadge(
 export function Mailbox() {
   const { t, language } = useLanguage();
   const { profile } = useAuth();
+  const { activeSilo } = useSilo();
   const brokerId = profile?.uid;
   const workhubNav = useWorkhubNav();
 
@@ -189,7 +191,7 @@ export function Mailbox() {
   useEffect(() => {
     if (!brokerId) return;
     let cancelled = false;
-    listResidences({ tenantId: brokerId, mode: 'strict' }).then((rows) => {
+    listResidences({ tenantId: brokerId, mode: 'strict' }, { silo: activeSilo }).then((rows) => {
       if (cancelled) return;
       setInventory(
         rows.map((r: Residence) => ({
@@ -202,7 +204,7 @@ export function Mailbox() {
     return () => {
       cancelled = true;
     };
-  }, [brokerId]);
+  }, [brokerId, activeSilo]);
 
   // Hydrate depuis Firestore : analyses déjà calculées (pas de second passage Gemini).
   useEffect(() => {
@@ -427,10 +429,13 @@ export function Mailbox() {
           ? `Résidence ID: ${residence.matchedResidenceId}`
           : residence.mentionedAddress ?? '',
         `Source message: ${selectedMessage.id}`,
+        `Cockpit silo: ${activeSilo}`,
       ]
         .filter(Boolean)
         .join(' · '),
       sourceMessageId: selectedMessage.id,
+      investorProfiles: [activeSilo],
+      contactSiloScope: activeSilo,
     });
 
     workhubNav?.setActiveTab('crm');

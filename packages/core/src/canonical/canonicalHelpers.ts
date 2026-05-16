@@ -14,14 +14,10 @@ import type {
   FieldProvenanceMap,
   CanonicalUpdateMeta,
   CanonicalUpdateResult,
+  CanonicalFieldDefinition,
 } from './types';
 
-import {
-  getCanonicalName,
-  getAllFieldNames,
-  CANONICAL_DEFINITIONS,
-  type CanonicalFieldDefinition,
-} from './fieldAliases';
+import { getCanonicalName, getAllFieldNames, CANONICAL_DEFINITIONS } from './fieldAliases';
 
 // ============================================================================
 // LECTURE DE CHAMPS

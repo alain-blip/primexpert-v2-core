@@ -16,6 +16,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../../lib/i18n';
 import { useAuth } from '../../lib/auth';
+import { useSilo } from '../../context/SiloContext';
 import {
   FolderOpen,
   UploadCloud,
@@ -52,6 +53,7 @@ function formatDate(ms: number, locale: string): string {
 export function Drive() {
   const { t, language } = useLanguage();
   const { profile } = useAuth();
+  const { activeSilo } = useSilo();
   const brokerId = profile?.uid ?? '';
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -70,7 +72,7 @@ export function Drive() {
     try {
       const [docs, res] = await Promise.all([
         listDriveDocuments({ tenantId: brokerId, mode: 'strict' }),
-        listResidences({ tenantId: brokerId, mode: 'strict' }),
+        listResidences({ tenantId: brokerId, mode: 'strict' }, { silo: activeSilo }),
       ]);
       setDocuments(docs.sort((a, b) => b.uploadedAtMillis - a.uploadedAtMillis));
       setResidences(res);
@@ -80,7 +82,7 @@ export function Drive() {
     } finally {
       setLoading(false);
     }
-  }, [brokerId]);
+  }, [brokerId, activeSilo]);
 
   useEffect(() => {
     void reload();

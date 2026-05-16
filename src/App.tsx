@@ -7,6 +7,7 @@ import React, { Suspense, lazy, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
 import { WorkhubNavProvider } from './lib/workhubNav';
+import { SiloProvider } from './context/SiloContext';
 import { Layout } from './components/Layout';
 import { LanguageProvider, useLanguage } from './lib/i18n';
 import { LogIn, TrendingUp, BarChart3 } from 'lucide-react';
@@ -24,6 +25,9 @@ const Mailbox    = lazy(() => import('./components/Mailbox').then(m => ({ defaul
 const Drive      = lazy(() => import('./components/Drive/Drive').then(m => ({ default: m.Drive })));
 const Softphone  = lazy(() => import('./components/Softphone/Softphone').then(m => ({ default: m.Softphone })));
 const Settings   = lazy(() => import('./components/Settings').then(m => ({ default: m.Settings })));
+const AdminSubscriptionsDashboard = lazy(() =>
+  import('./components/AdminSubscriptionsDashboard').then((m) => ({ default: m.AdminSubscriptionsDashboard }))
+);
 
 function LoadingScreen() {
   return (
@@ -209,10 +213,14 @@ function LandingPage() {
 }
 
 function Workhub() {
+  const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'admin-billing':
+        if (profile?.role !== 'admin_system') return <Dashboard />;
+        return <AdminSubscriptionsDashboard />;
       case 'dashboard': return <Dashboard />;
       case 'pipeline': return (
         <div className="h-[600px] flex flex-col items-center justify-center opacity-20 italic">
@@ -261,7 +269,7 @@ function Workhub() {
 }
 
 function ProtectedWorkhub() {
-  const { user, loading } = useAuth();
+  const { user, loading, profile } = useAuth();
 
   if (loading) {
     return <LoadingScreen />;
@@ -271,7 +279,11 @@ function ProtectedWorkhub() {
     return <Navigate to="/" replace />;
   }
 
-  return <Workhub />;
+  return (
+    <SiloProvider accessibleSilosFromProfile={profile?.accessibleSilos}>
+      <Workhub />
+    </SiloProvider>
+  );
 }
 
 function AppRoutes() {

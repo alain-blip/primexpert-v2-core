@@ -23,9 +23,9 @@ service cloud.firestore {
         incoming().keys().hasAll(['uid', 'email', 'displayName', 'orgId', 'role']) &&
         incoming().uid == userId &&
         incoming().email == request.auth.token.email &&
-        incoming().role == 'admin'; // First user is admin
+        incoming().role in ['admin', 'admin_system']; // Premier compte : admin ; direction : admin_system (console)
       allow update: if isOwner(userId) &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoUrl', 'licenseName', 'title', 'agency', 'photoUpdatedAt', 'role']);
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoUrl', 'licenseName', 'title', 'agency', 'photoUpdatedAt', 'role', 'trialStartDate', 'accessibleSilos']);
 
       // Analyses IA Mailbox (E-2 persistance) — une doc par messageId, propriétaire = courtier.
       match /mailbox_analyses/{messageId} {
@@ -56,7 +56,7 @@ service cloud.firestore {
       allow read: if isOrgMember(orgId);
       allow create: if isSignedIn(); // Allow during first signup
       allow update: if isOrgMember(orgId) && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'admin_system'];
     }
 
     // Shared Collection Pattern for multi-tenancy
@@ -104,7 +104,14 @@ service cloud.firestore {
       allow delete: if isTenantOwner();
     }
 
-    // drive_documents — métadonnées Drive PrimeXpert (Brief §4)
+    // proprietes — dossiers / fiches Copilote migrés (Phase 2) ; même clé tenant que `residences`.
+    match /proprietes/{proprieteId} {
+      allow read:   if isTenantOwner();
+      allow create: if isIncomingTenantOwner();
+      allow update: if isTenantOwner() && isIncomingTenantOwner();
+      allow delete: if isTenantOwner();
+    }
+
     match /drive_documents/{docId} {
       allow read:   if isTenantOwner();
       allow create: if isIncomingTenantOwner();
