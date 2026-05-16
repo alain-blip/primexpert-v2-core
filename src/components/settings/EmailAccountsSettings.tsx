@@ -191,7 +191,7 @@ export function EmailAccountsSettings() {
       ) : null}
 
       {nylasOn ? (
-        <motion.div className="mb-6 flex flex-wrap gap-3" layout={false}>
+        <div className="mb-6 flex flex-wrap gap-3">
           <button
             type="button"
             disabled={saving}
@@ -208,7 +208,7 @@ export function EmailAccountsSettings() {
           >
             {t('Connecter Outlook (Nylas)', 'Connect Outlook (Nylas)')}
           </button>
-        </motion.div>
+        </div>
       ) : null}
 
       <ul className="mb-6 space-y-3">
