@@ -119,7 +119,7 @@ export function ResidenceDetail({
         );
       case 'declaration':
         return (
-          <PlaceholderPanel
+          <InstitutionalPlaceholder
             phase={t('Phase 5 — Gold Signature', 'Phase 5 — Gold Signature')}
             title={t('Déclaration du vendeur certifiable', 'Certifiable seller disclosure')}
             subtitle={t(
