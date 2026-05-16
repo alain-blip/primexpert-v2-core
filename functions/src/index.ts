@@ -1,19 +1,5 @@
 import { onCall, onRequest, HttpsError } from 'firebase-functions/v2/https';
 import { setGlobalOptions } from 'firebase-functions/v2/options';
-import {
-  attachGrantToUserAccount,
-  buildNylasAuthUrl,
-  decodeOAuthState,
-  exchangeCodeForGrant,
-  oauthErrorRedirect,
-  oauthSuccessRedirect,
-} from './nylas/oauth';
-import { sendNylasOutboundMessage } from './nylas/sendOutbound';
-import {
-  handleNylasWebhookChallenge,
-  handleNylasWebhookEvent,
-} from './nylas/webhookHandler';
-import { db } from './lib/firestore';
 import type { OAuthStatePayload } from './nylas/types';
 
 setGlobalOptions({
@@ -23,6 +9,7 @@ setGlobalOptions({
 
 /** URL OAuth Hosted Auth Nylas (Gmail / Microsoft). */
 export const nylasGetAuthUrl = onCall(async (request) => {
+  const { buildNylasAuthUrl } = await import('./nylas/oauth');
   if (!request.auth?.uid) {
     throw new HttpsError('unauthenticated', 'Connexion requise.');
   }
@@ -47,6 +34,13 @@ export const nylasGetAuthUrl = onCall(async (request) => {
 
 /** Callback OAuth après consentement Google/Microsoft. */
 export const nylasOAuthCallback = onRequest(async (req, res) => {
+  const {
+    attachGrantToUserAccount,
+    decodeOAuthState,
+    exchangeCodeForGrant,
+    oauthErrorRedirect,
+    oauthSuccessRedirect,
+  } = await import('./nylas/oauth');
   try {
     const code = typeof req.query.code === 'string' ? req.query.code : '';
     const stateRaw = typeof req.query.state === 'string' ? req.query.state : '';
@@ -80,6 +74,9 @@ export const nylasOAuthCallback = onRequest(async (req, res) => {
 export const nylasWebhook = onRequest(
   { cors: false, invoker: 'public' },
   async (req, res) => {
+    const { handleNylasWebhookChallenge, handleNylasWebhookEvent } = await import(
+      './nylas/webhookHandler'
+    );
     if (req.method === 'GET') {
       handleNylasWebhookChallenge(req, res);
       return;
@@ -94,6 +91,8 @@ export const nylasWebhook = onRequest(
 
 /** Envoi sortant via API Nylas + miroir Firestore. */
 export const nylasSendMessage = onCall(async (request) => {
+  const { getDb } = await import('./lib/firestore');
+  const { sendNylasOutboundMessage } = await import('./nylas/sendOutbound');
   if (!request.auth?.uid) {
     throw new HttpsError('unauthenticated', 'Connexion requise.');
   }
@@ -106,7 +105,7 @@ export const nylasSendMessage = onCall(async (request) => {
     throw new HttpsError('invalid-argument', 'threadId, body et accountId requis.');
   }
 
-  const userSnap = await db.collection('users').doc(brokerId).get();
+  const userSnap = await getDb().collection('users').doc(brokerId).get();
   const accounts = userSnap.data()?.emailAccounts;
   if (!Array.isArray(accounts)) {
     throw new HttpsError('failed-precondition', 'Aucun compte courriel configuré.');

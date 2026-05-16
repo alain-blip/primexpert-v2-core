@@ -1,5 +1,5 @@
 import * as crypto from 'crypto';
-import { db } from '../lib/firestore';
+import { getDb } from '../lib/firestore';
 import type { OAuthStatePayload } from './types';
 import {
   appReturnUrl,
@@ -88,7 +88,7 @@ export async function attachGrantToUserAccount(
   grantId: string,
   email: string
 ): Promise<void> {
-  const ref = db.collection('users').doc(uid);
+  const ref = getDb().collection('users').doc(uid);
   const snap = await ref.get();
   if (!snap.exists) throw new Error('Utilisateur introuvable.');
   const accounts = Array.isArray(snap.data()?.emailAccounts)

@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin';
-import { db, threadMessagesCol, userThreadsCol } from '../lib/firestore';
+import { getDb, threadMessagesCol, userThreadsCol } from '../lib/firestore';
 import type { NylasMessageObject } from './types';
 
 export interface SyncInboundInput {
@@ -75,7 +75,7 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
   const dup = await messagesCol.where('nylasMessageId', '==', nylasMessageId).limit(1).get();
   if (!dup.empty) return;
 
-  const accountSnap = await db.collection('users').doc(brokerId).get();
+  const accountSnap = await getDb().collection('users').doc(brokerId).get();
   const accounts = accountSnap.data()?.emailAccounts;
   let fromEmail: string | undefined;
   if (Array.isArray(accounts)) {
@@ -105,7 +105,7 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
 export async function resolveAccountByGrant(
   grantId: string
 ): Promise<{ uid: string; accountId: string; email?: string } | null> {
-  const users = await db.collection('users').get();
+  const users = await getDb().collection('users').get();
   for (const userDoc of users.docs) {
     const data = userDoc.data();
     const accounts = data.emailAccounts;
