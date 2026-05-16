@@ -1,0 +1,43 @@
+/**
+ * Clés des postes de dépenses d'exploitation (SSOT — port Copilote expenseFields.js).
+ */
+export const EXPENSE_KEYS = [
+  'mainDOeuvreDirecte',
+  'salairesAvantages',
+  'telecommunications',
+  'energie',
+  'assurances',
+  'taxesPermis',
+  'nourritures',
+  'fournituresBureau',
+  'fraisDeplacements',
+  'honorairesProfessionnels',
+  'fraisRepresentation',
+  'taxesMunicipalesScolaire',
+  'taxesScolaires',
+  'entretienReparation',
+  'fraisGestion',
+  'publicite',
+  'divers',
+  'agencePlacement',
+  'ascenseur',
+  'comptabilite',
+  'fournituresCuisine',
+  'fournituresEntretien',
+  'fournituresEntretienMenager',
+  'fournituresGenerales',
+  'fournituresMedicales',
+  'fraisFormation',
+  'fraisGeneraux',
+  'fraisLegaux',
+  'fraisLoisir',
+  'honoraireAgencePlacement',
+  'interetsBancaires',
+  'interetsDetteLP',
+  'amortissement',
+  'locationEquipements',
+  'locationEntrepot',
+  'sousTraitance',
+] as const;
+
+export type ExpenseKey = (typeof EXPENSE_KEYS)[number];

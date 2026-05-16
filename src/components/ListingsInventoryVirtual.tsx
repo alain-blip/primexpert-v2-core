@@ -2,7 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Loader2 } from 'lucide-react';
 import { ListingRow } from './ListingRow';
-import type { Residence } from '../services/residences';
+import type { RadarListingView } from '../lib/radarAccess';
+import type { RadarPropertyType } from '../lib/radarAccess';
 import type { CallAnalysisRow } from '../services/transcriptionService';
 import type { SavedMailboxAnalysis } from '../services/mailboxAnalysis';
 import { isListingStale } from '../services/followUpIntel';
@@ -11,11 +12,12 @@ import { useLanguage } from '../lib/i18n';
 const ROW_ESTIMATE = 52;
 
 export interface ListingsInventoryVirtualProps {
-  rows: Residence[];
+  rows: RadarListingView[];
   loading: boolean;
   hasMore: boolean;
   onLoadMore: () => void;
-  onOpen: (r: Residence) => void;
+  onOpen: (r: RadarListingView) => void;
+  onLockedClick: (propertyType: RadarPropertyType) => void;
   intelCalls: CallAnalysisRow[];
   intelMails: SavedMailboxAnalysis[];
   usingDemo: boolean;
@@ -101,6 +103,9 @@ export function ListingsInventoryVirtual({
                 <ListingRow
                   residence={row}
                   onOpen={onOpen}
+                  isLocked={row.isLocked}
+                  propertyType={row.propertyType}
+                  onLockedClick={onLockedClick}
                   stale={stale}
                   t={t}
                   language={language}

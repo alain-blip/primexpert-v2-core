@@ -12,7 +12,15 @@
     "migrate:residences": "node migrate_data.js --collection=residences",
     "migrate:residences:dry": "node migrate_data.js --collection=residences --dry-run",
     "migrate:proprietes": "node migrate_data.js --collection=proprietes",
-    "migrate:proprietes:dry": "node migrate_data.js --collection=proprietes --dry-run"
+    "migrate:proprietes:dry": "node migrate_data.js --collection=proprietes --dry-run",
+    "backfill:tenant": "node backfill_tenant.js",
+    "backfill:tenant:dry": "node backfill_tenant.js --dry-run",
+    "audit:tenant-uids": "node audit_tenant_uids.js",
+    "hydrate:analyze": "node hydrate_pipeline.js --analyze",
+    "hydrate:pipeline:dry": "node hydrate_pipeline.js --hydrate-pipeline --dry-run",
+    "hydrate:pipeline": "node hydrate_pipeline.js --hydrate-pipeline",
+    "migrate:financial:dry": "node migrate_financial_subcollections.js --dry-run --uid=bYwUG6mxNmPcvK9Xz2Uuy4FxqD83",
+    "migrate:financial": "node migrate_financial_subcollections.js --uid=bYwUG6mxNmPcvK9Xz2Uuy4FxqD83"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -24,6 +32,7 @@
     "express": "^4.21.2",
     "firebase": "^12.13.0",
     "firebase-admin": "^13.10.0",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "react": "^19.0.1",

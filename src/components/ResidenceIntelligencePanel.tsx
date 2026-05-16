@@ -12,11 +12,10 @@ import {
   FileText,
   ScrollText,
 } from 'lucide-react';
-import { motion } from 'motion/react';
 import { useLanguage } from '../lib/i18n';
 import { useWorkhubNav } from '../lib/workhubNav';
 import { stashContentGenPrefill } from '../lib/contentGenPrefill';
-import { formatCurrency } from '../lib/utils';
+import { cn, formatCurrency } from '../lib/utils';
 import type { Residence } from '../services/residences';
 import {
   subscribeCallAnalysesForResidence,
@@ -26,6 +25,7 @@ import {
   subscribeMailboxAnalysesForResidence,
   type SavedMailboxAnalysis,
 } from '../services/mailboxAnalysis';
+import { inst, InstitutionalPageHeader } from './residence/institutional/InstitutionalUi';
 
 interface IntelTimelineItem {
   kind: 'call' | 'mail';
@@ -55,12 +55,15 @@ export interface ResidenceIntelligencePanelProps {
   brokerId: string;
   residence: Residence;
   onClose: () => void;
+  /** Intégré dans ResidenceDetail : masque retour + en-tête dupliqué. */
+  embedded?: boolean;
 }
 
 export function ResidenceIntelligencePanel({
   brokerId,
   residence,
   onClose,
+  embedded = false,
 }: ResidenceIntelligencePanelProps) {
   const { t, language } = useLanguage();
   const workhubNav = useWorkhubNav();
@@ -218,29 +221,37 @@ export function ResidenceIntelligencePanel({
   const addrTitle = residence.city ? `${residence.address}, ${residence.city}` : residence.address;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
+    <div className={cn('space-y-5', inst.page)}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-3 min-w-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-200 hover:border-blue-400/50 hover:text-white transition"
-            aria-label={t('Retour à mes inscriptions', 'Back to my listings')}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
+          {!embedded && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-[#000000] transition"
+              aria-label={t('Retour à mes inscriptions', 'Back to my listings')}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+          )}
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-400/90">
-              {t('Vue 360° · Intelligence centralisée', '360° view · Centralized intelligence')}
-            </p>
-            <h2 className="text-2xl font-black text-white tracking-tight truncate">{addrTitle}</h2>
-            <p className="text-[11px] font-bold text-slate-500 mt-1 font-mono">
-              {formatCurrency(residence.price)} · ID {residence.id}
-            </p>
+            {!embedded ? (
+              <>
+                <InstitutionalPageHeader
+                  title={t('Vue 360° · Intelligence centralisée', '360° view · Centralized intelligence')}
+                />
+                <h2 className="text-xl font-black text-[#000000] tracking-tight truncate -mt-2">{addrTitle}</h2>
+                <p className="text-[11px] font-bold text-slate-600 font-mono mt-1">
+                  <span className="text-[#000000]">{formatCurrency(residence.price)}</span> · ID {residence.id}
+                </p>
+              </>
+            ) : (
+              <InstitutionalPageHeader
+                icon={<Sparkles className="h-5 w-5 text-slate-700 shrink-0" />}
+                title={t('Intelligence · Chronologie', 'Intelligence · Timeline')}
+                meta={t('Appels & courriels analysés', 'Analyzed calls & emails')}
+              />
+            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
@@ -248,50 +259,48 @@ export function ResidenceIntelligencePanel({
             type="button"
             disabled={timeline.length === 0}
             onClick={handleVendorReport}
-            className="flex items-center gap-2 rounded-xl border border-violet-400/35 bg-violet-500/15 px-5 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-violet-100 hover:bg-violet-500/25 disabled:opacity-35 disabled:cursor-not-allowed transition"
+            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#000000] hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-sm"
           >
-            <ScrollText className="h-4 w-4 shrink-0" />
+            <ScrollText className="h-4 w-4 shrink-0 text-slate-700" />
             {t('Rapport vendeur', 'Seller report')}
           </button>
           <button
             type="button"
             disabled={!topAnalyzedCall}
             onClick={handleDraftSellerUpdate}
-            className="flex items-center gap-2 rounded-xl border border-blue-400/35 bg-blue-500/15 px-5 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-blue-200 hover:bg-blue-500/25 disabled:opacity-35 disabled:cursor-not-allowed transition"
+            className="flex items-center gap-2 rounded-xl border border-[#D4AF37]/40 bg-amber-50 px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#000000] hover:border-[#D4AF37]/60 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-sm"
           >
-            <FileText className="h-4 w-4 shrink-0" />
+            <FileText className="h-4 w-4 shrink-0 text-[#D4AF37]" />
             {t('Rédiger une mise à jour', 'Draft seller update')}
           </button>
         </div>
       </div>
 
       {subError && (
-        <div className="rounded-xl border border-amber-400/30 bg-amber-500/[0.07] px-4 py-3 text-[11px] text-amber-200">
+        <div className={inst.alertAmber}>
           {t(
             'Abonnement Firestore : vérifie les règles déployées et crée l’index composite si la console le demande.',
             'Firestore subscription: deploy rules and create the composite index if the console prompts you.'
           )}{' '}
-          <span className="font-mono opacity-80">({subError})</span>
+          <span className="font-mono text-slate-600">({subError})</span>
         </div>
       )}
 
-      <div className="rounded-[24px] border border-white/10 bg-vault px-6 py-5 shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
-        <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="h-4 w-4 text-violet-400" />
-          <h3 className="text-sm font-black uppercase tracking-[0.15em] text-slate-200">
-            {t('Historique intelligent', 'Smart history')}
-          </h3>
-        </div>
+      <section className={inst.section}>
+        <header className={cn(inst.sectionHeader, 'flex items-center gap-2')}>
+          <Sparkles className="h-4 w-4 text-slate-700" />
+          <h3 className={inst.sectionTitle}>{t('Historique intelligent', 'Smart history')}</h3>
+        </header>
 
         {timeline.length === 0 ? (
-          <p className="py-10 text-center text-[12px] font-semibold text-slate-500 leading-relaxed px-4">
+          <p className="px-6 py-10 text-center text-sm font-semibold text-slate-600 leading-relaxed">
             {t(
               'Aucun appel ni courriel analysé n’est encore rattaché à cette propriété. Enregistre un appel (Téléphonie) ou analyse un courriel matché à cette résidence.',
               'No calls or analyzed emails are linked to this property yet. Record a call or analyze an email matched to this listing.'
             )}
           </p>
         ) : (
-          <ul className="space-y-3 max-h-[min(520px,55vh)] overflow-y-auto pr-1 custom-scrollbar">
+          <ul className="p-4 space-y-3 max-h-[min(520px,55vh)] overflow-y-auto pr-1 custom-scrollbar">
             {timeline.map((item) => {
               if (item.kind === 'call' && item.call) {
                 const row = item.call;
@@ -299,12 +308,12 @@ export function ResidenceIntelligencePanel({
                 return (
                   <li
                     key={`call-${row.driveDocumentId}`}
-                    className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3"
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <Mic className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        <Mic className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
                           {t('Appel', 'Call')}
                         </span>
                       </div>
@@ -312,17 +321,17 @@ export function ResidenceIntelligencePanel({
                         {st.emoji}
                       </span>
                     </div>
-                    <p className="text-[11px] font-mono text-slate-300 mt-1 truncate">{row.fileName}</p>
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mt-0.5">
+                    <p className="text-[11px] font-mono text-[#000000] mt-1 truncate">{row.fileName}</p>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600 mt-0.5">
                       {st.label}
                     </p>
                     {row.pipelineStatus === 'analyzed' && row.executiveSummary?.trim() ? (
-                      <p className="mt-2 text-[12px] text-slate-200 leading-relaxed border-t border-white/5 pt-2">
+                      <p className="mt-2 text-sm text-[#000000] leading-relaxed border-t border-slate-200 pt-2">
                         {row.executiveSummary}
                       </p>
                     ) : null}
                     {row.pipelineStatus === 'failed' && row.errorMessage ? (
-                      <p className="mt-2 text-[10px] text-red-400/90 font-mono">{row.errorMessage}</p>
+                      <p className="mt-2 text-[10px] text-red-800 font-mono">{row.errorMessage}</p>
                     ) : null}
                   </li>
                 );
@@ -336,18 +345,16 @@ export function ResidenceIntelligencePanel({
                 return (
                   <li
                     key={`mail-${m.messageId}`}
-                    className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3"
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
                   >
                     <div className="flex items-center gap-2">
-                      <Mail className="h-3.5 w-3.5 text-sky-400 shrink-0" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      <Mail className="h-3.5 w-3.5 text-slate-700 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
                         {t('Courriel analysé', 'Analyzed email')}
                       </span>
                     </div>
-                    <p className="text-[12px] font-bold text-slate-200 mt-1">{name}</p>
-                    <p className="text-[11px] text-slate-400 mt-1 leading-snug line-clamp-3">
-                      {p.summaryOneLine}
-                    </p>
+                    <p className="text-sm font-bold text-[#000000] mt-1">{name}</p>
+                    <p className="text-sm text-slate-700 mt-1 leading-snug line-clamp-3">{p.summaryOneLine}</p>
                     <p className="text-[9px] font-mono text-slate-600 mt-2">
                       {t('Intent', 'Intent')}: {p.lead.intent} · {t('Urgence', 'Urgency')}: {p.urgency}
                     </p>
@@ -358,7 +365,7 @@ export function ResidenceIntelligencePanel({
             })}
           </ul>
         )}
-      </div>
-    </motion.div>
+      </section>
+    </div>
   );
 }

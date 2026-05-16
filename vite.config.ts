@@ -25,6 +25,8 @@ export default defineConfig(({mode}) => {
         { find: /^@primexpert\/core\/tenant$/, replacement: path.resolve(__dirname, 'packages/core/src/tenant/index.ts') },
         { find: /^@primexpert\/core\/mail$/, replacement: path.resolve(__dirname, 'packages/core/src/mail/index.ts') },
         { find: /^@primexpert\/core\/audio$/, replacement: path.resolve(__dirname, 'packages/core/src/audio/index.ts') },
+        { find: /^@primexpert\/core\/financial$/, replacement: path.resolve(__dirname, 'packages/core/src/financial/index.ts') },
+        { find: /^@primexpert\/core\/identity$/, replacement: path.resolve(__dirname, 'packages/core/src/identity/index.ts') },
         { find: /^@primexpert\/core\/utils\/formatting$/, replacement: path.resolve(__dirname, 'packages/core/src/utils/formatting.ts') },
         { find: /^@primexpert\/core\/services\/aiNarrativeService$/, replacement: path.resolve(__dirname, 'packages/core/src/services/aiNarrativeService.ts') },
         { find: /^@primexpert\/core$/, replacement: path.resolve(__dirname, 'packages/core/src/index.ts') },

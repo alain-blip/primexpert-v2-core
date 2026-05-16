@@ -6,7 +6,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../lib/i18n';
 import { useAuth } from '../lib/auth';
-import { Wallet, TrendingUp, Banknote, CalendarDays, Gift, Sparkles, Lock, Shield } from 'lucide-react';
+import { Wallet, TrendingUp, Banknote, CalendarDays, Gift, Sparkles, Lock, Shield, FileDown } from 'lucide-react';
+import { downloadSampleMonthlyInvoice } from '../services/invoicePdfService';
+import { formatCadAmount, computeQuebecTaxes } from '../lib/quebecInvoiceTax';
 import { cn } from '../lib/utils';
 import {
   DEMO_SUBSCRIBERS,
@@ -291,6 +293,32 @@ export function AdminSubscriptionsDashboard() {
                 'Wire Firestore + Stripe webhooks for real numbers. admin_system only.'
               )}
             </p>
+          </div>
+
+          <div className="workhub-card rounded-[22px] border border-white/15 p-4 md:p-5">
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-300">
+              {t('Ghost Billing — facture PDF (démo)', 'Ghost Billing — sample PDF invoice')}
+            </p>
+            <p className="mt-2 text-[10px] font-semibold text-white/75">
+              {t('Exemple 175,00 $ HT →', 'Sample 175.00 CAD subtotal →')}{' '}
+              <span className="font-mono font-black text-white">
+                {formatCadAmount(computeQuebecTaxes(175).totalCad, locale)}
+              </span>{' '}
+              {t('(TPS + TVQ)', '(GST + QST)')}
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                downloadSampleMonthlyInvoice(
+                  profile?.displayName ?? 'Courtier Primexpert',
+                  profile?.email
+                )
+              }
+              className="mt-3 flex items-center gap-2 rounded-xl border border-[#FACC15]/50 bg-[#FACC15]/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-[#FACC15] transition hover:bg-[#FACC15]/20"
+            >
+              <FileDown className="h-4 w-4 shrink-0" aria-hidden />
+              {t('Télécharger facture démo', 'Download sample invoice')}
+            </button>
           </div>
         </>
       ) : (

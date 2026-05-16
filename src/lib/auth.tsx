@@ -9,8 +9,11 @@ import {
 import { doc, getDoc, getDocFromServer, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import type { AssetNiche } from '../types/residence';
+import type { BillingStatus, NurtureEmailSent } from '../types/billing';
+import type { J7SurveyResponse } from '../types/nurture';
+import type { EmailAccount } from '../types/emailAccount';
 
-interface UserProfile {
+export interface UserProfile {
   uid: string;
   email: string;
   displayName: string;
@@ -23,8 +26,25 @@ interface UserProfile {
   licenseName?: string;
   title?: string;
   agency?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  j7Survey?: J7SurveyResponse;
   /** RBAC multi-niches : silos visibles pour ce courtier (absent = tous). */
   accessibleSilos?: AssetNiche[];
+  /** Forfaits Radar : `rpa` | `cpe` | `plex` | `commercial` (prioritaire sur `accessibleSilos`). */
+  specialties?: string[];
+  /**
+   * Chérif — accès Radar. Mis à jour par Stripe / Cloud Functions uniquement.
+   * `grace_period` = 72 h après échec ; `suspended` = écran de blocage.
+   */
+  billingStatus?: BillingStatus;
+  /** ISO date/heure — début période de grâce 72 h (webhook Stripe / Functions). */
+  gracePeriodStartedAt?: string;
+  /** Dernier courriel d’onboarding / relance (J7, J21, J30, J40). */
+  lastEmailSent?: NurtureEmailSent | null;
+  /** Comptes courriel synchronisés (multi-inbox). */
+  emailAccounts?: EmailAccount[];
 }
 
 interface AuthContextType {
@@ -33,6 +53,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: () => Promise<void>;
   logOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,44 +63,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const loadProfile = async (firebaseUser: FirebaseUser) => {
+    let profileDoc;
+    try {
+      profileDoc = await getDocFromServer(doc(db, 'users', firebaseUser.uid));
+    } catch {
+      profileDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+    }
+    if (profileDoc.exists()) {
+      setProfile(profileDoc.data() as UserProfile);
+      return;
+    }
+
+    const newOrgId = `org_${firebaseUser.uid}`;
+    const trialStartDate = new Date().toISOString().slice(0, 10);
+    const newProfile: UserProfile = {
+      uid: firebaseUser.uid,
+      email: firebaseUser.email || '',
+      displayName: firebaseUser.displayName || 'Courtier Primexpert',
+      photoUrl: firebaseUser.photoURL || '',
+      orgId: newOrgId,
+      role: 'admin',
+      trialStartDate,
+      billingStatus: 'active',
+    };
+
+    await setDoc(doc(db, 'organizations', newOrgId), {
+      name: `${newProfile.displayName}'s Team`,
+      createdAt: serverTimestamp(),
+    });
+
+    await setDoc(doc(db, 'users', firebaseUser.uid), {
+      ...newProfile,
+      createdAt: serverTimestamp(),
+    });
+
+    setProfile(newProfile);
+  };
+
+  const refreshProfile = async () => {
+    if (!user) return;
+    await loadProfile(user);
+  };
+
   useEffect(() => {
     return onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        let profileDoc;
-        try {
-          profileDoc = await getDocFromServer(doc(db, 'users', firebaseUser.uid));
-        } catch {
-          profileDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        }
-        if (profileDoc.exists()) {
-          setProfile(profileDoc.data() as UserProfile);
-        } else {
-          // New user - auto-create organization for now (or join existing if we had invites)
-          const newOrgId = `org_${firebaseUser.uid}`;
-          const trialStartDate = new Date().toISOString().slice(0, 10);
-          const newProfile: UserProfile = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            displayName: firebaseUser.displayName || 'Courtier Primexpert',
-            photoUrl: firebaseUser.photoURL || '',
-            orgId: newOrgId,
-            role: 'admin',
-            trialStartDate,
-          };
-
-          await setDoc(doc(db, 'organizations', newOrgId), {
-            name: `${newProfile.displayName}'s Team`,
-            createdAt: serverTimestamp()
-          });
-
-          await setDoc(doc(db, 'users', firebaseUser.uid), {
-            ...newProfile,
-            createdAt: serverTimestamp()
-          });
-          
-          setProfile(newProfile);
-        }
+        await loadProfile(firebaseUser);
       } else {
         setProfile(null);
       }
@@ -97,7 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, logOut }}>
+    <AuthContext.Provider value={{ user, profile, loading, signIn, logOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

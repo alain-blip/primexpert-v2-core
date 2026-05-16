@@ -3,7 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { consumeOpenFinanceIntent } from '../lib/financeNavigation';
+import { EmailAccountsSettings } from './settings/EmailAccountsSettings';
 import { useLanguage } from '../lib/i18n';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/useTheme';
@@ -18,12 +20,7 @@ import {
   RotateCcw,
   Save,
   ImagePlus,
-  Mail,
-  Server,
-  Plug,
 } from 'lucide-react';
-
-type MailProvider = 'google' | 'microsoft' | 'imap';
 
 type CreativityLevel = 'precise' | 'creative';
 
@@ -52,17 +49,17 @@ export function Settings() {
   const [assistantEmail, setAssistantEmail] = useState('');
   const [ccAssistant, setCcAssistant] = useState(false);
 
-  // Boîte courriel — synchronisation IMAP/SMTP ou OAuth (Google/Microsoft).
-  const [mailAddress, setMailAddress] = useState(profile?.email ?? '');
-  const [mailProvider, setMailProvider] = useState<MailProvider>('google');
-  const [imapHost, setImapHost] = useState('');
-  const [imapPort, setImapPort] = useState('993');
-  const [smtpHost, setSmtpHost] = useState('');
-  const [smtpPort, setSmtpPort] = useState('587');
-  const [mailAppPassword, setMailAppPassword] = useState('');
-  const [mailSync, setMailSync] = useState(false);
   const [mailNotifs, setMailNotifs] = useState(true);
-  const isCustomImap = mailProvider === 'imap';
+
+  /** Tour de contrôle — Finance : direction uniquement (brief sécurité). */
+  const showFinanceButton = profile?.role === 'admin_system';
+
+  useEffect(() => {
+    if (!consumeOpenFinanceIntent()) return;
+    if (profile?.role === 'admin_system') {
+      workhubNav?.setActiveTab('admin-billing');
+    }
+  }, [profile?.role, workhubNav]);
 
   return (
     <div className="space-y-6">
@@ -86,7 +83,7 @@ export function Settings() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:justify-end">
-            {profile?.role === 'admin_system' ? (
+            {showFinanceButton ? (
               <button
                 type="button"
                 onClick={() => workhubNav?.setActiveTab('admin-billing')}
@@ -418,169 +415,19 @@ export function Settings() {
         </label>
       </div>
 
-      {/* CARTE BOÎTE COURRIEL — synchronisation IMAP / SMTP ou OAuth */}
-      <div className="workhub-card-glow rounded-[28px] p-7">
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Mail className="w-3.5 h-3.5 text-blue-400" />
-              <p className="text-[10px] font-black text-blue-300/80 tracking-[0.3em] uppercase">
-                {t('Communication courriel', 'Email communication')}
-              </p>
-            </div>
-            <h3 className="text-2xl font-black italic tracking-tighter workhub-title-gradient uppercase">
-              {t('Boîte courriel synchronisée', 'Synchronized mailbox')}
-            </h3>
-            <p className="text-[11px] text-slate-400 mt-1.5 max-w-2xl">
-              {t(
-                'Branche ta boîte courriel principale pour recevoir et envoyer les courriels directement depuis PrimeXpert. Les conversations seront archivées par dossier.',
-                'Connect your main mailbox to receive and send emails directly from PrimeXpert. Conversations are archived by deal.'
-              )}
-            </p>
-          </div>
-          <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border ${
-            mailSync
-              ? 'text-emerald-300 bg-emerald-500/10 border-emerald-400/30'
-              : 'text-amber-300 bg-amber-500/10 border-amber-400/30'
-          }`}>
-            {mailSync ? t('Connecté', 'Connected') : t('Non configuré', 'Not configured')}
-          </span>
-        </div>
+      <EmailAccountsSettings />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label={t('Adresse courriel principale', 'Primary email address')}>
-            <input
-              type="email"
-              value={mailAddress}
-              onChange={(e) => setMailAddress(e.target.value)}
-              placeholder="alain@primexpert.ca"
-              className="workhub-input"
-            />
-          </Field>
-
-          <Field label={t('Fournisseur', 'Provider')}>
-            <select
-              value={mailProvider}
-              onChange={(e) => setMailProvider(e.target.value as MailProvider)}
-              className="workhub-input"
-            >
-              <option value="google">Google Workspace · Gmail</option>
-              <option value="microsoft">Microsoft 365 · Outlook</option>
-              <option value="imap">{t('IMAP / SMTP personnalisé', 'Custom IMAP / SMTP')}</option>
-            </select>
-          </Field>
-        </div>
-
-        {isCustomImap && (
-          <div className="mt-5 rounded-2xl border border-white/10 bg-[#020617]/40 p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Server className="w-3.5 h-3.5 text-blue-400" />
-              <p className="text-[10px] font-black text-slate-300 tracking-[0.22em] uppercase">
-                {t('Serveurs personnalisés', 'Custom servers')}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label={t('Serveur entrant (IMAP)', 'Incoming server (IMAP)')}>
-                <input
-                  type="text"
-                  value={imapHost}
-                  onChange={(e) => setImapHost(e.target.value)}
-                  placeholder="imap.example.com"
-                  className="workhub-input"
-                />
-              </Field>
-              <Field label={t('Port IMAP', 'IMAP port')}>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={imapPort}
-                  onChange={(e) => setImapPort(e.target.value)}
-                  className="workhub-input"
-                />
-              </Field>
-              <Field label={t('Serveur sortant (SMTP)', 'Outgoing server (SMTP)')}>
-                <input
-                  type="text"
-                  value={smtpHost}
-                  onChange={(e) => setSmtpHost(e.target.value)}
-                  placeholder="smtp.example.com"
-                  className="workhub-input"
-                />
-              </Field>
-              <Field label={t('Port SMTP', 'SMTP port')}>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={smtpPort}
-                  onChange={(e) => setSmtpPort(e.target.value)}
-                  className="workhub-input"
-                />
-              </Field>
-              <Field label={t("Mot de passe d'application", 'App password')} className="md:col-span-2">
-                <input
-                  type="password"
-                  value={mailAppPassword}
-                  onChange={(e) => setMailAppPassword(e.target.value)}
-                  placeholder="••••••••••••••••"
-                  className="workhub-input font-mono"
-                  autoComplete="new-password"
-                />
-                <p className="text-[9px] text-slate-500 mt-1.5 italic">
-                  {t(
-                    'Génère un mot de passe d’application dédié dans ton compte courriel — jamais ton mot de passe principal.',
-                    'Generate a dedicated app password from your mail account — never use your main password.'
-                  )}
-                </p>
-              </Field>
-            </div>
-          </div>
-        )}
-
-        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label className="flex items-center justify-between cursor-pointer bg-[#020617]/40 rounded-2xl border border-white/10 px-4 py-3 hover:border-blue-500/30 transition">
-            <span className="text-[12px] text-slate-300">
-              {t('Synchronisation automatique', 'Automatic synchronization')}
-            </span>
-            <input
-              type="checkbox"
-              checked={mailSync}
-              onChange={(e) => setMailSync(e.target.checked)}
-              className="w-5 h-5 rounded-md bg-[#020617] border-2 border-white/20 cursor-pointer accent-blue-600"
-            />
-          </label>
-
-          <label className="flex items-center justify-between cursor-pointer bg-[#020617]/40 rounded-2xl border border-white/10 px-4 py-3 hover:border-blue-500/30 transition">
-            <span className="text-[12px] text-slate-300">
-              {t('Notifications nouveaux courriels', 'New email notifications')}
-            </span>
-            <input
-              type="checkbox"
-              checked={mailNotifs}
-              onChange={(e) => setMailNotifs(e.target.checked)}
-              className="w-5 h-5 rounded-md bg-[#020617] border-2 border-white/20 cursor-pointer accent-blue-600"
-            />
-          </label>
-        </div>
-
-        <div className="mt-6 pt-5 border-t border-white/10 flex items-center gap-3 flex-wrap">
-          <button
-            type="button"
-            className="px-5 py-3 bg-blue-600 text-white text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-blue-500 transition shadow-[0_18px_40px_rgba(37,99,235,0.45)] flex items-center gap-2"
-          >
-            <Plug className="w-3.5 h-3.5" />
-            {mailProvider === 'imap'
-              ? t('Connecter la boîte', 'Connect mailbox')
-              : t('Autoriser via OAuth', 'Authorize via OAuth')}
-          </button>
-          <button
-            type="button"
-            className="px-5 py-3 bg-transparent text-slate-400 text-[10px] font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-white/5 hover:text-white transition border border-white/10 flex items-center gap-2"
-          >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            {t('Tester la connexion', 'Test connection')}
-          </button>
-        </div>
-      </div>
+      <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-white/10 bg-[#020617]/40 px-5 py-4 transition hover:border-blue-500/30">
+        <span className="text-[12px] text-slate-300">
+          {t('Notifications nouveaux courriels', 'New email notifications')}
+        </span>
+        <input
+          type="checkbox"
+          checked={mailNotifs}
+          onChange={(e) => setMailNotifs(e.target.checked)}
+          className="h-5 w-5 cursor-pointer rounded-md border-2 border-white/20 bg-[#020617] accent-blue-600"
+        />
+      </label>
 
       {/* Bandeau architecture multi-tenant */}
       <div className="workhub-card rounded-[24px] p-5">

@@ -6,6 +6,8 @@ import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
 import { useSilo } from '../context/SiloContext';
 import { type AssetNiche } from '../types/residence';
+import { isGracePeriod } from '../lib/billingAccess';
+import { GracePeriodBanner } from './GracePeriodBanner';
 
 /** Logos silo (fichiers `public/`, noms avec espaces). */
 const SILO_LOGO_SRC: Record<AssetNiche, string> = {
@@ -246,6 +248,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
         {/* Viewport content — pt réduit pour rapprocher le contenu de la topbar */}
         <div className="flex-1 overflow-y-auto px-7 pt-4 pb-7 custom-scrollbar">
            <div className="max-w-[1500px] mx-auto">
+             {isGracePeriod(profile) ? <GracePeriodBanner /> : null}
              <motion.div
                key={activeTab}
                initial={{ opacity: 0, y: 10 }}

@@ -4,6 +4,7 @@ import type { TenantContext } from '@primexpert/core/tenant';
 import type { AssetNiche } from '../types/residence';
 import {
   fetchResidencesPage,
+  fetchSharedCatalogResidencesPage,
   listResidencesPipeline,
   searchResidencesByAddressPrefix,
   type Residence,
@@ -89,14 +90,24 @@ export function useInventoryResidences(
         cursorRef.current = null;
         return;
       }
-      const page = await fetchResidencesPage(tenantCtx(tenantId), {
-        pageSize: 50,
-        startAfterDoc: null,
-        silo,
-      });
-      setResidences(page.rows);
-      cursorRef.current = page.lastDoc;
-      setHasMore(page.hasMore);
+      const [mine, catalog] = await Promise.all([
+        fetchResidencesPage(tenantCtx(tenantId), {
+          pageSize: 50,
+          startAfterDoc: null,
+          silo,
+        }),
+        fetchSharedCatalogResidencesPage({ pageSize: 50, startAfterDoc: null, silo }),
+      ]);
+      const seen = new Set<string>();
+      const merged: Residence[] = [];
+      for (const r of [...mine.rows, ...catalog.rows]) {
+        if (seen.has(r.id)) continue;
+        seen.add(r.id);
+        merged.push(r);
+      }
+      setResidences(merged);
+      cursorRef.current = mine.lastDoc;
+      setHasMore(mine.hasMore || catalog.hasMore);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

@@ -2,6 +2,8 @@ import React from 'react';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import type { Residence, ResidenceStatus } from '../services/residences';
+import type { RadarPropertyType } from '../lib/radarAccess';
+import { RadarLockBadge } from './RadarLockBadge';
 
 const STATUS_BADGE: Record<
   ResidenceStatus,
@@ -45,40 +47,75 @@ export interface ListingRowProps {
   stale?: boolean;
   t: (fr: string, en: string) => string;
   language: 'fr' | 'en';
+  isLocked?: boolean;
+  propertyType?: RadarPropertyType;
+  onLockedClick?: (propertyType: RadarPropertyType) => void;
 }
 
-export function ListingRow({ residence, onOpen, stale, t, language }: ListingRowProps) {
+export function ListingRow({
+  residence,
+  onOpen,
+  stale,
+  t,
+  language,
+  isLocked = false,
+  propertyType,
+  onLockedClick,
+}: ListingRowProps) {
   const badge = STATUS_BADGE[residence.status] ?? STATUS_BADGE.prospect;
   const line =
     residence.city?.trim() && residence.city !== '—'
       ? `${residence.address}, ${residence.city}`
       : residence.address;
 
+  const handleClick = () => {
+    if (isLocked && propertyType && onLockedClick) {
+      onLockedClick(propertyType);
+      return;
+    }
+    onOpen(residence);
+  };
+
   return (
     <button
       type="button"
-      onClick={() => onOpen(residence)}
+      onClick={handleClick}
       className={cn(
         'flex w-full items-center gap-3 border-b border-white/[0.06] px-4 py-2.5 text-left',
-        'hover:bg-blue-500/[0.08] focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400/60 transition-colors'
+        'hover:bg-blue-500/[0.08] focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400/60 transition-colors',
+        isLocked && 'cursor-pointer opacity-75'
       )}
     >
       <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="truncate text-[12px] font-black text-slate-100">{line}</p>
-                  {residence.assetNiche ? (
-                    <span className="shrink-0 rounded border border-violet-400/30 bg-violet-500/15 px-1.5 py-0.5 font-mono text-[8px] font-black text-violet-200">
-                      {residence.assetNiche}
-                    </span>
-                  ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <p
+            className={cn(
+              'truncate text-[12px] font-black text-slate-100',
+              isLocked && 'select-none blur-[5px]'
+            )}
+          >
+            {line}
+          </p>
+          {isLocked && propertyType ? (
+            <RadarLockBadge propertyType={propertyType} locale={language} />
+          ) : residence.assetNiche ? (
+            <span className="shrink-0 rounded border border-violet-400/30 bg-violet-500/15 px-1.5 py-0.5 font-mono text-[8px] font-black text-violet-200">
+              {residence.assetNiche}
+            </span>
+          ) : null}
           {stale ? (
             <span title={t('Stagnation 48 h+', '48h+ stagnation')}>
               <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden />
             </span>
           ) : null}
         </div>
-        <p className="mt-0.5 truncate font-mono text-[10px] text-slate-500">
-          {formatCurrency(residence.price)} · {residence.id}
+        <p
+          className={cn(
+            'mt-0.5 truncate font-mono text-[10px] text-slate-500',
+            isLocked && 'select-none blur-[4px]'
+          )}
+        >
+          {formatCurrency(residence.price)} · {isLocked ? '•••••' : residence.id}
         </p>
       </div>
       <span

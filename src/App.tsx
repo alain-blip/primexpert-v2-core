@@ -3,9 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { Suspense, lazy, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
+import { isAccountSuspended } from './lib/billingAccess';
+import { SuspendedAccountScreen } from './components/SuspendedAccountScreen';
 import { WorkhubNavProvider } from './lib/workhubNav';
 import { SiloProvider } from './context/SiloContext';
 import { Layout } from './components/Layout';
@@ -21,7 +23,9 @@ const Listings   = lazy(() => import('./components/Listings').then(m => ({ defau
 const CRM        = lazy(() => import('./components/CRM').then(m => ({ default: m.CRM })));
 const ACM        = lazy(() => import('./components/ACM').then(m => ({ default: m.ACM })));
 const ContentGen = lazy(() => import('./components/ContentGen').then(m => ({ default: m.ContentGen })));
-const Mailbox    = lazy(() => import('./components/Mailbox').then(m => ({ default: m.Mailbox })));
+const Mailbox    = lazy(() =>
+  import('./components/mailbox/MailboxContainer').then((m) => ({ default: m.MailboxContainer }))
+);
 const Drive      = lazy(() => import('./components/Drive/Drive').then(m => ({ default: m.Drive })));
 const Softphone  = lazy(() => import('./components/Softphone/Softphone').then(m => ({ default: m.Softphone })));
 const Settings   = lazy(() => import('./components/Settings').then(m => ({ default: m.Settings })));
@@ -216,6 +220,11 @@ function Workhub() {
   const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
 
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab) setActiveTab(tab);
+  }, []);
+
   const renderContent = () => {
     switch (activeTab) {
       case 'admin-billing':
@@ -277,6 +286,10 @@ function ProtectedWorkhub() {
 
   if (!user) {
     return <Navigate to="/" replace />;
+  }
+
+  if (isAccountSuspended(profile)) {
+    return <SuspendedAccountScreen />;
   }
 
   return (

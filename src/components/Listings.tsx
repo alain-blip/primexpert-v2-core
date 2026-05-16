@@ -27,11 +27,15 @@ import {
   isListingStale,
   sentimentDailyAvgsLast7Days,
 } from '../services/followUpIntel';
-import { ResidenceIntelligencePanel } from './ResidenceIntelligencePanel';
+import { ResidenceDetail } from './residence/ResidenceDetail';
 import { ListingsInventoryVirtual } from './ListingsInventoryVirtual';
 import { useListingsPipeline, useListingsInventory } from '../hooks/useListings';
 import { useSilo } from '../context/SiloContext';
 import { residenceMatchesNiche, type AssetNiche } from '../types/residence';
+import { filterListingsForRadar, type RadarListingView, type RadarPropertyType } from '../lib/radarAccess';
+import { resolveUserSpecialties } from '../lib/userSpecialties';
+import { UpsellModal } from './UpsellModal';
+import { RadarLockBadge } from './RadarLockBadge';
 
 const STATUS_LABELS: Record<ResidenceStatus, string> = {
   prospect: '01 / Prospection',
@@ -66,6 +70,15 @@ const DEMO_LISTINGS: Residence[] = [
   { id: 'demo-3', address: '123 Chemin De La Montagne', city: 'Bromont', price: 899000, status: 'sold', date: '2024-02-28', assetNiche: 'RPA' },
   { id: 'demo-4', address: '1010 Rue Peel', city: 'Montréal', price: 450000, status: 'prospect', date: '2024-03-18', assetNiche: 'CPE' },
   { id: 'demo-5', address: '2200 Bd Rosemont', city: 'Montréal', price: 540000, status: 'expired', date: '2023-12-01', assetNiche: 'PLEX' },
+  {
+    id: 'demo-commercial-1',
+    address: '5000 Rue Sherbrooke O',
+    city: 'Montréal',
+    price: 2100000,
+    status: 'mandate',
+    date: '2024-03-20',
+    propertyType: 'commercial',
+  },
 ];
 
 const DEMO_INVENTORY_ALL: Residence[] = (() => {
@@ -89,7 +102,8 @@ const DEMO_INVENTORY_ALL: Residence[] = (() => {
 type ListingsTab = 'pipeline' | 'inventory';
 
 export function Listings() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const locale = language === 'fr' ? 'fr' : 'en';
   const { activeSilo } = useSilo();
   const { profile } = useAuth();
   const [tab, setTab] = useState<ListingsTab>('pipeline');
@@ -98,6 +112,12 @@ export function Listings() {
   const [selectedResidence, setSelectedResidence] = useState<Residence | null>(null);
   const [intelCalls, setIntelCalls] = useState<CallAnalysisRow[]>([]);
   const [intelMails, setIntelMails] = useState<SavedMailboxAnalysis[]>([]);
+  const [upsellType, setUpsellType] = useState<RadarPropertyType | null>(null);
+
+  const userSpecialtyKeys = useMemo(
+    () => resolveUserSpecialties(profile).map((s) => s),
+    [profile]
+  );
 
   const pipelineHook = useListingsPipeline(Boolean(profile?.uid));
 
@@ -129,10 +149,10 @@ export function Listings() {
     ? DEMO_LISTINGS.filter((l) => l.status !== 'unsigned')
     : pipelineHook.residences;
 
-  const pipelineListings = useMemo(
-    () => pipelineRaw.filter((l) => residenceMatchesNiche(l.assetNiche, activeSilo)),
-    [pipelineRaw, activeSilo]
-  );
+  const pipelineListings = useMemo(() => {
+    const siloFiltered = pipelineRaw.filter((l) => residenceMatchesNiche(l.assetNiche, activeSilo));
+    return filterListingsForRadar(siloFiltered, userSpecialtyKeys);
+  }, [pipelineRaw, activeSilo, userSpecialtyKeys]);
 
   const inventoryRowsLive = inventoryHook.residences;
   const inventoryRowsDemo = useMemo(() => {
@@ -148,10 +168,20 @@ export function Listings() {
 
   const inventoryRowsBase = usingDemo ? inventoryRowsDemo : inventoryRowsLive;
 
-  const inventoryRows = useMemo(
-    () => inventoryRowsBase.filter((l) => residenceMatchesNiche(l.assetNiche, activeSilo)),
-    [inventoryRowsBase, activeSilo]
-  );
+  const inventoryRows = useMemo(() => {
+    const siloFiltered = inventoryRowsBase.filter((l) =>
+      residenceMatchesNiche(l.assetNiche, activeSilo)
+    );
+    return filterListingsForRadar(siloFiltered, userSpecialtyKeys);
+  }, [inventoryRowsBase, activeSilo, userSpecialtyKeys]);
+
+  const openListing = (l: RadarListingView) => {
+    if (l.isLocked) {
+      setUpsellType(l.propertyType);
+      return;
+    }
+    if (profile?.uid) setSelectedResidence(l);
+  };
   const inventoryLoading = usingDemo ? false : inventoryHook.loading;
   const inventoryHasMore = usingDemo ? false : Boolean(inventoryHook.hasMore);
   const loadMoreInventory = inventoryHook.loadMore ?? (async () => {});
@@ -183,14 +213,14 @@ export function Listings() {
     const id = peekListingsFocusResidenceId();
     if (!id) return;
 
-    const inPipe = pipelineRaw.find((l) => l.id === id);
+    const inPipe = pipelineListings.find((l) => l.id === id);
     if (inPipe) {
       consumeListingsFocusResidenceId();
       setSelectedResidence(inPipe);
       return;
     }
 
-    const inInv = inventoryRowsBase.find((l) => l.id === id);
+    const inInv = inventoryRows.find((l) => l.id === id);
     if (inInv) {
       consumeListingsFocusResidenceId();
       setSelectedResidence(inInv);
@@ -218,8 +248,8 @@ export function Listings() {
     profile?.uid,
     pipelineHook.loading,
     usingDemo,
-    pipelineRaw,
-    inventoryRowsBase,
+    pipelineListings,
+    inventoryRows,
     activeSilo,
     inventoryHook.loading,
   ]);
@@ -227,7 +257,7 @@ export function Listings() {
   if (selectedResidence && profile?.uid) {
     return (
       <div className="space-y-8">
-        <ResidenceIntelligencePanel
+        <ResidenceDetail
           brokerId={profile.uid}
           residence={selectedResidence}
           onClose={() => setSelectedResidence(null)}
@@ -372,19 +402,18 @@ export function Listings() {
                           key={l.id}
                           role="button"
                           tabIndex={0}
-                          onClick={() => {
-                            if (profile?.uid) setSelectedResidence(l);
-                          }}
+                          onClick={() => openListing(l)}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
                               e.preventDefault();
-                              if (profile?.uid) setSelectedResidence(l);
+                              openListing(l);
                             }
                           }}
-                          whileHover={{ y: -4, scale: 1.02 }}
+                          whileHover={l.isLocked ? undefined : { y: -4, scale: 1.02 }}
                           className={cn(
                             'group w-full cursor-pointer rounded-xl border-l-4 bg-vault-bright p-5 text-left shadow-sm transition-all hover:shadow-xl',
-                            STATUS_BORDERS[key]
+                            STATUS_BORDERS[key],
+                            l.isLocked && 'opacity-75'
                           )}
                         >
                           <div className="mb-3 flex items-start justify-between">
@@ -400,16 +429,31 @@ export function Listings() {
                               <MoreVertical className="h-4 w-4" />
                             </button>
                           </div>
-                          {stale && (
+                          {l.isLocked ? (
+                            <div className="mb-2">
+                              <RadarLockBadge propertyType={l.propertyType} locale={locale} />
+                            </div>
+                          ) : null}
+                          {stale && !l.isLocked ? (
                             <div className="mb-2 flex items-center gap-1.5 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-amber-200">
                               <AlertTriangle className="h-3 w-3 shrink-0" />
                               {t('Action requise — 48 h+ sans IA', 'Action — 48h+ no IA')}
                             </div>
-                          )}
-                          <p className="mb-1 text-sm font-black italic tracking-tighter text-slate-300">
+                          ) : null}
+                          <p
+                            className={cn(
+                              'mb-1 text-sm font-black italic tracking-tighter text-slate-300',
+                              l.isLocked && 'select-none blur-[5px]'
+                            )}
+                          >
                             {l.address}
                           </p>
-                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                          <p
+                            className={cn(
+                              'text-[9px] font-black uppercase tracking-widest text-slate-400',
+                              l.isLocked && 'select-none blur-[4px]'
+                            )}
+                          >
                             {l.city}
                           </p>
                           {!usingDemo && (
@@ -491,15 +535,22 @@ export function Listings() {
             loading={inventoryLoading}
             hasMore={inventoryHasMore}
             onLoadMore={loadMoreInventory}
-            onOpen={(r) => {
-              if (profile?.uid) setSelectedResidence(r);
-            }}
+            onOpen={openListing}
+            onLockedClick={setUpsellType}
             intelCalls={intelCalls}
             intelMails={intelMails}
             usingDemo={usingDemo}
           />
         </div>
       )}
+
+      {upsellType ? (
+        <UpsellModal
+          open
+          propertyType={upsellType}
+          onClose={() => setUpsellType(null)}
+        />
+      ) : null}
     </div>
   );
 }

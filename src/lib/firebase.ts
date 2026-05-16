@@ -35,6 +35,7 @@ const appConfig = {
 };
 
 const app: FirebaseApp = initializeApp(appConfig);
+export { app };
 
 const dbId = firebaseOpts.firestoreDatabaseId.trim();
 export const db: Firestore =

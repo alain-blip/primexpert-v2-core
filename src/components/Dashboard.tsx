@@ -23,13 +23,18 @@ import {
   type FollowUpPriorityItem,
 } from '../services/followUpIntel';
 import { useSilo } from '../context/SiloContext';
+import { shouldShowJ7Survey } from '../lib/trialTimeline';
+import { J7SurveyModal } from './J7SurveyModal';
+import { maybeSendJ21NurtureEmail } from '../services/nurtureScheduler';
 
 export function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const { activeSilo } = useSilo();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const workhubNav = useWorkhubNav();
   const [followUpPriorities, setFollowUpPriorities] = useState<FollowUpPriorityItem[]>([]);
+  const [j7Open, setJ7Open] = useState(false);
+  const [j7Dismissed, setJ7Dismissed] = useState(false);
   const [residences, setResidences] = useState<Residence[]>([]);
   const [dashboardDataLoading, setDashboardDataLoading] = useState(false);
 
@@ -62,6 +67,21 @@ export function Dashboard() {
       cancelled = true;
     };
   }, [profile?.uid, activeSilo]);
+
+  useEffect(() => {
+    if (!profile?.uid || profile.role === 'admin_system') return;
+    const locale = language === 'fr' ? 'fr' : 'en';
+    void maybeSendJ21NurtureEmail(profile, locale).then((sent) => {
+      if (sent) void refreshProfile();
+    });
+  }, [profile?.uid, profile?.trialStartDate, profile?.lastEmailSent, profile?.role, language, refreshProfile]);
+
+  useEffect(() => {
+    if (!profile || j7Dismissed || profile.j7Survey?.submittedAt) return;
+    if (shouldShowJ7Survey(profile.trialStartDate, Boolean(profile.j7Survey?.submittedAt))) {
+      setJ7Open(true);
+    }
+  }, [profile, j7Dismissed]);
 
   const stats = useMemo(() => {
     const loading = dashboardDataLoading;
@@ -119,6 +139,15 @@ export function Dashboard() {
 
   return (
     <div className="space-y-8">
+      <J7SurveyModal
+        open={j7Open}
+        onClose={() => {
+          setJ7Open(false);
+          setJ7Dismissed(true);
+        }}
+        onSubmitted={() => setJ7Dismissed(true)}
+      />
+
       {/* Executive Command Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-5">
         {stats.map((stat, i) => {

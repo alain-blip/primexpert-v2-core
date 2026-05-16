@@ -25,7 +25,11 @@ service cloud.firestore {
         incoming().email == request.auth.token.email &&
         incoming().role in ['admin', 'admin_system']; // Premier compte : admin ; direction : admin_system (console)
       allow update: if isOwner(userId) &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoUrl', 'licenseName', 'title', 'agency', 'photoUpdatedAt', 'role', 'trialStartDate', 'accessibleSilos']);
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'photoUrl', 'licenseName', 'title', 'agency', 'photoUpdatedAt',
+          'role', 'trialStartDate', 'accessibleSilos', 'firstName', 'lastName', 'phone',
+          'j7Survey', 'lastEmailSent', 'emailAccounts'
+        ]);
 
       // Analyses IA Mailbox (E-2 persistance) — une doc par messageId, propriétaire = courtier.
       match /mailbox_analyses/{messageId} {
@@ -49,6 +53,30 @@ service cloud.firestore {
           incoming().updatedAtMillis is int &&
           incoming().pipelineStatus in ['recorded', 'transcribing', 'analyzing', 'analyzed', 'failed'];
       }
+
+      // Messagerie synchronisée — fils + messages temps réel (multi-inbox).
+      match /email_threads/{threadId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+          incoming().brokerId == userId;
+        allow update, delete: if isOwner(userId);
+
+        match /messages/{messageId} {
+          allow read: if isOwner(userId);
+          allow create: if isOwner(userId) &&
+            incoming().body is string &&
+            incoming().direction in ['inbound', 'outbound'] &&
+            incoming().sentAtMillis is int;
+        }
+      }
+    }
+
+    // File d'attente courriels nurture (J7 alerte support, J21 courtier, etc.)
+    match /email_outbox/{outboxId} {
+      allow create: if isSignedIn() &&
+        incoming().userId == request.auth.uid &&
+        incoming().status == 'pending';
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     // Organizations
@@ -96,12 +124,55 @@ service cloud.firestore {
       return isSignedIn() && incoming().courtiersResponsables == request.auth.uid;
     }
 
+    /** Catalogue partagé : fiche sans courtier assigné (champ vide ou absent). */
+    function isSharedCatalogResidence() {
+      return isSignedIn() && (
+        !('courtiersResponsables' in existing()) ||
+        existing().courtiersResponsables == null ||
+        existing().courtiersResponsables == ''
+      );
+    }
+
+  function residenceDoc(residenceId) {
+    return get(/databases/$(database)/documents/residences/$(residenceId)).data;
+  }
+
+  /** Lecture sous-collections (financial/dataV2, documents/) — aligné racine residences. */
+  function canReadResidenceSubcollection(residenceId) {
+    let data = residenceDoc(residenceId);
+    return isSignedIn() && (
+      data.courtiersResponsables == request.auth.uid ||
+      !('courtiersResponsables' in data) ||
+      data.courtiersResponsables == null ||
+      data.courtiersResponsables == ''
+    );
+  }
+
+  function isResidenceTenantOwner(residenceId) {
+    return isSignedIn() &&
+      residenceDoc(residenceId).courtiersResponsables == request.auth.uid;
+  }
+
     // residences — collection multi-tenant racine (Brief Silos 2026 v4 §5)
     match /residences/{residenceId} {
-      allow read:   if isTenantOwner();
+      allow read:   if isTenantOwner() || isSharedCatalogResidence();
       allow create: if isIncomingTenantOwner();
       allow update: if isTenantOwner() && isIncomingTenantOwner();
       allow delete: if isTenantOwner();
+
+      // Hub Finance V2 — financial/dataV2 (normalizeFinancialData, Bilan, Revenus & Dépenses)
+      match /financial/{financialDocId} {
+        allow read: if canReadResidenceSubcollection(residenceId);
+        allow create, update: if isResidenceTenantOwner(residenceId);
+        allow delete: if isResidenceTenantOwner(residenceId);
+      }
+
+      // Bibliothèque documentaire migrée depuis Copilote
+      match /documents/{documentId} {
+        allow read: if canReadResidenceSubcollection(residenceId);
+        allow create, update: if isResidenceTenantOwner(residenceId);
+        allow delete: if isResidenceTenantOwner(residenceId);
+      }
     }
 
     // proprietes — dossiers / fiches Copilote migrés (Phase 2) ; même clé tenant que `residences`.

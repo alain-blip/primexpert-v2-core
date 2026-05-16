@@ -9,6 +9,22 @@
       ]
     },
     {
+      "collectionGroup": "email_threads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "accountId", "order": "ASCENDING" },
+        { "fieldPath": "lastMessageAtMillis", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "email_threads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "accountId", "order": "ASCENDING" },
+        { "fieldPath": "nylasThreadId", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "mailbox_analyses",
       "queryScope": "COLLECTION_GROUP",
       "fields": [

@@ -31,6 +31,14 @@ import { db } from '../lib/firebase';
 import { tenantConstraints, TENANT_FIELD, type TenantContext } from '@primexpert/core/tenant';
 import type { AssetNiche, AssetNicheMetadata, AssetSyndication } from '../types/residence';
 import { parseAssetNiche, residenceMatchesNiche } from '../types/residence';
+import type { RadarPropertyType } from '../types/radarAccess';
+
+function parseRadarPropertyType(raw: unknown): RadarPropertyType | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const v = raw.trim().toLowerCase();
+  if (v === 'rpa' || v === 'cpe' || v === 'plex' || v === 'commercial') return v;
+  return undefined;
+}
 
 /** Options requêtes résidences — cloison silo (CPE/Plex indexés ; RPA inclut legacy sans champ). */
 export interface ResidenceQueryOpts {
@@ -68,6 +76,8 @@ export interface Residence {
   courtiersResponsables?: string;
   /** Niche active (RPA / CPE / PLEX). Absent = visible dans toutes les vues. */
   assetNiche?: AssetNiche;
+  /** Type Radar explicite (sinon déduit de `assetNiche`). */
+  propertyType?: RadarPropertyType;
   nicheMetadata?: AssetNicheMetadata;
   syndication?: AssetSyndication;
 }
@@ -158,14 +168,24 @@ function mapLegacyStatus(data: DocumentData): ResidenceStatus {
     return 'prospect';
   }
   const trimmed = raw.trim();
-  if (!trimmed) return 'prospect';
+  if (!trimmed) return 'unsigned';
 
   const lower = trimmed.toLowerCase();
   if ((PIPELINE_ACTIVE_STATUSES as readonly string[]).includes(lower)) {
     return lower as ResidenceStatus;
   }
-  if (lower === 'unsigned' || lower === 'non signé' || stripDiacritics(lower) === 'non signe') {
+  if (
+    lower === 'unsigned' ||
+    lower === 'archive' ||
+    lower === 'sans status' ||
+    lower === 'sans statut' ||
+    lower === 'non signé' ||
+    stripDiacritics(lower) === 'non signe'
+  ) {
     return 'unsigned';
+  }
+  if (lower === 'lead') {
+    return 'prospect';
   }
 
   const slug = stripDiacritics(lower).replace(/[^a-z0-9]+/g, '');
@@ -224,6 +244,7 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
     date: String(data.date ?? data.updatedAt ?? ''),
     courtiersResponsables: data[TENANT_FIELD],
     assetNiche: parseAssetNiche(data.assetNiche ?? data.niche),
+    propertyType: parseRadarPropertyType(data.propertyType),
     nicheMetadata: meta,
     syndication,
   } satisfies Residence;
@@ -312,6 +333,42 @@ export interface FetchResidencesPageResult {
   rows: Residence[];
   lastDoc: QueryDocumentSnapshot<DocumentData> | null;
   hasMore: boolean;
+}
+
+/**
+ * Inventaire catalogue partagé : `courtiersResponsables == ""` (fiches non assignées).
+ * Nécessite rules `isSharedCatalogResidence` + champ vide explicite en base.
+ */
+export async function fetchSharedCatalogResidencesPage(
+  opts: {
+    pageSize?: number;
+    startAfterDoc?: QueryDocumentSnapshot<DocumentData> | null;
+    silo?: AssetNiche;
+  } = {}
+): Promise<FetchResidencesPageResult> {
+  const pageSize = opts.pageSize ?? PAGE_SIZE_DEFAULT;
+  const silo = opts.silo;
+  const siloWhere = silo && silo !== 'RPA' ? [where('assetNiche', '==', silo)] : [];
+  const baseRef = collection(db, 'residences');
+
+  try {
+    const qy = query(
+      baseRef,
+      where(TENANT_FIELD, '==', ''),
+      ...siloWhere,
+      orderBy(documentId()),
+      ...(opts.startAfterDoc ? [startAfter(opts.startAfterDoc)] : []),
+      limit(pageSize)
+    );
+    const snapshot = await getDocs(qy);
+    const rows = applySiloFilter(mapSnapshot(snapshot), silo);
+    const lastDoc = snapshot.docs[snapshot.docs.length - 1] ?? null;
+    const hasMore = snapshot.docs.length === pageSize;
+    return { rows, lastDoc, hasMore };
+  } catch (e) {
+    console.warn('[residences.fetchSharedCatalogResidencesPage] failed:', e);
+    return { rows: [], lastDoc: null, hasMore: false };
+  }
 }
 
 /**
