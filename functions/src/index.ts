@@ -5,6 +5,7 @@ import type { OAuthStatePayload } from './nylas/types';
 setGlobalOptions({
   region: process.env.FUNCTION_REGION || 'us-central1',
   maxInstances: 20,
+  secrets: ['NYLAS_API_KEY', 'NYLAS_CLIENT_ID', 'NYLAS_CLIENT_SECRET'],
 });
 
 /** URL OAuth Hosted Auth Nylas (Gmail / Microsoft). */
