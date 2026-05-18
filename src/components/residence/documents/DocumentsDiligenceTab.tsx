@@ -55,7 +55,11 @@ export function DocumentsDiligenceTab({
 
   const hasPendingParse = useMemo(
     () =>
-      allDocs.some((d) => d.virusScanStatus === 'clean' && d.parsingStatus === 'pending'),
+      allDocs.some(
+        (d) =>
+          d.virusScanStatus === 'clean' &&
+          (d.parsingStatus === 'pending' || d.parsingStatus === 'failed')
+      ),
     [allDocs]
   );
 

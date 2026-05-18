@@ -40,7 +40,11 @@ function assertResidenceAccess(
 }
 
 function isEligibleForParse(data: Record<string, unknown>): boolean {
-  return data.virusScanStatus === 'clean' && data.parsingStatus === 'pending';
+  const status = data.parsingStatus;
+  return (
+    data.virusScanStatus === 'clean' &&
+    (status === 'pending' || status === 'failed')
+  );
 }
 
 async function markParseFailed(docRef: DocumentReference, reason: string): Promise<void> {
@@ -129,30 +133,26 @@ export async function reconcilePendingPropertyParses(
   if (!residenceSnap.exists) throw new Error('Fiche résidence introuvable.');
   assertResidenceAccess(residenceSnap.data(), brokerId);
 
-  const snap = await db
-    .collection(RESIDENCES)
-    .doc(propertyId)
-    .collection(DOCUMENTS)
-    .where('parsingStatus', '==', 'pending')
-    .get();
+  const snap = await db.collection(RESIDENCES).doc(propertyId).collection(DOCUMENTS).get();
 
   let completed = 0;
   let failed = 0;
   let skipped = 0;
+  let processed = 0;
 
   for (const docSnap of snap.docs) {
     const data = docSnap.data();
-    if (data.virusScanStatus !== 'clean') {
-      skipped += 1;
+    if (!isEligibleForParse(data)) {
       continue;
     }
+    processed += 1;
     const result = await parseSinglePropertyDocument(propertyId, docSnap.id, brokerId);
     if (result.parsingStatus === 'completed') completed += 1;
     else if (result.parsingStatus === 'failed') failed += 1;
     else skipped += 1;
   }
 
-  return { processed: snap.size, completed, failed, skipped };
+  return { processed, completed, failed, skipped };
 }
 
 /** Chaînage automatique après scan « clean » + parsing « pending ». */
