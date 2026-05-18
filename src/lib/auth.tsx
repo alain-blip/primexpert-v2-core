@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  onAuthStateChanged, 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  signOut, 
-  User as FirebaseUser 
+import {
+  onAuthStateChanged,
+  signInWithRedirect,
+  getRedirectResult,
+  GoogleAuthProvider,
+  signOut,
+  User as FirebaseUser,
 } from 'firebase/auth';
 import { doc, getDoc, getDocFromServer, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
@@ -52,6 +53,8 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   signIn: () => Promise<void>;
+  /** true pendant le retour Google OAuth (redirect). */
+  signInPending: boolean;
   logOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -62,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [signInPending, setSignInPending] = useState(false);
 
   const loadProfile = async (firebaseUser: FirebaseUser) => {
     let profileDoc;
@@ -107,20 +111,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async (firebaseUser) => {
+    let active = true;
+
+    void getRedirectResult(auth)
+      .catch((err) => {
+        console.warn('[auth] getRedirectResult', err);
+      })
+      .finally(() => {
+        if (active) setSignInPending(false);
+      });
+
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
         await loadProfile(firebaseUser);
       } else {
         setProfile(null);
       }
-      setLoading(false);
+      if (active) setLoading(false);
     });
+
+    return () => {
+      active = false;
+      unsub();
+    };
   }, []);
 
   const signIn = async () => {
+    setSignInPending(true);
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    await signInWithRedirect(auth, provider);
   };
 
   const logOut = async () => {
@@ -128,7 +148,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, logOut, refreshProfile }}>
+    <AuthContext.Provider
+      value={{ user, profile, loading, signIn, signInPending, logOut, refreshProfile }}
+    >
       {children}
     </AuthContext.Provider>
   );

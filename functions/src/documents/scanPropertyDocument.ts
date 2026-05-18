@@ -1,6 +1,7 @@
 import type { DocumentReference, DocumentSnapshot } from 'firebase-admin/firestore';
 import { getDb } from '../lib/firestore';
 import {
+  isPdfParseEligible,
   parsingStatusAfterClean,
   validateDocumentFormat,
   validateStorageDocument,
@@ -28,14 +29,21 @@ function isPendingScanStatus(value: unknown): boolean {
 }
 
 /** MVP : validation locale réussie → immédiatement « clean ». */
+function resolveParsingEligible(data: Record<string, unknown>): boolean {
+  if (typeof data.parsingEligible === 'boolean') return data.parsingEligible;
+  return isPdfParseEligible(String(data.mimeType ?? ''), String(data.fileName ?? ''));
+}
+
 async function markDocumentClean(
   docRef: DocumentReference,
-  category: string,
+  docData: Record<string, unknown>,
   ctx: { propertyId: string; documentId: string; brokerId: string }
 ): Promise<void> {
   const scannedAt = Date.now();
-  const parsingStatus = parsingStatusAfterClean(category);
+  const parsingEligible = resolveParsingEligible(docData);
+  const parsingStatus = parsingStatusAfterClean(parsingEligible);
   await docRef.update({
+    parsingEligible,
     virusScanStatus: 'clean',
     virusScannedAtMillis: scannedAt,
     virusScanReason: 'mvp_format_validation_passed',
@@ -100,7 +108,6 @@ async function processDocument(
     return 'skipped';
   }
 
-  const category = String(data.category ?? 'legal');
   const validation = await validateDocSnapshot(docSnap);
 
   if (!validation.ok) {
@@ -115,7 +122,7 @@ async function processDocument(
     return 'infected';
   }
 
-  await markDocumentClean(docSnap.ref, category, {
+  await markDocumentClean(docSnap.ref, data, {
     propertyId,
     documentId: docSnap.id,
     brokerId: String(data.uploadedBy ?? ''),
@@ -152,12 +159,16 @@ export async function scanSinglePropertyDocument(
     .get();
   if (!docSnap.exists) throw new Error('Document introuvable.');
 
-  const category = String(docSnap.data()?.category ?? 'legal');
   const result = await processDocument(docSnap, propertyId);
   const virusScanStatus = result === 'infected' ? 'infected' : 'clean';
+  const fresh = (await docSnap.ref.get()).data() ?? {};
+  const parsingEligible = resolveParsingEligible(fresh);
   return {
     virusScanStatus,
-    parsingStatus: virusScanStatus === 'clean' ? parsingStatusAfterClean(category) : 'not_applicable',
+    parsingStatus:
+      virusScanStatus === 'clean'
+        ? String(fresh.parsingStatus ?? parsingStatusAfterClean(parsingEligible))
+        : 'not_applicable',
   };
 }
 

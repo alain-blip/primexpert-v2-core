@@ -1,37 +1,40 @@
 /**
- * Injection courtier — montants validés → fiche financial/dataV2 + Big Data anonymisé.
+ * Injection courtier — montants validés → fiche financial/dataV2 + Identité résidence + Big Data anonymisé.
  */
 
 import {
   doc,
-  setDoc,
-  updateDoc,
   collection,
-  addDoc,
   getDoc,
+  writeBatch,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { FinancialDataV2Doc } from '@primexpert/core/financial';
-import type { ExtractedAmountRow } from '../lib/extractedDataInjection';
+import type { ExtractedAmountRow, ExtractedComparableRow } from '../lib/extractedDataInjection';
 import {
+  buildResidenceCadastrePatch,
+  buildResidenceEvaluationSubjectPatch,
   inferAnneeDonnees,
+  inferCategoryFromExtractedData,
   inferProvenanceFromFileName,
   resolveRegionAdministrative,
 } from '../lib/extractedDataInjection';
 import type { MarketAnalyticsRawEntry } from '../types/marketAnalytics';
-import type {
-  MarketDataProvenance,
-  MarketSiloType,
-} from '../types/marketAnalytics';
-import type { PropertyDocumentExtractedData, PropertyDocumentRecord } from '../types/propertyDocument';
+import type { MarketDataProvenance, MarketSiloType } from '../types/marketAnalytics';
+import type { MarketAnalyticsComparableSnapshot } from '../types/marketAnalytics';
+import type { PropertyDocumentRecord } from '../types/propertyDocument';
+import { stripUndefinedDeep } from '../lib/firestoreSanitize';
+import type { MarketAnalyticsValidatedAmount } from '../types/marketAnalytics';
 
 const MARKET_ANALYTICS_RAW = 'market_analytics_raw';
+const RESIDENCES = 'residences';
 
 export interface InjectExtractedDataInput {
   propertyId: string;
   document: PropertyDocumentRecord;
   selectedRows: ExtractedAmountRow[];
+  selectedComparableRows?: ExtractedComparableRow[];
   siloType: MarketSiloType;
   brokerId: string;
   residenceCity?: string;
@@ -40,7 +43,8 @@ export interface InjectExtractedDataInput {
 
 export interface InjectExtractedDataResult {
   financialUpdated: boolean;
-  marketEntryId: string;
+  residenceIdentityUpdated: boolean;
+  marketEntryIds: string[];
 }
 
 function buildDepensePatch(rows: ExtractedAmountRow[]): Record<string, number> {
@@ -52,6 +56,10 @@ function buildDepensePatch(rows: ExtractedAmountRow[]): Record<string, number> {
   return patch;
 }
 
+function resolveComparableRegion(row: ExtractedComparableRow) {
+  return resolveRegionAdministrative(row.city, row.region);
+}
+
 export async function injectExtractedDataToResidence(
   input: InjectExtractedDataInput
 ): Promise<InjectExtractedDataResult> {
@@ -59,96 +67,179 @@ export async function injectExtractedDataToResidence(
     propertyId,
     document,
     selectedRows,
+    selectedComparableRows = [],
     siloType,
     brokerId,
     residenceCity,
     residenceRegionHint,
   } = input;
 
-  if (!selectedRows.length) {
-    throw new Error('Sélectionnez au moins un montant à injecter.');
+  const subjectPatch = buildResidenceEvaluationSubjectPatch(document.extractedData);
+  const hasSelection =
+    selectedRows.length > 0 || selectedComparableRows.length > 0 || subjectPatch != null;
+
+  if (!hasSelection) {
+    throw new Error('Sélectionnez au moins un élément à injecter.');
   }
 
-  const provenance: MarketDataProvenance = inferProvenanceFromFileName(document.fileName);
-  const region = resolveRegionAdministrative(residenceCity, residenceRegionHint);
+  const provenanceFromFile: MarketDataProvenance = inferProvenanceFromFileName(document.fileName);
+  const provenance: MarketDataProvenance =
+    selectedComparableRows.length > 0 || subjectPatch
+      ? 'rapport_evaluation'
+      : provenanceFromFile;
+
+  const defaultRegion = resolveRegionAdministrative(residenceCity, residenceRegionHint);
   const anneeDonnees = inferAnneeDonnees(document.extractedData, document.fileName);
-  const depensePatch = buildDepensePatch(selectedRows);
 
-  const financialRef = doc(db, 'residences', propertyId, 'financial', 'dataV2');
-  const financialSnap = await getDoc(financialRef);
+  const financialRef = doc(db, RESIDENCES, propertyId, 'financial', 'dataV2');
+  const residenceRef = doc(db, RESIDENCES, propertyId);
+  const docRef = doc(db, RESIDENCES, propertyId, 'documents', document.id);
 
-  const existing = (financialSnap.exists()
+  const financialSnap = selectedRows.length ? await getDoc(financialRef) : null;
+  const existing = (financialSnap?.exists()
     ? (financialSnap.data() as FinancialDataV2Doc)
     : { baseData: { depenses: {} } }) as FinancialDataV2Doc;
 
   const prevDepenses = (existing.baseData?.depenses ?? {}) as Record<string, number>;
-  const mergedDepenses = { ...prevDepenses, ...depensePatch };
+  const mergedDepenses = { ...prevDepenses, ...buildDepensePatch(selectedRows) };
 
-  await setDoc(
-    financialRef,
-    {
-      baseData: {
-        ...(existing.baseData ?? {}),
-        depenses: mergedDepenses,
-      },
-      lastUpdated: serverTimestamp(),
-      lastInjection: {
-        source: 'document_ia',
-        documentId: document.id,
-        brokerId,
-        atMillis: Date.now(),
-      },
-    },
-    { merge: true }
+  const marketEntryIds: string[] = [];
+  const batch = writeBatch(db);
+
+  if (selectedRows.length) {
+    batch.set(
+      financialRef,
+      stripUndefinedDeep({
+        baseData: {
+          ...(existing.baseData ?? {}),
+          depenses: mergedDepenses,
+        },
+        lastUpdated: serverTimestamp(),
+        lastInjection: {
+          source: 'document_ia',
+          documentId: document.id,
+          atMillis: Date.now(),
+        },
+      }),
+      { merge: true }
+    );
+
+    const validatedAmounts: MarketAnalyticsValidatedAmount[] = selectedRows.map((r) => {
+      const row: MarketAnalyticsValidatedAmount = {
+        label: r.label,
+        value: r.value,
+        currency: r.currency,
+      };
+      if (r.expenseKey) row.expenseKey = r.expenseKey;
+      return row;
+    });
+
+    const amountsMarketRef = doc(collection(db, MARKET_ANALYTICS_RAW));
+    const amountsPayload: MarketAnalyticsRawEntry = {
+      siloType,
+      regionAdministrative: defaultRegion.regionAdministrative,
+      regionDisplayName: defaultRegion.displayName,
+      anneeDonnees,
+      provenance,
+      validatedAmounts,
+      injectedAtMillis: Date.now(),
+    };
+    batch.set(amountsMarketRef, stripUndefinedDeep(amountsPayload));
+    marketEntryIds.push(amountsMarketRef.id);
+  }
+
+  if (subjectPatch) {
+    batch.update(residenceRef, stripUndefinedDeep(subjectPatch));
+  }
+
+  for (const comp of selectedComparableRows) {
+    const compRegion = resolveComparableRegion(comp);
+    const snapshot: MarketAnalyticsComparableSnapshot = { city: comp.city };
+    if (comp.units != null) snapshot.units = comp.units;
+    if (comp.salePrice != null) snapshot.salePrice = comp.salePrice;
+    if (comp.capRatePct != null) snapshot.capRatePct = comp.capRatePct;
+    if (comp.netIncomePerUnit != null) snapshot.netIncomePerUnit = comp.netIncomePerUnit;
+
+    const compMarketRef = doc(collection(db, MARKET_ANALYTICS_RAW));
+    const compPayload: MarketAnalyticsRawEntry = {
+      siloType,
+      regionAdministrative: compRegion.regionAdministrative,
+      regionDisplayName: compRegion.displayName,
+      anneeDonnees,
+      provenance: 'rapport_evaluation',
+      validatedAmounts: [],
+      comparableSnapshot: snapshot,
+      injectedAtMillis: Date.now(),
+    };
+    batch.set(compMarketRef, stripUndefinedDeep(compPayload));
+    marketEntryIds.push(compMarketRef.id);
+  }
+
+  const targetCategory = inferCategoryFromExtractedData(document.extractedData);
+
+  batch.update(
+    docRef,
+    stripUndefinedDeep({
+      category: targetCategory,
+      parsingStatus: 'verified',
+      isValidated: true,
+      validatedAtMillis: Date.now(),
+      validatedBy: brokerId,
+      validatedAmountKeys: selectedRows.map((r) => r.id),
+      validatedComparableKeys: selectedComparableRows.map((r) => r.id),
+      marketAnalyticsEntryIds: marketEntryIds,
+      ...(marketEntryIds[0] ? { marketAnalyticsEntryId: marketEntryIds[0] } : {}),
+    })
   );
 
-  const marketPayload: MarketAnalyticsRawEntry = {
-    siloType,
-    regionAdministrative: region.regionAdministrative,
-    regionDisplayName: region.displayName,
-    anneeDonnees,
-    provenance,
-    validatedAmounts: selectedRows.map((r) => ({
-      label: r.label,
-      value: r.value,
-      currency: r.currency,
-      expenseKey: r.expenseKey ?? undefined,
-    })),
-    comparables: extractComparablesForMarket(document.extractedData),
-    injectedAtMillis: Date.now(),
+  await batch.commit();
+
+  return {
+    financialUpdated: selectedRows.length > 0,
+    residenceIdentityUpdated: subjectPatch != null,
+    marketEntryIds,
   };
-
-  const marketRef = await addDoc(collection(db, MARKET_ANALYTICS_RAW), marketPayload);
-
-  await updateDoc(doc(db, 'residences', propertyId, 'documents', document.id), {
-    parsingStatus: 'verified',
-    isValidated: true,
-    validatedAtMillis: Date.now(),
-    validatedBy: brokerId,
-    validatedAmountKeys: selectedRows.map((r) => r.id),
-    marketAnalyticsEntryId: marketRef.id,
-  });
-
-  return { financialUpdated: true, marketEntryId: marketRef.id };
 }
 
-function extractComparablesForMarket(
-  data: PropertyDocumentExtractedData
-): MarketAnalyticsRawEntry['comparables'] {
-  const raw = data.raw as { comparables?: unknown } | undefined;
-  const list = raw?.comparables ?? (data as { comparables?: unknown }).comparables;
-  if (!Array.isArray(list)) return undefined;
+export interface InjectCertificateLocalisationInput {
+  propertyId: string;
+  document: PropertyDocumentRecord;
+  brokerId: string;
+}
 
-  return list
-    .map((c) => {
-      if (!c || typeof c !== 'object') return null;
-      const row = c as Record<string, unknown>;
-      return {
-        label: String(row.label ?? row.name ?? 'Comparable'),
-        salePrice: typeof row.salePrice === 'number' ? row.salePrice : undefined,
-        capRatePct: typeof row.capRatePct === 'number' ? row.capRatePct : undefined,
-        regionKey: typeof row.regionKey === 'string' ? row.regionKey : undefined,
-      };
+export interface InjectCertificateLocalisationResult {
+  residenceCadastreUpdated: boolean;
+}
+
+/** Injection locale uniquement — Certificat de localisation (pas de Big Data). */
+export async function injectCertificateLocalisationToResidence(
+  input: InjectCertificateLocalisationInput
+): Promise<InjectCertificateLocalisationResult> {
+  const { propertyId, document, brokerId } = input;
+  const cadastrePatch = buildResidenceCadastrePatch(document.extractedData);
+  if (!cadastrePatch) {
+    throw new Error('Aucune donnée cadastrale à injecter (lot ou superficie manquants).');
+  }
+
+  const residenceRef = doc(db, RESIDENCES, propertyId);
+  const docRef = doc(db, RESIDENCES, propertyId, 'documents', document.id);
+  const batch = writeBatch(db);
+
+  batch.update(residenceRef, stripUndefinedDeep(cadastrePatch));
+  const targetCategory = inferCategoryFromExtractedData(document.extractedData);
+
+  batch.update(
+    docRef,
+    stripUndefinedDeep({
+      category: targetCategory,
+      parsingStatus: 'completed',
+      isValidated: true,
+      validatedAtMillis: Date.now(),
+      validatedBy: brokerId,
+      clInjectedAtMillis: Date.now(),
     })
-    .filter(Boolean) as NonNullable<MarketAnalyticsRawEntry['comparables']>;
+  );
+
+  await batch.commit();
+  return { residenceCadastreUpdated: true };
 }

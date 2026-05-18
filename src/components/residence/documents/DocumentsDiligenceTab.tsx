@@ -1,7 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../../../lib/i18n';
 import type { PropertyDocumentCategory, PropertyDocumentRecord } from '../../../types/propertyDocument';
-import { canDownloadPropertyDocument } from '../../../lib/propertyDocumentValidation';
+import type { AssetNiche } from '../../../types/residence';
+import { sortDocumentsByFileName } from '../../../lib/extractedDataInjection';
+import {
+  canDownloadPropertyDocument,
+  documentNeedsIaParse,
+} from '../../../lib/propertyDocumentValidation';
 import {
   deletePropertyDocument,
   getPropertyDocumentDownloadUrl,
@@ -19,6 +24,10 @@ export interface DocumentsDiligenceTabProps {
   brokerId: string;
   /** UID courtier assigné sur la fiche (`courtiersResponsables`). */
   courtiersResponsables?: string;
+  residenceCity?: string;
+  residenceRegionHint?: string;
+  assetNiche?: AssetNiche;
+  propertyType?: string;
 }
 
 function canUploadToResidence(brokerId: string, courtiersResponsables?: string): boolean {
@@ -35,6 +44,10 @@ export function DocumentsDiligenceTab({
   propertyId,
   brokerId,
   courtiersResponsables,
+  residenceCity,
+  residenceRegionHint,
+  assetNiche,
+  propertyType,
 }: DocumentsDiligenceTabProps) {
   const { language, t } = useLanguage();
   const locale = language === 'fr' ? 'fr' : 'en';
@@ -53,15 +66,7 @@ export function DocumentsDiligenceTab({
     [allDocs]
   );
 
-  const hasPendingParse = useMemo(
-    () =>
-      allDocs.some(
-        (d) =>
-          d.virusScanStatus === 'clean' &&
-          (d.parsingStatus === 'pending' || d.parsingStatus === 'failed')
-      ),
-    [allDocs]
-  );
+  const hasPendingParse = useMemo(() => allDocs.some(documentNeedsIaParse), [allDocs]);
 
   useEffect(() => {
     if (!propertyId || !uploadAllowed || !hasPendingScan) return;
@@ -137,7 +142,7 @@ export function DocumentsDiligenceTab({
   }, [allDocs]);
 
   const categoryDocs = useMemo(
-    () => allDocs.filter((d) => d.category === category),
+    () => sortDocumentsByFileName(allDocs.filter((d) => d.category === category)),
     [allDocs, category]
   );
 
@@ -371,6 +376,12 @@ export function DocumentsDiligenceTab({
         />
         <DocumentMetadataPanel
           document={selected}
+          propertyId={propertyId}
+          brokerId={brokerId}
+          residenceCity={residenceCity}
+          residenceRegionHint={residenceRegionHint}
+          assetNiche={assetNiche}
+          propertyType={propertyType}
           locale={locale}
           busy={busyAction}
           onDownload={handleDownload}

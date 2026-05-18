@@ -7,15 +7,47 @@ import type { DocumentReference } from 'firebase-admin/firestore';
 import { extractFinancialDocumentWithGemini } from './geminiExtract';
 import { getDb } from '../lib/firestore';
 import { isDiligenceStoragePath } from './scanPropertyDocument';
+import { isPdfParseEligible } from './validateStorageDocument';
 
 const RESIDENCES = 'residences';
 const DOCUMENTS = 'documents';
 
-const PARSEABLE_MIME = new Set([
-  'application/pdf',
+const PARSEABLE_MIME = new Set(['application/pdf']);
+
+const EXCEL_MIME = new Set([
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/vnd.ms-excel',
 ]);
+
+function isPermanentParseFailure(reason: string): boolean {
+  return (
+    reason === 'invalid_storage_path' ||
+    reason === 'mime_not_supported_for_parse' ||
+    reason === 'format_excel_use_pdf'
+  );
+}
+
+function isDocumentParseEligible(data: Record<string, unknown>): boolean {
+  if (data.parsingEligible === true) return true;
+  return isPdfParseEligible(String(data.mimeType ?? ''), String(data.fileName ?? ''));
+}
+
+function isEligibleForParse(data: Record<string, unknown>): boolean {
+  const status = data.parsingStatus;
+  if (data.virusScanStatus !== 'clean' || data.isValidated === true) return false;
+  if (!isDocumentParseEligible(data)) return false;
+  if (status === 'completed' || status === 'verified') return false;
+  if (status === 'pending') return true;
+  if (status === 'failed') {
+    const err = String(data.parsingError ?? '');
+    return !isPermanentParseFailure(err);
+  }
+  /** Legacy — PDF clean en Technique/Légal jamais passé en pending (ancienne règle Financier seul). */
+  if (status === 'not_applicable' || status === undefined || status === null || status === '') {
+    return true;
+  }
+  return false;
+}
 
 function adminStorage() {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -37,15 +69,6 @@ function assertResidenceAccess(
   if (residenceData?.courtiersResponsables !== brokerId) {
     throw new Error('Accès refusé : vous n’êtes pas le courtier responsable.');
   }
-}
-
-function isEligibleForParse(data: Record<string, unknown>): boolean {
-  const status = data.parsingStatus;
-  return (
-    data.virusScanStatus === 'clean' &&
-    (status === 'pending' || status === 'failed') &&
-    data.isValidated !== true
-  );
 }
 
 async function markParseFailed(docRef: DocumentReference, reason: string): Promise<void> {
@@ -86,12 +109,21 @@ export async function parseSinglePropertyDocument(
   const data = docSnap.data() ?? {};
   if (!isEligibleForParse(data)) return { parsingStatus: 'skipped' };
 
+  if (data.parsingStatus === 'not_applicable') {
+    await docRef.update({ parsingStatus: 'pending' });
+  }
+
   const storagePath = String(data.storagePath ?? '');
   const fileName = String(data.fileName ?? 'document');
   const mimeType = String(data.mimeType ?? 'application/pdf');
 
   if (!storagePath || !isDiligenceStoragePath(storagePath)) {
     await markParseFailed(docRef, 'invalid_storage_path');
+    return { parsingStatus: 'failed' };
+  }
+
+  if (EXCEL_MIME.has(mimeType)) {
+    await markParseFailed(docRef, 'format_excel_use_pdf');
     return { parsingStatus: 'failed' };
   }
 
@@ -102,10 +134,12 @@ export async function parseSinglePropertyDocument(
 
   try {
     const { data: base64, mimeType: storageMime } = await downloadAsBase64(storagePath);
+    const category = String(data.category ?? 'financier');
     const extractedData = await extractFinancialDocumentWithGemini(
       storageMime || mimeType,
       base64,
-      fileName
+      fileName,
+      { category }
     );
     await markParseCompleted(docRef, extractedData);
     return { parsingStatus: 'completed' };

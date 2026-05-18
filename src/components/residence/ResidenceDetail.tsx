@@ -130,6 +130,10 @@ export function ResidenceDetail({
             propertyId={residence.id}
             brokerId={brokerId}
             courtiersResponsables={residence.courtiersResponsables}
+            residenceCity={residence.city}
+            residenceRegionHint={residence.city}
+            assetNiche={residence.assetNiche}
+            propertyType={residence.propertyType}
           />
         );
       case 'promesse':

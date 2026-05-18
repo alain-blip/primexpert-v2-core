@@ -115,22 +115,107 @@ export function canDownloadPropertyDocument(virusScanStatus: string | undefined)
   return virusScanStatus === 'clean';
 }
 
-/** PDF ou tableur Excel dans le dossier Financier → éligible au Scan & Parse IA. */
+function normalizeFileNameHint(fileName: string): string {
+  return fileName
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '');
+}
+
+function isPdfMime(mimeType: string, fileName: string): boolean {
+  const ext = getExtension(fileName);
+  const mime = mimeType.toLowerCase();
+  return mime === 'application/pdf' || ext === '.pdf';
+}
+
+/** Pipeline universel — PDF uniquement (Vertex/Gemini inlineData). */
+export function isPropertyDocumentParseCandidate(
+  _category: PropertyDocumentCategory,
+  mimeType: string,
+  fileName: string
+): boolean {
+  return isPdfMime(mimeType, fileName);
+}
+
+/** Erreurs d’analyse IA qui ne doivent pas être relancées automatiquement. */
+export function isPermanentParseFailure(parsingError?: string | null): boolean {
+  if (!parsingError) return false;
+  const e = parsingError.trim();
+  return (
+    e === 'invalid_storage_path' ||
+    e === 'mime_not_supported_for_parse' ||
+    e === 'format_excel_use_pdf' ||
+    e.startsWith('FORMAT_EXCEL_')
+  );
+}
+
+/** Document prêt pour analyse IA (pending, legacy not_applicable, ou retry failed). */
+export function documentNeedsIaParse(doc: {
+  virusScanStatus: string;
+  parsingStatus: string;
+  parsingEligible: boolean;
+  isValidated?: boolean;
+  parsingError?: string;
+}): boolean {
+  if (doc.virusScanStatus !== 'clean' || doc.isValidated === true) return false;
+  if (!doc.parsingEligible) return false;
+  if (doc.parsingStatus === 'completed' || doc.parsingStatus === 'verified') return false;
+  if (doc.parsingStatus === 'pending') return true;
+  if (doc.parsingStatus === 'not_applicable') return true;
+  if (doc.parsingStatus === 'failed' && !isPermanentParseFailure(doc.parsingError)) return true;
+  return false;
+}
+
+export function formatParsingErrorMessage(
+  parsingError: string | undefined,
+  locale: 'fr' | 'en'
+): string {
+  if (!parsingError?.trim()) {
+    return locale === 'fr'
+      ? 'L’analyse IA a échoué. Réessayez ou téléversez un PDF.'
+      : 'AI analysis failed. Retry or upload a PDF.';
+  }
+  const e = parsingError.trim();
+  const fr: Record<string, string> = {
+    invalid_storage_path: 'Fichier introuvable dans le stockage sécurisé. Téléversez à nouveau le document.',
+    mime_not_supported_for_parse:
+      'Format non analysable par l’IA. Utilisez un document portable (PDF).',
+    format_excel_use_pdf:
+      'Les tableurs Excel ne sont pas analysés par l’IA. Exportez ou enregistrez le fichier en PDF, puis téléversez-le.',
+  };
+  const en: Record<string, string> = {
+    invalid_storage_path: 'File not found in secure storage. Upload the document again.',
+    mime_not_supported_for_parse:
+      'Format not supported for AI analysis. Use a portable document (PDF).',
+    format_excel_use_pdf:
+      'Excel spreadsheets are not analyzed by AI. Export or save as PDF, then upload.',
+  };
+  if (e in fr) return locale === 'fr' ? fr[e] : en[e];
+  if (e.startsWith('VERTEX_API_DISABLED')) {
+    return locale === 'fr'
+      ? 'Service Vertex AI non activé sur le projet Firebase. Contactez l’administrateur.'
+      : 'Vertex AI API is not enabled on the Firebase project. Contact your administrator.';
+  }
+  if (e.startsWith('VERTEX_PERMISSION_DENIED')) {
+    return locale === 'fr'
+      ? 'Droits Vertex AI insuffisants pour le parseur. Contactez l’administrateur.'
+      : 'Insufficient Vertex AI permissions for the parser. Contact your administrator.';
+  }
+  if (e.startsWith('VERTEX_MODEL_NOT_FOUND')) {
+    return locale === 'fr'
+      ? 'Modèle Gemini introuvable. Vérifiez la configuration Vertex (gemini-2.5-flash).'
+      : 'Gemini model not found. Check Vertex configuration (gemini-2.5-flash).';
+  }
+  return e.length > 280 ? `${e.slice(0, 280)}…` : e;
+}
+
+/** @deprecated Utiliser isPropertyDocumentParseCandidate — conservé pour compatibilité. */
 export function isFinancierParseCandidate(
   category: PropertyDocumentCategory,
   mimeType: string,
   fileName: string
 ): boolean {
-  if (category !== 'financier') return false;
-  const ext = getExtension(fileName);
-  const mime = mimeType.toLowerCase();
-  const isPdf = mime === 'application/pdf' || ext === '.pdf';
-  const isSpreadsheet =
-    mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-    mime === 'application/vnd.ms-excel' ||
-    ext === '.xlsx' ||
-    ext === '.xls';
-  return isPdf || isSpreadsheet;
+  return isPropertyDocumentParseCandidate(category, mimeType, fileName);
 }
 
 /**
@@ -170,4 +255,38 @@ export function validationErrorMessage(
       'Content type does not match the file extension. Upload blocked for security.',
   };
   return locale === 'fr' ? fr[code] : en[code];
+}
+
+export function splitPropertyDocumentFileName(fileName: string): { base: string; ext: string } {
+  const lastDot = fileName.lastIndexOf('.');
+  if (lastDot <= 0 || lastDot === fileName.length - 1) {
+    return { base: fileName, ext: '' };
+  }
+  return { base: fileName.slice(0, lastDot), ext: fileName.slice(lastDot) };
+}
+
+/** Réattache l’extension d’origine si le courtier ne la saisit pas. */
+export function ensureOriginalFileExtension(input: string, originalFileName: string): string {
+  const trimmed = input.trim().replace(/[/\\]/g, '_');
+  if (!trimmed) {
+    const err = new Error('EMPTY_DOCUMENT_NAME');
+    throw err;
+  }
+
+  const { ext } = splitPropertyDocumentFileName(originalFileName);
+  if (!ext) return trimmed;
+
+  if (trimmed.toLowerCase().endsWith(ext.toLowerCase())) {
+    return trimmed;
+  }
+
+  const dot = trimmed.lastIndexOf('.');
+  let base = trimmed;
+  if (dot > 0 && dot < trimmed.length - 1) {
+    const suffix = trimmed.slice(dot);
+    if (/^\.[a-z0-9]{1,6}$/i.test(suffix)) {
+      base = trimmed.slice(0, dot).trimEnd();
+    }
+  }
+  return `${base}${ext}`;
 }

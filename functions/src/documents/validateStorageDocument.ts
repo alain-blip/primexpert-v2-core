@@ -78,7 +78,15 @@ export function validateStorageDocument(
   return validateDocumentFormat(displayNameFromStorageFile(storageFileName), contentType);
 }
 
-/** MVP : dossier Financier → file d’analyse IA ; sinon non applicable. */
-export function parsingStatusAfterClean(category: string): 'pending' | 'not_applicable' {
-  return category === 'financier' ? 'pending' : 'not_applicable';
+/** Pipeline universel — tout PDF éligible passe en file d’analyse IA (quel que soit le dossier). */
+export function parsingStatusAfterClean(parsingEligible: boolean): 'pending' | 'not_applicable' {
+  return parsingEligible ? 'pending' : 'not_applicable';
+}
+
+export function isPdfParseEligible(mimeType: string, fileName: string): boolean {
+  const mime = (mimeType || '').trim().toLowerCase();
+  const lower = (fileName || '').toLowerCase().trim();
+  const dot = lower.lastIndexOf('.');
+  const ext = dot >= 0 ? lower.slice(dot) : '';
+  return mime === 'application/pdf' || ext === '.pdf';
 }

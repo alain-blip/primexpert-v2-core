@@ -23,6 +23,15 @@ export interface MarketAnalyticsComparable {
   regionKey?: string;
 }
 
+/** Comparable anonymisé injecté (une entrée `market_analytics_raw` par ligne cochée). */
+export interface MarketAnalyticsComparableSnapshot {
+  city: string;
+  units?: number;
+  salePrice?: number;
+  capRatePct?: number;
+  netIncomePerUnit?: number;
+}
+
 export interface MarketAnalyticsRawEntry {
   siloType: MarketSiloType;
   regionAdministrative: string;
@@ -31,5 +40,6 @@ export interface MarketAnalyticsRawEntry {
   provenance: MarketDataProvenance;
   validatedAmounts: MarketAnalyticsValidatedAmount[];
   comparables?: MarketAnalyticsComparable[];
+  comparableSnapshot?: MarketAnalyticsComparableSnapshot;
   injectedAtMillis: number;
 }

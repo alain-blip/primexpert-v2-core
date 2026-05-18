@@ -19,6 +19,7 @@ import {
   doc,
   addDoc,
   deleteDoc,
+  updateDoc,
   onSnapshot,
   orderBy,
   query,
@@ -32,7 +33,8 @@ import { app, storage, db } from '../lib/firebase';
 const functionsRegion = import.meta.env.VITE_FIREBASE_FUNCTIONS_REGION || 'us-central1';
 const functions = getFunctions(app, functionsRegion);
 import {
-  isFinancierParseCandidate,
+  ensureOriginalFileExtension,
+  isPropertyDocumentParseCandidate,
   validatePropertyDocumentFile,
 } from '../lib/propertyDocumentValidation';
 import type {
@@ -113,7 +115,7 @@ function mapDoc(
   const parsingEligible =
     typeof data.parsingEligible === 'boolean'
       ? data.parsingEligible
-      : isFinancierParseCandidate(category, mimeType, fileName);
+      : isPropertyDocumentParseCandidate(category, mimeType, fileName);
 
   return {
     id,
@@ -127,6 +129,10 @@ function mapDoc(
     uploadedBy: String(data.uploadedBy ?? ''),
     virusScanStatus: parseVirusScanStatus(data.virusScanStatus),
     parsingStatus: parseParsingStatus(data.parsingStatus),
+    parsingError:
+      typeof data.parsingError === 'string' && data.parsingError.trim()
+        ? data.parsingError.trim()
+        : undefined,
     parsingEligible,
     extractedData: parseExtractedData(data.extractedData),
     isValidated: data.isValidated === true,
@@ -221,7 +227,7 @@ export async function uploadPropertyDocument(
   }
 
   const mimeType = validation.mimeType;
-  const parsingEligible = isFinancierParseCandidate(category, mimeType, file.name);
+  const parsingEligible = isPropertyDocumentParseCandidate(category, mimeType, file.name);
 
   const stamp = Date.now();
   const safeOriginal = sanitizeFileName(file.name);
@@ -370,6 +376,28 @@ export async function reconcilePropertyDocumentScans(
     cleaned: data.cleaned ?? 0,
     infected: data.infected ?? 0,
   };
+}
+
+/** Renomme l’affichage du document (Firestore `fileName` — le chemin Storage reste inchangé). */
+export async function renamePropertyDocument(
+  propertyId: string,
+  documentId: string,
+  newDisplayName: string,
+  originalFileName: string
+): Promise<string> {
+  if (!propertyId || !documentId) {
+    throw new Error('propertyId et documentId requis.');
+  }
+
+  const fileName = ensureOriginalFileExtension(newDisplayName, originalFileName);
+  const safeName = sanitizeFileName(fileName);
+
+  await updateDoc(doc(db, RESIDENCES_COLLECTION, propertyId, DOCUMENTS_SUBCOLLECTION, documentId), {
+    fileName: safeName,
+    renamedAtMillis: Date.now(),
+  });
+
+  return safeName;
 }
 
 export async function deletePropertyDocument(

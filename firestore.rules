@@ -199,6 +199,10 @@ service cloud.firestore {
         incoming().anneeDonnees is int &&
         incoming().provenance in ['etats_financiers', 'rapport_evaluation'] &&
         incoming().validatedAmounts is list &&
+        (
+          incoming().validatedAmounts.size() > 0 ||
+          ('comparableSnapshot' in incoming() && incoming().comparableSnapshot is map)
+        ) &&
         !incoming().keys().hasAny([
           'address', 'residenceId', 'propertyId', 'residenceName', 'fileName', 'storagePath'
         ]);
