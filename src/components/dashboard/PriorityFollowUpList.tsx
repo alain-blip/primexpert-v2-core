@@ -69,7 +69,13 @@ function PriorityRow({
         </button>
       </p>
       <p className="text-sm text-[#000000] leading-relaxed">
-        <span className="font-semibold">{t('Action', 'Action')}:</span> {item.actionText}
+        {item.step === 'pa_inspection' || item.step === 'pa_financement' ? (
+          item.actionText
+        ) : (
+          <>
+            <span className="font-semibold">{t('Action', 'Action')}:</span> {item.actionText}
+          </>
+        )}
       </p>
       <p className="text-sm text-[#000000] flex flex-wrap gap-2">
         <button
@@ -147,8 +153,8 @@ export function PriorityFollowUpList({ items, loading }: PriorityFollowUpListPro
     return (
       <p className="text-sm text-[#000000] py-2 leading-relaxed">
         {t(
-          'Aucun suivi J+3 / J+5 / J+7 actif. Les priorités apparaissent après la date de libération documentaire sur une inscription.',
-          'No active D+3 / D+5 / D+7 follow-ups. Priorities appear after the document release date is set on a listing.'
+          'Aucune priorité active (J+3 / J+5 / J+7 ou échéances PA à 48 h).',
+          'No active priorities (D+3 / D+5 / D+7 or PA deadlines within 48 h).'
         )}
       </p>
     );

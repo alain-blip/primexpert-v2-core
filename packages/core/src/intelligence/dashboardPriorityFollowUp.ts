@@ -3,6 +3,11 @@
  */
 
 import {
+  buildPromesseAchatViewModel,
+  parsePromesseAchatFromDoc,
+  type PromesseCollaborator,
+} from '../transaction/promesseAchatEngine';
+import {
   RELANCE_J5_TEMPLATE_FR,
   resolveDocumentReleaseBaseline,
   resolveOfferLogged,
@@ -15,8 +20,21 @@ import {
 } from './transactionVelocity';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const MS_PER_HOUR = 60 * 60 * 1000;
 
-export type DashboardFollowUpStep = 'j3' | 'j4' | 'j5' | 'j7';
+/** Fenêtre d'alerte préventive PA : entre 24 h et 48 h avant l'échéance. */
+export const PA_ALERT_MIN_HOURS = 24;
+export const PA_ALERT_MAX_HOURS = 48;
+
+export type DashboardFollowUpStep =
+  | 'j3'
+  | 'j4'
+  | 'j5'
+  | 'j7'
+  | 'pa_inspection'
+  | 'pa_financement';
+
+export type PaDeadlineKind = 'inspection' | 'financement';
 
 export interface DashboardPriorityFollowUpItem {
   id: string;
@@ -63,10 +81,75 @@ export function stepTitleFr(step: DashboardFollowUpStep): string {
       return '🔔 Relance sur les documents (J+5)';
     case 'j7':
       return "🔔 Relance pour une rédaction d'Offre (J+7)";
+    case 'pa_inspection':
+      return paDeadlineTitleFr('inspection');
+    case 'pa_financement':
+      return paDeadlineTitleFr('financement');
   }
 }
 
-export function stepActionTextFr(step: DashboardFollowUpStep): string {
+export function paDeadlineLabelFr(kind: PaDeadlineKind): string {
+  return kind === 'inspection'
+    ? "d'inspection"
+    : 'de financement hypothécaire';
+}
+
+export function paDeadlineTitleFr(kind: PaDeadlineKind): string {
+  return `🔔 Échéance délai ${paDeadlineLabelFr(kind)} PA (dans 48h)`;
+}
+
+export function paDeadlineTitleEn(kind: PaDeadlineKind): string {
+  return kind === 'inspection'
+    ? '🔔 PA inspection deadline (within 48h)'
+    : '🔔 PA mortgage financing deadline (within 48h)';
+}
+
+export function resolveCollaboratorDisplayName(
+  collab: PromesseCollaborator | undefined
+): string | null {
+  if (!collab) return null;
+  const raw = collab as PromesseCollaborator & { name?: string };
+  const nom = raw.nom?.trim() || raw.name?.trim();
+  return nom || null;
+}
+
+export function buildPaDeadlineActionTextFr(
+  kind: PaDeadlineKind,
+  collaboratorName: string | null
+): string {
+  const label = paDeadlineLabelFr(kind);
+  if (collaboratorName) {
+    return `Action : Échéance du délai ${label} dans 48 h. Communiquer avec le courtier collaborateur ${collaboratorName} pour obtenir l'état de la condition.`;
+  }
+  return `Action : Échéance du délai ${label} dans 48 h. Communiquer avec l'acheteur pour obtenir l'état de la condition.`;
+}
+
+export function buildPaDeadlineActionTextEn(
+  kind: PaDeadlineKind,
+  collaboratorName: string | null
+): string {
+  const label =
+    kind === 'inspection' ? 'inspection' : 'mortgage financing';
+  if (collaboratorName) {
+    return `Action: ${label} deadline in 48 h. Contact collaborating broker ${collaboratorName} for a status update on this condition.`;
+  }
+  return `Action: ${label} deadline in 48 h. Contact the buyer for a status update on this condition.`;
+}
+
+export function buildPaDeadlineActionText(
+  kind: PaDeadlineKind,
+  collaboratorName: string | null,
+  lang: 'fr' | 'en' = 'fr'
+): string {
+  return lang === 'fr'
+    ? buildPaDeadlineActionTextFr(kind, collaboratorName)
+    : buildPaDeadlineActionTextEn(kind, collaboratorName);
+}
+
+export function stepActionTextFr(
+  step: DashboardFollowUpStep,
+  collaboratorName?: string | null
+): string {
   switch (step) {
     case 'j3':
       return DASHBOARD_ACTION_J3_FR;
@@ -76,7 +159,189 @@ export function stepActionTextFr(step: DashboardFollowUpStep): string {
       return RELANCE_J5_TEMPLATE_FR;
     case 'j7':
       return DASHBOARD_ACTION_J7_FR;
+    case 'pa_inspection':
+      return buildPaDeadlineActionTextFr('inspection', collaboratorName ?? null);
+    case 'pa_financement':
+      return buildPaDeadlineActionTextFr('financement', collaboratorName ?? null);
   }
+}
+
+function startOfTodayMs(now: number): number {
+  const d = new Date(now);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+/** Fin de journée civile pour la date limite (échéance inclusive). */
+function deadlineIsoToEndMs(iso: string): number {
+  return new Date(`${iso}T23:59:59.999`).getTime();
+}
+
+/** Heures restantes avant l'échéance (now → fin du jour limite). */
+export function hoursUntilPaDeadline(isoDeadline: string, now: number): number {
+  const endMs = deadlineIsoToEndMs(isoDeadline);
+  const diff = endMs - now;
+  return diff / MS_PER_HOUR;
+}
+
+/** Alerte préventive : entre 24 h et 48 h avant l'échéance. */
+export function isWithinPaAlertWindow(isoDeadline: string, now: number): boolean {
+  const hours = hoursUntilPaDeadline(isoDeadline, now);
+  return hours >= PA_ALERT_MIN_HOURS && hours <= PA_ALERT_MAX_HOURS;
+}
+
+function promesseBlock(doc: Record<string, unknown> | null | undefined): Record<string, unknown> | null {
+  if (!doc) return null;
+  if (doc.promesseAchat && typeof doc.promesseAchat === 'object') {
+    return doc.promesseAchat as Record<string, unknown>;
+  }
+  return null;
+}
+
+function isTruthyFlag(...values: unknown[]): boolean {
+  return values.some((v) => v === true);
+}
+
+export function isInspectionConditionCompleted(
+  doc: Record<string, unknown> | null | undefined
+): boolean {
+  const block = promesseBlock(doc);
+  return isTruthyFlag(
+    doc?.inspectionRealisee,
+    doc?.inspectionComplete,
+    doc?.conditionInspectionComplete,
+    block?.inspectionRealisee,
+    block?.inspectionComplete
+  );
+}
+
+export function isFinancementConditionCompleted(
+  doc: Record<string, unknown> | null | undefined
+): boolean {
+  const block = promesseBlock(doc);
+  return isTruthyFlag(
+    doc?.financementRealise,
+    doc?.financementComplete,
+    doc?.conditionFinancementComplete,
+    block?.financementRealise,
+    block?.financementComplete
+  );
+}
+
+function resolveBuyerFromPromesse(
+  promesse: ReturnType<typeof parsePromesseAchatFromDoc>,
+  doc: Record<string, unknown> | null | undefined,
+  mails: VelocityMailInput[],
+  sinceMs: number
+): {
+  fullName: string;
+  company: string | null;
+  email: string | null;
+  phone: string | null;
+} {
+  if (promesse.buyer?.fullName) {
+    return {
+      fullName: promesse.buyer.fullName,
+      company: promesse.buyer.company ?? null,
+      email: promesse.buyer.email ?? null,
+      phone: promesse.buyer.phone ?? null,
+    };
+  }
+  return resolveActiveBuyerContact(mails, sinceMs, doc);
+}
+
+function pushPaDeadlineAlert(
+  items: DashboardPriorityFollowUpItem[],
+  input: {
+    residenceId: string;
+    kind: PaDeadlineKind;
+    step: 'pa_inspection' | 'pa_financement';
+    isoDeadline: string;
+    now: number;
+    doc: Record<string, unknown> | null | undefined;
+    promesse: ReturnType<typeof parsePromesseAchatFromDoc>;
+    mails: VelocityMailInput[];
+    address: string;
+    city: string;
+  }
+): void {
+  const collaboratorName = resolveCollaboratorDisplayName(
+    input.promesse.courtierCollaborateur
+  );
+
+  const buyer = resolveBuyerFromPromesse(
+    input.promesse,
+    input.doc,
+    input.mails,
+    input.now
+  );
+
+  items.push({
+    id: `${input.residenceId}-${input.step}`,
+    residenceId: input.residenceId,
+    step: input.step,
+    dueDateMs: startOfTodayMs(input.now),
+    title: paDeadlineTitleFr(input.kind),
+    actionText: buildPaDeadlineActionTextFr(input.kind, collaboratorName),
+    buyerFullName: buyer.fullName,
+    buyerCompany: buyer.company,
+    buyerEmail: buyer.email,
+    buyerPhone: buyer.phone,
+    propertyName: resolvePropertyName(input.doc, input.address, input.city),
+  });
+}
+
+function collectPaDeadlineAlerts(
+  r: DashboardPriorityResidenceInput,
+  now: number
+): DashboardPriorityFollowUpItem[] {
+  const promesse = parsePromesseAchatFromDoc(r.doc);
+  if (promesse.status !== 'accepted') return [];
+
+  const vm = buildPromesseAchatViewModel(promesse);
+  const out: DashboardPriorityFollowUpItem[] = [];
+
+  const inspectionIso = vm.deadlines.dateLimiteInspection;
+  if (
+    inspectionIso &&
+    !isInspectionConditionCompleted(r.doc) &&
+    isWithinPaAlertWindow(inspectionIso, now)
+  ) {
+    pushPaDeadlineAlert(out, {
+      residenceId: r.id,
+      kind: 'inspection',
+      step: 'pa_inspection',
+      isoDeadline: inspectionIso,
+      now,
+      doc: r.doc,
+      promesse,
+      mails: r.mails,
+      address: r.address,
+      city: r.city,
+    });
+  }
+
+  const financementIso = vm.deadlines.dateLimiteFinancement;
+  if (
+    financementIso &&
+    !isFinancementConditionCompleted(r.doc) &&
+    isWithinPaAlertWindow(financementIso, now)
+  ) {
+    pushPaDeadlineAlert(out, {
+      residenceId: r.id,
+      kind: 'financement',
+      step: 'pa_financement',
+      isoDeadline: financementIso,
+      now,
+      doc: r.doc,
+      promesse,
+      mails: r.mails,
+      address: r.address,
+      city: r.city,
+    });
+  }
+
+  return out;
 }
 
 function resolveCurrentStep(days: number): DashboardFollowUpStep | null {
@@ -97,6 +362,9 @@ function stepDayOffset(step: DashboardFollowUpStep): number {
       return 5;
     case 'j7':
       return 7;
+    case 'pa_inspection':
+    case 'pa_financement':
+      return 0;
   }
 }
 
@@ -203,6 +471,8 @@ export function computeDashboardPriorityFollowUps(
   const items: DashboardPriorityFollowUpItem[] = [];
 
   for (const r of residences) {
+    items.push(...collectPaDeadlineAlerts(r, now));
+
     const baseline = resolveDocumentReleaseBaseline(r.doc);
     if (baseline.releaseAtMillis == null) continue;
     if (resolveOfferLogged(r.doc)) continue;
