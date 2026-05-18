@@ -1,5 +1,5 @@
 /**
- * Suivi des dossiers — Progression (accueil Workhub, lexique Québec, KISS 3 lignes).
+ * Suivi des dossiers — Progression active (4 lignes KISS, lexique Québec).
  */
 
 import React, { useEffect, useState } from 'react';
@@ -10,6 +10,7 @@ import { useSilo } from '../context/SiloContext';
 import { useWorkhubNav } from '../lib/workhubNav';
 import { stashListingsFocusResidenceId } from '../lib/listingsFocus';
 import { listResidences } from '../services/residences';
+import { fetchRecentCallAnalyses } from '../services/transcriptionService';
 import {
   fetchResidenceDocsMap,
   loadDossierSuiviCards,
@@ -43,21 +44,16 @@ function DossierCard({
         <span className="font-semibold">{card.statutLabel}</span>
       </p>
       <p className="text-sm text-[#000000] leading-relaxed">
-        <span className="font-semibold">{t('Suivi', 'Follow-up')}:</span> {card.suiviTexte}
+        <span className="font-semibold">{t('Progression', 'Progress')}:</span>{' '}
+        {card.progressionText}
       </p>
-      <p
-        className={`text-sm leading-relaxed ${
-          card.ligne3IsWormLock ? 'text-[#000000] font-semibold' : 'text-[#000000]'
-        }`}
-      >
-        {card.ligne3IsWormLock ? (
-          card.ligne3Texte
-        ) : (
-          <>
-            <span className="font-semibold">{t('Vérifications', 'Checks')}:</span>{' '}
-            {card.ligne3Texte}
-          </>
-        )}
+      <p className="text-sm text-[#000000] leading-relaxed">
+        <span className="font-semibold">{t('Prochaine étape', 'Next step')}:</span>{' '}
+        {card.prochaineEtape}
+      </p>
+      <p className="text-sm text-[#000000] leading-relaxed">
+        <span className="font-medium">{t('Suggestion IA', 'AI suggestion')}:</span>{' '}
+        <span className="text-[#000000]/90">{card.suggestionIA}</span>
       </p>
     </li>
   );
@@ -82,7 +78,10 @@ export function SuiviDossiersTab() {
     setLoading(true);
     (async () => {
       try {
-        const resList = await listResidences({ tenantId: uid, mode: 'strict' }, { silo: activeSilo });
+        const [resList, calls] = await Promise.all([
+          listResidences({ tenantId: uid, mode: 'strict' }, { silo: activeSilo }),
+          fetchRecentCallAnalyses(uid, 400),
+        ]);
         if (cancelled) return;
         const docs = await fetchResidenceDocsMap(resList.map((r) => r.id));
         if (cancelled) return;
@@ -91,6 +90,7 @@ export function SuiviDossiersTab() {
             residences: resList,
             docs,
             brokerDisplayName: profile.displayName || 'Courtier responsable',
+            calls,
           })
         );
       } finally {
@@ -119,8 +119,8 @@ export function SuiviDossiersTab() {
         </h2>
         <p className="text-sm text-[#000000] mt-1 leading-relaxed">
           {t(
-            'Vue d’ensemble des inscriptions en cours de partage documentaire, de promesse d’achat ou vendues.',
-            'Overview of listings with shared documents, accepted purchase promises, or sold.'
+            'Dossiers chauds : mandat actif, documents partagés ou promesse d’achat acceptée — avec visites, comptes-rendus et suggestions IA.',
+            'Active files: live listing, shared documents, or accepted purchase promise — with visits, call notes, and AI suggestions.'
           )}
         </p>
       </header>
@@ -130,8 +130,8 @@ export function SuiviDossiersTab() {
       ) : cards.length === 0 ? (
         <p className="text-sm text-[#000000] py-2 leading-relaxed">
           {t(
-            'Aucun dossier en progression pour ce silo (documents partagés, promesse acceptée ou vendu).',
-            'No files in progress for this silo (shared documents, accepted promise, or sold).'
+            'Aucun dossier actif pour ce silo (mandat, documents partagés ou promesse acceptée).',
+            'No active files for this silo (listing, shared documents, or accepted promise).'
           )}
         </p>
       ) : (

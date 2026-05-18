@@ -1,42 +1,42 @@
 /**
- * Suivi des dossiers — agrégation macro agence (lexique Québec, KISS 3 lignes).
+ * Suivi des dossiers — progression active (dossiers chauds, suggestions IA).
  * Règle #0 : aucun calcul métier dans les composants React.
  */
 
-import { normalizeDeclarationVendeur } from '../declaration/normalizeDeclaration';
-import {
-  isDeclarationLockedStatus,
-  isDeclarationUploadedStatus,
-} from '../declaration/types';
+import { parseVisitorVisitRegistry } from '../market/visitorRegistry';
 import {
   hoursUntilPaDeadline,
   isFinancementConditionCompleted,
   isInspectionConditionCompleted,
+  isWithinPaAlertWindow,
   paDeadlineLabelFr,
+  resolveCollaboratorDisplayName,
 } from '../intelligence/dashboardPriorityFollowUp';
 import { resolveDocumentReleaseBaseline } from '../intelligence/transactionVelocity';
 import { resolveListingDocumentReleaseGate } from '../intelligence/sellerUpdatePrerequisites';
 import {
   buildPromesseAchatViewModel,
-  isPromesseWormLocked,
   parsePromesseAchatFromDoc,
 } from './promesseAchatEngine';
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
 export type DossierSuiviStatutAffiche =
+  | 'mandat_mise_en_marche'
   | 'documents_partages'
-  | 'promesse_acceptee'
-  | 'vendu';
+  | 'promesse_acceptee';
 
 export const DOSSIER_STATUT_LABEL_FR: Record<DossierSuiviStatutAffiche, string> = {
+  mandat_mise_en_marche: 'Mandat en cours (Mise en marché)',
   documents_partages: 'Documents partagés',
   promesse_acceptee: "Promesse d'achat acceptée",
-  vendu: 'Vendu',
 };
 
-export const DOSSIER_WORM_LOCK_LINE_FR =
-  '[🔒 Dossier verrouillé immuable — Conservation légale d’OACIQ active (6 ans)]';
+export type PreapprobationEtat = 'validee' | 'en_attente' | 'non_recue';
+
+export interface DossierProgressionMetrics {
+  visitesCount: number;
+  compteRendusCount: number;
+  preapprobation: PreapprobationEtat;
+}
 
 export interface DossierSuiviResidenceInput {
   id: string;
@@ -46,6 +46,8 @@ export interface DossierSuiviResidenceInput {
   pipelineStatus: string;
   doc: Record<string, unknown> | null | undefined;
   brokerDisplayName: string;
+  /** Comptes-rendus d’appels (sous-collection `call_analyses`), agrégés côté service. */
+  compteRendusCount?: number;
 }
 
 export interface DossierSuiviCardViewModel {
@@ -54,36 +56,10 @@ export interface DossierSuiviCardViewModel {
   brokerDisplayName: string;
   statut: DossierSuiviStatutAffiche;
   statutLabel: string;
-  /** Ligne 2 — texte « Suivi : … » (sans préfixe). */
-  suiviTexte: string;
-  /** Ligne 3 — vérifications ou message WORM. */
-  ligne3Texte: string;
-  ligne3IsWormLock: boolean;
-  /** Tri : échéances les plus proches en premier. */
+  progressionText: string;
+  prochaineEtape: string;
+  suggestionIA: string;
   sortPriority: number;
-}
-
-function parseTimestampMillis(raw: unknown): number | null {
-  if (raw == null) return null;
-  if (typeof raw === 'number' && Number.isFinite(raw)) {
-    return raw > 1e12 ? raw : raw > 1e9 ? raw * 1000 : raw;
-  }
-  if (typeof raw === 'string') {
-    const t = Date.parse(raw);
-    return Number.isFinite(t) ? t : null;
-  }
-  if (typeof raw === 'object') {
-    const o = raw as Record<string, unknown>;
-    if (typeof o.toMillis === 'function') {
-      try {
-        return (o.toMillis as () => number)();
-      } catch {
-        return null;
-      }
-    }
-    if (typeof o.seconds === 'number') return o.seconds * 1000;
-  }
-  return null;
 }
 
 function resolvePropertyName(
@@ -96,11 +72,12 @@ function resolvePropertyName(
   return address;
 }
 
+/** Exclut les dossiers vendus et hors progression active. */
 export function resolveDossierSuiviStatut(
   pipelineStatus: string,
   doc: Record<string, unknown> | null | undefined
 ): DossierSuiviStatutAffiche | null {
-  if (pipelineStatus === 'sold') return 'vendu';
+  if (pipelineStatus === 'sold') return null;
 
   const promesse = parsePromesseAchatFromDoc(doc);
   if (promesse.status === 'accepted') return 'promesse_acceptee';
@@ -108,171 +85,223 @@ export function resolveDossierSuiviStatut(
   const baseline = resolveDocumentReleaseBaseline(doc);
   if (baseline.releaseAtMillis != null) return 'documents_partages';
 
+  if (pipelineStatus === 'mandate') return 'mandat_mise_en_marche';
+
   return null;
 }
 
-function daysSinceRelease(releaseAtMillis: number, now: number): number {
-  return Math.max(0, Math.floor((now - releaseAtMillis) / MS_PER_DAY));
+export function resolveVisitesCount(
+  doc: Record<string, unknown> | null | undefined
+): number {
+  return parseVisitorVisitRegistry(doc ?? null).length;
 }
 
-export function buildDocumentsPartagesSuiviTexte(
-  releaseAtMillis: number,
-  now: number
-): string {
-  const days = daysSinceRelease(releaseAtMillis, now);
-  const j = days <= 0 ? 1 : days;
-  return `Partagé depuis ${days} jour${days > 1 ? 's' : ''} (J+${j})`;
-}
-
-function formatPaDelaiCountdown(
-  kind: 'inspection' | 'financement',
-  isoDeadline: string,
-  now: number
-): string {
-  const label = paDeadlineLabelFr(kind);
-  const hours = hoursUntilPaDeadline(isoDeadline, now);
-  if (hours <= 0) {
-    return `Échéance du délai ${label} atteinte — suivi requis`;
-  }
-  if (hours <= 48) {
-    const h = Math.max(1, Math.round(hours));
-    return `Échéance du délai ${label} dans ${h}h`;
-  }
-  const days = Math.ceil(hours / 24);
-  return `Échéance du délai ${label} dans ${days} jour${days > 1 ? 's' : ''}`;
-}
-
-export function buildPromesseAccepteeSuiviTexte(
+export function resolveCompteRendusCount(
   doc: Record<string, unknown> | null | undefined,
-  now: number
-): string {
-  const promesse = parsePromesseAchatFromDoc(doc);
-  const vm = buildPromesseAchatViewModel(promesse);
-  const candidates: { kind: 'inspection' | 'financement'; iso: string; hours: number }[] = [];
-
-  const inspectionIso = vm.deadlines.dateLimiteInspection;
-  if (inspectionIso && !isInspectionConditionCompleted(doc)) {
-    candidates.push({
-      kind: 'inspection',
-      iso: inspectionIso,
-      hours: hoursUntilPaDeadline(inspectionIso, now),
-    });
+  overrideCount?: number
+): number {
+  if (typeof overrideCount === 'number' && overrideCount >= 0) return overrideCount;
+  if (!doc) return 0;
+  if (typeof doc.nombreComptesRendus === 'number' && doc.nombreComptesRendus >= 0) {
+    return doc.nombreComptesRendus;
   }
-
-  const financementIso = vm.deadlines.dateLimiteFinancement;
-  if (financementIso && !isFinancementConditionCompleted(doc)) {
-    candidates.push({
-      kind: 'financement',
-      iso: financementIso,
-      hours: hoursUntilPaDeadline(financementIso, now),
-    });
+  const arrays = [doc.comptesRendusVisite, doc.rapportsVisite, doc.comptesRendus];
+  for (const raw of arrays) {
+    if (Array.isArray(raw)) return raw.length;
   }
-
-  if (candidates.length === 0) {
-    return 'Promesse d’achat acceptée — suivi des conditions en cours';
-  }
-
-  candidates.sort((a, b) => a.hours - b.hours);
-  const next = candidates[0];
-  return formatPaDelaiCountdown(next.kind, next.iso, now);
+  return 0;
 }
 
-function formatIsoDateFr(iso: string): string {
-  const d = new Date(`${iso}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('fr-CA', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-}
-
-export function resolveDateClotureNotaireIso(
+export function resolvePreapprobationEtat(
   doc: Record<string, unknown> | null | undefined
-): string | null {
-  if (!doc) return null;
-  const promesse = parsePromesseAchatFromDoc(doc);
-  const block =
-    doc.promesseAchat && typeof doc.promesseAchat === 'object'
-      ? (doc.promesseAchat as Record<string, unknown>)
-      : doc;
-
-  const candidates: unknown[] = [
-    promesse.dateNotairePrevue,
-    block.dateNotairePrevue,
-    block.dateNotaire,
-    doc.dateSignatureChezNotaire,
-    doc.dateClotureNotaire,
-    doc.dateVenteNotaire,
-    doc.dateTransactionNotaire,
-    doc.soldAt,
-    doc.dateVente,
-  ];
-
-  for (const raw of candidates) {
-    if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}/.test(raw.trim())) {
-      return raw.trim().slice(0, 10);
-    }
-    const ms = parseTimestampMillis(raw);
-    if (ms != null) {
-      const d = new Date(ms);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
-  }
-  return null;
-}
-
-export function buildVenduSuiviTexte(
-  doc: Record<string, unknown> | null | undefined
-): string {
-  const iso = resolveDateClotureNotaireIso(doc);
-  if (iso) {
-    return `Signature chez le notaire prévue le ${formatIsoDateFr(iso)}`;
-  }
-  return 'Signature chez le notaire — date à confirmer';
-}
-
-export function resolveDossierVerifications(
-  doc: Record<string, unknown> | null | undefined
-): {
-  ndaSigne: boolean;
-  capaciteFinanciereValidee: boolean;
-  declarationVendeurCertifiee: boolean;
-} {
+): PreapprobationEtat {
+  if (!doc) return 'non_recue';
   const gate = resolveListingDocumentReleaseGate(doc);
-  const declaration = normalizeDeclarationVendeur(doc);
-  const declarationOk =
-    isDeclarationLockedStatus(declaration.status) ||
-    isDeclarationUploadedStatus(declaration.status) ||
-    Boolean(declaration.certifiedAt?.trim());
+  if (gate.proofOfDepositValidated) return 'validee';
 
+  const truthy = (v: unknown) => v === true;
+  if (
+    truthy(doc.preapprobationValidee) ||
+    truthy(doc.lettrePreapprobationRecue) ||
+    truthy(doc.preuveMiseDeFondsValidee) ||
+    truthy(doc.preuveMiseDeFonds) ||
+    truthy(doc.buyerPreapprovalValidated)
+  ) {
+    return 'validee';
+  }
+  if (
+    truthy(doc.preapprobationEnCours) ||
+    truthy(doc.preapprobationEnAttente) ||
+    truthy(doc.buyerPreapprovalPending)
+  ) {
+    return 'en_attente';
+  }
+  return 'non_recue';
+}
+
+export function resolveDossierProgressionMetrics(
+  doc: Record<string, unknown> | null | undefined,
+  compteRendusCount?: number
+): DossierProgressionMetrics {
   return {
-    ndaSigne: gate.ndaSignedValidated,
-    capaciteFinanciereValidee: gate.proofOfDepositValidated,
-    declarationVendeurCertifiee: declarationOk,
+    visitesCount: resolveVisitesCount(doc),
+    compteRendusCount: resolveCompteRendusCount(doc, compteRendusCount),
+    preapprobation: resolvePreapprobationEtat(doc),
   };
 }
 
-function verificationSegment(label: string, done: boolean): string {
-  return `[${done ? '✓' : ' '}] ${label}`;
+function preapprobationLabelFr(etat: PreapprobationEtat): string {
+  switch (etat) {
+    case 'validee':
+      return 'Préapprobation validée';
+    case 'en_attente':
+      return 'Préapprobation en attente';
+    case 'non_recue':
+      return 'Préapprobation non reçue';
+  }
 }
 
-export function buildVerificationsLigneTexte(
-  doc: Record<string, unknown> | null | undefined
-): { texte: string; isWormLock: boolean } {
+export function buildProgressionText(
+  metrics: DossierProgressionMetrics
+): string {
+  const v = metrics.visitesCount;
+  const visites = `${v} visite${v > 1 ? 's' : ''} faite${v > 1 ? 's' : ''}`;
+  const cr = metrics.compteRendusCount;
+  const comptes = `${cr} compte${cr > 1 ? 's' : ''}-rendu${cr > 1 ? 's' : ''}`;
+  return `${visites} | ${comptes} | ${preapprobationLabelFr(metrics.preapprobation)}`;
+}
+
+function nearestPaDeadlineInAlertWindow(
+  doc: Record<string, unknown> | null | undefined,
+  now: number
+): { kind: 'inspection' | 'financement'; iso: string } | null {
   const promesse = parsePromesseAchatFromDoc(doc);
-  if (promesse.status === 'accepted' && isPromesseWormLocked(promesse.status)) {
-    return { texte: DOSSIER_WORM_LOCK_LINE_FR, isWormLock: true };
+  const vm = buildPromesseAchatViewModel(promesse);
+
+  const candidates: { kind: 'inspection' | 'financement'; iso: string }[] = [];
+  const inspectionIso = vm.deadlines.dateLimiteInspection;
+  if (
+    inspectionIso &&
+    !isInspectionConditionCompleted(doc) &&
+    isWithinPaAlertWindow(inspectionIso, now)
+  ) {
+    candidates.push({ kind: 'inspection', iso: inspectionIso });
+  }
+  const financementIso = vm.deadlines.dateLimiteFinancement;
+  if (
+    financementIso &&
+    !isFinancementConditionCompleted(doc) &&
+    isWithinPaAlertWindow(financementIso, now)
+  ) {
+    candidates.push({ kind: 'financement', iso: financementIso });
   }
 
-  const v = resolveDossierVerifications(doc);
-  const texte = [
-    verificationSegment('NDA signé', v.ndaSigne),
-    verificationSegment('Capacité financière validée', v.capaciteFinanciereValidee),
-    verificationSegment('Déclaration du vendeur certifiée', v.declarationVendeurCertifiee),
-  ].join(' | ');
+  if (candidates.length === 0) return null;
+  candidates.sort(
+    (a, b) => hoursUntilPaDeadline(a.iso, now) - hoursUntilPaDeadline(b.iso, now)
+  );
+  return candidates[0];
+}
 
-  return { texte, isWormLock: false };
+export function buildProchaineEtape(
+  statut: DossierSuiviStatutAffiche,
+  doc: Record<string, unknown> | null | undefined,
+  metrics: DossierProgressionMetrics,
+  now: number
+): string {
+  switch (statut) {
+    case 'mandat_mise_en_marche':
+      if (metrics.visitesCount === 0) {
+        return 'Planifier une première visite sur place';
+      }
+      if (metrics.compteRendusCount < metrics.visitesCount) {
+        return 'Rédiger le compte-rendu de la dernière visite';
+      }
+      return 'Poursuivre la mise en marché et documenter l’achalandage';
+
+    case 'documents_partages':
+      if (metrics.preapprobation !== 'validee') {
+        return 'Obtenir la lettre de préapprobation bancaire';
+      }
+      return 'Valider les questions de l’acheteur sur le dossier documentaire';
+
+    case 'promesse_acceptee': {
+      const promesse = parsePromesseAchatFromDoc(doc);
+      const vm = buildPromesseAchatViewModel(promesse);
+      const pending: { kind: 'inspection' | 'financement'; iso: string; hours: number }[] = [];
+
+      const inspectionIso = vm.deadlines.dateLimiteInspection;
+      if (inspectionIso && !isInspectionConditionCompleted(doc)) {
+        pending.push({
+          kind: 'inspection',
+          iso: inspectionIso,
+          hours: hoursUntilPaDeadline(inspectionIso, now),
+        });
+      }
+      const financementIso = vm.deadlines.dateLimiteFinancement;
+      if (financementIso && !isFinancementConditionCompleted(doc)) {
+        pending.push({
+          kind: 'financement',
+          iso: financementIso,
+          hours: hoursUntilPaDeadline(financementIso, now),
+        });
+      }
+
+      if (pending.length === 0) {
+        return 'Confirmer l’avancement de toutes les conditions de la promesse';
+      }
+      pending.sort((a, b) => a.hours - b.hours);
+      const next = pending[0];
+      const label = paDeadlineLabelFr(next.kind);
+      if (next.hours <= 0) {
+        return `Confirmer l’état du délai ${label} (échéance atteinte)`;
+      }
+      if (next.hours <= 48) {
+        return `Obtenir une mise à jour sur le délai ${label} (échéance imminente)`;
+      }
+      return `Planifier le suivi du délai ${label}`;
+    }
+  }
+}
+
+export function buildSuggestionIA(
+  statut: DossierSuiviStatutAffiche,
+  doc: Record<string, unknown> | null | undefined,
+  metrics: DossierProgressionMetrics,
+  now: number
+): string {
+  if (statut === 'documents_partages') {
+    const gate = resolveListingDocumentReleaseGate(doc);
+    if (!gate.proofOfDepositValidated) {
+      return "💡 L'acheteur a ouvert les documents mais n'a pas fourni sa preuve de mise de fonds. Relancer.";
+    }
+    if (metrics.visitesCount === 0) {
+      return '💡 Planifier une visite ou consigner l’achalandage au registre visiteurs.';
+    }
+    return '💡 Confirmer la réception du dossier et recenser les questions de l’acheteur.';
+  }
+
+  if (statut === 'promesse_acceptee') {
+    const alert = nearestPaDeadlineInAlertWindow(doc, now);
+    if (alert) {
+      const label = paDeadlineLabelFr(alert.kind);
+      const promesse = parsePromesseAchatFromDoc(doc);
+      const collab = resolveCollaboratorDisplayName(promesse.courtierCollaborateur);
+      if (collab) {
+        return `💡 Relancer le courtier collaborateur ${collab} — échéance du délai ${label} dans 48 h.`;
+      }
+      return `💡 Relancer l'acheteur — échéance du délai ${label} dans 48 h.`;
+    }
+    return '💡 Suivre l’avancement des conditions de la promesse d’achat.';
+  }
+
+  if (metrics.visitesCount === 0) {
+    return '💡 Enregistrer les visites et les comptes-rendus pour alimenter la traction du dossier.';
+  }
+  if (metrics.compteRendusCount === 0) {
+    return '💡 Documenter le compte-rendu de la dernière visite pour le registre du dossier.';
+  }
+  return '💡 Maintenir la cadence de visites et de comptes-rendus jusqu’au partage documentaire.';
 }
 
 function computeSortPriority(
@@ -292,14 +321,15 @@ function computeSortPriority(
       const h = hoursUntilPaDeadline(iso, now);
       if (h < minHours) minHours = h;
     }
-    return Number.isFinite(minHours) ? minHours : 9999;
+    return Number.isFinite(minHours) ? minHours : 2000;
   }
   if (statut === 'documents_partages') {
     const baseline = resolveDocumentReleaseBaseline(doc);
-    if (baseline.releaseAtMillis == null) return 5000;
-    return 3000 - daysSinceRelease(baseline.releaseAtMillis, now);
+    if (baseline.releaseAtMillis == null) return 4000;
+    const days = Math.floor((now - baseline.releaseAtMillis) / (24 * 60 * 60 * 1000));
+    return 3000 - days;
   }
-  return 10000;
+  return 5000;
 }
 
 export function buildDossierSuiviCardViewModel(
@@ -309,25 +339,8 @@ export function buildDossierSuiviCardViewModel(
   const statut = resolveDossierSuiviStatut(input.pipelineStatus, input.doc);
   if (!statut) return null;
 
+  const metrics = resolveDossierProgressionMetrics(input.doc, input.compteRendusCount);
   const propertyName = resolvePropertyName(input.doc, input.address, input.city);
-  let suiviTexte: string;
-
-  switch (statut) {
-    case 'documents_partages': {
-      const baseline = resolveDocumentReleaseBaseline(input.doc);
-      if (baseline.releaseAtMillis == null) return null;
-      suiviTexte = buildDocumentsPartagesSuiviTexte(baseline.releaseAtMillis, now);
-      break;
-    }
-    case 'promesse_acceptee':
-      suiviTexte = buildPromesseAccepteeSuiviTexte(input.doc, now);
-      break;
-    case 'vendu':
-      suiviTexte = buildVenduSuiviTexte(input.doc);
-      break;
-  }
-
-  const ligne3 = buildVerificationsLigneTexte(input.doc);
 
   return {
     residenceId: input.id,
@@ -335,9 +348,9 @@ export function buildDossierSuiviCardViewModel(
     brokerDisplayName: input.brokerDisplayName.trim() || 'Courtier responsable',
     statut,
     statutLabel: DOSSIER_STATUT_LABEL_FR[statut],
-    suiviTexte,
-    ligne3Texte: ligne3.texte,
-    ligne3IsWormLock: ligne3.isWormLock,
+    progressionText: buildProgressionText(metrics),
+    prochaineEtape: buildProchaineEtape(statut, input.doc, metrics, now),
+    suggestionIA: buildSuggestionIA(statut, input.doc, metrics, now),
     sortPriority: computeSortPriority(statut, input.doc, now),
   };
 }
@@ -348,6 +361,7 @@ export function computeAgencyDossierSuiviList(
 ): DossierSuiviCardViewModel[] {
   const cards: DossierSuiviCardViewModel[] = [];
   for (const r of residences) {
+    if (r.pipelineStatus === 'sold') continue;
     const card = buildDossierSuiviCardViewModel(r, now);
     if (card) cards.push(card);
   }
