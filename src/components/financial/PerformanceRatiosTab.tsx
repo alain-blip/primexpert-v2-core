@@ -179,8 +179,8 @@ export function PerformanceRatiosTab({ residence }: PerformanceRatiosTabProps) {
           <AlertTriangle className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
           <p className="text-sm font-semibold text-[#000000]">
             {t(
-              'Données financières de l’inscription incomplètes pour certains ratios (prix ou RBE manquant).',
-              'Listing financial data incomplete for some ratios (missing price or EGR).'
+              'Données financières de l’inscription incomplètes pour certains ratios (prix ou revenu brut effectif (RBE) manquant).',
+              'Listing financial data incomplete for some ratios (missing price or effective gross income (EGI)).'
             )}
           </p>
         </div>
@@ -199,8 +199,8 @@ export function PerformanceRatiosTab({ residence }: PerformanceRatiosTabProps) {
         {(
           [
             ['prixDemande', t('Prix demandé', 'Asking price'), 'currency'],
-            ['rbe', t('RBE', 'EGR'), 'currency'],
-            ['rne', t('RNE', 'NOI'), 'currency'],
+            ['rbe', t('Revenu brut effectif (RBE)', 'Effective gross income (EGI)'), 'currency'],
+            ['rne', t('Revenu net d’exploitation (RNE)', 'Net operating income (NOI)'), 'currency'],
             ['nombreUnitesTotal', t('Unités', 'Units'), 'unit'],
           ] as const
         ).map(([key, label, kind]) => {

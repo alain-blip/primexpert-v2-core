@@ -136,8 +136,8 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
             <p className={inst.pageTitle}>{t('Finançabilité commerciale', 'Commercial financing')}</p>
             <p className="mt-2 text-sm text-slate-700 leading-relaxed">
               {t(
-                'Données insuffisantes pour un scénario bancaire (prix demandé et RNE requis). Complétez la grille Revenus & Dépenses ou migrez financial/dataV2 depuis Copilote.',
-                'Insufficient data for a bank scenario (asking price and NOI required). Complete Revenue & Expenses or migrate financial/dataV2.'
+                'Données insuffisantes pour un scénario bancaire (prix demandé et revenu net d’exploitation (RNE) requis). Complétez la grille Revenus & Dépenses ou migrez financial/dataV2 depuis Copilote.',
+                'Insufficient data for a bank scenario (asking price and net operating income (NOI) required). Complete Revenue & Expenses or migrate financial/dataV2.'
               )}
             </p>
           </div>
@@ -190,7 +190,13 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
       />
 
       {model.aphSelectEligibility && (
-        <InstitutionalSection title={language === 'fr' ? 'APH Select' : 'APH Select'}>
+        <InstitutionalSection
+          title={
+            language === 'fr'
+              ? 'Programme APH Select (assistance en logement privé)'
+              : 'APH Select program (assisted private housing)'
+          }
+        >
           <p className="text-sm font-bold text-[#000000]" style={{ color: model.aphSelectEligibility.overallColor }}>
             {language === 'fr'
               ? model.aphSelectEligibility.overallLabelFr
@@ -233,7 +239,9 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
               rel="noopener noreferrer"
               className="text-slate-800 underline font-semibold"
             >
-              {language === 'fr' ? 'Fiche APH Select (SCHL)' : 'CMHC MLI Select'}
+              {language === 'fr'
+                ? 'Fiche APH Select — Société canadienne d’hypothèques et de logement (SCHL)'
+                : 'APH Select sheet — Canada Mortgage and Housing Corporation (CMHC)'}
             </a>
           </p>
         </InstitutionalSection>

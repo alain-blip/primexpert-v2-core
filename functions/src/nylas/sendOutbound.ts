@@ -25,6 +25,10 @@ export async function sendNylasOutboundMessage(input: SendOutboundInput): Promis
     subject: thread.subject || 'Re: PrimeXpert',
     body,
     to: [{ email: contactEmail }],
+    tracking_options: {
+      opens: true,
+      label: 'primexpert-read-receipt',
+    },
   };
 
   const msgsSnap = await threadMessagesCol(brokerId, threadId).get();

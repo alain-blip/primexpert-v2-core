@@ -1,9 +1,11 @@
 import React from 'react';
-import { ChevronLeft, Home, Inbox, Loader2, Paperclip } from 'lucide-react';
+import { Archive, ChevronLeft, Home, Inbox, Loader2, Paperclip, Trash2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { EmailMessage, EmailThread } from '../../types/emailSync';
 import type { EmailAccount } from '../../types/emailAccount';
 import { MessageComposer, type SendFromSelection } from './MessageComposer';
+import { MessageBody } from './MessageBody';
+import { MessageReadReceipt } from './MessageReadReceipt';
 
 function formatMessageDate(ms: number, locale: string): string {
   return new Date(ms).toLocaleString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
@@ -34,6 +36,9 @@ export interface ChatWindowProps {
   fromAccountId: string | null;
   onFromAccountChange: (accountId: string) => void;
   onSend: (body: string, from: SendFromSelection) => Promise<void>;
+  onArchive?: () => void;
+  onDelete?: () => void;
+  folderActionPending?: boolean;
   labels: {
     selectThread: string;
     secureMode: string;
@@ -42,6 +47,10 @@ export interface ChatWindowProps {
     send: string;
     fromLabel: string;
     loadingMessages: string;
+    archive: string;
+    delete: string;
+    deliveredReceipt: string;
+    readReceipt: string;
   };
 }
 
@@ -57,6 +66,9 @@ export function ChatWindow({
   fromAccountId,
   onFromAccountChange,
   onSend,
+  onArchive,
+  onDelete,
+  folderActionPending = false,
   labels,
 }: ChatWindowProps) {
   if (!thread) {
@@ -118,40 +130,81 @@ export function ChatWindow({
             return (
               <div
                 key={msg.id}
-                className={cn('flex flex-col gap-1', outbound ? 'items-end' : 'items-start')}
+                className={cn('flex flex-col gap-1.5', outbound ? 'items-end' : 'items-start')}
               >
-                <p className="px-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                <p
+                  className={cn(
+                    'max-w-[min(100%,36rem)] px-1 text-[9px] font-bold uppercase tracking-widest',
+                    outbound ? 'text-right text-blue-200/70' : 'text-slate-500'
+                  )}
+                >
                   {outbound && msg.fromEmailAddress
                     ? msg.fromEmailAddress
                     : msg.authorName ?? (outbound ? 'Moi' : thread.contactName)}{' '}
                   · {formatMessageDate(msg.sentAtMillis, locale)}
+                  {outbound ? (
+                    <span className="ml-1.5 inline-flex align-middle">
+                      <MessageReadReceipt
+                        isOpened={msg.isOpened}
+                        openedAtMillis={msg.openedAtMillis}
+                        locale={locale}
+                        deliveredLabel={labels.deliveredReceipt}
+                        readLabel={labels.readReceipt}
+                      />
+                    </span>
+                  ) : null}
                 </p>
                 <div
                   className={cn(
-                    'max-w-[min(100%,520px)] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm',
+                    'max-w-[min(100%,36rem)] text-sm leading-relaxed',
                     outbound
-                      ? 'rounded-br-md border border-[#deff9a]/25 bg-[#deff9a]/10 text-slate-100'
-                      : 'rounded-bl-md border border-white/10 bg-white/[0.06] text-slate-200'
+                      ? 'rounded-2xl rounded-br-md border border-blue-400/35 bg-blue-600 px-4 py-3 text-white shadow-md shadow-blue-950/30'
+                      : 'rounded-2xl rounded-bl-md border border-white/10 bg-white/[0.06] px-4 py-3 text-slate-200 shadow-sm backdrop-blur-sm'
                   )}
                 >
-                  <p className="whitespace-pre-wrap">{msg.body}</p>
+                  <MessageBody body={msg.body} tone={outbound ? 'outbound' : 'inbound'} />
                   {msg.attachments?.length ? (
-                    <ul className="mt-3 space-y-2 border-t border-white/10 pt-3">
+                    <ul
+                      className={cn(
+                        'mt-4 space-y-2 border-t pt-4',
+                        outbound ? 'border-white/20' : 'border-white/10'
+                      )}
+                    >
                       {msg.attachments.map((att) => (
                         <li key={`${msg.id}-${att.name}`}>
                           <a
                             href={att.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-3 rounded-lg border border-dashed border-white/15 bg-black/30 p-3 transition hover:border-[#deff9a]/40"
+                            className={cn(
+                              'flex items-center gap-3 rounded-lg border border-dashed p-3 transition',
+                              outbound
+                                ? 'border-white/25 bg-blue-700/50 hover:border-white/40'
+                                : 'border-white/15 bg-black/20 hover:border-white/25'
+                            )}
                           >
-                            <Paperclip className="h-4 w-4 shrink-0 text-[#deff9a]" />
+                            <Paperclip
+                              className={cn(
+                                'h-4 w-4 shrink-0',
+                                outbound ? 'text-blue-100' : 'text-slate-400'
+                              )}
+                            />
                             <div className="min-w-0 text-left">
-                              <p className="truncate text-[11px] font-black uppercase tracking-tight text-slate-200">
+                              <p
+                                className={cn(
+                                  'truncate text-[11px] font-black uppercase tracking-tight',
+                                  outbound ? 'text-white' : 'text-slate-200'
+                                )}
+                              >
                                 {att.name}
                               </p>
                               {att.sizeBytes ? (
-                                <p className="text-[9px] font-bold text-slate-500">
+                                <p
+                                  className={cn(
+                                    'text-[9px] font-bold',
+                                    outbound ? 'text-blue-100/80' : 'text-slate-500'
+                                  )}
+                                >
                                   {formatFileSize(att.sizeBytes)}
                                 </p>
                               ) : null}
@@ -167,6 +220,33 @@ export function ChatWindow({
           })
         )}
       </div>
+
+      {onArchive || onDelete ? (
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-white/10 bg-white/[0.02] px-4 py-3 lg:px-8">
+          {onArchive ? (
+            <button
+              type="button"
+              onClick={onArchive}
+              disabled={folderActionPending || messagesLoading}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-300 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-slate-100 disabled:opacity-40"
+            >
+              <Archive className="h-4 w-4 shrink-0 text-slate-400" />
+              {labels.archive}
+            </button>
+          ) : null}
+          {onDelete ? (
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={folderActionPending || messagesLoading}
+              className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-40"
+            >
+              <Trash2 className="h-4 w-4 shrink-0" />
+              {labels.delete}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <MessageComposer
         disabled={messagesLoading}

@@ -155,7 +155,7 @@
 | Revenus & Dépenses | `RevenusDepensesTab` | `buildRevenusDepensesGrid()` |
 | Finançabilité | `FinancabiliteTab` | `computeFinancabilite()` |
 | Ratios performance | `PerformanceRatiosTab` | `computePerformanceRatiosViewModel()` |
-| Audit performance | `Analyse360FinanceTab` | `computePerformanceAudit360()` |
+| Vérification performance | `Analyse360FinanceTab` | `computePerformanceAudit360()` |
 
 **Règle #0 :** aucun calcul métier dans les composants React — uniquement formatage et présentation.
 

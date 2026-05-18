@@ -12,14 +12,19 @@ export function getDb(): Firestore {
   const admin = require('firebase-admin') as typeof import('firebase-admin');
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { getFirestore } = require('firebase-admin/firestore') as typeof import('firebase-admin/firestore');
-  if (!admin.apps.length) {
-    admin.initializeApp();
+
+  let app;
+  try {
+    app = admin.app();
+  } catch {
+    app = admin.initializeApp();
   }
-  const app = admin.app();
+
   dbInstance =
     FIRESTORE_DATABASE_ID && FIRESTORE_DATABASE_ID !== '(default)'
       ? getFirestore(app, FIRESTORE_DATABASE_ID)
       : getFirestore(app);
+  dbInstance.settings({ ignoreUndefinedProperties: true });
   return dbInstance;
 }
 

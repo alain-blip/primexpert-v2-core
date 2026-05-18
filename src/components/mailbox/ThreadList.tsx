@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils';
 import type { EmailThread } from '../../types/emailSync';
 import type { EmailAccount } from '../../types/emailAccount';
 import { AccountSelector } from './AccountSelector';
+import { emailHtmlToPlainText } from '../../lib/emailHtml';
 
 const LIME = '#deff9a';
 
@@ -149,7 +150,7 @@ export function ThreadList({
                 {thread.subject}
               </h4>
               <p className="line-clamp-2 text-[10px] font-medium leading-snug text-slate-500">
-                {thread.lastMessageSnippet}
+                {emailHtmlToPlainText(thread.lastMessageSnippet)}
               </p>
             </button>
           ))

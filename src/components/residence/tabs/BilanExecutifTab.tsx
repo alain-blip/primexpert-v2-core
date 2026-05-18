@@ -171,7 +171,7 @@ export function BilanExecutifTab({ residence }: BilanExecutifTabProps) {
               perf.noiAudit != null &&
               perf.noiDeclared != null &&
               perf.noiAudit !== perf.noiDeclared
-                ? t(`Audit : ${fmt(perf.noiAudit)}`, `Audit: ${fmt(perf.noiAudit)}`)
+                ? t(`Vérifié : ${fmt(perf.noiAudit)}`, `Verified: ${fmt(perf.noiAudit)}`)
                 : undefined
             }
             value={fmt(noiDisplay)}

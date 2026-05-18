@@ -22,8 +22,11 @@ import { ResidenceIntelligencePanel } from '../ResidenceIntelligencePanel';
 import { FinancialDataProvider } from '../../context/FinancialDataContext';
 import { FinanceHubTab } from './tabs/FinanceHubTab';
 import { IdentiteImmeubleTab } from './tabs/IdentiteImmeubleTab';
+import { DeclarationVendeurTab } from './tabs/DeclarationVendeurTab';
+import { MarcheConcurrenceTab } from './tabs/MarcheConcurrenceTab';
 import { ResidenceDocumentProvider } from '../../context/ResidenceDocumentContext';
 import { InstitutionalPlaceholder } from './institutional/InstitutionalUi';
+import { DocumentsDiligenceTab } from './documents/DocumentsDiligenceTab';
 
 export type ResidenceDetailTab =
   | 'synthese'
@@ -106,11 +109,7 @@ export function ResidenceDetail({
           />
         );
       case 'identite':
-        return (
-          <ResidenceDocumentProvider residenceId={residence.id}>
-            <IdentiteImmeubleTab residence={residence} />
-          </ResidenceDocumentProvider>
-        );
+        return <IdentiteImmeubleTab residence={residence} />;
       case 'finances':
         return (
           <FinancialDataProvider residenceId={residence.id}>
@@ -118,36 +117,15 @@ export function ResidenceDetail({
           </FinancialDataProvider>
         );
       case 'declaration':
-        return (
-          <InstitutionalPlaceholder
-            phase={t('Phase 5 — Gold Signature', 'Phase 5 — Gold Signature')}
-            title={t('Déclaration du vendeur certifiable', 'Certifiable seller disclosure')}
-            subtitle={t(
-              'Thème #D4AF37, progression dynamique et verrouillage post-certification.',
-              '#D4AF37 theme, progress bar and post-certification lock.'
-            )}
-          />
-        );
+        return <DeclarationVendeurTab />;
       case 'marche':
-        return (
-          <InstitutionalPlaceholder
-            phase={t('Phase 6 — Géointelligence', 'Phase 6 — Geointelligence')}
-            title={t('Marché, concurrence & entrée visiteurs', 'Market, competition & visitor entrance')}
-            subtitle={t(
-              'Carte interactive, Haversine 5–50 km et persistance de l’entrée visiteurs.',
-              'Interactive map, Haversine 5–50 km scan and visitor entrance persistence.'
-            )}
-          />
-        );
+        return <MarcheConcurrenceTab residence={residence} />;
       case 'documents':
         return (
-          <InstitutionalPlaceholder
-            phase={t('Phase 1 — Données', 'Phase 1 — Data')}
-            title={t('Bibliothèque documentaire', 'Document library')}
-            subtitle={t(
-              'Les métadonnées documents/ migrées depuis Copilote alimenteront cet onglet.',
-              'Migrated documents/ metadata from Copilote will power this tab.'
-            )}
+          <DocumentsDiligenceTab
+            propertyId={residence.id}
+            brokerId={brokerId}
+            courtiersResponsables={residence.courtiersResponsables}
           />
         );
       default:
@@ -220,9 +198,11 @@ export function ResidenceDetail({
         })}
       </div>
 
-      <div key={activeTab} role="tabpanel">
-        {tabContent}
-      </div>
+      <ResidenceDocumentProvider residenceId={residence.id}>
+        <div key={activeTab} role="tabpanel">
+          {tabContent}
+        </div>
+      </ResidenceDocumentProvider>
     </div>
   );
 }

@@ -1,6 +1,10 @@
 /** Messagerie synchronisée — fils et messages (Firestore). */
 
+import type { MailboxFolder } from '../lib/mailboxFolders';
+
 export type EmailMessageDirection = 'inbound' | 'outbound';
+
+export type { MailboxFolder };
 
 export interface EmailAttachment {
   name: string;
@@ -22,6 +26,11 @@ export interface EmailMessage {
   /** Adresse expéditrice affichée. */
   fromEmailAddress?: string;
   attachments?: EmailAttachment[];
+  /** Accusé de lecture Nylas (messages sortants). */
+  isOpened?: boolean;
+  /** Horodatage d’ouverture (ms). */
+  openedAtMillis?: number;
+  nylasMessageId?: string;
 }
 
 export interface EmailThread {
@@ -41,4 +50,6 @@ export interface EmailThread {
   createdAtMillis: number;
   /** Fil Nylas source (webhook / envoi). */
   nylasThreadId?: string;
+  /** Dossier courriel (INBOX, SENT, …) — aligné Nylas. */
+  mailboxFolder?: MailboxFolder;
 }

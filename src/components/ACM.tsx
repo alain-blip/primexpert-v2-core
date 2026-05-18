@@ -148,10 +148,10 @@ export function ACM() {
   const ratios = useMemo(() => {
     if (!result) return null;
     return [
-      { label: t('TGA implicite', 'Implied cap rate'), value: result.capRateImpliedAtAsking !== undefined ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%` : '—' },
-      { label: t('MRB réel', 'Actual MRB'), value: result.actualMrbAtAsking.toFixed(2) },
-      { label: t('DSCR (prix demandé)', 'DSCR (asking)'), value: result.dscrAtAsking.toFixed(2) },
-      { label: t('NOI comptable', 'Accounting NOI'), value: formatCurrency(result.noiAccounting, { maxDecimals: 2 }) },
+      { label: t('Taux de capitalisation implicite (TGA)', 'Implied capitalization rate (cap rate)'), value: result.capRateImpliedAtAsking !== undefined ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%` : '—' },
+      { label: t('Multiple du revenu brut réel (MRB)', 'Actual gross rent multiplier (GRM)'), value: result.actualMrbAtAsking.toFixed(2) },
+      { label: t('Ratio de couverture du service de la dette (DSCR)', 'Debt service coverage ratio (DSCR)'), value: result.dscrAtAsking.toFixed(2) },
+      { label: t('Revenu net d’exploitation comptable (RNE)', 'Accounting net operating income (NOI)'), value: formatCurrency(result.noiAccounting, { maxDecimals: 2 }) },
     ];
   }, [result, t]);
 
@@ -167,7 +167,7 @@ export function ACM() {
                 {t('Moteur Core · @primexpert/core/valuation', 'Core Engine · @primexpert/core/valuation')}
               </p>
               <h2 className="text-4xl font-black italic tracking-tighter uppercase">
-                {t('ACM', 'CMA')}
+                {t('Analyse comparative de marché (ACM)', 'Comparative market analysis (CMA)')}
                 <span className="text-blue-500">{t('_OACIQ', '_OACIQ')}</span>
               </h2>
             </div>
@@ -188,7 +188,7 @@ export function ACM() {
               { key: 'otherIncome', label: t('Autres revenus ($)', 'Other income ($)'), step: 1000 },
               { key: 'vacancyRate', label: t('Taux de vacance (%)', 'Vacancy rate (%)'), step: 0.5 },
               { key: 'operatingExpensesTotal', label: t('Dépenses d\'exploitation ($)', 'Operating expenses ($)'), step: 10000 },
-              { key: 'targetCapRate', label: t('TGA cible (%)', 'Target cap rate (%)'), step: 0.1 },
+              { key: 'targetCapRate', label: t('Taux de capitalisation cible (TGA) (%)', 'Target capitalization rate (cap rate) (%)'), step: 0.1 },
             ].map(({ key, label, step }) => (
               <label key={key} className="space-y-2">
                 <span className="block text-[10px] font-black uppercase tracking-widest text-blue-300/60">{label}</span>
@@ -357,8 +357,8 @@ export function ACM() {
             </p>
             <p className="mt-2 text-[12px] font-semibold text-slate-300">
               {t(
-                "Cette ACM est une opinion motivée par le moteur. Elle doit être révisée et signée par le courtier avant diffusion au client.",
-                'This CMA is a motivated opinion from the engine. It must be reviewed and signed by the broker before client release.'
+                "Cette analyse comparative de marché (ACM) est une opinion motivée par le moteur. Elle doit être révisée et signée par le courtier avant diffusion au client.",
+                'This comparative market analysis (CMA) is a motivated opinion from the engine. It must be reviewed and signed by the broker before client release.'
               )}
             </p>
           </div>

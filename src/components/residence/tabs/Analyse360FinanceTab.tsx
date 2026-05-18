@@ -1,5 +1,5 @@
 /**
- * Audit de Performance 360° — Manque à gagner / impact valeur (Phase 3d).
+ * Vérification de performance 360° — Manque à gagner / impact valeur (Phase 3d).
  * SSOT : computePerformanceAudit360() + useFinancialData().
  */
 
@@ -73,7 +73,7 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
   if (loading) {
     return (
       <div className={inst.loading}>
-        <p className={inst.loadingText}>{t('Chargement de l’audit 360°…', 'Loading 360° audit…')}</p>
+        <p className={inst.loadingText}>{t('Chargement de la vérification 360°…', 'Loading 360° verification…')}</p>
       </div>
     );
   }
@@ -88,7 +88,7 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
         <div className="flex items-start gap-3">
           <Info className="h-5 w-5 text-slate-600 shrink-0 mt-0.5" />
           <div>
-            <p className={inst.pageTitle}>{t('Audit de performance 360°', '360° performance audit')}</p>
+            <p className={inst.pageTitle}>{t('Vérification de performance 360°', '360° performance verification')}</p>
             <p className="mt-2 text-sm text-slate-700 leading-relaxed">
               {language === 'fr'
                 ? audit.insufficientReasonFr ??
@@ -106,15 +106,15 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
     audit.capRateSource === 'fiche'
       ? t(`Taux de capitalisation retenu : ${audit.capRatePct.toFixed(2)} % (fiche)`, `Cap rate: ${audit.capRatePct.toFixed(2)}% (listing)`)
       : t(
-          `Taux de capitalisation par défaut : ${audit.capRatePct.toFixed(0)} % (repli TGA)`,
-          `Default cap rate: ${audit.capRatePct.toFixed(0)}% (TGA fallback)`
+          `Taux de capitalisation par défaut : ${audit.capRatePct.toFixed(0)} % (repli taux de capitalisation (TGA))`,
+          `Default capitalization rate: ${audit.capRatePct.toFixed(0)}% (cap rate (TGA) fallback)`
         );
 
   return (
     <div className={cn('space-y-5', inst.page)}>
       <InstitutionalPageHeader
         icon={<Microscope className="h-5 w-5 text-slate-700 shrink-0" />}
-        title={t('Audit 360° · Manque à gagner & levier de valeur', '360° audit · Lost profits & value lever')}
+        title={t('Vérification 360° · Manque à gagner & levier de valeur', '360° verification · Lost profits & value lever')}
       />
 
       <ProvenanceStrip
@@ -125,20 +125,20 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
 
       <p className={inst.note}>
         {t(
-          'Comparaison du RBE et des dépenses normalisées (grille CPA) aux références marché. L’écart de NOI annuel est capitalisé au taux de la fiche : ΔV = ΔNOI ÷ (Cap Rate).',
-          'Compare normalized EGI and expenses to market references. Annual NOI gap is capitalized at listing cap rate: ΔV = ΔNOI ÷ Cap Rate.'
+          'Comparaison du revenu brut effectif (RBE) et des dépenses normalisées (grille comptable professionnel agréé (CPA)) aux références marché. L’écart de revenu net d’exploitation (RNE) annuel est capitalisé au taux de la fiche : ΔV = ΔRNE ÷ taux de capitalisation.',
+          'Compare effective gross income (EGI) and normalized expenses (CPA grid) to market references. Annual net operating income (NOI) gap is capitalized at listing cap rate: ΔV = ΔNOI ÷ cap rate.'
         )}{' '}
         <span className="text-slate-600">
           {t(
-            `Réf. dépenses : ${audit.benchmarkSource === 'sector_ref' ? 'secteur RPA' : 'portefeuille'}.`,
-            `Expense ref: ${audit.benchmarkSource === 'sector_ref' ? 'RPA sector' : 'portfolio'}.`
+            `Réf. dépenses : ${audit.benchmarkSource === 'sector_ref' ? 'secteur résidence pour aînés (RPA)' : 'portefeuille'}.`,
+            `Expense ref: ${audit.benchmarkSource === 'sector_ref' ? 'seniors residence (RPA) sector' : 'portfolio'}.`
           )}
         </span>
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <InstitutionalKpi
-          label={t('Manque à gagner annuel (NOI)', 'Annual lost NOI')}
+          label={t('Manque à gagner annuel — revenu net (RNE)', 'Annual shortfall — net operating income (NOI)')}
           sublabel={t('Leviers revenus + dépenses vs marché', 'Revenue + expense levers vs market')}
           value={fmt(audit.totalNoiGapAnnual)}
         />
@@ -195,7 +195,7 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
               <tr>
                 <th className={inst.th}>{t('Levier', 'Lever')}</th>
                 <th className={inst.th}>{t('Constat', 'Finding')}</th>
-                <th className={inst.thRight}>{t('Δ NOI / an', 'Δ NOI / yr')}</th>
+                <th className={inst.thRight}>{t('Écart RNE / an', 'NOI gap / yr')}</th>
                 <th className={inst.thRight}>{t('Impact valeur', 'Value impact')}</th>
               </tr>
             </thead>
@@ -229,7 +229,10 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
       <section className={inst.section}>
         <header className={inst.sectionHeader}>
           <h3 className={inst.sectionTitle}>
-            {t('2 · Écarts par poste (grille CPA normalisée)', '2 · Line-item variances (normalized CPA grid)')}
+            {t(
+              '2 · Écarts par poste (grille comptable professionnel agréé (CPA) normalisée)',
+              '2 · Line-item variances (normalized chartered professional accountant (CPA) grid)'
+            )}
           </h3>
         </header>
         {audit.expenseVarianceTop.length === 0 ? (
@@ -281,8 +284,8 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-700" />
             <p>
               {t(
-                `Analyse partielle : repli RDE sectoriel ${(OPTIMIZATION_360_RULES.EXPENSE_RATIO_TARGET * 100).toFixed(0)} % du RBE faute de benchmark ligne à ligne.`,
-                `Partial analysis: ${(OPTIMIZATION_360_RULES.EXPENSE_RATIO_TARGET * 100).toFixed(0)}% EGI sector RDE fallback — line benchmarks unavailable.`
+                `Analyse partielle : repli ratio des dépenses d'exploitation (RDE) sectoriel ${(OPTIMIZATION_360_RULES.EXPENSE_RATIO_TARGET * 100).toFixed(0)} % du revenu brut effectif (RBE) faute de benchmark ligne à ligne.`,
+                `Partial analysis: ${(OPTIMIZATION_360_RULES.EXPENSE_RATIO_TARGET * 100).toFixed(0)}% of effective gross income (EGI) expense ratio (RDE) sector fallback — line benchmarks unavailable.`
               )}
             </p>
           </div>
@@ -291,8 +294,8 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
 
       <p className="text-[10px] text-slate-600 italic px-1 leading-relaxed">
         {t(
-          'Document de travail — non opposable. Validation CPA / courtier requise avant engagement transactionnel.',
-          'Working document — not binding. CPA / broker validation required before transaction.'
+          'Document de travail — non opposable. Validation comptable professionnel agréé (CPA) / courtier requise avant engagement transactionnel.',
+          'Working document — not binding. Chartered professional accountant (CPA) / broker validation required before transaction.'
         )}
       </p>
     </div>

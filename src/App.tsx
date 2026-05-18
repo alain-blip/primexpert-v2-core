@@ -172,7 +172,7 @@ function LandingPage() {
                     onClick={handleInitializeSession}
                     className="inline-flex min-h-[48px] items-center justify-center rounded-lg border-2 border-neutral-900 bg-transparent px-8 py-3 text-center text-base font-semibold text-neutral-900 transition hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
                   >
-                    {t("Voir la démo de l'ACM", 'View the CMA demo')}
+                    {t("Voir la démo de l'analyse comparative de marché (ACM)", 'View the comparative market analysis (CMA) demo')}
                   </button>
                 </div>
               </motion.div>
@@ -184,8 +184,8 @@ function LandingPage() {
           <h2 id="features-heading" className="sr-only">{t('Fonctionnalités', 'Features')}</h2>
           <div className="grid gap-8 md:grid-cols-3 md:gap-10">
             {[
-              ['1', t("L'ACM personnalisée", 'Personalized CMA'), t('Opinion de valeur fondée, motivée et prête à être validée par le courtier.', 'A grounded, reasoned value opinion ready for broker validation.')],
-              ['2', t('Centralisation totale', 'Total centralization'), t('CRM, dossiers, rappels et conformité rassemblés dans un seul GPS immobilier.', 'CRM, files, reminders and compliance gathered into one real estate GPS.')],
+              ['1', t("L'analyse comparative de marché (ACM) personnalisée", 'Personalized comparative market analysis (CMA)'), t('Opinion de valeur fondée, motivée et prête à être validée par le courtier.', 'A grounded, reasoned value opinion ready for broker validation.')],
+              ['2', t('Centralisation totale', 'Total centralization'), t('Répertoire clients (CRM), dossiers, rappels et conformité rassemblés dans un seul GPS immobilier.', 'Client relationship management (CRM), files, reminders and compliance gathered into one real estate GPS.')],
               ['3', t('Mise en marché éclair', 'Fast go-to-market'), t('Rédaction, signature conforme et garde-fous publicitaires intégrés.', 'Copywriting, compliant signature and advertising guardrails integrated.')],
             ].map(([index, title, body]) => (
               <article key={index} className="flex flex-col rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm transition hover:border-neutral-300 hover:shadow-md">

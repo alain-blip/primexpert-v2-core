@@ -39,7 +39,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
         { id: 'dashboard', label: t('Tableau de bord', 'Dashboard'), icon: Compass },
         { id: 'pipeline', label: t('Suivi des dossiers', 'Pipeline'), icon: TrendingUp },
         { id: 'listings', label: t('Mes inscriptions', 'My listings'), icon: Home },
-        { id: 'acm', label: t('ACM prédictive', 'Predictive CMA'), icon: Calculator },
+        { id: 'acm', label: t('Analyse comparative de marché (ACM)', 'Comparative market analysis (CMA)'), icon: Calculator },
         { id: 'stats', label: t('Statistiques', 'Statistics'), icon: BarChart3 },
         { id: 'crm', label: t('Répertoire clients', 'CRM'), icon: Users },
         { id: 'content', label: t('Rédacteur IA', 'AI Writer'), icon: FileText },
@@ -302,16 +302,16 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
               </div>
             </div>
             <p className="text-sm font-semibold leading-relaxed text-blue-50/90 italic">
-              "{t('Priorité conformité: valider les délais critiques, garder le coffre-fort immuable et préparer une ACM motivée avant diffusion.', 'Compliance priority: validate critical deadlines, keep the Vault immutable and prepare a reasoned CMA before publication.')}"
+              "{t('Priorité conformité: valider les délais critiques, garder le coffre-fort immuable et préparer une analyse comparative de marché (ACM) motivée avant diffusion.', 'Compliance priority: validate critical deadlines, keep the Vault immutable and prepare a reasoned comparative market analysis (CMA) before publication.')}"
             </p>
           </div>
 
           <div className="mt-7 grid grid-cols-2 gap-3">
             {[
               { label: t('Alertes', 'Alerts'), value: '03' },
-              { label: 'ACM', value: '12' },
+              { label: t('Analyse comparative (ACM)', 'Market analysis (CMA)'), value: '12' },
               { label: t('Coffre', 'Vault'), value: '6Y' },
-              { label: 'HITL', value: 'ON' },
+              { label: t('Validation humaine (HITL)', 'Human-in-the-loop (HITL)'), value: 'ON' },
             ].map((metric) => (
               <div key={metric.label} className="rounded-[24px] bg-white/[0.08] border border-white/10 p-4">
                 <p className="text-[9px] font-black uppercase tracking-[0.22em] text-blue-200/55">{metric.label}</p>
@@ -332,7 +332,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
               <Zap className="w-5 h-5 text-blue-200 shrink-0" />
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest">{t('Action rapide', 'Quick action')}</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-blue-100/70">{t('Lancer une révision ACM sans contourner la note du courtier.', 'Launch a CMA review without bypassing the broker note.')}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-blue-100/70">{t('Lancer une révision d’analyse comparative de marché (ACM) sans contourner la note du courtier.', 'Launch a comparative market analysis (CMA) review without bypassing the broker note.')}</p>
               </div>
             </div>
           </div>

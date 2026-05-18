@@ -4,6 +4,7 @@
  */
 
 import { EXPENSE_KEYS } from './expenseKeys';
+import { deriveRevenusAnnuelsFromTarification } from '../identity/rentPricingGrid';
 
 const LEGACY_TAX_KEY = 'taxesMunicipalesScolaire';
 const CANONICAL_TAX_KEY = 'taxesPermis';
@@ -341,7 +342,12 @@ export function normalizeFinancialData(
       safeNum(baseData?.nombreUnites) ??
       safeNum(residence.nombreUnites) ??
       1;
-    const revenusAnnuels = safeNum(baseData?.revenusAnnuels);
+    let revenusAnnuels = safeNum(baseData?.revenusAnnuels);
+    if (revenusAnnuels == null) {
+      revenusAnnuels = deriveRevenusAnnuelsFromTarification(
+        residence as Record<string, unknown>
+      );
+    }
     const depensesTotales = sumDepenses(baseData?.depenses ?? undefined);
     const noi =
       safeNum(derived?.noiOperationnel) ??

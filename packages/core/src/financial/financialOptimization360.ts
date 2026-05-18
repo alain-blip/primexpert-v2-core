@@ -1,5 +1,5 @@
 /**
- * Audit de Performance 360° — Manque à gagner / Lost Profits (SSOT).
+ * Vérification de performance 360° — Manque à gagner / Lost Profits (SSOT).
  * Compare RBE/NOI actuel vs références marché (grille CPA normalisée + % sectoriels RPA).
  * Impact valeur : NOI latent ÷ taux de capitalisation (ou repli TGA 10 %).
  */
@@ -229,9 +229,9 @@ export function computeLostProfits360(params: ComputeLostProfits360Params): Lost
     return {
       hasData: false,
       insufficientReasonFr:
-        'Grille Revenus & Dépenses ou RBE manquants — complétez financial/dataV2 pour activer l’audit 360°.',
+        'Grille Revenus & Dépenses ou revenu brut effectif (RBE) manquants — complétez financial/dataV2 pour activer la vérification 360°.',
       insufficientReasonEn:
-        'Revenue & expense grid or EGI missing — complete financial/dataV2 to enable the 360° audit.',
+        'Revenue & expense grid or EGI missing — complete financial/dataV2 to enable the 360° verification.',
       rbe: 0,
       noiDeclared,
       noiNormalized: null,

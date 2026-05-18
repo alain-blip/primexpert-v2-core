@@ -39,3 +39,35 @@ export async function sendViaNylas(input: {
   const fn = httpsCallable<typeof input, { ok: boolean }>(functions, 'nylasSendMessage');
   await fn(input);
 }
+
+export async function sendSellerUpdateViaNylas(input: {
+  toEmail: string;
+  toName?: string;
+  subject: string;
+  body: string;
+  accountId: string;
+  propertyId?: string;
+  propertyLabel?: string;
+}): Promise<{ threadId: string }> {
+  const fn = httpsCallable<
+    typeof input,
+    { ok: boolean; threadId: string }
+  >(functions, 'nylasSendSellerUpdate');
+  const { data } = await fn(input);
+  if (!data?.threadId) throw new Error('Envoi Nylas sans identifiant de fil.');
+  return { threadId: data.threadId };
+}
+
+export type NylasThreadFolderMove = 'ARCHIVE' | 'TRASH';
+
+export async function moveThreadViaNylas(input: {
+  threadId: string;
+  accountId: string;
+  folder: NylasThreadFolderMove;
+}): Promise<void> {
+  const fn = httpsCallable<typeof input, { ok: boolean }>(
+    functions,
+    'nylasUpdateThreadFolder'
+  );
+  await fn(input);
+}

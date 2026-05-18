@@ -1,9 +1,12 @@
 /**
- * Agrégation — IdentityViewModel (lecture seule Phase 4a).
+ * Agrégation — IdentityViewModel (Phase 4).
  */
 
 import type { IdentityViewModel } from './types';
 import { IDENTITY_SECTION_DEFS, buildSectionFields } from './identitySections';
+import { BUILDING_AUDIT_SECTIONS } from './buildingAuditSections';
+import { buildServicesRecognitionView } from './servicesRecognition';
+import { buildRentPricingView } from './rentPricingGrid';
 import {
   formatAddressLine,
   formatRegionPrincipal,
@@ -31,6 +34,14 @@ function formatMsssDate(raw: unknown): string | null {
   return null;
 }
 
+const EMPTY_RENT = {
+  rows: [],
+  totalRevenuPotentielAnnuel: null,
+  failSafeRbeHint: null,
+};
+
+const EMPTY_SERVICES = { fields: [], badges: [] };
+
 export function buildIdentityViewModel(
   doc: Record<string, unknown> | null,
   opts: { loading?: boolean } = {}
@@ -56,6 +67,15 @@ export function buildIdentityViewModel(
         accent: s.accent,
         fields: [],
       })),
+      buildingAudit: BUILDING_AUDIT_SECTIONS.map((s) => ({
+        id: s.id,
+        titleFr: s.titleFr,
+        titleEn: s.titleEn,
+        accent: s.accent,
+        fields: [],
+      })),
+      services: EMPTY_SERVICES,
+      rentPricing: EMPTY_RENT,
       capacity: {
         totalUnits: null,
         unitsByType: [],
@@ -100,6 +120,17 @@ export function buildIdentityViewModel(
     fields: buildSectionFields(d, section),
   }));
 
+  const buildingAudit = BUILDING_AUDIT_SECTIONS.map((section) => ({
+    id: section.id,
+    titleFr: section.titleFr,
+    titleEn: section.titleEn,
+    accent: section.accent,
+    fields: buildSectionFields(d, section),
+  }));
+
+  const services = buildServicesRecognitionView(d);
+  const rentPricing = buildRentPricingView(d);
+
   return {
     loading,
     hasDocument: true,
@@ -111,6 +142,9 @@ export function buildIdentityViewModel(
       address: formatAddressLine(d),
     },
     sections,
+    buildingAudit,
+    services,
+    rentPricing,
     capacity: computeCapacityAggregates(d),
     msss,
     showMsssBanner,

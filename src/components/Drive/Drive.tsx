@@ -228,8 +228,8 @@ export function Drive() {
             </span>
             <span className="block text-[10px] text-slate-500 mt-1">
               {t(
-                'Lit le document et extrait les champs canoniques (prixAnnonce, TGA, NOI, etc.) via Gemini.',
-                'Reads the document and extracts canonical fields (prixAnnonce, cap rate, NOI, etc.) via Gemini.'
+                'Lit le document et extrait les champs canoniques (prix affiché, taux de capitalisation (TGA), revenu net (RNE), etc.) via Gemini.',
+                'Reads the document and extracts canonical fields (listing price, cap rate, net operating income (NOI), etc.) via Gemini.'
               )}
             </span>
           </div>
@@ -346,8 +346,8 @@ export function Drive() {
             icon: ShieldCheck,
             title: t('OACIQ — Coffre immuable', 'OACIQ — Immutable vault'),
             desc: t(
-              "Conservation 6 ans, journal d'audit, validation humaine avant diffusion (Phase D).",
-              '6-year retention, audit log, human validation before publication (Phase D).'
+              "Conservation 6 ans, journal de conformité, validation humaine avant diffusion (Phase D).",
+              '6-year retention, compliance log, human validation before publication (Phase D).'
             ),
           },
         ].map((card) => {

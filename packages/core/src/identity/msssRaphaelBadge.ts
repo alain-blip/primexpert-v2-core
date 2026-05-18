@@ -24,6 +24,22 @@ export function hasMsssEnrichment(doc: Record<string, unknown> | null | undefine
   return getMsssEnrichment(doc) != null;
 }
 
+/** Confirmation manuelle courtier (Phase 4b) — coupe le badge ✨ sur ce champ. */
+export function isFieldConfirmedByUser(
+  doc: Record<string, unknown> | null | undefined,
+  fieldId: string
+): boolean {
+  if (!doc) return false;
+  const conf = doc.identityConfirmations;
+  if (conf && typeof conf === 'object' && !Array.isArray(conf)) {
+    const entry = (conf as Record<string, unknown>)[fieldId];
+    if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+      return (entry as Record<string, unknown>).confirmedBy === 'user';
+    }
+  }
+  return false;
+}
+
 export interface RaphaelBadgeContext {
   /** Valeur brute du champ (racine ou imbriquée). */
   value?: unknown;
@@ -41,6 +57,7 @@ export function shouldShowRaphaelBadge(
   ctx: RaphaelBadgeContext = {}
 ): boolean {
   if (!hasMsssEnrichment(doc)) return false;
+  if (ctx.confirmedBy === 'user') return false;
 
   const empty = ctx.forceEmpty ?? isFieldEmpty(ctx.value);
   const unconfirmed =
@@ -51,10 +68,22 @@ export function shouldShowRaphaelBadge(
   return empty || unconfirmed;
 }
 
+export function shouldShowRaphaelForField(
+  doc: Record<string, unknown> | null | undefined,
+  fieldId: string,
+  ctx: RaphaelBadgeContext = {}
+): boolean {
+  if (isFieldConfirmedByUser(doc, fieldId)) return false;
+  return shouldShowRaphaelBadge(doc, ctx);
+}
+
 export function shouldShowRaphaelForPath(
   doc: Record<string, unknown> | null | undefined,
   path: string[]
 ): boolean {
+  const leafKey = path[path.length - 1];
+  if (isFieldConfirmedByUser(doc, leafKey)) return false;
+
   const value = getNestedValue(doc, path);
   const parentKey = path.length > 1 ? path[0] : null;
   const parent = parentKey ? getNestedValue(doc, [parentKey]) : null;

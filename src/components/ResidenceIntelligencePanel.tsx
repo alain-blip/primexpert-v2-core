@@ -4,18 +4,9 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  ArrowLeft,
-  Sparkles,
-  Mail,
-  Mic,
-  FileText,
-  ScrollText,
-} from 'lucide-react';
+import { ArrowLeft, Sparkles, Mail, Mic } from 'lucide-react';
 import { useLanguage } from '../lib/i18n';
-import { useWorkhubNav } from '../lib/workhubNav';
-import { stashContentGenPrefill } from '../lib/contentGenPrefill';
-import { cn, formatCurrency } from '../lib/utils';
+import { cn } from '../lib/utils';
 import type { Residence } from '../services/residences';
 import {
   subscribeCallAnalysesForResidence,
@@ -26,6 +17,7 @@ import {
   type SavedMailboxAnalysis,
 } from '../services/mailboxAnalysis';
 import { inst, InstitutionalPageHeader } from './residence/institutional/InstitutionalUi';
+import { SellerWeeklyReportModule } from './intelligence/SellerWeeklyReportModule';
 
 interface IntelTimelineItem {
   kind: 'call' | 'mail';
@@ -45,7 +37,7 @@ function callStatusLabel(
     case 'analyzing':
       return { emoji: '⚙️', label: t('Transcription', 'Transcribing') };
     case 'analyzed':
-      return { emoji: '✨', label: t('Analysé', 'Analyzed') };
+      return { emoji: '✨', label: t('Analyzed', 'Analyzed') };
     default:
       return { emoji: '⚠️', label: t('Échec', 'Failed') };
   }
@@ -65,8 +57,7 @@ export function ResidenceIntelligencePanel({
   onClose,
   embedded = false,
 }: ResidenceIntelligencePanelProps) {
-  const { t, language } = useLanguage();
-  const workhubNav = useWorkhubNav();
+  const { t } = useLanguage();
   const [calls, setCalls] = useState<CallAnalysisRow[]>([]);
   const [mails, setMails] = useState<SavedMailboxAnalysis[]>([]);
   const [subError, setSubError] = useState<string | null>(null);
@@ -108,116 +99,6 @@ export function ResidenceIntelligencePanel({
     return items.sort((a, b) => b.sortMs - a.sortMs);
   }, [calls, mails]);
 
-  const topAnalyzedCall = useMemo(
-    () =>
-      calls.find(
-        (c) => c.pipelineStatus === 'analyzed' && (c.executiveSummary?.trim()?.length ?? 0) > 0
-      ),
-    [calls]
-  );
-
-  const handleDraftSellerUpdate = () => {
-    if (!topAnalyzedCall?.executiveSummary?.trim()) return;
-    const addr = residence.city ? `${residence.address}, ${residence.city}` : residence.address;
-    const briefing = [
-      t(
-        'CONTEXTE — Mise à jour vendeur (synthèse appel récent)',
-        'CONTEXT — Seller update (recent call summary)'
-      ),
-      '',
-      `${t('Fichier', 'File')}: ${topAnalyzedCall.fileName}`,
-      '',
-      t('Résumé exécutif', 'Executive summary'),
-      topAnalyzedCall.executiveSummary,
-      '',
-      topAnalyzedCall.commitments?.length
-        ? `${t('Engagements', 'Commitments')}:\n${topAnalyzedCall.commitments.map((x) => `• ${x}`).join('\n')}`
-        : '',
-      topAnalyzedCall.keyPoints?.length
-        ? `\n${t('Points clés', 'Key points')}:\n${topAnalyzedCall.keyPoints.map((x) => `• ${x}`).join('\n')}`
-        : '',
-      topAnalyzedCall.actionItems?.length
-        ? `\n${t('Suivi', 'Follow-up')}:\n${topAnalyzedCall.actionItems.map((x) => `• ${x}`).join('\n')}`
-        : '',
-    ]
-      .filter(Boolean)
-      .join('\n');
-
-    stashContentGenPrefill({
-      residenceId: residence.id,
-      addressLine: addr,
-      priceHint: formatCurrency(residence.price),
-      briefingBlock: briefing,
-    });
-    workhubNav?.setActiveTab('content');
-  };
-
-  const handleVendorReport = () => {
-    if (timeline.length === 0) return;
-    const addr = residence.city ? `${residence.address}, ${residence.city}` : residence.address;
-    const locale = language === 'fr' ? 'fr-CA' : 'en-CA';
-    const nCalls = timeline.filter((x) => x.kind === 'call').length;
-    const nMails = timeline.filter((x) => x.kind === 'mail').length;
-    const lines: string[] = [];
-    for (const item of timeline) {
-      const when = new Date(item.sortMs).toLocaleString(locale, {
-        dateStyle: 'short',
-        timeStyle: 'short',
-      });
-      if (item.kind === 'call' && item.call) {
-        const row = item.call;
-        const st = callStatusLabel(row, t);
-        lines.push(
-          [
-            `### ${when} — ${t('Appel', 'Call')}: ${row.fileName}`,
-            `${t('Statut', 'Status')}: ${st.label}`,
-            row.executiveSummary?.trim() ? row.executiveSummary.trim() : `(${t('Pas de résumé', 'No summary')})`,
-          ].join('\n')
-        );
-      } else if (item.kind === 'mail' && item.mail) {
-        const m = item.mail;
-        lines.push(
-          [
-            `### ${when} — ${t('Courriel analysé', 'Analyzed email')}`,
-            m.mergedParse.summaryOneLine,
-            `${t('Intent', 'Intent')}: ${m.mergedParse.lead.intent} · ${t('Urgence', 'Urgency')}: ${m.mergedParse.urgency}`,
-          ].join('\n')
-        );
-      }
-    }
-    const briefing = [
-      t(
-        'DIRECTIVE RÉDACTEUR IA — Rapport vendeur (prestige, OACIQ, français du Québec).',
-        'AI WRITER DIRECTIVE — Seller-facing report (professional, compliant tone).'
-      ),
-      '',
-      t(
-        `Synthétise ${nCalls} appel(s) et ${nMails} courriel(s) analysé(s) en un rapport vendeur clair. Ne rien inventer : t’appuie uniquement sur la chronologie ci-dessous.`,
-        `Synthesize ${nCalls} call(s) and ${nMails} analyzed email(s) into a clear seller-facing report. Do not invent facts—use only the timeline below.`
-      ),
-      '',
-      `${t('Inscription', 'Listing')}: ${addr}`,
-      `${t('Prix affiché', 'List price')}: ${formatCurrency(residence.price)}`,
-      '',
-      t(
-        'Structure suggérée : 1) Synthèse exécutive 2) Fil des échanges 3) Prochaines étapes 4) Ton rassurant et professionnel.',
-        'Suggested structure: 1) Executive summary 2) Interaction timeline 3) Next steps 4) Reassuring professional tone.'
-      ),
-      '',
-      t('CHRONOLOGIE (du plus récent au plus ancien)', 'TIMELINE (newest to oldest)'),
-      '',
-      ...lines,
-    ].join('\n');
-
-    stashContentGenPrefill({
-      residenceId: residence.id,
-      addressLine: addr,
-      priceHint: formatCurrency(residence.price),
-      briefingBlock: briefing,
-    });
-    workhubNav?.setActiveTab('content');
-  };
-
   const addrTitle = residence.city ? `${residence.address}, ${residence.city}` : residence.address;
 
   return (
@@ -241,9 +122,6 @@ export function ResidenceIntelligencePanel({
                   title={t('Vue 360° · Intelligence centralisée', '360° view · Centralized intelligence')}
                 />
                 <h2 className="text-xl font-black text-[#000000] tracking-tight truncate -mt-2">{addrTitle}</h2>
-                <p className="text-[11px] font-bold text-slate-600 font-mono mt-1">
-                  <span className="text-[#000000]">{formatCurrency(residence.price)}</span> · ID {residence.id}
-                </p>
               </>
             ) : (
               <InstitutionalPageHeader
@@ -253,26 +131,6 @@ export function ResidenceIntelligencePanel({
               />
             )}
           </div>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
-          <button
-            type="button"
-            disabled={timeline.length === 0}
-            onClick={handleVendorReport}
-            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#000000] hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-sm"
-          >
-            <ScrollText className="h-4 w-4 shrink-0 text-slate-700" />
-            {t('Rapport vendeur', 'Seller report')}
-          </button>
-          <button
-            type="button"
-            disabled={!topAnalyzedCall}
-            onClick={handleDraftSellerUpdate}
-            className="flex items-center gap-2 rounded-xl border border-[#D4AF37]/40 bg-amber-50 px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#000000] hover:border-[#D4AF37]/60 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-sm"
-          >
-            <FileText className="h-4 w-4 shrink-0 text-[#D4AF37]" />
-            {t('Rédiger une mise à jour', 'Draft seller update')}
-          </button>
         </div>
       </div>
 
@@ -285,6 +143,13 @@ export function ResidenceIntelligencePanel({
           <span className="font-mono text-slate-600">({subError})</span>
         </div>
       )}
+
+      <SellerWeeklyReportModule
+        brokerId={brokerId}
+        residence={residence}
+        calls={calls}
+        mails={mails}
+      />
 
       <section className={inst.section}>
         <header className={cn(inst.sectionHeader, 'flex items-center gap-2')}>

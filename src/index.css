@@ -363,3 +363,85 @@ html.light .workhub-card::before { opacity: 0.16; }
 html.light .bg-vault:hover::after { opacity: 0.24; }
 html.light .workhub-card-glow::before { opacity: 0.19; }
 
+/* Messagerie — corps HTML sur carte institutionnelle blanche */
+.email-message-html--institutional {
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: #334155;
+  word-break: break-word;
+}
+
+.email-message-html--institutional :where(p, span, div, li, td, th, font, label, blockquote) {
+  color: #334155 !important;
+}
+
+.email-message-html--institutional :where(h1, h2, h3, h4, strong, b) {
+  color: #000000 !important;
+}
+
+.email-message-html--institutional a {
+  color: #1d4ed8 !important;
+  text-decoration: underline;
+}
+
+.email-message-html--institutional img {
+  max-width: 100%;
+  height: auto;
+}
+
+.email-message-html--institutional blockquote {
+  border-left: 3px solid #e2e8f0;
+  padding-left: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+.email-message-html--inbound {
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: #e2e8f0;
+  word-break: break-word;
+}
+
+.email-message-html--inbound :where(p, span, div, li, td, th, font, label, blockquote) {
+  color: #e2e8f0 !important;
+}
+
+.email-message-html--inbound :where(h1, h2, h3, h4, strong, b) {
+  color: #f8fafc !important;
+}
+
+.email-message-html--inbound a {
+  color: #93c5fd !important;
+  text-decoration: underline;
+}
+
+.email-message-html--inbound img {
+  max-width: 100%;
+  height: auto;
+}
+
+.email-message-html--outbound {
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: #ffffff;
+  word-break: break-word;
+}
+
+.email-message-html--outbound :where(p, span, div, li, td, th, font, label, blockquote) {
+  color: #ffffff !important;
+}
+
+.email-message-html--outbound :where(h1, h2, h3, h4, strong, b) {
+  color: #ffffff !important;
+}
+
+.email-message-html--outbound a {
+  color: #bfdbfe !important;
+  text-decoration: underline;
+}
+
+.email-message-html--outbound img {
+  max-width: 100%;
+  height: auto;
+}
+

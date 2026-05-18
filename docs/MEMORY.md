@@ -6,6 +6,36 @@
 
 ---
 
+## Règle linguistique — langage des affaires (Québec)
+
+**Règle maîtresse** pour toute UI, libellé, bouton, rapport et documentation **visible par l’utilisateur ou le client** (vendeur, acheteur, courtier).
+
+### Purge du lexique européen
+
+- **Interdit à l’écran** : le mot **« audit »** (trop académique / européen pour le marché québécois).
+- **Remplacer par** (selon le contexte) : **vérification**, **conformité**, **diligence**, **diligence raisonnable**, **preuves de conformité**.
+
+### Ton et verbes d’action (exemples)
+
+- Boutons / états : *Vérification*, *Certification*, *Verrouillage*, *Preuves de conformité*, *Journal de conformité* (pas « journal d’audit »).
+- Analyse financière 360° : parler de **vérification de performance** ou **analyse 360°**, jamais « audit 360° » côté client.
+- Registres OACIQ / coffre-fort : **journal de conformité**, **traçabilité**, **conservation 6 ans**.
+
+### Abréviations — jamais seules
+
+- **Interdit à l’écran** : une abréviation seule (`NOI`, `RBE`, `TGA`, `ACM`, `CPA`, etc.).
+- **Format obligatoire** : **terme complet**, puis **abréviation entre parenthèses** — ex. *revenu net d’exploitation (RNE)*, *revenu brut effectif (RBE)*, *taux de capitalisation (TGA)*, *analyse comparative de marché (ACM)*, *comptable professionnel agréé (CPA)*.
+- Même règle en anglais quand l’UI est bilingue : *net operating income (NOI)*, *effective gross income (EGI)*, etc.
+
+### Portée technique
+
+- Les **identifiants de code** (`computePerformanceAudit360`, `noiAudit`, `buildingAudit`, `auditSensitiveFields`, scripts ops `audit_tenant_uids.js`) peuvent rester en anglais interne tant qu’ils ne sont **pas exposés** dans l’UI.
+- Toute nouvelle chaîne `t('…')`, `labelFr` / `labelEn`, titre de section ou message d’erreur utilisateur doit respecter cette règle **avant merge**.
+
+*Référence Cursor : `.cursor/rules/quebec-business-language.mdc` (alwaysApply).*
+
+---
+
 ## Règle #0 — SSOT métier
 
 - **Toute logique financière, identité, valuation, mail parser** vit dans `packages/core/` (`@primexpert/core`).
@@ -16,7 +46,7 @@
 
 ## Charte visuelle — fiche résidence (2026-05-16)
 
-**Étalon : onglet Identité** — outil de travail CPA / auditeur.
+**Étalon : onglet Identité** — outil de travail CPA / vérificateur (conformité OACIQ).
 
 | Token | Usage |
 |-------|--------|
@@ -43,7 +73,7 @@ Kit partagé : `src/components/residence/institutional/InstitutionalUi.tsx` (`in
 | Revenus & Dépenses | 3b | `revenusDepensesGrid.ts` |
 | Finançabilité | 3c | `computeFinancabilite.ts` (SCHL Standard / APH Select) |
 | Ratios performance | 3d | `performanceRatios.ts` |
-| Audit 360° | 3d | `financialOptimization360.ts` |
+| Vérification 360° (UI ; code : `financialOptimization360`) | 3d | `financialOptimization360.ts` |
 
 Données : sous-collection **`residences/{id}/financial/dataV2`** (migration depuis Copilote via `migrate_financial_subcollections.js`).
 
@@ -143,4 +173,4 @@ firebase deploy --only firestore:rules  # si règles modifiées
 
 ---
 
-*Journal mis à jour : 2026-05-16.*
+*Journal mis à jour : 2026-05-16 — règle linguistique Québec (purge « audit » UI).*

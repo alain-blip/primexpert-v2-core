@@ -1,8 +1,20 @@
-/** Payload Nylas v3 (simplifié) — webhook `message.created` / envoi API. */
+/** Payload Nylas v3 — webhook `message.opened` (tracking). */
+export interface NylasMessageOpenedObject {
+  object?: string;
+  grant_id?: string;
+  message_id?: string;
+  label?: string;
+  message_data?: { count?: number; timestamp?: number };
+  recents?: Array<{ timestamp?: number; ip?: string; user_agent?: string }>;
+  timestamp?: number;
+}
+
+/** Payload Nylas v3 (simplifié) — webhooks message.* / tracking. */
 export interface NylasWebhookEnvelope {
   type?: string;
   data?: {
-    object?: NylasMessageObject;
+    grant_id?: string;
+    object?: NylasMessageObject | NylasMessageOpenedObject;
   };
 }
 
@@ -15,6 +27,8 @@ export interface NylasMessageObject {
   snippet?: string;
   date?: number;
   unread?: boolean;
+  /** Libellés / dossiers Nylas (ex. INBOX, SENT, TRASH). */
+  folders?: string[];
   from?: Array<{ name?: string; email?: string }>;
   to?: Array<{ name?: string; email?: string }>;
 }

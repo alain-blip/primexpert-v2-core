@@ -145,7 +145,15 @@ export function EmailAccountsSettings() {
       window.location.href = url;
     } catch (e) {
       console.error('[EmailAccountsSettings] OAuth', e);
-      setError(t('Impossible de démarrer OAuth Nylas.', 'Could not start Nylas OAuth.'));
+      const detail =
+        e && typeof e === 'object' && 'message' in e
+          ? String((e as { message?: string }).message)
+          : '';
+      setError(
+        detail
+          ? detail
+          : t('Impossible de démarrer OAuth Nylas.', 'Could not start Nylas OAuth.')
+      );
     }
   };
 

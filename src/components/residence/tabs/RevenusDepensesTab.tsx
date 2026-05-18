@@ -64,7 +64,12 @@ export function RevenusDepensesTab({ residence }: RevenusDepensesTabProps) {
   if (loading) {
     return (
       <div className={inst.loading}>
-        <p className={inst.loadingText}>{t('Chargement de la grille CPA…', 'Loading CPA grid…')}</p>
+        <p className={inst.loadingText}>
+          {t(
+            'Chargement de la grille comptable professionnel agréé (CPA)…',
+            'Loading chartered professional accountant (CPA) grid…'
+          )}
+        </p>
       </div>
     );
   }
@@ -98,7 +103,10 @@ export function RevenusDepensesTab({ residence }: RevenusDepensesTabProps) {
     <div className={cn('space-y-5', inst.page)}>
       <InstitutionalPageHeader
         icon={<Coins className="h-5 w-5 text-slate-700 shrink-0" />}
-        title={t('Grille CPA · Lecture seule', 'CPA grid · Read-only')}
+        title={t(
+          'Grille comptable professionnel agréé (CPA) · Lecture seule',
+          'Chartered professional accountant (CPA) grid · Read-only'
+        )}
         meta={`${verifiedCount}/${grid.rows.length} ${t('preuves A2 validées', 'A2 proofs verified')}`}
       />
 
@@ -110,7 +118,10 @@ export function RevenusDepensesTab({ residence }: RevenusDepensesTabProps) {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <InstitutionalKpi label="RBE" value={fmt(grid.rbe)} />
+        <InstitutionalKpi
+          label={t('Revenu brut effectif (RBE)', 'Effective gross income (EGI)')}
+          value={fmt(grid.rbe)}
+        />
         <InstitutionalKpi
           label={t('Dépenses normalisées', 'Normalized expenses')}
           value={fmt(grid.depensesNormaliseesTotal)}
@@ -120,8 +131,8 @@ export function RevenusDepensesTab({ residence }: RevenusDepensesTabProps) {
 
       <p className={inst.note}>
         {t(
-          'Normalisation CPA : montant normalisé = déclaré + ajustement expert. La colonne « % réf. marché » utilise les références sectorielles RPA (benchmark portefeuille V2 à brancher).',
-          'CPA normalization: normalized = declared + expert adjustment. Market ref % uses RPA sector references (portfolio benchmark coming in V2).'
+          'Normalisation comptable professionnel agréé (CPA) : montant normalisé = déclaré + ajustement expert. La colonne « % réf. marché » utilise les références sectorielles résidence pour aînés (RPA) (benchmark portefeuille V2 à brancher).',
+          'Chartered professional accountant (CPA) normalization: normalized = declared + expert adjustment. Market ref % uses seniors residence (RPA) sector references (portfolio benchmark coming in V2).'
         )}
       </p>
 
@@ -131,7 +142,9 @@ export function RevenusDepensesTab({ residence }: RevenusDepensesTabProps) {
             <thead>
               <tr>
                 <th className={inst.th}>{t('Poste', 'Line item')}</th>
-                <th className={inst.thRight}>% {t('RBE', 'EGR')}</th>
+                <th className={inst.thRight}>
+                  % {t('revenu brut effectif (RBE)', 'effective gross income (EGI)')}
+                </th>
                 <th className={inst.thRight}>{t('Déclaré', 'Declared')}</th>
                 <th className={inst.thRight}>{t('% réf. marché', 'Market ref %')}</th>
                 <th className={inst.thRight}>{t('Ajustement', 'Adjustment')}</th>

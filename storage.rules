@@ -1,16 +1,8 @@
 // =============================================================================
 // SILOS 2026 v4 — Firebase Storage Security Rules
 //
-// Drive PrimeXpert (Brief §4 — multi-tenant via brokerId).
-//
-// Arborescence cible :
-//   primexpert/{brokerId}/residences/{residenceId}/{fileName}
-//   primexpert/{brokerId}/general/{fileName}
-//
-// Garantie : un utilisateur ne peut lire/écrire QUE sous son propre uid.
-// Doublé par les Firestore Rules sur la collection drive_documents.
-//
-// Phase C.1 — Écrit, NON DÉPLOYÉ (Alain validera avant `firebase deploy`).
+// Drive + Espace Documents : silo `primexpert/{brokerId}/…` (brokerId == auth.uid)
+// Legacy lecture seule : `properties/{propertyId}/documents/…` (firestore.get)
 // =============================================================================
 
 rules_version = '2';
@@ -18,26 +10,48 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Global Safety Net — tout interdit par défaut
     match /{allPaths=**} {
       allow read, write: if false;
     }
 
-    // Drive PrimeXpert — isolement strict par brokerId (== auth.uid)
+    function residenceRef(propertyId) {
+      return /databases/ai-studio-1214d671-efd2-47da-93b7-425feb92155a/documents/residences/$(propertyId);
+    }
+
+    function isLegacyResidenceOwner(propertyId) {
+      return request.auth != null
+        && firestore.exists(residenceRef(propertyId))
+        && firestore.get(residenceRef(propertyId)).data.courtiersResponsables == request.auth.uid;
+    }
+
+    // Legacy — fichiers déjà téléversés sous l’ancien chemin (lecture / suppression propriétaire)
+    match /properties/{propertyId}/documents/{category}/{fileName} {
+      allow read, delete: if isLegacyResidenceOwner(propertyId);
+      allow create, update: if false;
+    }
+
+    // Espace Documents — diligence (primexpert / courtier / propriété / dossier)
+    match /primexpert/{brokerId}/properties/{propertyId}/documents/{category}/{fileName} {
+      allow read: if request.auth != null && request.auth.uid == brokerId;
+
+      allow create: if request.auth != null
+                    && request.auth.uid == brokerId
+                    && request.resource.size < 25 * 1024 * 1024
+                    && request.resource.metadata.courtiersResponsables == brokerId;
+
+      allow delete: if request.auth != null && request.auth.uid == brokerId;
+    }
+
+    // Drive PrimeXpert — reste du silo courtier
     match /primexpert/{brokerId}/{allPaths=**} {
-      // Lecture/écriture autorisée uniquement au propriétaire du chemin
       allow read: if request.auth != null
                   && request.auth.uid == brokerId;
 
       allow write: if request.auth != null
                    && request.auth.uid == brokerId
-                   // Limite de taille : 25 Mo par fichier (Phase C — ajuster si besoin)
                    && request.resource.size < 25 * 1024 * 1024
-                   // Métadonnées custom obligatoires (cohérence avec driveStorage.ts)
                    && request.resource.metadata.courtiersResponsables == brokerId;
 
-      // Suppression interdite (OACIQ — conservation 6 ans)
-      // Pour cycle de vie, passer par une Cloud Function avec audit log.
       allow delete: if false;
     }
   }

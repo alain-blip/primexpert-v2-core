@@ -1,5 +1,6 @@
-import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { getDb, threadMessagesCol, userThreadsCol } from '../lib/firestore';
+import { resolveMailboxFolderFromNylas } from './mailboxFolder';
 import type { NylasMessageObject } from './types';
 
 export interface SyncInboundInput {
@@ -32,6 +33,7 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
   const snippet =
     body.length > 140 ? `${body.slice(0, 137)}…` : body || message.snippet || '';
   const contact = pickContact(message, direction);
+  const mailboxFolder = resolveMailboxFolderFromNylas(message.folders, direction);
 
   let threadDocId: string | null = null;
 
@@ -55,9 +57,10 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
       contactEmail: contact.email || null,
       lastMessageSnippet: snippet,
       lastMessageAtMillis: sentAtMillis,
-      lastMessageAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastMessageAt: FieldValue.serverTimestamp(),
       isUnread: direction === 'inbound',
       createdAtMillis: sentAtMillis,
+      mailboxFolder,
     });
     threadDocId = ref.id;
   } else {
@@ -66,14 +69,20 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
       .update({
         lastMessageSnippet: snippet,
         lastMessageAtMillis: sentAtMillis,
-        lastMessageAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastMessageAt: FieldValue.serverTimestamp(),
         isUnread: direction === 'inbound',
+        mailboxFolder,
       });
   }
 
   const messagesCol = threadMessagesCol(brokerId, threadDocId);
   const dup = await messagesCol.where('nylasMessageId', '==', nylasMessageId).limit(1).get();
-  if (!dup.empty) return;
+  if (!dup.empty) {
+    if (threadDocId) {
+      await userThreadsCol(brokerId).doc(threadDocId).update({ mailboxFolder });
+    }
+    return;
+  }
 
   const accountSnap = await getDb().collection('users').doc(brokerId).get();
   const accounts = accountSnap.data()?.emailAccounts;
@@ -87,7 +96,7 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
     }
   }
 
-  await messagesCol.add({
+  const messageDoc: Record<string, unknown> = {
     threadId: threadDocId,
     nylasMessageId,
     body,
@@ -96,9 +105,18 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
     authorName: direction === 'inbound' ? contact.name : 'Moi',
     authorId: direction === 'outbound' ? brokerId : null,
     fromAccountId: accountId,
-    fromEmailAddress: direction === 'outbound' ? fromEmail : contact.email,
     attachments: [],
-  });
+  };
+  const fromEmailAddress =
+    direction === 'outbound'
+      ? fromEmail?.trim() || undefined
+      : contact.email?.trim() || undefined;
+  if (fromEmailAddress) messageDoc.fromEmailAddress = fromEmailAddress;
+  if (direction === 'outbound') {
+    messageDoc.isOpened = false;
+  }
+
+  await messagesCol.add(messageDoc);
 }
 
 /** Résout brokerId + accountId + email à partir du grant Nylas. */

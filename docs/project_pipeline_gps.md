@@ -100,7 +100,7 @@ normalizeFinancialData()
 ├─ Revenus & Dépenses (grille CPA, preuves A2)
 ├─ Finançabilité (DSCR, SCHL / APH Select)
 ├─ Ratios performance
-└─ Audit 360° (manque à gagner, capitalisation)
+└─ Vérification 360° (manque à gagner, capitalisation)
 ```
 
 Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquement où applicable.

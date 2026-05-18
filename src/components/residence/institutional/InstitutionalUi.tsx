@@ -1,5 +1,5 @@
 /**
- * Kit UI institutionnel — étalon Identité (CPA / audit).
+ * Kit UI institutionnel — étalon Identité (CPA / conformité OACIQ).
  * Styles uniquement — aucune logique métier.
  */
 

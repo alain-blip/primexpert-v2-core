@@ -25,7 +25,7 @@ primexpert/
         ...
 ```
 
-### Firestore (métadonnées + audit IA)
+### Firestore (métadonnées + traçabilité IA)
 
 Collection `drive_documents` :
 
@@ -44,7 +44,7 @@ Collection `drive_documents` :
 | `extractedFields` | map | Champs canoniques détectés (`@primexpert/core/canonical`) |
 | `aiInsights` | map | Insights IA (risques, alertes, score) |
 | `status` | enum | `pending` / `processing` / `ready` / `failed` |
-| `auditLog` | array | Historique des accès (OACIQ — 6 ans) |
+| `auditLog` | array | Historique des accès — journal de conformité (OACIQ — 6 ans) ; champ technique inchangé |
 
 ## 🛣️ Roadmap
 
@@ -53,12 +53,12 @@ Collection `drive_documents` :
 | **A** (actuelle) | ✅ Squelette UI (`Drive.tsx`) + spec |
 | **B** | Branchement Firebase Storage + upload basique + grid documents |
 | **C** | Pipeline extraction IA via Cloud Function (réemploi `functions-ai` V1) |
-| **D** | Audit log immuable + conservation 6 ans OACIQ |
+| **D** | Journal de conformité immuable + conservation 6 ans OACIQ |
 | **E** | Recherche full-text + filtres par type / résidence / date |
 
 ## 🔒 Sécurité
 
 - **Firestore Security Rules** : `request.auth.uid == resource.data.brokerId`
 - **Storage Security Rules** : `request.auth.uid == request.resource.metadata.brokerId`
-- **Audit log Firestore** : append-only (Cloud Function gardien)
+- **Journal de conformité Firestore** (`auditLog`, append-only) : Cloud Function gardien
 - **Pas d'accès cross-tenant** — Charte §IV (Zéro Communication Directe sans approbation)

@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
+import { markNylasMessageOpened } from './markMessageOpened';
 import { resolveAccountByGrant, syncNylasMessageToFirestore } from './syncInboundMessage';
-import type { NylasWebhookEnvelope } from './types';
+import type { NylasMessageOpenedObject, NylasMessageObject, NylasWebhookEnvelope } from './types';
 
 /** GET — challenge Nylas (vérification webhook). */
 export function handleNylasWebhookChallenge(req: Request, res: Response): void {
@@ -12,18 +13,50 @@ export function handleNylasWebhookChallenge(req: Request, res: Response): void {
   res.status(400).send('missing challenge');
 }
 
-/** POST — message.created → Firestore. */
+function isMessageWebhookType(type: string): boolean {
+  return (
+    type === 'message.created' ||
+    type === 'message.created.truncated' ||
+    type === 'message.created.transformed' ||
+    type === 'message.updated'
+  );
+}
+
+function isMessageOpenedType(type: string): boolean {
+  return type === 'message.opened';
+}
+
+/** POST — événements Nylas → Firestore. */
 export async function handleNylasWebhookEvent(req: Request, res: Response): Promise<void> {
   try {
     const envelope = req.body as NylasWebhookEnvelope;
     const type = envelope.type ?? '';
-    if (!type.startsWith('message.')) {
-      res.status(200).json({ ok: true, skipped: true });
+
+    if (isMessageOpenedType(type)) {
+      const opened = envelope.data?.object as NylasMessageOpenedObject | undefined;
+      const grantId = opened?.grant_id ?? envelope.data?.grant_id;
+      if (!grantId || !opened?.message_id) {
+        res.status(200).json({ ok: true, skipped: 'no open payload' });
+        return;
+      }
+
+      const updated = await markNylasMessageOpened(grantId, opened);
+      console.info('[nylasWebhook] message.opened', {
+        grantId,
+        messageId: opened.message_id,
+        updated,
+      });
+      res.status(200).json({ ok: true, updated });
       return;
     }
 
-    const message = envelope.data?.object;
-    const grantId = message?.grant_id;
+    if (!isMessageWebhookType(type)) {
+      res.status(200).json({ ok: true, skipped: true, type });
+      return;
+    }
+
+    const message = envelope.data?.object as NylasMessageObject | undefined;
+    const grantId = message?.grant_id ?? envelope.data?.grant_id;
     if (!message?.id || !grantId) {
       res.status(200).json({ ok: true, skipped: 'no message' });
       return;
@@ -31,8 +64,8 @@ export async function handleNylasWebhookEvent(req: Request, res: Response): Prom
 
     const account = await resolveAccountByGrant(grantId);
     if (!account) {
-      console.warn('[nylasWebhook] grant inconnu', grantId);
-      res.status(200).json({ ok: true, skipped: 'unknown grant' });
+      console.warn('[nylasWebhook] grant inconnu — ajoutez nylasGrantId au compte', grantId);
+      res.status(200).json({ ok: true, skipped: 'unknown grant', grantId });
       return;
     }
 
@@ -49,6 +82,14 @@ export async function handleNylasWebhookEvent(req: Request, res: Response): Prom
       direction,
     });
 
+    console.info('[nylasWebhook] synced', {
+      type,
+      grantId,
+      messageId: message.id,
+      uid: account.uid,
+      accountId: account.accountId,
+      direction,
+    });
     res.status(200).json({ ok: true });
   } catch (e) {
     console.error('[nylasWebhook]', e);

@@ -32,7 +32,7 @@ export function normalizeEmailAccounts(raw: unknown): EmailAccountConfig[] {
     const emailAddress =
       typeof o.emailAddress === 'string' ? o.emailAddress.trim() : '';
     if (!id || !emailAddress) continue;
-    out.push({
+    const entry: EmailAccountConfig = {
       id,
       emailAddress,
       label:
@@ -42,12 +42,14 @@ export function normalizeEmailAccounts(raw: unknown): EmailAccountConfig[] {
       isDefault: o.isDefault === true,
       syncStatus: parseSyncStatus(o.syncStatus),
       provider: parseProvider(o.provider),
-      nylasGrantId:
-        typeof o.nylasGrantId === 'string' && o.nylasGrantId.trim()
-          ? o.nylasGrantId.trim()
-          : undefined,
-      connectedAt: typeof o.connectedAt === 'string' ? o.connectedAt : undefined,
-    });
+    };
+    if (typeof o.nylasGrantId === 'string' && o.nylasGrantId.trim()) {
+      entry.nylasGrantId = o.nylasGrantId.trim();
+    }
+    if (typeof o.connectedAt === 'string' && o.connectedAt.trim()) {
+      entry.connectedAt = o.connectedAt.trim();
+    }
+    out.push(entry);
   }
   return ensureSingleDefault(out);
 }

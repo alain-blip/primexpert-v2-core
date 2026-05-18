@@ -569,7 +569,12 @@ function buildScenarioRows(
       labelEn: 'Financing program',
       value: r.financingProgramLabelFr,
     },
-    { labelFr: 'RNE retenu (banque)', labelEn: 'NOI retained (lender)', value: fmt(r.noiRetenu), highlight: true },
+    {
+      labelFr: 'Revenu net d’exploitation retenu (RNE) — banque',
+      labelEn: 'Net operating income retained (NOI) — lender',
+      value: fmt(r.noiRetenu),
+      highlight: true,
+    },
   ];
 
   if (r.financingProgramId === 'aph_select') {
@@ -598,24 +603,28 @@ function buildScenarioRows(
       highlight: r.amortissementVerdict.level === 'hors_normes',
     },
     {
-      labelFr: 'Constante dette annuelle (DC)',
+      labelFr: 'Constante de dette annuelle (DC)',
       labelEn: 'Annual debt constant (DC)',
       value: r.debtConstantAnnual != null ? `${(r.debtConstantAnnual * 100).toFixed(2)} % / an` : '—',
     },
     {
-      labelFr: 'Service dette max (RNE ÷ DSCR)',
-      labelEn: 'Max debt service (NOI ÷ DSCR)',
+      labelFr: 'Service de la dette maximal (RNE ÷ ratio de couverture (DSCR))',
+      labelEn: 'Maximum debt service (NOI ÷ debt service coverage ratio (DSCR))',
       value: fmt(r.debtServiceMaxAnnual),
     },
-    { labelFr: 'Emprunt max (DSCR)', labelEn: 'Max loan (DSCR)', value: fmt(r.empruntMaxDscr) },
     {
-      labelFr: `Plafond LTV (${ltvPct} du prix)`,
-      labelEn: `LTV ceiling (${ltvPct} of price)`,
+      labelFr: 'Emprunt maximal (ratio de couverture (DSCR))',
+      labelEn: 'Maximum loan (debt service coverage ratio (DSCR))',
+      value: fmt(r.empruntMaxDscr),
+    },
+    {
+      labelFr: `Plafond ratio prêt-valeur (RPV) (${ltvPct} du prix)`,
+      labelEn: `Loan-to-value (LTV) ceiling (${ltvPct} of price)`,
       value: fmt(r.plafondLtv),
     },
     {
-      labelFr: 'Emprunt retenu (min DSCR, LTV)',
-      labelEn: 'Loan retained (min DSCR, LTV)',
+      labelFr: 'Emprunt retenu (min. ratio de couverture (DSCR) et ratio prêt-valeur (RPV))',
+      labelEn: 'Loan retained (min. debt service coverage ratio (DSCR) and loan-to-value (LTV))',
       value: fmt(r.empruntMaxTransaction),
       highlight: true,
     },
@@ -625,10 +634,14 @@ function buildScenarioRows(
       value: fmt(r.miseDeFondsRequise),
       highlight: true,
     },
-    { labelFr: 'Paiement mensuel (PMT)', labelEn: 'Monthly payment (PMT)', value: fmt(r.paiementMensuel) },
     {
-      labelFr: 'DSCR résultant (RNE ÷ paiement annuel)',
-      labelEn: 'Resulting DSCR (NOI ÷ annual payment)',
+      labelFr: 'Paiement mensuel (PMT)',
+      labelEn: 'Monthly payment (PMT)',
+      value: fmt(r.paiementMensuel),
+    },
+    {
+      labelFr: 'Ratio de couverture du service de la dette (DSCR) résultant',
+      labelEn: 'Resulting debt service coverage ratio (DSCR)',
       value: r.ratioCouverture != null ? `${r.ratioCouverture.toFixed(2)}×` : '—',
       highlight: true,
     }

@@ -522,3 +522,86 @@ Return ONLY JSON per schema: executiveSummary (max TWO sentences), commitments, 
     throw e;
   }
 }
+
+/**
+ * Rapport vendeur hebdomadaire — chronologie 7 jours, ton OACIQ, anonymisation acheteurs.
+ */
+export async function generateSellerWeeklyUpdateReport(input: {
+  locale: Language;
+  residenceLabel: string;
+  chronologyBlock: string;
+  buyerInterestReasons: string[];
+  documentReleaseAllowed: boolean;
+}): Promise<string> {
+  const model = "gemini-3-flash-preview";
+  const lang = input.locale === "fr" ? "français du Québec" : "English";
+  const buyerNote =
+    input.buyerInterestReasons.length > 0
+      ? input.locale === "fr"
+        ? `Signaux d'intérêt acquéreur détectés : ${input.buyerInterestReasons.join("; ")}.`
+        : `Buyer interest signals: ${input.buyerInterestReasons.join("; ")}.`
+      : input.locale === "fr"
+        ? "Aucun signal explicite de demande documentaire cette semaine."
+        : "No explicit document-request signal this week.";
+
+  const promptFr = `Tu rédiges une MISE À JOUR HEBDOMADAIRE pour le PROPRIÉTAIRE VENDEUR d'une résidence privée pour aînés (RPA) au Québec.
+
+Inscription : ${input.residenceLabel}
+
+CHRONOLOGIE (7 derniers jours — seule source de faits) :
+"""
+${input.chronologyBlock.slice(0, 24_000)}
+"""
+
+${buyerNote}
+
+RÈGLES ABSOLUES (non négociables) :
+1) Ne JAMAIS écrire le nom de famille complet d'un acquéreur. Utilise uniquement le prénom ou une initiale de corporation (ex. « Marc », « Groupe S. »).
+2) Ne pas inventer de faits absents de la chronologie.
+3) Interdit : « audit », « structure architecturale de la propriété », jargon universitaire ou européen.
+4) Utiliser le vocabulaire d'ici : « l'état de la bâtisse », « le bâtiment », « conformité du dossier », « vérifications de diligence commerciale ».
+5) Ton : cabinet professionnel, rassurant, concis — texte prêt à envoyer par courriel au vendeur.
+6) Structure : salutation courte · synthèse de la semaine · fil des échanges · prochaines étapes · formule de courtoisie.
+7) INTERDIT d'évoquer l'envoi, le transfert ou le partage de documents/fiches techniques tant que la conformité du dossier n'est pas validée.
+${
+  input.buyerInterestReasons.length > 0 && !input.documentReleaseAllowed
+    ? `8) OBLIGATOIRE — inclure ce paragraphe exact (mot pour mot) :
+« Sachez qu'en conformité avec nos protocoles de sécurité, aucun document ou fiche technique ne sera transféré à cet acquéreur tant que son entente de confidentialité (NDA) signée et sa preuve de mise de fonds n'auront pas été reçues et validées au dossier. »`
+    : input.documentReleaseAllowed
+      ? `8) Conformité dossier validée (NDA + mise de fonds) — vous pouvez mentionner la suite du processus sans promettre de documents non listés dans la chronologie.`
+      : ''
+}
+
+Réponds UNIQUEMENT avec le texte du courriel (pas de JSON, pas de titre markdown). Langue : ${lang}.`;
+
+  const promptEn = `Draft a WEEKLY SELLER UPDATE for the owner of a Quebec RPA (private seniors' residence).
+
+Listing: ${input.residenceLabel}
+
+TIMELINE (last 7 days — sole fact source):
+"""
+${input.chronologyBlock.slice(0, 24_000)}
+"""
+
+${buyerNote}
+
+Hard rules: never full buyer surnames; first name or corp initial only; no invented facts; no "audit" or European jargon; professional broker tone; email-ready plain text only. Language: ${lang}.`;
+
+  const prompt = input.locale === "fr" ? promptFr : promptEn;
+
+  const response = await getGeminiClient().models.generateContent({
+    model,
+    contents: prompt,
+    config: { temperature: 0.22 },
+  });
+
+  const text = response.text?.trim();
+  if (!text) {
+    throw new Error(
+      input.locale === "fr"
+        ? "L'IA n'a pas produit de texte pour la mise à jour."
+        : "AI returned no text for the update."
+    );
+  }
+  return text;
+}

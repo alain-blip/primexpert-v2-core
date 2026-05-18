@@ -20,6 +20,10 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import {
+  normalizeMailboxFolder,
+  type MailboxFolder,
+} from '../lib/mailboxFolders';
 import type {
   EmailAttachment,
   EmailMessage,
@@ -51,13 +55,20 @@ function messagesCol(brokerId: string, threadId: string) {
 
 function toMillis(raw: unknown): number {
   if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
-  if (raw && typeof raw === 'object' && 'toMillis' in raw) {
-    const fn = (raw as { toMillis?: () => number }).toMillis;
-    if (typeof fn === 'function') return fn();
-  }
-  if (raw && typeof raw === 'object' && 'seconds' in raw) {
-    const sec = (raw as { seconds?: number }).seconds;
-    if (typeof sec === 'number') return sec * 1000;
+  try {
+    if (raw && typeof raw === 'object' && 'toMillis' in raw) {
+      const fn = (raw as { toMillis?: () => number }).toMillis;
+      if (typeof fn === 'function') {
+        const ms = fn.call(raw);
+        if (Number.isFinite(ms)) return ms;
+      }
+    }
+    if (raw && typeof raw === 'object' && 'seconds' in raw) {
+      const sec = (raw as { seconds?: number }).seconds;
+      if (typeof sec === 'number' && Number.isFinite(sec)) return sec * 1000;
+    }
+  } catch {
+    /* Timestamp Firestore mal formé — repli ci-dessous */
   }
   return Date.now();
 }
@@ -96,6 +107,7 @@ function mapThreadDoc(id: string, data: Record<string, unknown>): EmailThread {
     propertyLabel: typeof data.propertyLabel === 'string' ? data.propertyLabel : undefined,
     createdAtMillis: toMillis(data.createdAtMillis ?? data.createdAt),
     nylasThreadId: typeof data.nylasThreadId === 'string' ? data.nylasThreadId : undefined,
+    mailboxFolder: normalizeMailboxFolder(data.mailboxFolder),
   };
 }
 
@@ -112,6 +124,14 @@ function mapMessageDoc(id: string, threadId: string, data: Record<string, unknow
     fromEmailAddress:
       typeof data.fromEmailAddress === 'string' ? data.fromEmailAddress : undefined,
     attachments: mapAttachments(data.attachments),
+    isOpened: data.isOpened === true,
+    openedAtMillis:
+      typeof data.openedAtMillis === 'number'
+        ? data.openedAtMillis
+        : data.openedAt
+          ? toMillis(data.openedAt)
+          : undefined,
+    nylasMessageId: typeof data.nylasMessageId === 'string' ? data.nylasMessageId : undefined,
   };
 }
 
@@ -128,6 +148,31 @@ function isIndexOrQueryNotReady(err: unknown): boolean {
 function applyAccountFilter(rows: EmailThread[], accountId?: string | null): EmailThread[] {
   if (!accountId) return rows;
   return rows.filter((r) => r.accountId === accountId);
+}
+
+export function applyMailboxFolderFilter(
+  rows: EmailThread[],
+  folder: MailboxFolder
+): EmailThread[] {
+  return rows.filter((r) => (r.mailboxFolder ?? 'INBOX') === folder);
+}
+
+export function countThreadsByFolder(
+  rows: EmailThread[],
+  accountId?: string | null
+): Record<MailboxFolder, number> {
+  const counts: Record<MailboxFolder, number> = {
+    INBOX: 0,
+    SENT: 0,
+    DRAFT: 0,
+    TRASH: 0,
+    ARCHIVE: 0,
+  };
+  for (const row of rows) {
+    if (accountId && row.accountId !== accountId) continue;
+    counts[row.mailboxFolder ?? 'INBOX']++;
+  }
+  return counts;
 }
 
 /**
@@ -230,6 +275,16 @@ export async function markThreadRead(brokerId: string, threadId: string): Promis
   await updateDoc(threadRef(brokerId, threadId), { isUnread: false });
 }
 
+/** Met à jour le dossier Firestore d’un fil (repli local / démo). */
+export async function updateThreadMailboxFolder(
+  brokerId: string,
+  threadId: string,
+  mailboxFolder: MailboxFolder
+): Promise<void> {
+  if (!brokerId || !threadId) return;
+  await updateDoc(threadRef(brokerId, threadId), { mailboxFolder });
+}
+
 /**
  * Envoie un message sortant : ajoute dans `messages` et met à jour le fil parent.
  * `isUnread` du fil passe à false (conversation lue côté courtier).
@@ -275,6 +330,7 @@ export async function sendMessage(
     fromAccountId: opts?.fromAccountId ?? null,
     fromEmailAddress: opts?.fromEmailAddress ?? null,
     attachments: [],
+    isOpened: false,
   });
 
   await updateDoc(threadRef(brokerId, threadId), {
@@ -282,6 +338,7 @@ export async function sendMessage(
     lastMessageAtMillis: sentAtMillis,
     lastMessageAt: serverTimestamp(),
     isUnread: false,
+    mailboxFolder: 'SENT',
   });
 }
 
@@ -312,6 +369,7 @@ export async function seedDemoEmailThreadsIfEmpty(
     propertyId: 'demo-2',
     propertyLabel: '456 Rue De La Commune',
     createdAtMillis: now - 86_400_000,
+    mailboxFolder: 'INBOX',
   });
 
   await addDoc(messagesCol(brokerId, threadId), {
@@ -343,6 +401,7 @@ export async function seedDemoEmailThreadsIfEmpty(
     propertyId: 'demo-1',
     propertyLabel: '789 Ave Mont-Royal E',
     createdAtMillis: now - 172_800_000,
+    mailboxFolder: 'INBOX',
   });
 
   await addDoc(messagesCol(brokerId, thread2), {

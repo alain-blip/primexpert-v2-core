@@ -238,7 +238,7 @@ export interface UploadRecordingParams {
   residenceId: string;
   /** Durée enregistrée en ms */
   durationMs: number;
-  /** Numéro composé (optionnel — pour audit log) */
+  /** Numéro composé (optionnel — journal de conformité / auditLog) */
   dialedNumber?: string;
   ctx: TenantContext;
 }

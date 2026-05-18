@@ -34,7 +34,7 @@ const SUB_TABS: {
   { id: 'revenus-depenses', icon: Coins, labelFr: 'Revenus & Dépenses', labelEn: 'Revenue & expenses' },
   { id: 'financabilite', icon: Landmark, labelFr: 'Finançabilité', labelEn: 'Financing' },
   { id: 'ratios', icon: Percent, labelFr: 'Ratios performance', labelEn: 'Performance ratios' },
-  { id: 'analyse-360', icon: Microscope, labelFr: 'Audit performance', labelEn: 'Performance audit' },
+  { id: 'analyse-360', icon: Microscope, labelFr: 'Vérification performance', labelEn: 'Performance verification' },
 ];
 
 export interface FinanceHubTabProps {

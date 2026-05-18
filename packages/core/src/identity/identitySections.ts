@@ -5,12 +5,11 @@
 import type { IdentityFieldRow, IdentitySectionId } from './types';
 import {
   resolveIdentityField,
-  resolveGeneratorDisplay,
-  resolveSprinklerDisplay,
   isFieldEmpty,
 } from './resolveIdentityField';
 import { formatIdentityScalar } from './formatIdentityDisplay';
-import { shouldShowRaphaelBadge } from './msssRaphaelBadge';
+import { shouldShowRaphaelForField } from './msssRaphaelBadge';
+import { BUILDING_AUDIT_SECTIONS } from './buildingAuditSections';
 
 export interface IdentityFieldDef {
   id: string;
@@ -20,6 +19,7 @@ export interface IdentityFieldDef {
   labelEn: string;
   format?: (doc: Record<string, unknown>) => string | null;
   confirmedPath?: string[];
+  inputType?: 'text' | 'number' | 'sprinkler' | 'currency' | 'percent';
 }
 
 export interface IdentitySectionDef {
@@ -30,10 +30,27 @@ export interface IdentitySectionDef {
   fields: IdentityFieldDef[];
 }
 
+function formatAdministratorsList(raw: unknown): string {
+  if (Array.isArray(raw) && raw.length > 0) {
+    return raw
+      .map((row) => {
+        if (row && typeof row === 'object') {
+          const r = row as Record<string, unknown>;
+          const name = r.nom ?? r.name ?? r.raisonSociale ?? '—';
+          const role = r.fonction ?? r.role;
+          return role != null ? `${name} (${role})` : String(name);
+        }
+        return String(row);
+      })
+      .join(' · ');
+  }
+  return formatIdentityScalar(raw, '—');
+}
+
 export const IDENTITY_SECTION_DEFS: IdentitySectionDef[] = [
   {
     id: 'establishment',
-    titleFr: 'Identification de l\'établissement',
+    titleFr: "Identification de l'établissement",
     titleEn: 'Establishment identification',
     accent: '#2563eb',
     fields: [
@@ -44,9 +61,24 @@ export const IDENTITY_SECTION_DEFS: IdentitySectionDef[] = [
         labelFr: 'Numéro de certification',
         labelEn: 'Certification number',
       },
-      { id: 'residenceType', canonicalKey: 'residenceType', labelFr: 'Type de résidence', labelEn: 'Residence type' },
-      { id: 'categorieRPA', canonicalKey: 'categorieRPA', labelFr: 'Catégorie RPA', labelEn: 'RPA category' },
-      { id: 'dateOuverture', canonicalKey: 'dateOuverture', labelFr: 'Date d\'ouverture', labelEn: 'Opening date' },
+      {
+        id: 'residenceType',
+        canonicalKey: 'residenceType',
+        labelFr: 'Type de résidence',
+        labelEn: 'Residence type',
+      },
+      {
+        id: 'categorieRPA',
+        canonicalKey: 'categorieRPA',
+        labelFr: 'Catégorie RPA',
+        labelEn: 'RPA category',
+      },
+      {
+        id: 'dateOuverture',
+        canonicalKey: 'dateOuverture',
+        labelFr: "Date d'ouverture",
+        labelEn: 'Opening date',
+      },
       { id: 'telephone', canonicalKey: 'telephone', labelFr: 'Téléphone', labelEn: 'Phone' },
       { id: 'courriel', canonicalKey: 'courriel', labelFr: 'Courriel', labelEn: 'Email' },
       { id: 'siteWeb', canonicalKey: 'siteWeb', labelFr: 'Site web', labelEn: 'Website' },
@@ -58,8 +90,18 @@ export const IDENTITY_SECTION_DEFS: IdentitySectionDef[] = [
     titleEn: 'Legal structure',
     accent: '#7c3aed',
     fields: [
-      { id: 'raisonSociale', canonicalKey: 'raisonSociale', labelFr: 'Raison sociale', labelEn: 'Legal name' },
-      { id: 'formeJuridique', canonicalKey: 'formeJuridique', labelFr: 'Forme juridique', labelEn: 'Legal form' },
+      {
+        id: 'raisonSociale',
+        canonicalKey: 'raisonSociale',
+        labelFr: 'Raison sociale',
+        labelEn: 'Legal name',
+      },
+      {
+        id: 'formeJuridique',
+        canonicalKey: 'formeJuridique',
+        labelFr: 'Forme juridique',
+        labelEn: 'Legal form',
+      },
       { id: 'neq', canonicalKey: 'neq', labelFr: 'NEQ', labelEn: 'NEQ' },
       {
         id: 'dateConstitution',
@@ -80,10 +122,21 @@ export const IDENTITY_SECTION_DEFS: IdentitySectionDef[] = [
         format: (d) => formatIdentityScalar(d.trancheSalariesREQ, '—'),
       },
       {
+        id: 'administrateursREQ',
+        labelFr: 'Administrateurs (REQ)',
+        labelEn: 'Administrators (REQ)',
+        format: (d) =>
+          formatAdministratorsList(
+            d.administrateursREQ ?? d.administrateurs ?? d.administrateursRegistre
+          ),
+        nestedPath: ['structureJuridique', 'administrateursREQ'],
+        confirmedPath: ['structureJuridique', 'confirmedBy'],
+      },
+      {
         id: 'administrateursMSSS',
         labelFr: 'Administrateurs (MSSS)',
         labelEn: 'Administrators (MSSS)',
-        format: (d) => formatIdentityScalar(d.administrateursMSSS, '—'),
+        format: (d) => formatAdministratorsList(d.administrateursMSSS),
       },
       {
         id: 'actionnaires',
@@ -109,58 +162,55 @@ export const IDENTITY_SECTION_DEFS: IdentitySectionDef[] = [
       },
     ],
   },
-  {
-    id: 'building',
-    titleFr: 'Bâtiment & installations techniques',
-    titleEn: 'Building & technical systems',
-    accent: '#d97706',
-    fields: [
-      { id: 'anneeConstruction', canonicalKey: 'anneeConstruction', labelFr: 'Année construction', labelEn: 'Year built' },
-      { id: 'nombreEtages', canonicalKey: 'nombreEtages', labelFr: 'Nombre d\'étages', labelEn: 'Floors' },
-      { id: 'superficieBatiment', canonicalKey: 'superficieBatiment', labelFr: 'Superficie bâtiment (m²)', labelEn: 'Building area (m²)' },
-      {
-        id: 'systemeGicleurs',
-        labelFr: 'Système de gicleurs',
-        labelEn: 'Sprinkler system',
-        format: (d) => resolveSprinklerDisplay(d) ?? '—',
-      },
-      {
-        id: 'generatrice',
-        labelFr: 'Génératrice de secours',
-        labelEn: 'Emergency generator',
-        format: (d) => resolveGeneratorDisplay(d) ?? '—',
-        nestedPath: ['immeuble', 'generatrice'],
-        confirmedPath: ['immeuble', 'confirmedBy'],
-      },
-      {
-        id: 'historiqueInvestissementsPermis',
-        labelFr: 'Historique investissements / permis',
-        labelEn: 'Investment & permit history',
-        format: (d) => formatIdentityScalar(d.historiqueInvestissementsPermis, '—'),
-      },
-      {
-        id: 'mitigeursEauChaude',
-        labelFr: 'Mitigeurs eau chaude',
-        labelEn: 'Hot water mixing valves',
-        format: (d) => formatIdentityScalar(d.mitigeursEauChaude, '—'),
-      },
-      {
-        id: 'climatisation',
-        labelFr: 'Climatisation',
-        labelEn: 'Air conditioning',
-        format: (d) => formatIdentityScalar(d.climatisation, '—'),
-      },
-      {
-        id: 'constructionType',
-        labelFr: 'Type de construction',
-        labelEn: 'Construction type',
-        nestedPath: ['immeuble', 'constructionType'],
-        confirmedPath: ['immeuble', 'confirmedBy'],
-        format: (d) => formatIdentityScalar(d.immeuble && typeof d.immeuble === 'object' ? (d.immeuble as Record<string, unknown>).constructionType : null, '—'),
-      },
-    ],
-  },
 ];
+
+export const SERVICES_SECTION_DEF: IdentitySectionDef = {
+  id: 'services',
+  titleFr: 'Services & Reconnaissance',
+  titleEn: 'Services & recognition',
+  accent: '#059669',
+  fields: [
+    {
+      id: 'servicesCategorieRPA',
+      canonicalKey: 'categorieRPA',
+      labelFr: 'Catégorie RPA',
+      labelEn: 'RPA category',
+    },
+    {
+      id: 'numeroRQRA',
+      labelFr: 'Numéro RQRA',
+      labelEn: 'RQRA number',
+      nestedPath: ['servicesReconnaissance', 'numeroRQRA'],
+      confirmedPath: ['servicesReconnaissance', 'confirmedBy'],
+      format: (d) =>
+        formatIdentityScalar(
+          d.servicesReconnaissance && typeof d.servicesReconnaissance === 'object'
+            ? (d.servicesReconnaissance as Record<string, unknown>).numeroRQRA
+            : d.numeroRQRA,
+          '—'
+        ),
+    },
+    {
+      id: 'niveauSoins',
+      labelFr: 'Niveau de soins',
+      labelEn: 'Care level',
+      nestedPath: ['servicesReconnaissance', 'niveauSoins'],
+      confirmedPath: ['servicesReconnaissance', 'confirmedBy'],
+      format: (d) =>
+        formatIdentityScalar(
+          d.servicesReconnaissance && typeof d.servicesReconnaissance === 'object'
+            ? (d.servicesReconnaissance as Record<string, unknown>).niveauSoins
+            : d.niveauSoins,
+          '—'
+        ),
+    },
+  ],
+};
+
+/** Toutes les sections à champs éditables (grilles). */
+export function getAllIdentitySectionDefs(): IdentitySectionDef[] {
+  return [...IDENTITY_SECTION_DEFS, ...BUILDING_AUDIT_SECTIONS, SERVICES_SECTION_DEF];
+}
 
 export function buildSectionFields(
   doc: Record<string, unknown>,
@@ -177,9 +227,7 @@ export function buildSectionFields(
       raw = resolveIdentityField(doc, def.id, def.nestedPath);
     }
 
-    const display = def.format
-      ? def.format(doc)
-      : formatIdentityScalar(raw);
+    const display = def.format ? def.format(doc) : formatIdentityScalar(raw);
 
     const empty = display === '—' || isFieldEmpty(raw);
 
@@ -195,13 +243,40 @@ export function buildSectionFields(
       id: def.id,
       labelFr: def.labelFr,
       labelEn: def.labelEn,
-      value: display,
+      value: display ?? '—',
       empty,
-      showRaphaelBadge: shouldShowRaphaelBadge(doc, {
+      inputType: def.inputType ?? inferInputType(def.id),
+      showRaphaelBadge: shouldShowRaphaelForField(doc, def.id, {
         value: raw ?? display,
         confirmedBy,
         forceEmpty: empty,
       }),
     };
   });
+}
+
+function inferInputType(fieldId: string): IdentityFieldRow['inputType'] {
+  if (fieldId === 'systemeGicleurs' || fieldId === 'generatrice' || fieldId === 'ascenseur') {
+    return 'sprinkler';
+  }
+  if (
+    fieldId.includes('evaluation') ||
+    fieldId.includes('valeurMarche') ||
+    fieldId.includes('Fonciere')
+  ) {
+    return 'currency';
+  }
+  if (fieldId.includes('ecart') || fieldId.includes('Pct') || fieldId === 'tauxOccupation') {
+    return 'percent';
+  }
+  if (
+    fieldId === 'anneeConstruction' ||
+    fieldId === 'nombreEtages' ||
+    fieldId === 'superficieBatiment' ||
+    fieldId === 'superficieTerrain' ||
+    fieldId === 'nombreAscenseurs'
+  ) {
+    return 'number';
+  }
+  return 'text';
 }

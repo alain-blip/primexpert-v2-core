@@ -1,12 +1,18 @@
 /**
- * Types — Identité fusionnée (Phase 4a).
+ * Types — Identité fusionnée (Phase 4).
  */
 
 export type IdentitySectionId =
   | 'overview'
   | 'establishment'
   | 'legal'
-  | 'building'
+  | 'building_cadastre'
+  | 'building_crossval'
+  | 'building_structure'
+  | 'building_technical'
+  | 'building_security'
+  | 'services'
+  | 'rent_pricing'
   | 'capacity';
 
 export interface IdentityFieldRow {
@@ -16,6 +22,7 @@ export interface IdentityFieldRow {
   value: string;
   showRaphaelBadge: boolean;
   empty: boolean;
+  inputType?: 'text' | 'number' | 'sprinkler' | 'currency' | 'percent';
 }
 
 export interface IdentitySectionView {
@@ -47,6 +54,40 @@ export interface MsssEnrichmentMeta {
   numeroRegistre: string | null;
 }
 
+export interface ServiceBadgeView {
+  id: string;
+  labelFr: string;
+  labelEn: string;
+  active: boolean;
+}
+
+export interface ServicesRecognitionView {
+  fields: IdentityFieldRow[];
+  badges: ServiceBadgeView[];
+}
+
+export interface RentPricingRowView {
+  typeKey: string;
+  labelFr: string;
+  labelEn: string;
+  qty: number;
+  occupationPct: number | null;
+  loyerMoyen: number | null;
+  revenuPotentielAnnuel: number | null;
+  showRaphaelBadge: boolean;
+  fieldIds: {
+    qty: string;
+    occupation: string;
+    loyer: string;
+  };
+}
+
+export interface RentPricingView {
+  rows: RentPricingRowView[];
+  totalRevenuPotentielAnnuel: number | null;
+  failSafeRbeHint: number | null;
+}
+
 export interface IdentityViewModel {
   loading: boolean;
   hasDocument: boolean;
@@ -58,6 +99,9 @@ export interface IdentityViewModel {
     address: string | null;
   };
   sections: IdentitySectionView[];
+  buildingAudit: IdentitySectionView[];
+  services: ServicesRecognitionView;
+  rentPricing: RentPricingView;
   capacity: CapacityAggregatesView;
   msss: MsssEnrichmentMeta;
   showMsssBanner: boolean;

@@ -366,13 +366,13 @@ export function Dashboard() {
               <div className="bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
                 <p className="text-[9px] font-black uppercase text-blue-300/70 mb-2 tracking-widest">{t('Garde-fou prioritaire', 'Priority guardrail')}</p>
                 <p className="text-xs font-bold leading-relaxed italic text-slate-200">
-                  "{t('Aucun document final ne doit sortir du coffre-fort sans conservation 6 ans, journal d’audit et validation humaine.', 'No final document may leave the Vault without 6-year retention, audit log and human validation.')}"
+                  "{t('Aucun document final ne doit sortir du coffre-fort sans conservation 6 ans, journal de conformité et validation humaine.', 'No final document may leave the Vault without 6-year retention, compliance log and human validation.')}"
                 </p>
               </div>
 
               <div className="flex flex-col gap-2">
                 <button className="w-full py-3 bg-blue-600 text-[11px] font-black uppercase rounded-2xl shadow-xl hover:bg-blue-500 transition-all tracking-widest">{t('Vérifier le coffre', 'Check_Vault')}</button>
-                <button className="w-full py-3 bg-white/5 text-[11px] font-black uppercase rounded-2xl border border-white/10 hover:bg-white/10 transition-all tracking-widest">{t('Journal d’audit', 'Audit_Log')}</button>
+                <button className="w-full py-3 bg-white/5 text-[11px] font-black uppercase rounded-2xl border border-white/10 hover:bg-white/10 transition-all tracking-widest">{t('Journal de conformité', 'Compliance log')}</button>
               </div>
             </div>
           </div>

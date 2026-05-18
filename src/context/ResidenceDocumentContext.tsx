@@ -2,8 +2,15 @@
  * ResidenceDocumentContext — listener temps réel sur residences/{id} (document racine).
  */
 
-import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export type ResidenceFirestoreDoc = Record<string, unknown>;
@@ -14,6 +21,9 @@ export interface ResidenceDocumentContextValue {
   error: Error | null;
   residenceId: string | null;
   isInProvider: boolean;
+  saving: boolean;
+  saveError: string | null;
+  updateResidence: (patch: Record<string, unknown>) => Promise<void>;
 }
 
 const ResidenceDocumentContext = createContext<ResidenceDocumentContextValue | null>(null);
@@ -26,6 +36,11 @@ const DEFAULT_OUTSIDE_PROVIDER: ResidenceDocumentContextValue = {
   ),
   residenceId: null,
   isInProvider: false,
+  saving: false,
+  saveError: null,
+  updateResidence: async () => {
+    throw new Error('updateResidence() hors Provider');
+  },
 };
 
 export interface ResidenceDocumentProviderProps {
@@ -40,6 +55,8 @@ export function ResidenceDocumentProvider({
   const [residenceDoc, setResidenceDoc] = useState<ResidenceFirestoreDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!residenceId) {
@@ -71,12 +88,35 @@ export function ResidenceDocumentProvider({
     return () => unsubscribe();
   }, [residenceId]);
 
+  const updateResidence = useCallback(
+    async (patch: Record<string, unknown>) => {
+      if (!residenceId) {
+        throw new Error('residenceId manquant');
+      }
+      setSaving(true);
+      setSaveError(null);
+      try {
+        await updateDoc(doc(db, 'residences', residenceId), patch);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setSaveError(message);
+        throw err;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [residenceId]
+  );
+
   const value: ResidenceDocumentContextValue = {
     residenceDoc,
     loading,
     error,
     residenceId: residenceId ?? null,
     isInProvider: true,
+    saving,
+    saveError,
+    updateResidence,
   };
 
   return (

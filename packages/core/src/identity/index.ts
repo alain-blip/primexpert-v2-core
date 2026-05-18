@@ -5,3 +5,7 @@ export * from './msssRaphaelBadge';
 export * from './capacityAggregates';
 export * from './identitySections';
 export * from './buildIdentityViewModel';
+export * from './identityFieldWrite';
+export * from './buildingAuditSections';
+export * from './servicesRecognition';
+export * from './rentPricingGrid';
