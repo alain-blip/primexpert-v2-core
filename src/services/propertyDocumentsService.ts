@@ -267,10 +267,19 @@ export async function uploadPropertyDocument(
 
   try {
     const scanned = await scanPropertyDocumentNow(propertyId, docRef.id);
+    let parsingStatus = scanned.parsingStatus;
+    if (scanned.virusScanStatus === 'clean' && scanned.parsingStatus === 'pending') {
+      try {
+        const parsed = await parsePropertyDocumentNow(propertyId, docRef.id);
+        parsingStatus = parsed.parsingStatus === 'completed' ? 'completed' : parsed.parsingStatus;
+      } catch (parseErr) {
+        console.warn('[propertyDocuments] parse after upload failed', parseErr);
+      }
+    }
     return {
       ...record,
       virusScanStatus: scanned.virusScanStatus,
-      parsingStatus: scanned.parsingStatus,
+      parsingStatus,
     };
   } catch (e) {
     console.warn('[propertyDocuments] scan after upload failed, reconcile fallback', e);
@@ -302,6 +311,40 @@ export async function scanPropertyDocumentNow(
   return {
     virusScanStatus: data.virusScanStatus ?? 'infected',
     parsingStatus: data.parsingStatus ?? 'not_applicable',
+  };
+}
+
+/** Lance l’analyse IA Gemini sur un document (dossier Financier). */
+export async function parsePropertyDocumentNow(
+  propertyId: string,
+  documentId: string
+): Promise<{ parsingStatus: ParsingStatus }> {
+  const callable = httpsCallable<
+    { propertyId: string; documentId: string },
+    { ok: boolean; parsingStatus: 'completed' | 'failed' | 'skipped' }
+  >(functions, 'propertyDocumentParseIA');
+  const res = await callable({ propertyId, documentId });
+  const status = res.data.parsingStatus;
+  if (status === 'completed') return { parsingStatus: 'completed' };
+  if (status === 'failed') return { parsingStatus: 'failed' };
+  return { parsingStatus: 'not_applicable' };
+}
+
+/** Réconcilie les analyses IA en attente (`parsingStatus: pending`). */
+export async function reconcilePropertyDocumentParses(
+  propertyId: string
+): Promise<{ processed: number; completed: number; failed: number; skipped: number }> {
+  const callable = httpsCallable<
+    { propertyId: string },
+    { ok: boolean; processed: number; completed: number; failed: number; skipped: number }
+  >(functions, 'propertyDocumentsReconcileParse');
+  const res = await callable({ propertyId });
+  const data = res.data;
+  return {
+    processed: data.processed ?? 0,
+    completed: data.completed ?? 0,
+    failed: data.failed ?? 0,
+    skipped: data.skipped ?? 0,
   };
 }
 

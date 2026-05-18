@@ -6,22 +6,20 @@ import {
   Clock,
   DollarSign,
   Compass,
-  Flame,
-  ChevronRight,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn, formatCurrency } from '../lib/utils';
 import { useAuth } from '../lib/auth';
 import { useLanguage } from '../lib/i18n';
-import { useWorkhubNav } from '../lib/workhubNav';
-import { stashListingsFocusResidenceId } from '../lib/listingsFocus';
 import { listResidences, type Residence } from '../services/residences';
 import { fetchRecentCallAnalyses } from '../services/transcriptionService';
 import { fetchRecentMailboxAnalyses } from '../services/mailboxAnalysis';
 import {
-  computeFollowUpPriorities,
-  type FollowUpPriorityItem,
-} from '../services/followUpIntel';
+  fetchResidenceDocsMap,
+  loadDashboardPriorityFollowUps,
+  type DashboardPriorityFollowUpItem,
+} from '../services/dashboardPriorityFollowUp';
+import { PriorityFollowUpList } from './dashboard/PriorityFollowUpList';
 import { useSilo } from '../context/SiloContext';
 import { shouldShowJ7Survey } from '../lib/trialTimeline';
 import { J7SurveyModal } from './J7SurveyModal';
@@ -31,8 +29,7 @@ export function Dashboard() {
   const { profile, refreshProfile } = useAuth();
   const { activeSilo } = useSilo();
   const { t, language } = useLanguage();
-  const workhubNav = useWorkhubNav();
-  const [followUpPriorities, setFollowUpPriorities] = useState<FollowUpPriorityItem[]>([]);
+  const [priorityFollowUps, setPriorityFollowUps] = useState<DashboardPriorityFollowUpItem[]>([]);
   const [j7Open, setJ7Open] = useState(false);
   const [j7Dismissed, setJ7Dismissed] = useState(false);
   const [residences, setResidences] = useState<Residence[]>([]);
@@ -42,7 +39,7 @@ export function Dashboard() {
     const uid = profile?.uid;
     if (!uid) {
       setResidences([]);
-      setFollowUpPriorities([]);
+      setPriorityFollowUps([]);
       setDashboardDataLoading(false);
       return;
     }
@@ -57,8 +54,12 @@ export function Dashboard() {
           fetchRecentMailboxAnalyses(uid, 400),
         ]);
         if (cancelled) return;
+        const docs = await fetchResidenceDocsMap(resList.map((r) => r.id));
+        if (cancelled) return;
         setResidences(resList);
-        setFollowUpPriorities(computeFollowUpPriorities(resList, calls, mails));
+        setPriorityFollowUps(
+          loadDashboardPriorityFollowUps({ residences: resList, docs, calls, mails })
+        );
       } finally {
         if (!cancelled) setDashboardDataLoading(false);
       }
@@ -186,76 +187,20 @@ export function Dashboard() {
         })}
       </div>
 
-      {/* E-4 — Priorités de suivi (stagnation 48 h sans activité IA appels + courriels matchés) */}
-      <div className="rounded-[28px] border border-rose-500/20 bg-gradient-to-br from-rose-500/[0.07] to-vault-bright p-7 shadow-[0_20px_55px_rgba(0,0,0,0.4)]">
-        <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-rose-400/30 bg-rose-500/15 text-rose-300">
-              <Flame className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-lg font-black uppercase tracking-tight text-white">
-                {t('Priorités de suivi', 'Follow-up priorities')}
-              </h3>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.18em] mt-1 leading-relaxed">
-                {t(
-                  'Inscriptions sans appel ni courriel IA rattaché depuis 48 h (les plus critiques en premier).',
-                  'Listings with no matched IA call or email activity for 48+ hours (most critical first).'
-                )}
-              </p>
-            </div>
-          </div>
-        </div>
-        {dashboardDataLoading ? (
-          <p className="text-[11px] font-semibold text-slate-500 py-4">{t('Chargement…', 'Loading…')}</p>
-        ) : followUpPriorities.length === 0 ? (
-          <p className="text-[12px] font-semibold text-slate-400 py-2 leading-relaxed">
+      <section className="rounded-[28px] border border-slate-200 bg-white p-7 shadow-sm">
+        <header className="mb-5">
+          <h3 className="text-lg font-black tracking-tight text-[#000000]">
+            {t('Priorités de suivi', 'Follow-up priorities')}
+          </h3>
+          <p className="text-[11px] font-medium text-[#000000] mt-1 leading-relaxed">
             {t(
-              'Aucune inscription en stagnation critique pour le moment.',
-              'No listings in critical stagnation right now.'
+              'Séquence serrée après libération documentaire — J+3, J+5, J+7.',
+              'Tight sequence after document release — D+3, D+5, D+7.'
             )}
           </p>
-        ) : (
-          <ul className="space-y-3">
-            {followUpPriorities.map((row) => {
-              const title =
-                row.residence.city && row.residence.city.trim()
-                  ? `${row.residence.address}, ${row.residence.city}`
-                  : row.residence.address;
-              const h = Math.round(row.hoursSinceActivity);
-              return (
-                <li
-                  key={row.residence.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12px] font-black text-slate-100 truncate">{title}</p>
-                    <p className="text-[10px] font-mono text-rose-300/90 mt-0.5">
-                      {t('Inactif depuis ~', 'Idle ~')}{' '}
-                      {h}{' '}
-                      {t('h', 'h')}
-                      {row.reason === 'no_ia_activity'
-                        ? ` · ${t('aucune trace IA', 'no IA trail')}`
-                        : ''}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      stashListingsFocusResidenceId(row.residence.id);
-                      workhubNav?.setActiveTab('listings');
-                    }}
-                    className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-rose-400/35 bg-rose-500/20 px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-rose-100 hover:bg-rose-500/30 transition"
-                  >
-                    {t('Ouvrir fiche', 'Open listing')}
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+        </header>
+        <PriorityFollowUpList items={priorityFollowUps} loading={dashboardDataLoading} />
+      </section>
 
       <div className="grid grid-cols-1 2xl:grid-cols-3 gap-8">
         {/* Central Intelligence Table */}

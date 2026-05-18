@@ -35,6 +35,55 @@ export const propertyDocumentScanDocument = onCall({ invoker: 'public' }, async 
   }
 });
 
+/** Parseur IA Gemini — document financier (clean + parsing pending). */
+export const propertyDocumentParseIA = onCall({ invoker: 'public' }, async (request) => {
+    try {
+      const { parseSinglePropertyDocument } = await import('./documents/parsePropertyDocument');
+      if (!request.auth?.uid) {
+        throw new HttpsError('unauthenticated', 'Connexion requise.');
+      }
+      const propertyId = String(request.data?.propertyId ?? '').trim();
+      const documentId = String(request.data?.documentId ?? '').trim();
+      if (!propertyId || !documentId) {
+        throw new HttpsError('invalid-argument', 'propertyId et documentId requis.');
+      }
+      const result = await parseSinglePropertyDocument(
+        propertyId,
+        documentId,
+        request.auth.uid
+      );
+      return { ok: true, ...result };
+    } catch (e) {
+      if (e instanceof HttpsError) throw e;
+      console.error('[propertyDocumentParseIA]', e);
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new HttpsError('failed-precondition', msg);
+    }
+  }
+);
+
+/** Réconcilie les analyses IA en attente pour une fiche. */
+export const propertyDocumentsReconcileParse = onCall({ invoker: 'public' }, async (request) => {
+    try {
+      const { reconcilePendingPropertyParses } = await import('./documents/parsePropertyDocument');
+      if (!request.auth?.uid) {
+        throw new HttpsError('unauthenticated', 'Connexion requise.');
+      }
+      const propertyId = String(request.data?.propertyId ?? '').trim();
+      if (!propertyId) {
+        throw new HttpsError('invalid-argument', 'propertyId requis.');
+      }
+      const result = await reconcilePendingPropertyParses(propertyId, request.auth.uid);
+      return { ok: true, ...result };
+    } catch (e) {
+      if (e instanceof HttpsError) throw e;
+      console.error('[propertyDocumentsReconcileParse]', e);
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new HttpsError('failed-precondition', msg);
+    }
+  }
+);
+
 /** Réconcilie les fichiers restés en `virusScanStatus: pending`. */
 export const propertyDocumentsReconcileScan = onCall({ invoker: 'public' }, async (request) => {
   try {

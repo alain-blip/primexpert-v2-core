@@ -18,6 +18,7 @@ import {
 } from '../services/mailboxAnalysis';
 import { inst, InstitutionalPageHeader } from './residence/institutional/InstitutionalUi';
 import { SellerWeeklyReportModule } from './intelligence/SellerWeeklyReportModule';
+import { IntelligenceChronologie } from './intelligence/IntelligenceChronologie';
 
 interface IntelTimelineItem {
   kind: 'call' | 'mail';
@@ -145,6 +146,13 @@ export function ResidenceIntelligencePanel({
       )}
 
       <SellerWeeklyReportModule
+        brokerId={brokerId}
+        residence={residence}
+        calls={calls}
+        mails={mails}
+      />
+
+      <IntelligenceChronologie
         brokerId={brokerId}
         residence={residence}
         calls={calls}

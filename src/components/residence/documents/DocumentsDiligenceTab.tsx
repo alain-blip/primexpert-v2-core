@@ -5,6 +5,7 @@ import { canDownloadPropertyDocument } from '../../../lib/propertyDocumentValida
 import {
   deletePropertyDocument,
   getPropertyDocumentDownloadUrl,
+  reconcilePropertyDocumentParses,
   reconcilePropertyDocumentScans,
   subscribeAllPropertyDocuments,
   uploadPropertyDocument,
@@ -52,6 +53,12 @@ export function DocumentsDiligenceTab({
     [allDocs]
   );
 
+  const hasPendingParse = useMemo(
+    () =>
+      allDocs.some((d) => d.virusScanStatus === 'clean' && d.parsingStatus === 'pending'),
+    [allDocs]
+  );
+
   useEffect(() => {
     if (!propertyId || !uploadAllowed || !hasPendingScan) return;
 
@@ -77,6 +84,24 @@ export function DocumentsDiligenceTab({
       cancelled = true;
     };
   }, [propertyId, uploadAllowed, hasPendingScan, t]);
+
+  useEffect(() => {
+    if (!propertyId || !uploadAllowed || !hasPendingParse) return;
+
+    let cancelled = false;
+    void reconcilePropertyDocumentParses(propertyId)
+      .then((r) => {
+        if (!cancelled && r.processed > 0) {
+          console.info('[DocumentsDiligenceTab] IA parse reconciled', r);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) console.warn('[DocumentsDiligenceTab] reconcile parse failed', e);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [propertyId, uploadAllowed, hasPendingParse]);
 
   useEffect(() => {
     setLoading(true);

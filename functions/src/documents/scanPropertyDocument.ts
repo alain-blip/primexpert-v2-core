@@ -28,14 +28,22 @@ function isPendingScanStatus(value: unknown): boolean {
 }
 
 /** MVP : validation locale réussie → immédiatement « clean ». */
-async function markDocumentClean(docRef: DocumentReference, category: string): Promise<void> {
+async function markDocumentClean(
+  docRef: DocumentReference,
+  category: string,
+  ctx: { propertyId: string; documentId: string; brokerId: string }
+): Promise<void> {
   const scannedAt = Date.now();
+  const parsingStatus = parsingStatusAfterClean(category);
   await docRef.update({
     virusScanStatus: 'clean',
     virusScannedAtMillis: scannedAt,
     virusScanReason: 'mvp_format_validation_passed',
-    parsingStatus: parsingStatusAfterClean(category),
+    parsingStatus,
   });
+
+  const { scheduleParseAfterScan } = await import('./parsePropertyDocument');
+  scheduleParseAfterScan(ctx.propertyId, ctx.documentId, ctx.brokerId, parsingStatus);
 }
 
 async function markDocumentInfected(
@@ -80,7 +88,8 @@ async function validateDocSnapshot(
 }
 
 async function processDocument(
-  docSnap: DocumentSnapshot
+  docSnap: DocumentSnapshot,
+  propertyId: string
 ): Promise<'clean' | 'infected' | 'skipped'> {
   const data = docSnap.data() ?? {};
   if (!isPendingScanStatus(data.virusScanStatus)) return 'skipped';
@@ -106,7 +115,11 @@ async function processDocument(
     return 'infected';
   }
 
-  await markDocumentClean(docSnap.ref, category);
+  await markDocumentClean(docSnap.ref, category, {
+    propertyId,
+    documentId: docSnap.id,
+    brokerId: String(data.uploadedBy ?? ''),
+  });
   return 'clean';
 }
 
@@ -140,7 +153,7 @@ export async function scanSinglePropertyDocument(
   if (!docSnap.exists) throw new Error('Document introuvable.');
 
   const category = String(docSnap.data()?.category ?? 'legal');
-  const result = await processDocument(docSnap);
+  const result = await processDocument(docSnap, propertyId);
   const virusScanStatus = result === 'infected' ? 'infected' : 'clean';
   return {
     virusScanStatus,
@@ -168,7 +181,7 @@ export async function reconcilePendingPropertyDocuments(
   for (const docSnap of allSnap.docs) {
     if (!isPendingScanStatus(docSnap.data()?.virusScanStatus)) continue;
     processed += 1;
-    const result = await processDocument(docSnap);
+    const result = await processDocument(docSnap, propertyId);
     if (result === 'clean') cleaned += 1;
     else if (result === 'infected') infected += 1;
     else skipped += 1;

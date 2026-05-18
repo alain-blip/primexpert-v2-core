@@ -204,6 +204,23 @@ export function DocumentMetadataPanel({
               <dt className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">{labels.type}</dt>
               <dd className="mt-1 break-all text-[11px] text-slate-600">{document.mimeType}</dd>
             </div>
+
+            {document.parsingStatus === 'completed' && document.extractedData ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-2">
+                <p className="text-[9px] font-black uppercase tracking-[0.16em] text-emerald-900">
+                  {locale === 'fr' ? 'Extraction IA' : 'AI extraction'}
+                </p>
+                <p className="mt-1 text-[11px] text-emerald-950">
+                  {(document.extractedData.amounts?.length ?? 0) > 0
+                    ? locale === 'fr'
+                      ? `${document.extractedData.amounts?.length} montant(s) détecté(s)`
+                      : `${document.extractedData.amounts?.length} amount(s) detected`
+                    : locale === 'fr'
+                      ? 'Données structurées enregistrées'
+                      : 'Structured data saved'}
+                </p>
+              </div>
+            ) : null}
           </dl>
 
           <div className="mt-auto space-y-2 border-t border-slate-200 p-4">
