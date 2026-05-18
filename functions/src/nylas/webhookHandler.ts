@@ -1,16 +1,45 @@
+/**
+ * Webhook Nylas — challenge instantané + ACK HTTP < 2 s, traitement Firestore en arrière-plan.
+ * Collections `users/{uid}/email_threads` inchangées.
+ */
+
 import type { Request, Response } from 'express';
+import * as logger from 'firebase-functions/logger';
 import { markNylasMessageOpened } from './markMessageOpened';
 import { resolveAccountByGrant, syncNylasMessageToFirestore } from './syncInboundMessage';
-import type { NylasMessageOpenedObject, NylasMessageObject, NylasWebhookEnvelope } from './types';
+import type {
+  NylasMessageOpenedObject,
+  NylasMessageObject,
+  NylasWebhookEnvelope,
+} from './types';
 
-/** GET — challenge Nylas (vérification webhook). */
-export function handleNylasWebhookChallenge(req: Request, res: Response): void {
-  const challenge = req.query.challenge;
-  if (typeof challenge === 'string' && challenge.length > 0) {
-    res.status(200).send(challenge);
-    return;
+/** Extrait le challenge Nylas (query GET ou corps POST de vérification). */
+export function extractNylasChallenge(req: Request): string | null {
+  const fromQuery = req.query?.challenge;
+  if (typeof fromQuery === 'string' && fromQuery.trim().length > 0) {
+    return fromQuery.trim();
   }
-  res.status(400).send('missing challenge');
+
+  const body = req.body as Record<string, unknown> | undefined;
+  const fromBody = body?.challenge;
+  if (typeof fromBody === 'string' && fromBody.trim().length > 0) {
+    return fromBody.trim();
+  }
+
+  return null;
+}
+
+/** Répond au protocole challenge — texte brut, arrêt strict de la requête. */
+export function respondNylasChallenge(req: Request, res: Response): boolean {
+  const challenge = extractNylasChallenge(req);
+  if (!challenge) return false;
+
+  logger.info('[nylasWebhook] challenge reçu', {
+    method: req.method,
+    length: challenge.length,
+  });
+  res.status(200).type('text/plain').send(challenge);
+  return true;
 }
 
 function isMessageWebhookType(type: string): boolean {
@@ -26,73 +55,136 @@ function isMessageOpenedType(type: string): boolean {
   return type === 'message.opened';
 }
 
-/** POST — événements Nylas → Firestore. */
-export async function handleNylasWebhookEvent(req: Request, res: Response): Promise<void> {
-  try {
-    const envelope = req.body as NylasWebhookEnvelope;
-    const type = envelope.type ?? '';
+/**
+ * Traitement métier Nylas — exécuté après l’ACK HTTP (ne pas bloquer la socket Nylas).
+ */
+async function processNylasWebhookPayload(body: unknown): Promise<void> {
+  const envelope = (body ?? {}) as NylasWebhookEnvelope;
+  const type = envelope.type ?? '';
 
-    if (isMessageOpenedType(type)) {
-      const opened = envelope.data?.object as NylasMessageOpenedObject | undefined;
-      const grantId = opened?.grant_id ?? envelope.data?.grant_id;
-      if (!grantId || !opened?.message_id) {
-        res.status(200).json({ ok: true, skipped: 'no open payload' });
-        return;
-      }
-
-      const updated = await markNylasMessageOpened(grantId, opened);
-      console.info('[nylasWebhook] message.opened', {
-        grantId,
-        messageId: opened.message_id,
-        updated,
-      });
-      res.status(200).json({ ok: true, updated });
+  if (isMessageOpenedType(type)) {
+    const opened = envelope.data?.object as NylasMessageOpenedObject | undefined;
+    const grantId = opened?.grant_id ?? envelope.data?.grant_id;
+    if (!grantId || !opened?.message_id) {
+      logger.info('[nylasWebhook] message.opened ignoré — payload incomplet', { type });
       return;
     }
 
-    if (!isMessageWebhookType(type)) {
-      res.status(200).json({ ok: true, skipped: true, type });
-      return;
-    }
-
-    const message = envelope.data?.object as NylasMessageObject | undefined;
-    const grantId = message?.grant_id ?? envelope.data?.grant_id;
-    if (!message?.id || !grantId) {
-      res.status(200).json({ ok: true, skipped: 'no message' });
-      return;
-    }
-
-    const account = await resolveAccountByGrant(grantId);
-    if (!account) {
-      console.warn('[nylasWebhook] grant inconnu — ajoutez nylasGrantId au compte', grantId);
-      res.status(200).json({ ok: true, skipped: 'unknown grant', grantId });
-      return;
-    }
-
-    const fromEmail = message.from?.[0]?.email?.toLowerCase();
-    const myEmail = account.email?.toLowerCase();
-    const direction =
-      fromEmail && myEmail && fromEmail === myEmail ? 'outbound' : 'inbound';
-
-    await syncNylasMessageToFirestore({
-      brokerId: account.uid,
-      accountId: account.accountId,
+    const updated = await markNylasMessageOpened(grantId, opened);
+    logger.info('[nylasWebhook] message.opened', {
       grantId,
-      message,
-      direction,
+      messageId: opened.message_id,
+      updated,
     });
-
-    console.info('[nylasWebhook] synced', {
-      type,
-      grantId,
-      messageId: message.id,
-      uid: account.uid,
-      accountId: account.accountId,
-      direction,
-    });
-    res.status(200).json({ ok: true });
-  } catch (e) {
-    console.error('[nylasWebhook]', e);
-    res.status(500).json({ error: String(e) });
+    return;
   }
+
+  if (!isMessageWebhookType(type)) {
+    logger.info('[nylasWebhook] événement ignoré', { type });
+    return;
+  }
+
+  const message = envelope.data?.object as NylasMessageObject | undefined;
+  const grantId = message?.grant_id ?? envelope.data?.grant_id;
+  if (!message?.id || !grantId) {
+    logger.info('[nylasWebhook] message.* ignoré — pas de message', { type });
+    return;
+  }
+
+  const account = await resolveAccountByGrant(grantId);
+  if (!account) {
+    logger.warn('[nylasWebhook] grant inconnu — ajoutez nylasGrantId au compte', { grantId });
+    return;
+  }
+
+  const fromEmail = message.from?.[0]?.email?.toLowerCase();
+  const myEmail = account.email?.toLowerCase();
+  const direction =
+    fromEmail && myEmail && fromEmail === myEmail ? 'outbound' : 'inbound';
+
+  await syncNylasMessageToFirestore({
+    brokerId: account.uid,
+    accountId: account.accountId,
+    grantId,
+    message,
+    direction,
+  });
+
+  logger.info('[nylasWebhook] synced', {
+    type,
+    grantId,
+    messageId: message.id,
+    uid: account.uid,
+    accountId: account.accountId,
+    direction,
+  });
+}
+
+function scheduleWebhookProcessing(body: unknown): void {
+  void processNylasWebhookPayload(body).catch((e) => {
+    logger.error('[nylasWebhook] échec traitement arrière-plan', {
+      error: e instanceof Error ? e.message : String(e),
+      stack: e instanceof Error ? e.stack : undefined,
+    });
+  });
+}
+
+/**
+ * Point d’entrée unique GET/POST — challenge prioritaire, ACK immédiat, Firestore en async.
+ */
+export async function handleNylasWebhookRequest(
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    if (respondNylasChallenge(req, res)) return;
+
+    if (req.method === 'GET') {
+      res.status(400).type('text/plain').send('missing challenge');
+      return;
+    }
+
+    if (req.method === 'HEAD') {
+      res.status(200).end();
+      return;
+    }
+
+    if (req.method !== 'POST') {
+      res.status(405).type('text/plain').send('Method not allowed');
+      return;
+    }
+
+    const payload =
+      req.body && typeof req.body === 'object'
+        ? req.body
+        : {};
+
+    res.status(200).json({ success: true });
+    scheduleWebhookProcessing(payload);
+  } catch (e) {
+    logger.error('[nylasWebhook] erreur handler HTTP', {
+      error: e instanceof Error ? e.message : String(e),
+    });
+    if (!res.headersSent) {
+      res.status(200).json({ success: true });
+    }
+    if (req.method === 'POST' && req.body) {
+      scheduleWebhookProcessing(req.body);
+    }
+  }
+}
+
+/** @deprecated Utiliser handleNylasWebhookRequest */
+export function handleNylasWebhookChallenge(req: Request, res: Response): void {
+  if (!respondNylasChallenge(req, res)) {
+    res.status(400).type('text/plain').send('missing challenge');
+  }
+}
+
+/** @deprecated Utiliser handleNylasWebhookRequest */
+export async function handleNylasWebhookEvent(
+  req: Request,
+  res: Response
+): Promise<void> {
+  await handleNylasWebhookRequest(req, res);
 }

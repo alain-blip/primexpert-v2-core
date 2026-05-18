@@ -29,6 +29,7 @@
 │           ├── identity/            # buildIdentityViewModel, sections MSSS/RPA
 │           ├── valuation/           # Cap rate, comparables, TGA
 │           ├── narrative/           # Narratif vendeur
+│           ├── intelligence/        # Priorités suivi KISS, rapport vendeur, vélocité
 │           ├── quality/             # Score qualité fiche
 │           ├── sources/             # Sources externes
 │           ├── export/              # Export dataset / politique
@@ -36,10 +37,18 @@
 │           ├── mail/                # mailParser (E-2)
 │           ├── audio/               # Transcription
 │           └── utils/formatting.ts
-├── functions/                       # Cloud Functions (Nylas OAuth, webhooks, sync)
+├── functions/                       # Cloud Functions Gen2 (us-central1)
 │   └── src/
-│       ├── index.ts
-│       └── nylas/
+│       ├── index.ts                 # Exports onCall / onRequest
+│       ├── services/
+│       │   └── vertexClient.ts    # Vertex AI — ADC (compte de service runtime)
+│       ├── documents/
+│       │   ├── scanPropertyDocument.ts
+│       │   ├── parsePropertyDocument.ts
+│       │   ├── geminiExtract.ts     # Extraction JSON via gemini-2.0-flash-001
+│       │   └── validateStorageDocument.ts
+│       ├── lib/firestore.ts
+│       └── nylas/                   # OAuth, webhook, envoi, dossiers
 ├── scripts/                         # Utilitaires (facture sample, régions QC)
 ├── audit_tenant_uids.js             # Ops — audit tenant Firestore
 ├── backfill_tenant.js
@@ -62,7 +71,11 @@
     │   ├── settings/
     │   │   └── EmailAccountsSettings.tsx
     │   ├── AdminSubscriptionsDashboard.tsx
-    │   ├── Dashboard.tsx
+    │   ├── Dashboard.tsx            # + PriorityFollowUpList (KISS J+3/J+5/J+7)
+    │   ├── dashboard/
+    │   │   └── PriorityFollowUpList.tsx
+    │   ├── intelligence/
+    │   │   └── IntelligenceChronologie.tsx
     │   ├── Listings.tsx             # Mes inscriptions + ResidenceDetail
     │   ├── ListingsInventoryVirtual.tsx
     │   ├── ListingRow.tsx
@@ -72,6 +85,11 @@
     │   │   ├── institutional/
     │   │   │   └── InstitutionalUi.tsx   # Kit UI audit (fond clair, #000000)
     │   │   ├── identity/            # Sections Identité (lecture seule)
+    │   │   ├── documents/           # Espace Documents — diligence 3 colonnes
+    │   │   │   ├── DocumentsDiligenceTab.tsx
+    │   │   │   ├── DocumentCategorySidebar.tsx
+    │   │   │   ├── DocumentUploadPanel.tsx
+    │   │   │   └── DocumentMetadataPanel.tsx
     │   │   └── tabs/
     │   │       ├── IdentiteImmeubleTab.tsx
     │   │       ├── FinanceHubTab.tsx
@@ -108,6 +126,8 @@
     │   ├── subscriptionPricing.ts
     │   ├── workhubNav.tsx
     │   ├── financeNavigation.ts
+    │   ├── propertyDocumentValidation.ts
+    │   ├── propertyDocumentPipeline.ts
     │   ├── emailAccounts.ts
     │   ├── quebecInvoiceTax.ts
     │   ├── stripePortal.ts
@@ -115,6 +135,8 @@
     │   └── …
     ├── services/
     │   ├── residences.ts            # Queries multi-tenant residences
+    │   ├── propertyDocumentsService.ts  # Upload Storage + Firestore documents/
+    │   ├── dashboardPriorityFollowUp.ts
     │   ├── transcriptionService.ts
     │   ├── mailboxAnalysis.ts
     │   ├── emailAccountService.ts
@@ -128,6 +150,7 @@
     │   └── nurtureEmailTemplates.ts
     └── types/
         ├── residence.ts
+        ├── propertyDocument.ts      # virusScanStatus, parsingStatus, extractedData
         ├── billing.ts
         ├── emailAccount.ts
         └── …
@@ -144,8 +167,8 @@
 | Finances | `FinanceHubTab` + `FinancialDataProvider` | ✅ Hub + 5 sous-onglets |
 | Déclaration | `InstitutionalPlaceholder` | Placeholder — Gold Signature |
 | Marché | `InstitutionalPlaceholder` | Placeholder — géointelligence |
-| Documents | `InstitutionalPlaceholder` | Placeholder — bibliothèque |
-| Intelligence | `ResidenceIntelligencePanel` | ✅ Appels E-3 + courriels E-2 |
+| Documents | `DocumentsDiligenceTab` | ✅ Financier / Technique / Légal + scan + parse IA |
+| Intelligence | `ResidenceIntelligencePanel` + `IntelligenceChronologie` | ✅ Appels E-3 + courriels E-2 + rapport vendeur |
 
 ### Hub Finance — sous-onglets (`FinanceHubTab.tsx`)
 
@@ -169,8 +192,10 @@
 | **Hosting** | `dist/` — SPA, réécriture `**` → `index.html` |
 | **URL prod** | https://primexpert-app-v2.web.app |
 | **Firestore** | Bases `(default)` + `ai-studio-1214d671-efd2-47da-93b7-425feb92155a` (même rules/indexes) |
-| **Storage** | `primexpert/{brokerId}/residences/{residenceId}/…` |
-| **Functions** | `functions/` — Nylas (OAuth, webhook, sync inbound) |
+| **Storage** | `primexpert/{brokerId}/properties/{propertyId}/documents/{category}/…` (+ legacy `properties/…` lecture) |
+| **Functions** | `functions/` — Nylas + Espace Documents (scan, parse Vertex, réconciliation) |
+| **Compte de service Functions** | `250702494735-compute@developer.gserviceaccount.com` (`roles/aiplatform.user`) |
+| **Vertex AI** | `aiplatform.googleapis.com` — modèle `gemini-2.0-flash-001`, région `us-central1` |
 
 ---
 
@@ -186,7 +211,21 @@
 | Rôles & essai | `src/lib/auth.tsx`, `firestore.rules` (`users`) |
 | KPIs Finance admin | `AdminSubscriptionsDashboard.tsx`, `subscriptionPricing.ts` |
 | Migration Copilote | `migrate_financial_subcollections.js` |
+| Espace Documents | `DocumentsDiligenceTab`, `propertyDocumentsService.ts`, `functions/src/documents/` |
+| Parse IA financier | `geminiExtract.ts` + `vertexClient.ts` (ADC, pas de clé JSON en prod) |
+| Priorités tableau de bord | `dashboardPriorityFollowUp.ts`, `PriorityFollowUpList.tsx` |
+
+### Cloud Functions — Espace Documents
+
+| Fonction | Rôle |
+|----------|------|
+| `propertyDocumentScanDocument` | Validation format → `virusScanStatus: clean` ; chaîne parse si Financier |
+| `propertyDocumentsReconcileScan` | Réconcilie scans `pending` |
+| `propertyDocumentParseIA` | Extraction Vertex (PDF/XLSX financiers `clean`) |
+| `propertyDocumentsReconcileParse` | Réconcilie `parsingStatus` `pending` ou `failed` |
+
+Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions:propertyDocumentParseIA,…`
 
 ---
 
-*Dernière mise à jour : 2026-05-16 — fiche résidence institutionnelle, Hub Finance V2, package identity.*
+*Dernière mise à jour : 2026-05-18 — Espace Documents, Vertex AI ADC, Intelligence chronologie, priorités KISS.*

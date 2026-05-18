@@ -84,18 +84,36 @@ Données : sous-collection **`residences/{id}/financial/dataV2`** (migration dep
 - Badge MSSS : `RaphaelBadge.tsx`
 - Contexte : `ResidenceDocumentProvider`
 
+### Phase 4b — Espace Documents (`DocumentsDiligenceTab`)
+
+- UI 3 colonnes : **Financier / Technique / Légal** (`DocumentCategorySidebar`, upload, métadonnées).
+- Firestore : `residences/{id}/documents/{documentId}` — `virusScanStatus`, `parsingStatus`, `extractedData`.
+- Storage : `primexpert/{brokerId}/properties/{propertyId}/documents/{category}/{fileName}`.
+- Sécurité MVP : PDF, XLSX/XLS, DOCX uniquement ; téléchargement si `virusScanStatus === 'clean'`.
+- Dossier **Financier** : après scan `clean` → parse IA Vertex (`gemini-2.0-flash-001`, `us-central1`).
+- Cloud Functions : scan, parse, réconciliation scan/parse (callable authentifiés).
+- **Auth Vertex en prod** : ADC du compte de service Cloud Run (`250702494735-compute@…`) — **pas** de clé JSON ni `GOOGLE_APPLICATION_CREDENTIALS` en production.
+- API GCP : `aiplatform.googleapis.com` + IAM `roles/aiplatform.user` sur le compte compute.
+- Client : `functions/src/services/vertexClient.ts` ; erreurs typées (`VERTEX_API_DISABLED`, `VERTEX_MODEL_NOT_FOUND`, …).
+- Réconciliation UI : relance automatique des docs `pending` ou `failed` à l’ouverture de l’onglet.
+
 ### Placeholders (phases futures)
 
 - **Synthèse** : bilan CFO agrégé (à brancher sur Hub Finance)
 - **Déclaration** : Gold Signature `#D4AF37`
 - **Marché** : géointelligence, Haversine, entrée visiteurs
-- **Documents** : métadonnées `residences/{id}/documents/`
 
 ### Intelligence (`ResidenceIntelligencePanel`)
 
-- Chronologie **appels** (`users/{uid}/call_analyses`) + **courriels** (`mailbox_analyses`)
-- Boutons : rapport vendeur / mise à jour → `contentGenPrefill` + onglet ContentGen
+- Composant **`IntelligenceChronologie`** : chronologie appels + courriels, guardrails NDA / mise de fonds.
+- Données : `users/{uid}/call_analyses`, `mailbox_analyses` ; rapport vendeur anonymisé (`@primexpert/core/intelligence`).
+- Boutons : rapport vendeur / mise à jour → `contentGenPrefill` + onglet ContentGen.
 - Thème institutionnel clair (2026-05-16)
+
+### Tableau de bord — Priorités de suivi KISS (2026-05-17)
+
+- `PriorityFollowUpList` + `packages/core/src/intelligence/dashboardPriorityFollowUp.ts`.
+- Jalons **J+3 / J+5 / J+7** sur le tableau de bord courtier.
 
 ---
 
@@ -150,10 +168,11 @@ Côté client : `resolveEffectiveBillingStatus()` — règle 72 h si Firestore e
 
 ---
 
-## Messagerie — comptes courriel (en cours)
+## Messagerie — comptes courriel (Nylas)
 
-- `EmailAccountsSettings.tsx` — intégration Nylas multi-inbox (travail parallèle).
-- Functions : `functions/src/nylas/` (OAuth, webhook, sync).
+- `EmailAccountsSettings.tsx` — intégration Nylas multi-inbox.
+- Functions déployées : `nylasGetAuthUrl`, `nylasOAuthCallback`, `nylasWebhook`, `nylasSendMessage`, `nylasUpdateThreadFolder`, `nylasSendSellerUpdate`.
+- Secrets : `NYLAS_API_KEY`, `NYLAS_CLIENT_ID`, `NYLAS_CLIENT_SECRET`, `NYLAS_WEBHOOK_SECRET`.
 - Firestore : `users/{uid}/email_threads`, `emailAccounts` (champ profil).
 
 ---
@@ -163,14 +182,19 @@ Côté client : `resolveEffectiveBillingStatus()` — règle 72 h si Firestore e
 ```bash
 cd "01_PRIMEXPERT_SYSTEME_APP_STABLE_V2"
 npm run build
-firebase deploy --only hosting          # primexpert-app-v2
-firebase deploy --only firestore:rules  # si règles modifiées
+firebase deploy --only hosting
+firebase deploy --only firestore:rules,storage:rules   # si règles modifiées
+cd functions && npm run build
+FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
+# ou depuis functions/ : npm run deploy  (inclut le timeout discovery)
 ```
 
-**Derniers déploiements hosting :** 2026-05-16 (harmonisation fiche + hotfix `PlaceholderPanel`).
+**Notes :**
+- Timeout discovery Firebase (~10 s par défaut) : utiliser `FUNCTIONS_DISCOVERY_TIMEOUT=60` si échec « Cannot determine backend specification ».
+- Hosting + Functions parse documents déployés **2026-05-18**.
 
 **Repo :** https://github.com/alain-blip/primexpert-v2-core.git — branche `main`.
 
 ---
 
-*Journal mis à jour : 2026-05-16 — règle linguistique Québec (purge « audit » UI).*
+*Journal mis à jour : 2026-05-18 — Espace Documents, Vertex AI ADC, Nylas déployé, priorités KISS.*

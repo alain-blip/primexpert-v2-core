@@ -307,7 +307,43 @@ Normalisation : `normalizeFinancialData()` → source `calculatedResults` | `der
 
 ### Sous-collection `residences/{id}/documents/{documentId}`
 
-Bibliothèque documentaire migrée depuis Copilote (onglet Documents — UI placeholder).
+**SSOT Espace Documents** — UI `DocumentsDiligenceTab`, listener temps réel par fiche.
+
+| Champ | Type | Valeurs / format | Description |
+|--------|------|------------------|-------------|
+| `propertyId` | string | — | ID fiche (redondant, filtrage) |
+| `category` | string | `financier` \| `technique` \| `legal` | Dossier diligence |
+| `fileName` | string | — | Nom fichier affiché |
+| `storagePath` | string | — | Chemin Storage canonique (voir ci-dessous) |
+| `mimeType` | string | — | `application/pdf`, XLSX, DOCX, … |
+| `sizeBytes` | number | — | Taille octets |
+| `uploadedAtMillis` | number | — | Horodatage téléversement |
+| `uploadedBy` | string | UID | Courtier ayant téléversé |
+| **`virusScanStatus`** | string | `pending` \| `clean` \| `infected` | Scan format serveur (callable `propertyDocumentScanDocument`) |
+| **`parsingStatus`** | string | `not_applicable` \| `pending` \| `completed` \| `failed` | Parse IA (dossier Financier + `clean` uniquement) |
+| **`parsingEligible`** | boolean | — | `true` si PDF/tableur Financier éligible au parseur |
+| **`extractedData`** | map | — | JSON structuré Vertex : `amounts`, `dates`, `taxes`, `revenus`, `depenses`, `annee` |
+| `parsedAtMillis` | number | optionnel | Fin d’analyse IA |
+| **`parsingError`** | string | optionnel | Message d’échec (tronqué 500 car.) si `failed` |
+
+#### Chemins Storage
+
+| Schéma | Usage |
+|--------|--------|
+| **`primexpert/{brokerId}/properties/{propertyId}/documents/{category}/{fileName}`** | Canonique — écriture courtier (`brokerId === auth.uid`) |
+| `properties/{propertyId}/documents/…` | Legacy Copilote — **lecture seule** (`storage.rules`) |
+
+#### Pipeline document (Financier)
+
+```text
+Upload client → virusScanStatus: pending
+    → propertyDocumentScanDocument → clean | infected
+    → si financier + clean → parsingStatus: pending
+    → propertyDocumentParseIA (Vertex gemini-2.0-flash-001)
+    → completed + extractedData | failed + parsingError
+```
+
+Téléchargement client : autorisé **uniquement** si `virusScanStatus === 'clean'`.
 
 ---
 
@@ -350,9 +386,14 @@ Bibliothèque documentaire migrée depuis Copilote (onglet Documents — UI plac
 | Patches Firestore blur | `packages/core/src/identity/identityFieldWrite.ts` |
 | Déclaration vendeur | `packages/core/src/declaration/` |
 | View models finance | `packages/core/src/financial/*.ts` |
+| Documents diligence | `src/types/propertyDocument.ts`, `src/services/propertyDocumentsService.ts` |
+| Validation / pipeline docs | `src/lib/propertyDocumentValidation.ts`, `propertyDocumentPipeline.ts` |
+| Parse IA serveur | `functions/src/documents/parsePropertyDocument.ts`, `geminiExtract.ts` |
+| Vertex ADC | `functions/src/services/vertexClient.ts` |
+| Priorités dashboard | `packages/core/src/intelligence/dashboardPriorityFollowUp.ts` |
 | Taxes + PDF | `src/lib/quebecInvoiceTax.ts`, `src/services/invoicePdfService.ts` |
-| Règles Firestore | `firestore.rules` |
+| Règles Firestore / Storage | `firestore.rules`, `storage.rules` |
 
 ---
 
-*Dernière mise à jour : 2026-05-17 — Phase 4 identité ventilée (juridique REQ, 5 silos bâtiment, services, tarification, confirmations Raphaël).*
+*Dernière mise à jour : 2026-05-18 — Espace Documents (champs scan/parse IA, chemins Storage, Vertex).*

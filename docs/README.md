@@ -4,10 +4,10 @@
 
 | Fichier | Contenu |
 |---------|---------|
-| [MEMORY.md](./MEMORY.md) | Journal de décisions — UI, billing, fiche résidence, SSOT, déploiement |
-| [project_canonical_fields.md](./project_canonical_fields.md) | Champs Firestore (`users`, `residences`, `financial/dataV2`, …) |
-| [project_pipeline_gps.md](./project_pipeline_gps.md) | Flux essai 45 j, Chérif, pipeline fiche résidence |
-| [arborescence.md](./arborescence.md) | Structure du dépôt, onglets, Firebase, fichiers clés |
+| [MEMORY.md](./MEMORY.md) | Journal de décisions — UI, billing, fiche résidence, documents, Vertex, déploiement |
+| [project_canonical_fields.md](./project_canonical_fields.md) | Champs Firestore (`users`, `residences`, `documents`, `financial/dataV2`, …) |
+| [project_pipeline_gps.md](./project_pipeline_gps.md) | Flux essai 45 j, Chérif, pipeline fiche résidence & documents |
+| [arborescence.md](./arborescence.md) | Structure du dépôt, onglets, Firebase, Cloud Functions, fichiers clés |
 
 ---
 
@@ -23,9 +23,10 @@
 ```bash
 cd "01_PRIMEXPERT_SYSTEME_APP_STABLE_V2"
 npm install
-npm run dev          # local
-npm run build        # dist/
-firebase deploy --only hosting
+npm run dev                              # local
+npm run build && firebase deploy --only hosting
+cd functions && npm run build
+FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 ```
 
 ---
@@ -36,18 +37,34 @@ firebase deploy --only hosting
 2. **Multi-tenant** — `courtiersResponsables` sur `residences` ; filtre `@primexpert/core/tenant` + `firestore.rules`.
 3. **Finance** — Document unique `residences/{id}/financial/dataV2` ; contexte `FinancialDataProvider`.
 4. **Identité** — Document racine `residences/{id}` ; contexte `ResidenceDocumentProvider`.
-5. **UI fiche** — Charte institutionnelle (fond clair, valeurs `#000000`) via `InstitutionalUi.tsx`.
+5. **Documents** — Sous-collection `residences/{id}/documents/` ; scan + parse IA via Cloud Functions (Vertex ADC).
+6. **UI fiche** — Charte institutionnelle (fond clair, valeurs `#000000`) via `InstitutionalUi.tsx`.
+7. **Langage Québec** — Pas de « audit » à l’écran ; abréviations toujours développées (voir [MEMORY.md](./MEMORY.md)).
 
 ---
 
-## État des onglets fiche résidence (2026-05-16)
+## État des onglets fiche résidence (2026-05-18)
 
 | Onglet | Statut |
 |--------|--------|
 | Identité | ✅ Livré |
 | Finances (Hub 5 sous-onglets) | ✅ Livré |
-| Intelligence | ✅ Livré |
-| Synthèse, Déclaration, Marché, Documents | ⏳ Placeholders institutionnels |
+| Documents (Financier / Technique / Légal) | ✅ Livré — scan sécurité + extraction Vertex |
+| Intelligence (chronologie + rapport vendeur) | ✅ Livré |
+| Synthèse, Déclaration, Marché | ⏳ Placeholders institutionnels |
+
+**Tableau de bord :** priorités de suivi KISS (J+3 / J+5 / J+7) — `PriorityFollowUpList`.
+
+---
+
+## Espace Documents — résumé technique
+
+| Couche | Détail |
+|--------|--------|
+| UI | `DocumentsDiligenceTab` — 3 colonnes, réconciliation auto scan/parse |
+| Storage | `primexpert/{brokerId}/properties/{propertyId}/documents/{category}/` |
+| Parse IA | Vertex `gemini-2.0-flash-001` (`us-central1`) — `functions/src/services/vertexClient.ts` |
+| Auth prod | ADC compte de service `250702494735-compute@developer.gserviceaccount.com` — **sans** clé JSON |
 
 ---
 
@@ -57,4 +74,4 @@ Copie possible sur disque : `00_PRIMEXPERT_SYSTEME_APP/docs/` — maintenir alig
 
 ---
 
-*Index mis à jour : 2026-05-16.*
+*Index mis à jour : 2026-05-18.*

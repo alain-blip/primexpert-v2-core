@@ -80,7 +80,8 @@ function parseParsingStatus(value: unknown): ParsingStatus {
     value === 'not_applicable' ||
     value === 'pending' ||
     value === 'completed' ||
-    value === 'failed'
+    value === 'failed' ||
+    value === 'verified'
   ) {
     return value;
   }
@@ -128,6 +129,12 @@ function mapDoc(
     parsingStatus: parseParsingStatus(data.parsingStatus),
     parsingEligible,
     extractedData: parseExtractedData(data.extractedData),
+    isValidated: data.isValidated === true,
+    validatedAtMillis:
+      typeof data.validatedAtMillis === 'number' ? data.validatedAtMillis : undefined,
+    promesseScope: data.promesseScope === true || data.promesseDocument === true,
+    promesseDocLabel:
+      typeof data.promesseDocLabel === 'string' ? data.promesseDocLabel : undefined,
   };
 }
 

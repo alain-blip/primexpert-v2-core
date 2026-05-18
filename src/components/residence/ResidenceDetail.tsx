@@ -14,6 +14,7 @@ import {
   Shield,
   Sparkles,
   LayoutDashboard,
+  Handshake,
 } from 'lucide-react';
 import { cn, formatCurrency } from '../../lib/utils';
 import { useLanguage } from '../../lib/i18n';
@@ -27,6 +28,7 @@ import { MarcheConcurrenceTab } from './tabs/MarcheConcurrenceTab';
 import { ResidenceDocumentProvider } from '../../context/ResidenceDocumentContext';
 import { InstitutionalPlaceholder } from './institutional/InstitutionalUi';
 import { DocumentsDiligenceTab } from './documents/DocumentsDiligenceTab';
+import { PromesseAchatTab } from './tabs/PromesseAchatTab';
 
 export type ResidenceDetailTab =
   | 'synthese'
@@ -35,7 +37,8 @@ export type ResidenceDetailTab =
   | 'declaration'
   | 'marche'
   | 'documents'
-  | 'intelligence';
+  | 'intelligence'
+  | 'promesse';
 
 const STATUS_LABELS: Record<ResidenceStatus, { fr: string; en: string }> = {
   prospect: { fr: 'Prospection', en: 'Prospecting' },
@@ -59,6 +62,7 @@ const TABS: {
   { id: 'marche', icon: MapPin, labelFr: 'Marché', labelEn: 'Market' },
   { id: 'documents', icon: FileText, labelFr: 'Documents', labelEn: 'Documents' },
   { id: 'intelligence', icon: Sparkles, labelFr: 'Intelligence', labelEn: 'Intelligence' },
+  { id: 'promesse', icon: Handshake, labelFr: 'Promesse', labelEn: 'Promise' },
 ];
 
 export interface ResidenceDetailProps {
@@ -128,6 +132,8 @@ export function ResidenceDetail({
             courtiersResponsables={residence.courtiersResponsables}
           />
         );
+      case 'promesse':
+        return <PromesseAchatTab residence={residence} brokerId={brokerId} />;
       default:
         return null;
     }

@@ -1,5 +1,5 @@
 /**
- * Parseur IA — Espace Documents (Vertex AI / gemini-1.5-flash).
+ * Parseur IA — Espace Documents (Vertex AI / gemini-2.5-flash).
  * Déclenché lorsque virusScanStatus === 'clean' et parsingStatus === 'pending'.
  */
 
@@ -43,7 +43,8 @@ function isEligibleForParse(data: Record<string, unknown>): boolean {
   const status = data.parsingStatus;
   return (
     data.virusScanStatus === 'clean' &&
-    (status === 'pending' || status === 'failed')
+    (status === 'pending' || status === 'failed') &&
+    data.isValidated !== true
   );
 }
 

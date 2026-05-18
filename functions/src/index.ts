@@ -2,6 +2,9 @@ import { onCall, onRequest, HttpsError } from 'firebase-functions/v2/https';
 import { setGlobalOptions } from 'firebase-functions/v2/options';
 import type { OAuthStatePayload } from './nylas/types';
 
+const VERTEX_RUNTIME_SA =
+  '250702494735-compute@developer.gserviceaccount.com';
+
 setGlobalOptions({
   region: process.env.FUNCTION_REGION || 'us-central1',
   maxInstances: 20,
@@ -36,7 +39,12 @@ export const propertyDocumentScanDocument = onCall({ invoker: 'public' }, async 
 });
 
 /** Parseur IA Gemini — document financier (clean + parsing pending). */
-export const propertyDocumentParseIA = onCall({ invoker: 'public' }, async (request) => {
+export const propertyDocumentParseIA = onCall(
+  {
+    invoker: 'public',
+    serviceAccount: VERTEX_RUNTIME_SA,
+  },
+  async (request) => {
     try {
       const { parseSinglePropertyDocument } = await import('./documents/parsePropertyDocument');
       if (!request.auth?.uid) {
@@ -63,7 +71,12 @@ export const propertyDocumentParseIA = onCall({ invoker: 'public' }, async (requ
 );
 
 /** Réconcilie les analyses IA en attente pour une fiche. */
-export const propertyDocumentsReconcileParse = onCall({ invoker: 'public' }, async (request) => {
+export const propertyDocumentsReconcileParse = onCall(
+  {
+    invoker: 'public',
+    serviceAccount: VERTEX_RUNTIME_SA,
+  },
+  async (request) => {
     try {
       const { reconcilePendingPropertyParses } = await import('./documents/parsePropertyDocument');
       if (!request.auth?.uid) {
@@ -175,22 +188,18 @@ export const nylasOAuthCallback = onRequest(async (req, res) => {
   }
 });
 
-/** Webhook Nylas — challenge GET + événements POST. */
+/** Webhook Nylas — challenge instantané + ACK < 2 s, sync messagerie en arrière-plan. */
 export const nylasWebhook = onRequest(
-  { cors: false, invoker: 'public' },
+  {
+    cors: false,
+    invoker: 'public',
+    region: 'us-central1',
+    timeoutSeconds: 60,
+    maxInstances: 10,
+  },
   async (req, res) => {
-    const { handleNylasWebhookChallenge, handleNylasWebhookEvent } = await import(
-      './nylas/webhookHandler'
-    );
-    if (req.method === 'GET') {
-      handleNylasWebhookChallenge(req, res);
-      return;
-    }
-    if (req.method === 'POST') {
-      await handleNylasWebhookEvent(req, res);
-      return;
-    }
-    res.status(405).send('Method not allowed');
+    const { handleNylasWebhookRequest } = await import('./nylas/webhookHandler');
+    await handleNylasWebhookRequest(req, res);
   }
 );
 

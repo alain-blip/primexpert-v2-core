@@ -79,8 +79,24 @@ Fiche V2 (Listings → ResidenceDetail)
     ├─ Synthèse          [⏳ placeholder]
     ├─ Déclaration       [⏳ Gold Signature]
     ├─ Marché            [⏳ géointelligence]
-    └─ Documents         [⏳ bibliothèque]
+    └─ Documents         [✅ Espace Documents + scan + parse IA Vertex]
 ```
+
+### Pipeline Espace Documents (diligence)
+
+```text
+Téléversement (Financier | Technique | Légal)
+    → Storage primexpert/{brokerId}/properties/{id}/documents/{category}/…
+    → Firestore documents/{docId} — virusScanStatus: pending
+    → propertyDocumentScanDocument (callable)
+        ├─ infected → blocage téléchargement
+        └─ clean → parsingStatus: pending (si Financier + parsingEligible)
+    → propertyDocumentParseIA (Vertex AI — gemini-2.0-flash-001)
+        ├─ completed → extractedData (montants, taxes, revenus, dépenses…)
+        └─ failed → parsingError (réconciliation auto pending/failed à l’ouverture onglet)
+```
+
+**Infra Vertex (primexpert-app-v2) :** API `aiplatform.googleapis.com`, IAM `roles/aiplatform.user` sur `250702494735-compute@developer.gserviceaccount.com`, auth **ADC** (pas de clé JSON en prod).
 
 ### Statuts pipeline (`ResidenceStatus`)
 
@@ -117,12 +133,14 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 | PDF + taxes QC | ✅ |
 | Fiche résidence + Hub Finance | ✅ |
 | Identité fusionnée | ✅ |
-| Intelligence chronologie | ✅ |
+| Intelligence chronologie + rapport vendeur | ✅ |
+| Priorités suivi KISS (J+3/J+5/J+7) dashboard | ✅ |
+| Espace Documents + parse IA Vertex | ✅ |
 | UI institutionnelle claire | ✅ |
 | Webhooks Stripe → Firestore | ⏳ |
 | Cron relances J30/J40 | ⏳ |
 | Stripe Customer Portal prod | ⏳ env |
-| Cloud Functions Nylas deploy | ⏳ |
+| Cloud Functions Nylas | ✅ déployées (us-central1) |
 
 ---
 
@@ -133,9 +151,9 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 3. **Synthèse** : agrégat CFO depuis Hub Finance (onglet placeholder).
 4. **Déclaration vendeur** : parcours Gold Signature + verrou post-certification.
 5. **Marché** : carte, comparables Haversine, forces/faiblesses.
-6. **Documents** : UI sur `residences/{id}/documents/`.
-7. **Déployer** Functions Nylas si messagerie prod activée.
+6. **Documents** : enrichir `extractedData` → préremplissage Hub Finance / preuves A2.
+7. **Vertex** : surveiller cycle de vie `gemini-2.0-flash-001` (migration modèle si retrait GCP).
 
 ---
 
-*Dernière mise à jour : 2026-05-16.*
+*Dernière mise à jour : 2026-05-18.*

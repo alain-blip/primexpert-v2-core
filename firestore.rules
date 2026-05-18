@@ -190,5 +190,20 @@ service cloud.firestore {
       // Suppression interdite (OACIQ — conservation 6 ans, audit log immuable)
       allow delete: if false;
     }
+
+    // Big Data marché — entrées strictement anonymisées (pas d'adresse ni de fiche résidence).
+    match /market_analytics_raw/{entryId} {
+      allow create: if isSignedIn() &&
+        incoming().siloType is string &&
+        incoming().regionAdministrative is string &&
+        incoming().anneeDonnees is int &&
+        incoming().provenance in ['etats_financiers', 'rapport_evaluation'] &&
+        incoming().validatedAmounts is list &&
+        !incoming().keys().hasAny([
+          'address', 'residenceId', 'propertyId', 'residenceName', 'fileName', 'storagePath'
+        ]);
+      allow read: if isSignedIn();
+      allow update, delete: if false;
+    }
   }
 }
