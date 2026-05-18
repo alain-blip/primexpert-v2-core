@@ -19,6 +19,9 @@ import { motion, AnimatePresence } from 'motion/react';
 // Chaque composant lourd est charge a la demande (chunk JS dedie).
 // Le payload initial du Workhub se limite a Layout + Dashboard + vendors.
 const Dashboard  = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
+const SuiviDossiersTab = lazy(() =>
+  import('./components/SuiviDossiersTab').then((m) => ({ default: m.SuiviDossiersTab }))
+);
 const Listings   = lazy(() => import('./components/Listings').then(m => ({ default: m.Listings })));
 const CRM        = lazy(() => import('./components/CRM').then(m => ({ default: m.CRM })));
 const ACM        = lazy(() => import('./components/ACM').then(m => ({ default: m.ACM })));
@@ -231,12 +234,7 @@ function Workhub() {
         if (profile?.role !== 'admin_system') return <Dashboard />;
         return <AdminSubscriptionsDashboard />;
       case 'dashboard': return <Dashboard />;
-      case 'pipeline': return (
-        <div className="h-[600px] flex flex-col items-center justify-center opacity-20 italic">
-          <TrendingUp className="w-24 h-24 mb-4" />
-          <p className="text-[20px] font-black uppercase tracking-[0.3em]">PIPELINE_FLOW_ENGINE</p>
-        </div>
-      );
+      case 'pipeline': return <SuiviDossiersTab />;
       case 'listings': return <Listings />;
       case 'acm': return <ACM />;
       case 'stats': return (
