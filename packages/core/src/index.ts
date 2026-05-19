@@ -18,3 +18,4 @@ export * as tenant from './tenant';
 export * as mail from './mail';
 export * as audio from './audio';
 export * as financial from './financial';
+export * as diffusion from './diffusion';

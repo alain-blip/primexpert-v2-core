@@ -6,6 +6,8 @@
     "node": "20"
   },
   "scripts": {
+    "sync:core-diffusion": "node scripts/sync-core-diffusion.cjs",
+    "prebuild": "npm run sync:core-diffusion",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "serve": "npm run build && firebase emulators:start --only functions",

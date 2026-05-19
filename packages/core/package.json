@@ -17,7 +17,8 @@
     "./audio": "./src/audio/index.ts",
     "./financial": "./src/financial/index.ts",
     "./market": "./src/market/index.ts",
-    "./intelligence": "./src/intelligence/index.ts"
+    "./intelligence": "./src/intelligence/index.ts",
+    "./diffusion": "./src/diffusion/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

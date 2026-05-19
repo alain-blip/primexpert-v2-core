@@ -365,6 +365,98 @@ export const nylasSendSellerUpdate = onCall({ invoker: 'public' }, async (reques
   }
 });
 
+// ============================================================================
+// DIFFUSION WEB — silo public_listings + pont WordPress (rpaavendre.com)
+// ============================================================================
+
+const WP_SECRETS = [
+  'WP_SITE_URL',
+  'WP_USERNAME',
+  'WP_APP_PASSWORD',
+] as const;
+
+/** Diffusion Web — publication officielle (WP `publish` + silo VISIBLE). */
+export const diffusionPublishListing = onCall(
+  { invoker: 'public', secrets: [...WP_SECRETS] },
+  async (request) => {
+    try {
+      if (!request.auth?.uid) {
+        throw new HttpsError('unauthenticated', 'Connexion requise.');
+      }
+      const residenceId = String(request.data?.residenceId ?? '').trim();
+      if (!residenceId) {
+        throw new HttpsError('invalid-argument', 'residenceId requis.');
+      }
+      const { publishListingHandler } = await import('./diffusion/publishListingV2');
+      return await publishListingHandler({
+        residenceId,
+        brokerId: request.auth.uid,
+      });
+    } catch (e) {
+      if (e instanceof HttpsError) throw e;
+      console.error('[diffusionPublishListing]', e);
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new HttpsError('failed-precondition', msg);
+    }
+  }
+);
+
+/** Diffusion Web — brouillon (WP `draft` + silo MASQUE + draftToken vendeur). */
+export const diffusionSaveDraftListing = onCall(
+  { invoker: 'public', secrets: [...WP_SECRETS] },
+  async (request) => {
+    try {
+      if (!request.auth?.uid) {
+        throw new HttpsError('unauthenticated', 'Connexion requise.');
+      }
+      const residenceId = String(request.data?.residenceId ?? '').trim();
+      if (!residenceId) {
+        throw new HttpsError('invalid-argument', 'residenceId requis.');
+      }
+      const { saveDraftListingHandler } = await import('./diffusion/saveDraftListingV2');
+      return await saveDraftListingHandler({
+        residenceId,
+        brokerId: request.auth.uid,
+      });
+    } catch (e) {
+      if (e instanceof HttpsError) throw e;
+      console.error('[diffusionSaveDraftListing]', e);
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new HttpsError('failed-precondition', msg);
+    }
+  }
+);
+
+/** Diffusion Web — retrait (WP `draft`/`private` + silo MASQUE/ARCHIVE). */
+export const diffusionHideListing = onCall(
+  { invoker: 'public', secrets: [...WP_SECRETS] },
+  async (request) => {
+    try {
+      if (!request.auth?.uid) {
+        throw new HttpsError('unauthenticated', 'Connexion requise.');
+      }
+      const residenceId = String(request.data?.residenceId ?? '').trim();
+      if (!residenceId) {
+        throw new HttpsError('invalid-argument', 'residenceId requis.');
+      }
+      const rawMode = String(request.data?.mode ?? 'MASQUE').trim().toUpperCase();
+      const mode =
+        rawMode === 'ARCHIVE' ? ('ARCHIVE' as const) : ('MASQUE' as const);
+      const { hideListingHandler } = await import('./diffusion/hideListingV2');
+      return await hideListingHandler({
+        residenceId,
+        brokerId: request.auth.uid,
+        mode,
+      });
+    } catch (e) {
+      if (e instanceof HttpsError) throw e;
+      console.error('[diffusionHideListing]', e);
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new HttpsError('failed-precondition', msg);
+    }
+  }
+);
+
 /** Sélection documentaire — envoi Nylas avec liens Prime-Drive signés. */
 export const sendDocumentSelection = onCall({ invoker: 'public' }, async (request) => {
   try {
