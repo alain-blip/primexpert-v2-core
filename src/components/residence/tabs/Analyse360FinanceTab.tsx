@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
+  Flame,
   Info,
   Microscope,
   TrendingUp,
@@ -21,6 +22,7 @@ import { formatCurrency as formatCurrencyCore } from '@primexpert/core/utils/for
 import { cn } from '../../../lib/utils';
 import { useLanguage } from '../../../lib/i18n';
 import { useFinancialData } from '../../../context/FinancialDataContext';
+import { useMarketSnapshot } from '../../../hooks/useMarketSnapshot';
 import { ProvenanceStrip } from '../../financial/ProvenanceStrip';
 import {
   inst,
@@ -55,6 +57,9 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
     [financialData, residenceHints]
   );
 
+  const { snapshot: marketSnapshot, hasPortfolio: hasPortfolioBenchmark, scope: marketScope } =
+    useMarketSnapshot();
+
   const audit = useMemo(
     () =>
       computePerformanceAudit360({
@@ -62,8 +67,9 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
         calc,
         baseData,
         prixDemande: residence.price,
+        portfolioCtx: marketSnapshot,
       }),
-    [residenceHints, calc, baseData, residence.price]
+    [residenceHints, calc, baseData, residence.price, marketSnapshot]
   );
 
   if (!isInProvider) {
@@ -130,8 +136,16 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
         )}{' '}
         <span className="text-slate-600">
           {t(
-            `Réf. dépenses : ${audit.benchmarkSource === 'sector_ref' ? 'secteur résidence pour aînés (RPA)' : 'portefeuille'}.`,
-            `Expense ref: ${audit.benchmarkSource === 'sector_ref' ? 'seniors residence (RPA) sector' : 'portfolio'}.`
+            `Réf. dépenses : ${
+              audit.benchmarkSource === 'sector_ref'
+                ? 'secteur résidence pour aînés (RPA, repli)'
+                : `instantané portefeuille (marketSnapshots/v1${marketScope ? ` · ${marketScope}` : ''})`
+            }.`,
+            `Expense ref: ${
+              audit.benchmarkSource === 'sector_ref'
+                ? 'seniors residence (RPA) sector fallback'
+                : `portfolio snapshot (marketSnapshots/v1${marketScope ? ` · ${marketScope}` : ''})`
+            }.`
           )}
         </span>
       </p>
@@ -183,6 +197,74 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
           </span>
         </div>
       </div>
+
+      <section className="rounded-2xl border-2 border-red-600/40 bg-white p-5 shadow-sm">
+        <header className="mb-4 flex items-start gap-3">
+          <Flame className="h-6 w-6 shrink-0 text-red-700" aria-hidden />
+          <div>
+            <p className="text-[13px] font-black uppercase tracking-[0.18em] text-[#142c6a]">
+              {t('Top 3 des fuites de dépenses', 'Top 3 expense leaks')}
+            </p>
+            <p className="mt-1 text-[15px] font-semibold leading-relaxed text-slate-800">
+              {hasPortfolioBenchmark
+                ? t(
+                    'Comparaison ligne à ligne avec l’instantané portefeuille (marketSnapshots/v1). Les trois écarts les plus coûteux en impact-valeur figurent ci-dessous.',
+                    'Line-by-line comparison with portfolio snapshot (marketSnapshots/v1). The three costliest gaps in value-impact appear below.'
+                  )
+                : t(
+                    'Repli sectoriel résidence pour aînés (RPA) : tant que le snapshot portefeuille n’est pas alimenté, les écarts sont calculés sur les ratios secteur.',
+                    'Seniors residence (RPA) sector fallback: until the portfolio snapshot is populated, gaps are computed on sector ratios.'
+                  )}
+            </p>
+          </div>
+        </header>
+        {audit.topExpenseGaps.length === 0 ? (
+          <p className="rounded-xl border-2 border-emerald-700 bg-emerald-50 p-4 text-[15px] font-bold text-emerald-950">
+            {t(
+              'Aucune fuite de dépenses détectée vs benchmark — gestion serrée, à mettre en avant dans la présentation acheteur.',
+              'No expense leak detected vs benchmark — tight management, highlight in buyer pitch.'
+            )}
+          </p>
+        ) : (
+          <ol className="space-y-3">
+            {audit.topExpenseGaps.slice(0, 3).map((row, index) => (
+              <li
+                key={row.key}
+                className="flex flex-wrap items-stretch gap-4 rounded-2xl border-2 border-red-600 bg-red-50 p-4 shadow-sm"
+              >
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-700 text-[26px] font-black text-white">
+                  {index + 1}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[18px] font-black uppercase tracking-wide text-red-900">
+                    {row.label}
+                  </p>
+                  <p className="mt-1 text-[15px] font-semibold leading-relaxed text-black">
+                    {t(
+                      `Dépense réelle : ${fmt(row.actualNorm)} · Référence : ${fmt(row.benchmarkDollar)}`,
+                      `Actual: ${fmt(row.actualNorm)} · Benchmark: ${fmt(row.benchmarkDollar)}`
+                    )}
+                  </p>
+                </div>
+                <div className="flex min-w-[180px] flex-col items-end justify-center text-right">
+                  <p className="text-[12px] font-black uppercase tracking-wider text-red-900">
+                    {t('Écart annuel', 'Annual gap')}
+                  </p>
+                  <p className="text-[22px] font-black tabular-nums text-red-900">
+                    +{fmt(row.ecartDollar)}
+                  </p>
+                  <p className="mt-1 text-[12px] font-black uppercase tracking-wider text-[#142c6a]">
+                    {t('Impact valeur', 'Value impact')}
+                  </p>
+                  <p className="text-[16px] font-black tabular-nums text-[#142c6a]">
+                    {fmt(row.valueImpact)}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
 
       <section className={inst.section}>
         <header className={cn(inst.sectionHeader, 'flex items-center gap-2')}>

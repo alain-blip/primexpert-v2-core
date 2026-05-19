@@ -152,12 +152,25 @@ export function getTP70Interpretation(
   };
 }
 
-export function isDataStale(refYear: number | null | undefined): boolean {
-  if (!refYear) return true;
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth();
-  const staleThreshold = currentYear - 1 - (currentMonth < 6 ? 1 : 0);
-  return refYear < staleThreshold;
+/**
+ * Sentinelle anti-drift TP70.
+ * Retourne `true` si l'année de référence est plus vieille que `thresholdMonths`
+ * (défaut : 18 mois) par rapport à la date courante. L'ancrage temporel est
+ * fin décembre de `refYear` — le plus conservateur (favorise un avertissement
+ * dès qu'une fiche traverse un cycle annuel sans rafraîchissement).
+ */
+export function isDataStale(
+  refYear: number | null | undefined,
+  options: { thresholdMonths?: number; now?: Date } = {}
+): boolean {
+  if (!refYear || !Number.isFinite(refYear)) return true;
+  const thresholdMonths = options.thresholdMonths ?? 18;
+  const now = options.now ?? new Date();
+  const referenceDate = new Date(refYear, 11, 31);
+  const monthsElapsed =
+    (now.getFullYear() - referenceDate.getFullYear()) * 12 +
+    (now.getMonth() - referenceDate.getMonth());
+  return monthsElapsed > thresholdMonths;
 }
 
 export function calculateTP70FromResidence(residence: ResidenceTP70Hints): TP70Result {

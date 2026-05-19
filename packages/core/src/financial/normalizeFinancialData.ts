@@ -59,11 +59,24 @@ export interface DepensesGrid {
 }
 
 export interface FinancialBaseData {
-  revenusAnnuels?: number | null;
+  revenusAnnuels?: number | string | null;
   nombreUnites?: number | null;
   depenses?: DepensesGrid | null;
   expenseAdjustments?: Record<string, unknown> | null;
   financement?: Record<string, unknown> | null;
+  /** Revenus annexes RPA (import RPA / saisie courtier — chaînes acceptées). */
+  revenusRepas?: number | string | null;
+  revenusAutresServices?: number | string | null;
+  revenusSubventions?: number | string | null;
+  revenusLocauxCommerciaux?: number | string | null;
+  revenusBuanderie?: number | string | null;
+  revenusCoiffure?: number | string | null;
+  revenusPodologie?: number | string | null;
+  revenusAutres?: number | string | null;
+  /** Stationnement payant — barème mensuel × nb places × 12. */
+  tarifStationnement?: number | string | null;
+  nbStationnementsPayants?: number | string | null;
+  [key: string]: unknown;
 }
 
 export interface FinancialDataV2Doc {
@@ -287,6 +300,101 @@ function safeNum(val: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Parser tolérant pour montants financiers d'origine hétérogène
+ * (RPA legacy, saisie courtier, imports CSV/PDF).
+ * Toujours numérique, jamais NaN : `''`, `null`, `undefined`, mauvais types → 0.
+ */
+function parseSafeNumber(val: unknown): number {
+  if (val === null || val === undefined || val === '') return 0;
+  const raw = typeof val === 'string' ? val.replace(/[^\d.-]/g, '') : val;
+  const n = typeof raw === 'string' ? parseFloat(raw) : Number(raw);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Clés RPA des revenus annexes (résidentiel + commercial + soins/services). */
+const RPA_ANCILLARY_REVENUE_KEYS = [
+  'revenusSubventions',
+  'revenusRepas',
+  'revenusAutresServices',
+  'revenusLocauxCommerciaux',
+  'revenusBuanderie',
+  'revenusCoiffure',
+  'revenusPodologie',
+  'revenusAutres',
+] as const;
+
+function pickFromSources(
+  sources: ReadonlyArray<Record<string, unknown> | null | undefined>,
+  key: string
+): number {
+  for (const src of sources) {
+    if (!src || typeof src !== 'object') continue;
+    if (!(key in src)) continue;
+    const value = (src as Record<string, unknown>)[key];
+    if (value === null || value === undefined || value === '') continue;
+    return parseSafeNumber(value);
+  }
+  return 0;
+}
+
+/**
+ * Agrège les revenus annexes RPA en se promenant dans une chaîne de sources
+ * (baseData, calculatedResults, residence). Retourne 0 si aucune donnée.
+ */
+export function sumRpaAncillaryRevenues(
+  sources: ReadonlyArray<Record<string, unknown> | null | undefined>
+): number {
+  let total = 0;
+  for (const key of RPA_ANCILLARY_REVENUE_KEYS) {
+    total += pickFromSources(sources, key);
+  }
+  const tarif = pickFromSources(sources, 'tarifStationnement');
+  const places = pickFromSources(sources, 'nbStationnementsPayants');
+  if (tarif > 0 && places > 0) {
+    total += tarif * places * 12;
+  }
+  return total;
+}
+
+/**
+ * Enrichit le RBE pour intégrer les revenus annexes RPA quand ils existent
+ * mais n'ont pas été agrégés en amont. Idempotent : ne régresse jamais un
+ * RBE existant et n'altère pas le `calc` si aucun montant annexe RPA n'est
+ * détecté. Le NOI, l'EM, le DSCR et la MFR cascadent automatiquement via
+ * `computeBilanCfoViewModel` puisqu'ils reposent tous sur `revenuBrutEffectif`.
+ */
+function enrichCalcWithRpaAncillary(
+  calc: FinancialCalc,
+  baseData: FinancialBaseData | null,
+  residence: ResidenceFinancialHints
+): FinancialCalc {
+  const sources: Array<Record<string, unknown> | null | undefined> = [
+    baseData as Record<string, unknown> | null,
+    calc as Record<string, unknown>,
+    residence as Record<string, unknown>,
+  ];
+  const ancillaryRpa = sumRpaAncillaryRevenues(sources);
+  if (ancillaryRpa <= 0) return calc;
+
+  const baseLoyers =
+    finiteNum(calc.revenusAnnuels) ??
+    safeNum(baseData?.revenusAnnuels) ??
+    deriveRevenusAnnuelsFromTarification(residence as Record<string, unknown>);
+  if (baseLoyers == null || baseLoyers <= 0) return calc;
+
+  const currentRbe = finiteNum(calc.revenuBrutEffectif) ?? baseLoyers;
+  const rbeRpa = baseLoyers + ancillaryRpa;
+  if (rbeRpa <= currentRbe + 1) return calc;
+
+  const currentAutres = finiteNum(calc.autresRevenus) ?? 0;
+  return {
+    ...calc,
+    revenuBrutEffectif: rbeRpa,
+    autresRevenus: Math.max(currentAutres, ancillaryRpa),
+  };
+}
+
 function sumDepenses(depenses: DepensesGrid | null | undefined): number | null {
   if (!depenses || typeof depenses !== 'object') return null;
   let total = 0;
@@ -327,8 +435,13 @@ export function normalizeFinancialData(
   const baseData = financialData.baseData ?? null;
 
   if (financialData.calculatedResults) {
+    const enrichedCalc = enrichCalcWithRpaAncillary(
+      financialData.calculatedResults,
+      baseData,
+      residence
+    );
     return {
-      calc: financialData.calculatedResults,
+      calc: enrichedCalc,
       baseData,
       hasFinancials: true,
       source: 'calculatedResults',
@@ -396,7 +509,8 @@ export function normalizeFinancialData(
       _confidence: (derived?.confidence as string) ?? null,
     };
 
-    return { calc, baseData, hasFinancials: true, source: 'derivedData' };
+    const enrichedCalc = enrichCalcWithRpaAncillary(calc, baseData, residence);
+    return { calc: enrichedCalc, baseData, hasFinancials: true, source: 'derivedData' };
   }
 
   return { calc: null, baseData: null, hasFinancials: false, source: 'none' };

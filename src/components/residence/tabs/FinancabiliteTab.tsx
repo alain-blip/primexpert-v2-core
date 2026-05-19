@@ -3,8 +3,8 @@
  * SSOT : computeFinancabilite() + useFinancialData().
  */
 
-import React, { useMemo } from 'react';
-import { Building2, Info, Landmark } from 'lucide-react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Building2, CheckCircle2, Info, Landmark, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
 import {
   computeFinancabilite,
   DSCR_RULES,
@@ -26,6 +26,50 @@ import type { Residence } from '../../../services/residences';
 export interface FinancabiliteTabProps {
   residence: Residence;
 }
+
+/**
+ * Toggle persistant (sessionStorage) — choix de la base RNE pour le scénario
+ * bancaire. OFF : NOI Déclaré (brut vendeur). ON : NOI Audité (RBE enrichi
+ * Phase 2.1 − dépenses normalisées). Cascade automatique sur EM / DSCR / MFR.
+ */
+const USE_AUDIT_RNE_STORAGE_KEY = 'primexpert-financabilite-useAuditRne';
+
+function readUseAuditRneFromSession(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.sessionStorage.getItem(USE_AUDIT_RNE_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function persistUseAuditRne(value: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(USE_AUDIT_RNE_STORAGE_KEY, value ? '1' : '0');
+  } catch {
+    /* sessionStorage indisponible : on reste sur l'état React local. */
+  }
+}
+
+/** Seuils explicites demandés en consigne — autonomes par rapport au programme SCHL. */
+const DSCR_CRITICAL_THRESHOLD = 1.2;
+const DSCR_COMFORT_THRESHOLD = 1.3;
+
+type ChecklistStatus = 'ok' | 'warn' | 'fail' | 'unknown';
+
+interface ChecklistRow {
+  id: string;
+  labelFr: string;
+  labelEn: string;
+  status: ChecklistStatus;
+  valueFr: string;
+  valueEn: string;
+  noteFr: string;
+  noteEn: string;
+}
+
+type SellerVerdict = 'favorable' | 'conditionnel' | 'defavorable';
 
 function DscrGauge({
   ratio,
@@ -87,9 +131,286 @@ function DscrGauge({
   );
 }
 
+function AuditRneToggle({
+  useAuditRne,
+  onChange,
+  language,
+  noiDeclared,
+  noiAudit,
+  formatValue,
+}: {
+  useAuditRne: boolean;
+  onChange: (next: boolean) => void;
+  language: 'fr' | 'en';
+  noiDeclared: number | null;
+  noiAudit: number | null;
+  formatValue: (n: number | null) => string;
+}) {
+  const optionA = useAuditRne === false;
+  const optionB = useAuditRne === true;
+  const labelA = language === 'fr' ? 'A · Sur le RNE Déclaré' : 'A · Declared NOI basis';
+  const labelB = language === 'fr' ? 'B · Sur le RNE Audité (RPA enrichi)' : 'B · Audited NOI (RPA enriched)';
+  const subA = language === 'fr' ? 'Brut du vendeur (RNE rapporté).' : 'Seller-reported NOI.';
+  const subB =
+    language === 'fr'
+      ? 'RBE enrichi (Phase 2.1) − dépenses normalisées.'
+      : 'Enriched EGI (Phase 2.1) − normalized expenses.';
+  return (
+    <section
+      className={cn(
+        inst.section,
+        'border-l-4 border-l-[#142c6a] bg-[#f1f5f9] p-5'
+      )}
+      aria-label={language === 'fr' ? 'Sélecteur de base RNE bancaire' : 'Bank NOI basis selector'}
+    >
+      <p className="text-[12px] font-black uppercase tracking-[0.18em] text-[#142c6a]">
+        {language === 'fr' ? 'Base de calcul bancaire' : 'Bank computation basis'}
+      </p>
+      <p className="mt-1 text-[15px] font-semibold leading-relaxed text-slate-800">
+        {language === 'fr'
+          ? 'Choisissez le RNE qui alimente le scénario : le tableau (EM / DSCR / MFR) se met à jour instantanément.'
+          : 'Pick the NOI that powers the scenario: the table (max loan / DSCR / down payment) updates instantly.'}
+      </p>
+
+      <div
+        role="radiogroup"
+        aria-label={language === 'fr' ? 'Choix RNE' : 'NOI choice'}
+        className="mt-4 grid gap-3 sm:grid-cols-2"
+      >
+        <button
+          type="button"
+          role="radio"
+          aria-checked={optionA}
+          onClick={() => onChange(false)}
+          className={cn(
+            'flex flex-col items-start gap-1 rounded-2xl border-2 px-5 py-4 text-left transition-colors',
+            optionA
+              ? 'border-[#142c6a] bg-[#142c6a] text-white shadow-md'
+              : 'border-[#142c6a]/30 bg-white text-[#142c6a] hover:border-[#142c6a]'
+          )}
+        >
+          <span className="text-[13px] font-black uppercase tracking-wider">{labelA}</span>
+          <span
+            className={cn(
+              'text-[15px] font-bold tabular-nums',
+              optionA ? 'text-white' : 'text-black'
+            )}
+          >
+            {formatValue(noiDeclared)}
+          </span>
+          <span
+            className={cn(
+              'text-[13px] font-semibold leading-snug',
+              optionA ? 'text-white/85' : 'text-slate-700'
+            )}
+          >
+            {subA}
+          </span>
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={optionB}
+          onClick={() => onChange(true)}
+          className={cn(
+            'flex flex-col items-start gap-1 rounded-2xl border-2 px-5 py-4 text-left transition-colors',
+            optionB
+              ? 'border-emerald-700 bg-emerald-700 text-white shadow-md'
+              : 'border-emerald-700/30 bg-white text-emerald-900 hover:border-emerald-700'
+          )}
+        >
+          <span className="text-[13px] font-black uppercase tracking-wider">{labelB}</span>
+          <span
+            className={cn(
+              'text-[15px] font-bold tabular-nums',
+              optionB ? 'text-white' : 'text-black'
+            )}
+          >
+            {formatValue(noiAudit)}
+          </span>
+          <span
+            className={cn(
+              'text-[13px] font-semibold leading-snug',
+              optionB ? 'text-white/85' : 'text-slate-700'
+            )}
+          >
+            {subB}
+          </span>
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function statusIcon(status: ChecklistStatus): React.ReactNode {
+  if (status === 'ok') return <CheckCircle2 className="h-5 w-5 text-emerald-700" aria-hidden />;
+  if (status === 'warn') return <ShieldAlert className="h-5 w-5 text-amber-600" aria-hidden />;
+  if (status === 'fail') return <XCircle className="h-5 w-5 text-red-700" aria-hidden />;
+  return <Info className="h-5 w-5 text-slate-500" aria-hidden />;
+}
+
+function statusBadgeClasses(status: ChecklistStatus): string {
+  if (status === 'ok') return 'border-emerald-700 bg-emerald-50 text-emerald-900';
+  if (status === 'warn') return 'border-amber-500 bg-amber-50 text-amber-900';
+  if (status === 'fail') return 'border-red-700 bg-red-50 text-red-900';
+  return 'border-slate-400 bg-slate-50 text-slate-800';
+}
+
+function BankComplianceChecklist({
+  rows,
+  language,
+}: {
+  rows: ReadonlyArray<ChecklistRow>;
+  language: 'fr' | 'en';
+}) {
+  return (
+    <section
+      className={cn(inst.section, 'border-l-4 border-l-amber-500 bg-white p-5')}
+      aria-labelledby="bank-compliance-checklist-title"
+    >
+      <header className="mb-4">
+        <p
+          id="bank-compliance-checklist-title"
+          className="text-[13px] font-black uppercase tracking-[0.18em] text-[#142c6a]"
+        >
+          {language === 'fr'
+            ? 'Checklist de conformité bancaire'
+            : 'Bank compliance checklist'}
+        </p>
+        <p className="mt-1 text-[15px] font-semibold leading-relaxed text-slate-800">
+          {language === 'fr'
+            ? 'Trois contrôles que tout prêteur appliquera avant d’engager le dossier.'
+            : 'Three controls every lender will apply before committing.'}
+        </p>
+      </header>
+      <ul className="space-y-3">
+        {rows.map((row) => (
+          <li
+            key={row.id}
+            className={cn(
+              'rounded-2xl border-2 p-4 shadow-sm',
+              statusBadgeClasses(row.status)
+            )}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="mt-0.5 shrink-0">{statusIcon(row.status)}</span>
+                <div className="min-w-0">
+                  <p className="text-[15px] font-black uppercase tracking-wider text-[#142c6a]">
+                    {language === 'fr' ? row.labelFr : row.labelEn}
+                  </p>
+                  <p className="mt-1 text-[16px] font-bold tabular-nums text-black">
+                    {language === 'fr' ? row.valueFr : row.valueEn}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <p className="mt-3 text-[15px] font-semibold leading-relaxed text-black">
+              {language === 'fr' ? row.noteFr : row.noteEn}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function SellerVerdictPanel({
+  verdict,
+  language,
+  ratio,
+  minimumDscr,
+  miseDeFonds,
+  formatValue,
+}: {
+  verdict: SellerVerdict;
+  language: 'fr' | 'en';
+  ratio: number | null;
+  minimumDscr: number;
+  miseDeFonds: number | null;
+  formatValue: (n: number | null) => string;
+}) {
+  const palette = {
+    favorable: {
+      border: 'border-emerald-700',
+      ribbon: 'bg-emerald-700 text-white',
+      icon: <ShieldCheck className="h-7 w-7" aria-hidden />,
+      headlineFr: 'FAVORABLE — Finançable sans condition particulière',
+      headlineEn: 'FAVORABLE — Financeable with no specific conditions',
+    },
+    conditionnel: {
+      border: 'border-amber-500',
+      ribbon: 'bg-amber-500 text-amber-950',
+      icon: <ShieldAlert className="h-7 w-7" aria-hidden />,
+      headlineFr: 'SOUS CONDITIONS — Mise de fonds renforcée probable',
+      headlineEn: 'CONDITIONAL — Reinforced down payment likely',
+    },
+    defavorable: {
+      border: 'border-red-700',
+      ribbon: 'bg-red-700 text-white',
+      icon: <XCircle className="h-7 w-7" aria-hidden />,
+      headlineFr: 'DÉFAVORABLE — Capital acheteur majoré requis',
+      headlineEn: 'UNFAVORABLE — Higher buyer equity required',
+    },
+  }[verdict];
+
+  const ratioLabel = ratio != null && Number.isFinite(ratio) ? `${ratio.toFixed(2)}×` : '—';
+
+  const bodyFr =
+    verdict === 'favorable'
+      ? `Le ratio de couverture (DSCR) retenu de ${ratioLabel} dépasse le seuil de confort bancaire (${DSCR_COMFORT_THRESHOLD.toFixed(2)}×). Le prêteur peut financer dans les ratios normaux et la mise de fonds requise reste au niveau attendu (${formatValue(miseDeFonds)}). Excellent argument de vente.`
+      : verdict === 'conditionnel'
+        ? `Le DSCR retenu de ${ratioLabel} se situe entre le minimum bancaire (${minimumDscr.toFixed(2)}×) et la zone de confort (${DSCR_COMFORT_THRESHOLD.toFixed(2)}×). Le prêteur réduira probablement l'emprunt maximal pour respecter ses ratios — l'acheteur devra donc injecter davantage d'équité (mise de fonds estimée : ${formatValue(miseDeFonds)}). Préparer un argumentaire de revenus annexes ou de garantie SCHL pour solidifier le dossier.`
+        : `Le DSCR retenu de ${ratioLabel} est sous le minimum bancaire (${minimumDscr.toFixed(2)}×). Le prêteur ne couvrira pas le service de la dette aux paramètres demandés : l'acheteur devra majorer significativement sa mise de fonds (${formatValue(miseDeFonds)}) ou renégocier le prix à la baisse. Ce verdict ne ferme pas la transaction, mais il rallonge le cycle et exige un montage financier renforcé.`;
+
+  const bodyEn =
+    verdict === 'favorable'
+      ? `Retained DSCR of ${ratioLabel} clears the bank comfort threshold (${DSCR_COMFORT_THRESHOLD.toFixed(2)}×). The lender can finance within standard ratios and the required down payment stays in line (${formatValue(miseDeFonds)}). Strong selling argument.`
+      : verdict === 'conditionnel'
+        ? `Retained DSCR of ${ratioLabel} sits between the minimum (${minimumDscr.toFixed(2)}×) and comfort zone (${DSCR_COMFORT_THRESHOLD.toFixed(2)}×). The lender is likely to trim the maximum loan to honor its ratios — the buyer will need extra equity (estimated down payment: ${formatValue(miseDeFonds)}). Prepare ancillary income evidence or a CMHC guarantee to strengthen the file.`
+        : `Retained DSCR of ${ratioLabel} is below the bank minimum (${minimumDscr.toFixed(2)}×). The lender will not cover debt service at the requested parameters: the buyer must raise the down payment significantly (${formatValue(miseDeFonds)}) or renegotiate the price down. This verdict doesn't end the deal, but it lengthens the cycle and demands a reinforced financing structure.`;
+
+  return (
+    <section
+      className={cn(
+        inst.section,
+        'border-2 bg-white p-0 overflow-hidden',
+        palette.border
+      )}
+      aria-labelledby="seller-verdict-title"
+    >
+      <header
+        className={cn(
+          'flex items-center gap-3 px-5 py-3 text-[14px] font-black uppercase tracking-[0.18em]',
+          palette.ribbon
+        )}
+      >
+        {palette.icon}
+        <p id="seller-verdict-title">
+          {language === 'fr' ? 'Verdict pour le vendeur' : 'Seller verdict'}
+        </p>
+      </header>
+      <div className="px-5 py-5">
+        <p className="text-[18px] font-black uppercase tracking-wide text-[#142c6a]">
+          {language === 'fr' ? palette.headlineFr : palette.headlineEn}
+        </p>
+        <p className="mt-4 text-[16px] font-semibold leading-relaxed text-black">
+          {language === 'fr' ? bodyFr : bodyEn}
+        </p>
+      </div>
+    </section>
+  );
+}
+
 export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
   const { t, language } = useLanguage();
   const { financialData, loading, error, isInProvider } = useFinancialData();
+
+  const [useAuditRne, setUseAuditRne] = useState<boolean>(() => readUseAuditRneFromSession());
+  const handleToggleUseAuditRne = useCallback((next: boolean) => {
+    setUseAuditRne(next);
+    persistUseAuditRne(next);
+  }, []);
 
   const residenceHints = useMemo(
     () => ({
@@ -100,16 +421,22 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
     [residence]
   );
 
-  const fmt = (n: number | null) =>
-    n != null && Number.isFinite(n) ? formatCurrencyCore(n, { fallback: '—' }) : '—';
+  const fmt = useCallback(
+    (n: number | null) =>
+      n != null && Number.isFinite(n) ? formatCurrencyCore(n, { fallback: '—' }) : '—',
+    []
+  );
 
   const model = useMemo(
     () =>
       computeFinancabilite(financialData, residenceHints, {
         formatCurrency: fmt,
+        useAuditNoi: useAuditRne,
       }),
-    [financialData, residenceHints]
+    [financialData, residenceHints, fmt, useAuditRne]
   );
+
+  const safeLanguage: 'fr' | 'en' = language === 'fr' ? 'fr' : 'en';
 
   if (!isInProvider) {
     return <div className={inst.alertAmber}>{t('Provider financier manquant.', 'Financial provider missing.')}</div>;
@@ -149,6 +476,127 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
   const verdictBorder =
     model.financingVerdict === 'financable' ? 'border-l-emerald-600' : 'border-l-amber-500';
 
+  const minimumDscr = getMinimumDscrForProgram(
+    model.financingProgramId,
+    model.propertyAssetCategory
+  );
+
+  const checklistRows: ReadonlyArray<ChecklistRow> = (() => {
+    const ratio = model.ratioCouverture;
+    const ratioLabel =
+      ratio != null && Number.isFinite(ratio) ? `${ratio.toFixed(2)}×` : '—';
+
+    const criticalStatus: ChecklistStatus =
+      ratio == null || !Number.isFinite(ratio)
+        ? 'unknown'
+        : ratio >= DSCR_CRITICAL_THRESHOLD
+          ? 'ok'
+          : 'fail';
+    const confortStatus: ChecklistStatus =
+      ratio == null || !Number.isFinite(ratio)
+        ? 'unknown'
+        : ratio >= DSCR_COMFORT_THRESHOLD
+          ? 'ok'
+          : 'warn';
+
+    const noiAudit = model.noiAudit;
+    const noiDeclared = model.noiDeclare;
+    let noiStatus: ChecklistStatus = 'unknown';
+    let noiNoteFr = 'Aucune donnée RNE disponible — compléter Revenus & Dépenses.';
+    let noiNoteEn = 'No NOI data available — complete Revenue & Expenses.';
+    if (noiAudit != null && noiDeclared != null && noiAudit > 0 && noiDeclared > 0) {
+      const variance = Math.abs(noiAudit - noiDeclared) / Math.max(noiAudit, noiDeclared);
+      if (variance <= 0.05) {
+        noiStatus = 'ok';
+        noiNoteFr =
+          'RNE déclaré et RNE audité concordent (écart ≤ 5 %). Pièces justificatives en ordre côté prêteur.';
+        noiNoteEn =
+          'Declared and audited NOI match (≤ 5% variance). Supporting evidence is aligned with lender expectations.';
+      } else if (variance <= 0.15) {
+        noiStatus = 'warn';
+        noiNoteFr = `Écart de ${(variance * 100).toFixed(1)} % entre RNE déclaré et RNE audité — justifier la normalisation des dépenses.`;
+        noiNoteEn = `${(variance * 100).toFixed(1)}% gap between declared and audited NOI — justify expense normalization.`;
+      } else {
+        noiStatus = 'fail';
+        noiNoteFr = `Écart majeur de ${(variance * 100).toFixed(1)} % entre RNE déclaré et RNE audité — auditer les sources avant présentation prêteur.`;
+        noiNoteEn = `Major ${(variance * 100).toFixed(1)}% gap between declared and audited NOI — audit sources before lender submission.`;
+      }
+    } else if (noiAudit != null && noiAudit > 0) {
+      noiStatus = 'warn';
+      noiNoteFr =
+        'Seul le RNE audité (calculé) est disponible — manque la déclaration vendeur pour pleinement convaincre le prêteur.';
+      noiNoteEn =
+        'Only audited NOI (computed) is available — missing seller statement to fully convince the lender.';
+    } else if (noiDeclared != null && noiDeclared > 0) {
+      noiStatus = 'warn';
+      noiNoteFr =
+        'Seul le RNE déclaré est disponible — recommander une normalisation par dépenses auditées.';
+      noiNoteEn =
+        'Only declared NOI is available — recommend normalization with audited expenses.';
+    }
+
+    return [
+      {
+        id: 'dscr_critical',
+        labelFr: `DSCR bancaire critique (≥ ${DSCR_CRITICAL_THRESHOLD.toFixed(2)}×)`,
+        labelEn: `Critical bank DSCR (≥ ${DSCR_CRITICAL_THRESHOLD.toFixed(2)}×)`,
+        status: criticalStatus,
+        valueFr: ratioLabel,
+        valueEn: ratioLabel,
+        noteFr:
+          criticalStatus === 'ok'
+            ? `Le service de la dette est couvert au-dessus du seuil minimal exigé par les prêteurs commerciaux.`
+            : criticalStatus === 'fail'
+              ? `Le DSCR retenu de ${ratioLabel} est sous le seuil critique (${DSCR_CRITICAL_THRESHOLD.toFixed(2)}×) — refus probable sans réduction du prêt.`
+              : 'Données insuffisantes pour vérifier le seuil critique.',
+        noteEn:
+          criticalStatus === 'ok'
+            ? `Debt service clears the minimum threshold required by commercial lenders.`
+            : criticalStatus === 'fail'
+              ? `Retained DSCR of ${ratioLabel} is below the critical threshold (${DSCR_CRITICAL_THRESHOLD.toFixed(2)}×) — likely refusal without loan reduction.`
+              : 'Insufficient data to verify the critical threshold.',
+      },
+      {
+        id: 'dscr_comfort',
+        labelFr: `DSCR de confort couvert (≥ ${DSCR_COMFORT_THRESHOLD.toFixed(2)}×)`,
+        labelEn: `Comfort DSCR covered (≥ ${DSCR_COMFORT_THRESHOLD.toFixed(2)}×)`,
+        status: confortStatus,
+        valueFr: ratioLabel,
+        valueEn: ratioLabel,
+        noteFr:
+          confortStatus === 'ok'
+            ? `Marge de sécurité confortable : le prêteur n'imposera pas de contre-conditions liées au DSCR.`
+            : confortStatus === 'warn'
+              ? `DSCR sous la zone de confort — le prêteur conservera des marges (LTV plus serrée, MFR majorée).`
+              : 'Données insuffisantes pour vérifier le seuil de confort.',
+        noteEn:
+          confortStatus === 'ok'
+            ? `Comfortable safety margin: no DSCR-driven counter-conditions expected.`
+            : confortStatus === 'warn'
+              ? `DSCR below comfort zone — the lender will tighten ratios (lower LTV, higher down payment).`
+              : 'Insufficient data to verify the comfort threshold.',
+      },
+      {
+        id: 'noi_evidence',
+        labelFr: 'Adéquation du RNE documenté',
+        labelEn: 'Documented NOI adequacy',
+        status: noiStatus,
+        valueFr: `${fmt(noiDeclared)} · ${fmt(noiAudit)}`,
+        valueEn: `${fmt(noiDeclared)} · ${fmt(noiAudit)}`,
+        noteFr: noiNoteFr,
+        noteEn: noiNoteEn,
+      },
+    ];
+  })();
+
+  const sellerVerdict: SellerVerdict = (() => {
+    const ratio = model.ratioCouverture;
+    if (ratio == null || !Number.isFinite(ratio)) return 'conditionnel';
+    if (ratio < minimumDscr) return 'defavorable';
+    if (ratio < DSCR_COMFORT_THRESHOLD) return 'conditionnel';
+    return 'favorable';
+  })();
+
   return (
     <div className={cn('space-y-5', inst.page)}>
       <InstitutionalPageHeader
@@ -160,6 +608,15 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
         lastUpdated={model.provenance.lastUpdated}
         source={model.provenance.source}
         confidenceTier={model.provenance.confidenceTier}
+      />
+
+      <AuditRneToggle
+        useAuditRne={useAuditRne}
+        onChange={handleToggleUseAuditRne}
+        language={safeLanguage}
+        noiDeclared={model.noiDeclare}
+        noiAudit={model.noiAudit}
+        formatValue={fmt}
       />
 
       <div className={cn(inst.kpi, 'border-l-4', verdictBorder, 'p-6')}>
@@ -262,6 +719,17 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
           </tbody>
         </table>
       </section>
+
+      <BankComplianceChecklist rows={checklistRows} language={safeLanguage} />
+
+      <SellerVerdictPanel
+        verdict={sellerVerdict}
+        language={safeLanguage}
+        ratio={model.ratioCouverture}
+        minimumDscr={minimumDscr}
+        miseDeFonds={model.miseDeFondsRequise ?? null}
+        formatValue={fmt}
+      />
 
       <div className="space-y-1 px-1 text-[10px] text-slate-600 italic">
         <p>{language === 'fr' ? model.dscrVerdict.descriptionFr : model.dscrVerdict.descriptionEn}</p>

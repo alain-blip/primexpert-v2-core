@@ -47,12 +47,30 @@ export function TP70Card({ residenceHints }: TP70CardProps) {
             {t('Estimation', 'Estimate')}
           </span>
         )}
-        {stale && tp70.confidenceTier !== 'low' && (
-          <span className="rounded-md border border-blue-300 bg-blue-50 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-blue-800">
-            {t('À rafraîchir', 'Refresh suggested')}
-          </span>
-        )}
       </div>
+
+      {stale && (
+        <div
+          className="mb-4 flex items-start gap-3 rounded-2xl border-2 border-amber-500 bg-amber-50 px-4 py-3 shadow-sm"
+          role="alert"
+        >
+          <AlertTriangle className="h-7 w-7 shrink-0 text-amber-700" aria-hidden />
+          <div className="min-w-0">
+            <p className="text-[15px] font-black uppercase tracking-wider text-amber-900">
+              {t(
+                '⚠ ESTIMATION — DONNÉES À RAFRAÎCHIR',
+                '⚠ ESTIMATE — DATA NEEDS REFRESH'
+              )}
+            </p>
+            <p className="mt-1 text-[15px] font-semibold leading-relaxed text-amber-950">
+              {t(
+                `Année de référence : ${tp70.refYear ?? '—'} · plus de 18 mois sans mise à jour. Le calcul d’optimisation TP70 et l’angle fiscal associé peuvent battre de l’aile — rafraîchir les sources de population et d’offre avant présentation au prêteur.`,
+                `Reference year: ${tp70.refYear ?? '—'} · over 18 months since last update. TP70 optimization and tax framing may drift — refresh population and supply sources before lender submission.`
+              )}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
