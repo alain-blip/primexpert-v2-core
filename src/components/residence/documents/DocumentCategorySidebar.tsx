@@ -47,7 +47,7 @@ export function DocumentCategorySidebar({
               className={cn(
                 'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition',
                 active
-                  ? 'border border-[#D4AF37]/40 bg-amber-50 text-[#000000]'
+                  ? 'border border-[#D4AF37]/40 bg-amber-50 text-[#142c6a]'
                   : 'border border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50'
               )}
             >

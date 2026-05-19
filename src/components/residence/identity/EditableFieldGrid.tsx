@@ -102,7 +102,7 @@ function FieldCell({
               onDraftChange(e.target.value);
             }}
             onBlur={handleBlur}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#000000] focus:border-[#D4AF37]/60 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#142c6a] focus:border-[#D4AF37]/60 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30"
           >
             <option value="">{language === 'fr' ? '—' : '—'}</option>
             <option value="Oui">{language === 'fr' ? 'Oui' : 'Yes'}</option>
@@ -119,14 +119,14 @@ function FieldCell({
                 e.currentTarget.blur();
               }
             }}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#000000] placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#142c6a] placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30"
             placeholder={language === 'fr' ? 'Saisir…' : 'Enter…'}
           />
         )
       ) : (
         <p
           className={cn(
-            'text-sm font-semibold text-[#000000] break-words',
+            'text-sm font-semibold text-[#142c6a] break-words',
             field.empty && 'text-slate-400 font-normal italic'
           )}
         >

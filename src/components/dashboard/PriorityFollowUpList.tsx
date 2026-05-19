@@ -6,6 +6,11 @@ import React, { useMemo } from 'react';
 import { useLanguage } from '../../lib/i18n';
 import { useWorkhubNav } from '../../lib/workhubNav';
 import { stashListingsFocusResidenceId } from '../../lib/listingsFocus';
+import {
+  institutionalInkTextClass,
+  institutionalPrimaryButtonClass,
+  institutionalWhiteCardCompactClass,
+} from '../../lib/institutionalTheme';
 import type { DashboardPriorityFollowUpItem } from '../../services/dashboardPriorityFollowUp';
 import { groupDashboardPrioritiesByDate } from '../../services/dashboardPriorityFollowUp';
 
@@ -45,15 +50,15 @@ function PriorityRow({
   const companySuffix = item.buyerCompany ? ` (${item.buyerCompany})` : '';
 
   return (
-    <li className="rounded-xl border border-slate-200 bg-white px-4 py-3 space-y-2">
-      <p className="text-sm text-[#000000] leading-snug">
-        <span className="font-semibold">{item.title}</span>
+    <li className={institutionalWhiteCardCompactClass}>
+      <p className={`text-sm ${institutionalInkTextClass} leading-snug font-semibold`}>
+        <span className="font-black">{item.title}</span>
         {' — '}
         {t('Acheteur', 'Buyer')}:{' '}
         <button
           type="button"
           onClick={() => onOpenMail(item)}
-          className="font-semibold underline underline-offset-2 hover:text-slate-700"
+          className="font-semibold underline underline-offset-2 hover:text-[#142c6a]/70"
         >
           {item.buyerFullName}
           {companySuffix}
@@ -63,25 +68,28 @@ function PriorityRow({
         <button
           type="button"
           onClick={() => onOpenResidence(item.residenceId)}
-          className="font-semibold underline underline-offset-2 hover:text-slate-700"
+          className="font-semibold underline underline-offset-2 hover:text-[#142c6a]/70"
         >
           {item.propertyName}
         </button>
       </p>
-      <p className="text-sm text-[#000000] leading-relaxed">
+      <p className={`text-sm ${institutionalInkTextClass} leading-relaxed`}>
         {item.step === 'pa_inspection' || item.step === 'pa_financement' ? (
           item.actionText
         ) : (
           <>
-            <span className="font-semibold">{t('Action', 'Action')}:</span> {item.actionText}
+            <span className="font-black text-[10px] uppercase tracking-wider">
+              {t('Action', 'Action')}
+            </span>{' '}
+            {item.actionText}
           </>
         )}
       </p>
-      <p className="text-sm text-[#000000] flex flex-wrap gap-2">
+      <p className={`text-sm ${institutionalInkTextClass} flex flex-wrap gap-2`}>
         <button
           type="button"
           onClick={() => onOpenPhone(item.buyerPhone)}
-          className="rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-semibold hover:border-slate-300 transition"
+          className={institutionalPrimaryButtonClass}
         >
           [ 📞 {t('Appeler', 'Call')} ]
         </button>
@@ -89,7 +97,7 @@ function PriorityRow({
           <button
             type="button"
             onClick={() => onOpenOffer(item.residenceId)}
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-semibold hover:border-slate-300 transition"
+            className={institutionalPrimaryButtonClass}
           >
             [ 📄 {t('Offre / LOI', 'Offer / LOI')} ]
           </button>
@@ -97,7 +105,7 @@ function PriorityRow({
           <button
             type="button"
             onClick={() => onOpenMail(item)}
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-semibold hover:border-slate-300 transition"
+            className={institutionalPrimaryButtonClass}
           >
             [ 🔎 {t('Envoyer un courriel', 'Send an email')} ]
           </button>
@@ -145,13 +153,15 @@ export function PriorityFollowUpList({ items, loading }: PriorityFollowUpListPro
 
   if (loading) {
     return (
-      <p className="text-sm text-[#000000] py-4">{t('Chargement…', 'Loading…')}</p>
+      <p className={`text-sm ${institutionalInkTextClass} py-4 font-semibold text-white`}>
+        {t('Chargement…', 'Loading…')}
+      </p>
     );
   }
 
   if (items.length === 0) {
     return (
-      <p className="text-sm text-[#000000] py-2 leading-relaxed">
+      <p className="text-sm text-white/90 py-2 leading-relaxed bg-white/10 border-2 border-white/20 rounded-xl p-5">
         {t(
           'Aucune priorité active (J+3 / J+5 / J+7 ou échéances PA à 48 h).',
           'No active priorities (D+3 / D+5 / D+7 or PA deadlines within 48 h).'
@@ -164,10 +174,10 @@ export function PriorityFollowUpList({ items, loading }: PriorityFollowUpListPro
     <div className="space-y-6">
       {groups.map((group) => (
         <section key={group.dateKey}>
-          <h4 className="text-[11px] font-black uppercase tracking-[0.14em] text-[#000000] mb-3 capitalize">
+          <h4 className="text-[11px] font-black uppercase tracking-[0.14em] text-white mb-3 capitalize">
             {group.dateLabel}
           </h4>
-          <ul className="space-y-3">
+          <ul className="space-y-3 m-0 p-0 list-none">
             {group.items.map((item) => (
               <PriorityRow
                 key={item.id}

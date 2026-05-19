@@ -4,8 +4,9 @@
  */
 
 import React, { Suspense, lazy, useEffect, useState } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
+import { auth } from './lib/firebase';
 import { isAccountSuspended } from './lib/billingAccess';
 import { SuspendedAccountScreen } from './components/SuspendedAccountScreen';
 import { WorkhubNavProvider } from './lib/workhubNav';
@@ -29,7 +30,9 @@ const ContentGen = lazy(() => import('./components/ContentGen').then(m => ({ def
 const Mailbox    = lazy(() =>
   import('./components/mailbox/MailboxContainer').then((m) => ({ default: m.MailboxContainer }))
 );
-const Drive      = lazy(() => import('./components/Drive/Drive').then(m => ({ default: m.Drive })));
+const BrokerToolsDocuments = lazy(() =>
+  import('./components/BrokerToolsDocuments').then((m) => ({ default: m.BrokerToolsDocuments }))
+);
 const Softphone  = lazy(() => import('./components/Softphone/Softphone').then(m => ({ default: m.Softphone })));
 const Settings   = lazy(() => import('./components/Settings').then(m => ({ default: m.Settings })));
 const AdminSubscriptionsDashboard = lazy(() =>
@@ -63,16 +66,33 @@ function RouteSuspense() {
 }
 
 function LandingPage() {
-  const { user, signIn } = useAuth();
+  const { user, signIn, loading } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  /**
+   * Après `signInWithRedirect`, l’utilisateur revient sur `/` sans que le clic
+   * ait encore un `user` : il ne faut pas appeler `navigate('/workhub')` tout de suite
+   * (sinon route protégée → retour accueil en boucle).
+   */
+  useEffect(() => {
+    if (loading) return;
+    if (user && location.pathname === '/') {
+      navigate('/workhub', { replace: true });
+    }
+  }, [user, loading, location.pathname, navigate]);
 
   const handleInitializeSession = async () => {
-    if (!user) {
-      await signIn();
+    if (user) {
+      navigate('/workhub');
+      return;
     }
-
-    navigate('/workhub');
+    await signIn();
+    /** Après popup (dev), la session est déjà sur `auth` avant le prochain rendu du contexte. */
+    if (import.meta.env.DEV && auth.currentUser) {
+      navigate('/workhub');
+    }
   };
 
   return (
@@ -246,7 +266,7 @@ function Workhub() {
       case 'crm': return <CRM />;
       case 'content': return <ContentGen />;
       case 'mail': return <Mailbox />;
-      case 'drive': return <Drive />;
+      case 'drive': return <BrokerToolsDocuments />;
       case 'phone': return <Softphone />;
       case 'settings': return <Settings />;
       default: return <Dashboard />;
@@ -279,6 +299,14 @@ function ProtectedWorkhub() {
   const { user, loading, profile } = useAuth();
 
   if (loading) {
+    return <LoadingScreen />;
+  }
+
+  /**
+   * Juste après une connexion par popup, `auth.currentUser` peut être défini
+   * une fraction de seconde avant `user` dans le contexte React.
+   */
+  if (!user && auth.currentUser) {
     return <LoadingScreen />;
   }
 

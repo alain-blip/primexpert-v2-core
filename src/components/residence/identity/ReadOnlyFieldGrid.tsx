@@ -27,7 +27,7 @@ export function ReadOnlyFieldGrid({ fields, language }: ReadOnlyFieldGridProps) 
           </dt>
           <dd
             className={cn(
-              'text-sm font-semibold text-[#000000] break-words',
+              'text-sm font-semibold text-[#142c6a] break-words',
               field.empty && 'text-slate-400 font-normal italic'
             )}
           >

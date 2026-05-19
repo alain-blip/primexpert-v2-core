@@ -54,7 +54,7 @@ function RatioTable({
   return (
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden font-sans">
       <header className="px-5 py-3 border-b border-slate-200 bg-slate-50">
-        <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-[#000000]">
+        <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-[#142c6a]">
           {title}
         </h3>
       </header>
@@ -77,11 +77,11 @@ function RatioTable({
                 key={row.id}
                 className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
               >
-                <td className="px-5 py-3 font-mono text-[11px] font-black text-[#000000] whitespace-nowrap">
+                <td className="px-5 py-3 font-mono text-[11px] font-black text-[#142c6a] whitespace-nowrap">
                   {row.code}
                 </td>
                 <td className="px-5 py-3">
-                  <p className="font-semibold text-[#000000]">
+                  <p className="font-semibold text-[#142c6a]">
                     {language === 'fr' ? row.labelFr : row.labelEn}
                   </p>
                   {(language === 'fr' ? row.definitionFr : row.definitionEn) && (
@@ -90,7 +90,7 @@ function RatioTable({
                     </p>
                   )}
                 </td>
-                <td className="px-5 py-3 text-right text-base font-black text-[#000000] tabular-nums whitespace-nowrap">
+                <td className="px-5 py-3 text-right text-base font-black text-[#142c6a] tabular-nums whitespace-nowrap">
                   {formatRatioValue(
                     row.value,
                     row.displayKind,
@@ -162,7 +162,7 @@ export function PerformanceRatiosTab({ residence }: PerformanceRatiosTabProps) {
       <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
         <Percent className="h-5 w-5 text-slate-700 shrink-0" />
         <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#000000]">
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#142c6a]">
             {t('Ratios de performance', 'Performance ratios')}
           </p>
           <p className="text-[10px] text-slate-600 font-mono mt-0.5">
@@ -177,7 +177,7 @@ export function PerformanceRatiosTab({ residence }: PerformanceRatiosTabProps) {
           role="alert"
         >
           <AlertTriangle className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
-          <p className="text-sm font-semibold text-[#000000]">
+          <p className="text-sm font-semibold text-[#142c6a]">
             {t(
               'Données financières de l’inscription incomplètes pour certains ratios (prix ou revenu brut effectif (RBE) manquant).',
               'Listing financial data incomplete for some ratios (missing price or effective gross income (EGI)).'
@@ -217,7 +217,7 @@ export function PerformanceRatiosTab({ residence }: PerformanceRatiosTabProps) {
               className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
             >
               <p className="text-[9px] font-bold uppercase text-slate-600">{label}</p>
-              <p className="text-lg font-black text-[#000000] tabular-nums mt-1">{display}</p>
+              <p className="text-lg font-black text-[#142c6a] tabular-nums mt-1">{display}</p>
             </div>
           );
         })}

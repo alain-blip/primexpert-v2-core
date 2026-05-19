@@ -51,7 +51,7 @@ function StepStatusText({
       ? t('En cours', 'Active')
       : t('À venir', 'Upcoming');
   return (
-    <span className="text-[10px] font-mono uppercase tracking-widest text-[#000000]">
+    <span className="text-[10px] font-mono uppercase tracking-widest text-[#142c6a]">
       {t(labelFr, labelEn)} — {status}
     </span>
   );
@@ -203,7 +203,7 @@ export function IntelligenceChronologie({
         <h3 className={inst.sectionTitle}>
           {t('Vélocité transactionnelle (J+7)', 'Transaction velocity (D+7)')}
         </h3>
-        <p className="text-[10px] text-[#000000] mt-1 font-medium">
+        <p className="text-[10px] text-[#142c6a] mt-1 font-medium">
           {t(
             'Baseline = date de libération documentaire',
             'Baseline = document package release date'
@@ -217,7 +217,7 @@ export function IntelligenceChronologie({
 
       <div className="p-5 space-y-4">
         {velocity.phase === 'pending_baseline' && (
-          <p className="text-sm text-[#000000] leading-relaxed">
+          <p className="text-sm text-[#142c6a] leading-relaxed">
             {t(
               'Renseignez la date de libération documentaire sur la fiche (ex. dateLiberationDocuments ou buyerReleaseGate.documentReleasedAt) pour activer le protocole.',
               'Set the document release date on the listing record (e.g. dateLiberationDocuments or buyerReleaseGate.documentReleasedAt) to activate the protocol.'
@@ -226,13 +226,13 @@ export function IntelligenceChronologie({
         )}
 
         {velocity.positionRequired && (
-          <p className="text-sm font-semibold text-[#000000]">
+          <p className="text-sm font-semibold text-[#142c6a]">
             ⚠️ {t('Prise de position requise (Échéancier atteint)', 'Position required (deadline reached)')}
           </p>
         )}
 
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="w-full text-left text-sm text-[#000000]">
+          <table className="w-full text-left text-sm text-[#142c6a]">
             <thead>
               <tr className="border-b border-slate-200">
                 <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em]">
@@ -251,7 +251,7 @@ export function IntelligenceChronologie({
                 <td className="px-4 py-3 font-semibold">
                   {t('A — Extraction des questions', 'A — Question extraction')}
                 </td>
-                <td className="px-4 py-3 text-[#000000]">J+3 → J+4</td>
+                <td className="px-4 py-3 text-[#142c6a]">J+3 → J+4</td>
                 <td className="px-4 py-3">
                   <StepStatusText
                     active={velocity.stepAActive}
@@ -270,7 +270,7 @@ export function IntelligenceChronologie({
                 <td className="px-4 py-3 font-semibold">
                   {t('B — Relance stratégique', 'B — Strategic follow-up')}
                 </td>
-                <td className="px-4 py-3 text-[#000000]">J+5</td>
+                <td className="px-4 py-3 text-[#142c6a]">J+5</td>
                 <td className="px-4 py-3">
                   <StepStatusText
                     active={velocity.stepBActive}
@@ -284,7 +284,7 @@ export function IntelligenceChronologie({
                 <td className="px-4 py-3 font-semibold">
                   {t('C — Prise de position / LOI', 'C — Position / LOI')}
                 </td>
-                <td className="px-4 py-3 text-[#000000]">J+7</td>
+                <td className="px-4 py-3 text-[#142c6a]">J+7</td>
                 <td className="px-4 py-3">
                   <StepStatusText
                     active={velocity.stepCActive && !velocity.offerLogged}
@@ -301,11 +301,11 @@ export function IntelligenceChronologie({
 
         {(velocity.stepAActive || velocity.extractedQuestions.length > 0) && (
           <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#000000] mb-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#142c6a] mb-3">
               {t('Questions regroupées (prénom seul)', 'Grouped questions (first name only)')}
             </p>
             {velocity.extractedQuestions.length === 0 ? (
-              <p className="text-sm text-[#000000]">
+              <p className="text-sm text-[#142c6a]">
                 {t(
                   'Aucune demande de clarification détectée sur J+3 à J+4.',
                   'No clarification requests detected on D+3 to D+4.'
@@ -318,11 +318,11 @@ export function IntelligenceChronologie({
                     key={q.id}
                     className="border-t border-slate-100 pt-2 first:border-0 first:pt-0"
                   >
-                    <p className="text-[10px] font-mono text-[#000000]">
+                    <p className="text-[10px] font-mono text-[#142c6a]">
                       {q.maskedFirstName} ·{' '}
                       {new Date(q.atMillis).toLocaleDateString(locale)}
                     </p>
-                    <p className="text-sm text-[#000000] leading-relaxed mt-0.5">
+                    <p className="text-sm text-[#142c6a] leading-relaxed mt-0.5">
                       {q.questionLine}
                     </p>
                   </li>
@@ -335,11 +335,11 @@ export function IntelligenceChronologie({
         {((velocity.daysSinceRelease ?? 0) >= 5 && !velocity.offerLogged) ||
         relanceText ? (
           <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#000000]">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#142c6a]">
               {t('Relance J+5', 'D+5 follow-up')}
             </p>
             {!nylasOn && (
-              <p className="text-sm text-[#000000]">
+              <p className="text-sm text-[#142c6a]">
                 {t(
                   'Nylas désactivé — activez VITE_NYLAS_ENABLED=true pour l’envoi.',
                   'Nylas disabled — set VITE_NYLAS_ENABLED=true to send.'
@@ -353,7 +353,7 @@ export function IntelligenceChronologie({
                 disabled={(velocity.daysSinceRelease ?? 0) < 5}
                 className={cn(
                   'inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.12em]',
-                  'bg-[#000000] text-white hover:bg-slate-900 disabled:opacity-40 transition'
+                  'bg-[#142c6a] text-white hover:bg-[#0f1f4d] disabled:opacity-40 transition'
                 )}
               >
                 <PenLine className="h-3.5 w-3.5" />
@@ -367,7 +367,7 @@ export function IntelligenceChronologie({
               rows={5}
               className={cn(
                 'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed',
-                'text-[#000000] resize-y min-h-[120px]',
+                'text-[#142c6a] resize-y min-h-[120px]',
                 'focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300'
               )}
               aria-label={t('Texte relance J+5', 'D+5 follow-up text')}
@@ -380,7 +380,7 @@ export function IntelligenceChronologie({
                 !sendReadiness.ready ||
                 (!relanceText.trim() && !velocity.relanceJ5Text)
               }
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-[#000000] hover:border-slate-400 disabled:opacity-40 transition"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-[#142c6a] hover:border-slate-400 disabled:opacity-40 transition"
             >
               {sending ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -393,7 +393,7 @@ export function IntelligenceChronologie({
         ) : null}
 
         {velocity.stepCActive && !velocity.offerLogged && (
-          <p className="text-sm text-[#000000] leading-relaxed">
+          <p className="text-sm text-[#142c6a] leading-relaxed">
             {t(
               'Échéancier J+7 atteint : enregistrez une offre ou une LOI au dossier (offreLoguee) pour lever l’alerte.',
               'D+7 deadline reached: log an offer or LOI on file (offreLoguee) to clear the alert.'
@@ -402,12 +402,12 @@ export function IntelligenceChronologie({
         )}
 
         {error && (
-          <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-[#000000]">
+          <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-[#142c6a]">
             {error}
           </p>
         )}
         {success && (
-          <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-[#000000]">
+          <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-[#142c6a]">
             {success}
           </p>
         )}

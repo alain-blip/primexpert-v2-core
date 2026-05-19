@@ -11,16 +11,16 @@ export type ParsingStatus =
   | 'failed'
   | 'verified';
 
-/** Type réel détecté par le pipeline universel (indépendant du dossier de dépôt). */
-export type DetectedDocumentType =
+/** Types d’extraction structurée (legacy + pipeline). */
+export type StructuredExtractionKind =
   | 'certificat_localisation'
   | 'etats_financiers'
   | 'rapport_evaluation';
 
 /** Données extraites par le parseur IA (structure évolutive). */
 export interface PropertyDocumentExtractedData {
-  /** Type déduit du contenu + nom de fichier (Gemini). */
-  documentType?: DetectedDocumentType;
+  /** Libellé nomenclature Alain (liste fermée) ou type structuré legacy. */
+  documentType?: string;
   /** Montants détectés (ex. taxes, loyers). */
   amounts?: Array<{ label: string; value: number; currency?: string }>;
   /** Dates clés extraites. */
@@ -68,6 +68,7 @@ export interface PropertyDocumentExtractedData {
 
 export interface PropertyDocumentRecord {
   id: string;
+  scope?: 'property';
   propertyId: string;
   category: PropertyDocumentCategory;
   fileName: string;
@@ -97,21 +98,21 @@ export interface PropertyDocumentCategoryDef {
   labelEn: string;
 }
 
-/** Ordre alphabétique (libellés FR). */
+/** Libellés UI — alignés sur la matrice transactionnelle (stockage inchangé). */
 export const PROPERTY_DOCUMENT_CATEGORIES: PropertyDocumentCategoryDef[] = [
   {
     id: 'financier',
-    labelFr: 'Financier',
-    labelEn: 'Financial',
+    labelFr: 'Documents pour acheteurs',
+    labelEn: 'Documents for buyers',
   },
   {
     id: 'legal',
-    labelFr: 'Légal',
-    labelEn: 'Legal',
+    labelFr: 'Contrat et annexes',
+    labelEn: 'Listing contract & schedules',
   },
   {
     id: 'technique',
-    labelFr: 'Technique',
-    labelEn: 'Technical',
+    labelFr: 'Actes et autres documents',
+    labelEn: 'Deeds & other documents',
   },
 ];

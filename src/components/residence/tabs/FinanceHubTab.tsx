@@ -69,32 +69,27 @@ export function FinanceHubTab({ residence }: FinanceHubTabProps) {
   }, [subTab, residence]);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 shadow-sm overflow-hidden">
-      {/* En-tête Hub */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-4">
-        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800">
-          {t('Hub Finance institutionnel', 'Institutional Finance Hub')}
-        </p>
-        {!loading && (
+    <>
+      {!loading && (
+        <div className="flex flex-wrap items-center justify-end gap-3 border-b border-[#142c6a]/15 bg-white px-5 py-3">
           <span
             className={cn(
               'text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border',
               hasFinancials
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                : 'border-slate-200 bg-slate-100 text-slate-600'
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-900'
+                : 'border-[#142c6a]/20 bg-slate-50 text-[#142c6a]'
             )}
           >
             {hasFinancials
               ? t('Données V2 actives', 'V2 data active')
               : t('Aucun dataV2', 'No dataV2')}
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Sous-onglets */}
-      <div
+      <motion.div
         role="tablist"
-        className="flex gap-2 overflow-x-auto border-b border-slate-200 bg-white px-4 py-3"
+        className="flex gap-2 overflow-x-auto border-b border-[#142c6a]/15 bg-white px-4 py-3"
         aria-label={t('Sous-onglets finance', 'Finance sub-tabs')}
       >
         {SUB_TABS.map((tab) => {
@@ -111,21 +106,20 @@ export function FinanceHubTab({ residence }: FinanceHubTabProps) {
               className={cn(
                 'flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-[10px] font-bold uppercase tracking-wide border transition',
                 active
-                  ? 'border-slate-300 bg-white text-[#000000] shadow-sm ring-1 ring-slate-200'
-                  : 'border-transparent bg-transparent text-slate-600 hover:bg-slate-50 hover:text-[#000000]'
+                  ? 'border-[#142c6a] bg-amber-50/80 text-[#142c6a] shadow-sm ring-1 ring-[#142c6a]/20'
+                  : 'border-transparent bg-transparent text-slate-600 hover:bg-slate-50 hover:text-[#142c6a]'
               )}
             >
-              <Icon className={cn('h-3.5 w-3.5', active ? 'text-slate-800' : 'text-slate-500')} />
+              <Icon className={cn('h-3.5 w-3.5', active ? 'text-[#142c6a]' : 'text-slate-500')} />
               {label}
             </button>
           );
         })}
-      </div>
+      </motion.div>
 
-      {/* Contenu onglet actif */}
-      <div key={subTab} role="tabpanel" className="bg-slate-50 p-5 min-h-[320px]">
+      <motion.div key={subTab} role="tabpanel" className="p-5 min-h-[320px] bg-white">
         {panel}
-      </div>
-    </div>
+      </motion.div>
+    </>
   );
 }

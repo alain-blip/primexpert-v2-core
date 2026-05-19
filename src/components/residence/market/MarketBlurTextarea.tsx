@@ -48,7 +48,7 @@ export function MarketBlurTextarea({
         placeholder={placeholder}
         className={cn(
           'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed',
-          'text-[#000000] placeholder:text-slate-400',
+          'text-[#142c6a] placeholder:text-slate-400',
           'focus:border-[#D4AF37]/50 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/25 resize-y min-h-[120px]'
         )}
       />

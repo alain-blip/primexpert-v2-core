@@ -65,7 +65,7 @@ function StatusBadge({
     red: 'border-red-200 bg-red-50 text-red-900',
     slate: 'border-slate-200 bg-slate-50 text-slate-700',
     blue: 'border-blue-200 bg-blue-50 text-blue-900',
-    gold: 'border-[#D4AF37]/40 bg-amber-50 text-[#000000]',
+    gold: 'border-[#D4AF37]/40 bg-amber-50 text-[#142c6a]',
   };
   return (
     <span
@@ -174,6 +174,7 @@ export interface DocumentMetadataPanelProps {
     size: string;
     date: string;
     type: string;
+    taxonomy?: string;
     security: string;
     analysis: string;
     securityPendingNote: string;
@@ -476,6 +477,13 @@ export function DocumentMetadataPanel({
               <MetaField label={labels.size} value={formatSize(document.sizeBytes)} mono />
               <MetaField label={labels.date} value={formatDate(document.uploadedAtMillis, locale)} />
               <MetaField label={labels.type} value={document.mimeType} small />
+              {labels.taxonomy && document.extractedData?.documentType ? (
+                <MetaField
+                  label={labels.taxonomy}
+                  value={String(document.extractedData.documentType)}
+                  small
+                />
+              ) : null}
 
               {showCLVerification ? (
                 <CertificateLocalisationSection
@@ -611,7 +619,7 @@ function DocumentFileNameField({
       <dd className="mt-1">
         {!editing ? (
           <div className="flex items-start gap-2">
-            <p className="min-w-0 flex-1 break-words text-[12px] font-black text-[#000000]">
+            <p className="min-w-0 flex-1 break-words text-[12px] font-black text-[#142c6a]">
               {document.fileName}
             </p>
             <button
@@ -639,7 +647,7 @@ function DocumentFileNameField({
               autoFocus
               className={cn(
                 'w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2',
-                'text-[12px] font-black text-[#000000] outline-none',
+                'text-[12px] font-black text-[#142c6a] outline-none',
                 'focus:border-[#D4AF37]/60 focus:ring-1 focus:ring-[#D4AF37]/30'
               )}
               aria-label={locale === 'fr' ? 'Nouveau nom du document' : 'New document name'}
@@ -663,7 +671,7 @@ function DocumentFileNameField({
                 onClick={() => void handleSave()}
                 className={cn(
                   'flex flex-1 items-center justify-center gap-1 rounded-lg border border-[#D4AF37]/60',
-                  'bg-white px-2 py-1.5 text-[9px] font-black uppercase tracking-widest text-[#000000]',
+                  'bg-white px-2 py-1.5 text-[9px] font-black uppercase tracking-widest text-[#142c6a]',
                   'hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50'
                 )}
               >
@@ -706,7 +714,7 @@ function MetaField({
         <dd
           className={cn(
             'mt-1 break-words text-[12px] text-slate-800',
-            bold && 'font-semibold text-[#000000]',
+            bold && 'font-semibold text-[#142c6a]',
             mono && 'font-mono',
             small && 'break-all text-[11px] text-slate-600'
           )}
@@ -779,7 +787,7 @@ function CertificateLocalisationSection({
               <dt className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">
                 {locale === 'fr' ? 'Date du certificat' : 'Certificate date'}
               </dt>
-              <dd className="text-[12px] font-black text-[#000000]">
+              <dd className="text-[12px] font-black text-[#142c6a]">
                 {formatCertificateDate(meta.dateCertificat, locale)}
               </dd>
             </div>
@@ -789,7 +797,7 @@ function CertificateLocalisationSection({
               <dt className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">
                 {locale === 'fr' ? 'Arpenteur-géomètre' : 'Land surveyor'}
               </dt>
-              <dd className="text-[12px] font-black text-[#000000]">{meta.arpenteur}</dd>
+              <dd className="text-[12px] font-black text-[#142c6a]">{meta.arpenteur}</dd>
             </div>
           ) : null}
           {meta.lotCadastral ? (
@@ -797,7 +805,7 @@ function CertificateLocalisationSection({
               <dt className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">
                 {locale === 'fr' ? 'Lot cadastral' : 'Cadastral lot'}
               </dt>
-              <dd className="font-mono text-[12px] font-black text-[#000000]">{meta.lotCadastral}</dd>
+              <dd className="font-mono text-[12px] font-black text-[#142c6a]">{meta.lotCadastral}</dd>
             </div>
           ) : null}
           {meta.superficieTerrainMetres != null ? (
@@ -805,7 +813,7 @@ function CertificateLocalisationSection({
               <dt className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">
                 {locale === 'fr' ? 'Superficie terrain' : 'Land area'}
               </dt>
-              <dd className="text-[12px] font-black text-[#000000]">
+              <dd className="text-[12px] font-black text-[#142c6a]">
                 {meta.superficieTerrainMetres.toLocaleString(locale === 'fr' ? 'fr-CA' : 'en-CA')}{' '}
                 m²
               </dd>
@@ -852,7 +860,7 @@ function CertificateLocalisationSection({
             rows={5}
             className={cn(
               'mt-1.5 w-full resize-none rounded-lg border border-slate-200 bg-white px-2.5 py-2',
-              'text-[11px] leading-snug text-[#000000]'
+              'text-[11px] leading-snug text-[#142c6a]'
             )}
             aria-label={
               locale === 'fr' ? 'Clause suggérée section D' : 'Suggested section D clause'
@@ -898,7 +906,7 @@ function CertificateLocalisationSection({
             onClick={onInject}
             className={cn(
               'mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/60',
-              'bg-white px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-[#000000]',
+              'bg-white px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-[#142c6a]',
               'hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50'
             )}
           >
@@ -986,7 +994,7 @@ function ExtractionVerificationSection({
                 {evaluationSubject.anneeConstruction != null ? (
                   <li>
                     {locale === 'fr' ? 'Année construction : ' : 'Year built: '}
-                    <span className="font-black text-[#000000]">
+                    <span className="font-black text-[#142c6a]">
                       {evaluationSubject.anneeConstruction}
                     </span>
                   </li>
@@ -994,7 +1002,7 @@ function ExtractionVerificationSection({
                 {evaluationSubject.superficieTotale != null ? (
                   <li>
                     {locale === 'fr' ? 'Superficie : ' : 'Area: '}
-                    <span className="font-black text-[#000000]">
+                    <span className="font-black text-[#142c6a]">
                       {evaluationSubject.superficieTotale.toLocaleString(
                         locale === 'fr' ? 'fr-CA' : 'en-CA'
                       )}{' '}
@@ -1005,7 +1013,7 @@ function ExtractionVerificationSection({
                 {evaluationSubject.tgaRetenu != null ? (
                   <li>
                     TGA :{' '}
-                    <span className="font-black text-[#000000]">
+                    <span className="font-black text-[#142c6a]">
                       {(evaluationSubject.tgaRetenu > 1
                         ? evaluationSubject.tgaRetenu
                         : evaluationSubject.tgaRetenu * 100
@@ -1017,7 +1025,7 @@ function ExtractionVerificationSection({
                 {evaluationSubject.valeurAvaluee != null ? (
                   <li>
                     {locale === 'fr' ? 'Valeur agréée : ' : 'Appraised value: '}
-                    <span className="font-black text-[#000000]">
+                    <span className="font-black text-[#142c6a]">
                       {formatExtractedCurrency(evaluationSubject.valeurAvaluee, locale)}
                     </span>
                   </li>
@@ -1034,7 +1042,7 @@ function ExtractionVerificationSection({
             <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">
               {locale === 'fr' ? 'Silo identifié (fiche)' : 'Silo identified (listing)'}
             </p>
-            <p className="mt-0.5 text-[11px] font-black text-[#000000]">{siloLabel}</p>
+            <p className="mt-0.5 text-[11px] font-black text-[#142c6a]">{siloLabel}</p>
             {siloType !== detectedSilo ? (
               <p className="mt-1 text-[10px] text-amber-800">
                 {locale === 'fr' ? 'Ajustement manuel actif' : 'Manual override active'}
@@ -1049,7 +1057,7 @@ function ExtractionVerificationSection({
             <select
               value={siloType}
               onChange={(e) => setSiloType(e.target.value as MarketSiloType)}
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-[#000000]"
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-[#142c6a]"
             >
               {MARKET_SILO_OPTIONS.map((opt) => (
                 <option key={opt.id} value={opt.id}>
@@ -1075,7 +1083,7 @@ function ExtractionVerificationSection({
                   />
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-medium leading-snug text-slate-700">{row.label}</p>
-                    <p className="font-mono text-[12px] font-black text-[#000000]">
+                    <p className="font-mono text-[12px] font-black text-[#142c6a]">
                       {formatExtractedCurrency(row.value, locale)}
                     </p>
                   </div>
@@ -1105,7 +1113,7 @@ function ExtractionVerificationSection({
                       aria-label={row.displayLabel}
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-black leading-snug text-[#000000]">
+                      <p className="text-[11px] font-black leading-snug text-[#142c6a]">
                         {row.displayLabel}
                       </p>
                       {row.salePrice != null ? (
@@ -1132,7 +1140,7 @@ function ExtractionVerificationSection({
             onClick={onInject}
             className={cn(
               'mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/60',
-              'bg-white px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-[#000000]',
+              'bg-white px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-[#142c6a]',
               'hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50'
             )}
           >

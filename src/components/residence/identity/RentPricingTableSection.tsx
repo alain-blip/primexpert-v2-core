@@ -38,7 +38,7 @@ export function RentPricingTableSection({ rentPricing, language }: RentPricingTa
             'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider transition',
             editing
               ? 'border-slate-300 bg-white text-slate-700'
-              : 'border-slate-200 bg-white text-slate-600 hover:border-[#D4AF37]/50 hover:text-[#000000]'
+              : 'border-slate-200 bg-white text-slate-600 hover:border-[#D4AF37]/50 hover:text-[#142c6a]'
           )}
         >
           {editing ? (
@@ -88,7 +88,7 @@ export function RentPricingTableSection({ rentPricing, language }: RentPricingTa
               const label = language === 'fr' ? row.labelFr : row.labelEn;
               return (
                 <tr key={row.typeKey} className="border-b border-slate-100 last:border-0">
-                  <td className="px-4 py-3 font-semibold text-[#000000]">
+                  <td className="px-4 py-3 font-semibold text-[#142c6a]">
                     <span className="inline-flex items-center gap-1">
                       {label}
                       <RaphaelBadge show={row.showRaphaelBadge} />
@@ -122,14 +122,14 @@ export function RentPricingTableSection({ rentPricing, language }: RentPricingTa
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') e.currentTarget.blur();
                               }}
-                              className="w-24 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-right text-sm font-semibold text-[#000000] focus:border-[#D4AF37]/60 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30"
+                              className="w-24 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-right text-sm font-semibold text-[#142c6a] focus:border-[#D4AF37]/60 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30"
                             />
                             {saving ? (
                               <Loader2 className="h-3 w-3 animate-spin text-slate-400" />
                             ) : null}
                           </span>
                         ) : (
-                          <span className="font-black text-[#000000] tabular-nums">
+                          <span className="font-black text-[#142c6a] tabular-nums">
                             {col === 'loyer' && row.loyerMoyen != null
                               ? formatCurrency(row.loyerMoyen)
                               : col === 'loyer'
@@ -140,7 +140,7 @@ export function RentPricingTableSection({ rentPricing, language }: RentPricingTa
                       </td>
                     );
                   })}
-                  <td className="px-4 py-3 text-right font-black text-[#000000] tabular-nums">
+                  <td className="px-4 py-3 text-right font-black text-[#142c6a] tabular-nums">
                     {row.revenuPotentielAnnuel != null
                       ? formatCurrency(row.revenuPotentielAnnuel)
                       : '—'}
@@ -161,7 +161,7 @@ export function RentPricingTableSection({ rentPricing, language }: RentPricingTa
                     'Total potential revenue (effective gross income (EGI) fail-safe)'
                   )}
                 </td>
-                <td className="px-4 py-3 text-right font-black text-[#000000] tabular-nums">
+                <td className="px-4 py-3 text-right font-black text-[#142c6a] tabular-nums">
                   {formatCurrency(rentPricing.totalRevenuPotentielAnnuel)}
                 </td>
               </tr>

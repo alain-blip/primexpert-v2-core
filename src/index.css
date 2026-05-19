@@ -1,9 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
+@config "../tailwind.config.js";
 
 @theme {
   --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
-  
+
+  /* Charte PrimeXpert — miroir de tailwind.config.js (primexpert-*) */
+  --color-primexpert-blue: #2656b7;
+  --color-primexpert-dark: #142c6a;
+  --color-primexpert-light: #f1f5f9;
+  --color-primexpert-gold: #D4AF37;
+
   --color-brand-blue: #1d4ed8;
   --color-brand-navy: #172554;
 }
@@ -376,7 +383,7 @@ html.light .workhub-card-glow::before { opacity: 0.19; }
 }
 
 .email-message-html--institutional :where(h1, h2, h3, h4, strong, b) {
-  color: #000000 !important;
+  color: #142c6a !important;
 }
 
 .email-message-html--institutional a {

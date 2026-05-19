@@ -34,7 +34,7 @@ export function MajorCompetitorsLeaderboard({
   return (
     <div className="space-y-3">
       <div>
-        <h4 className="text-[10px] font-black uppercase tracking-[0.14em] text-[#000000]">
+        <h4 className="text-[10px] font-black uppercase tracking-[0.14em] text-[#142c6a]">
           {t('Palmarès des concurrents majeurs', 'Major competitors leaderboard')}
         </h4>
         <p className="text-[10px] text-slate-600 mt-1 leading-relaxed">
@@ -66,10 +66,10 @@ export function MajorCompetitorsLeaderboard({
 
               return (
                 <tr key={comp.id} className={inst.tr}>
-                  <td className="px-4 py-2.5 text-sm font-black text-[#000000]">
+                  <td className="px-4 py-2.5 text-sm font-black text-[#142c6a]">
                     {index + 1}
                   </td>
-                  <td className="px-4 py-2.5 font-semibold text-[#000000]">
+                  <td className="px-4 py-2.5 font-semibold text-[#142c6a]">
                     {competitorDisplayName(comp)}
                   </td>
                   <td className={inst.tdValue}>{units > 0 ? units : '—'}</td>
@@ -85,7 +85,7 @@ export function MajorCompetitorsLeaderboard({
                           style={{ width: `${sharePct}%` }}
                         />
                       </div>
-                      <span className="text-[10px] font-bold text-[#000000] tabular-nums">
+                      <span className="text-[10px] font-bold text-[#142c6a] tabular-nums">
                         {units > 0 ? `${sharePct} %` : '—'}
                       </span>
                     </div>

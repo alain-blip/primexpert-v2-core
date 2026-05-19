@@ -40,7 +40,7 @@ export function CapacityClienteleSection({
             <RaphaelBadge show={showCapacityBadge} />
           </p>
           {capacity.totalUnits != null ? (
-            <p className="text-2xl font-black text-[#000000] mb-3">
+            <p className="text-2xl font-black text-[#142c6a] mb-3">
               {capacity.totalUnits}{' '}
               <span className="text-sm font-semibold text-slate-600">
                 {t('unités', 'units')}
@@ -62,7 +62,7 @@ export function CapacityClienteleSection({
                   <p className="text-[9px] font-bold uppercase text-slate-500">
                     {language === 'fr' ? row.labelFr : row.labelEn}
                   </p>
-                  <p className="text-lg font-black text-[#000000]">{row.count}</p>
+                  <p className="text-lg font-black text-[#142c6a]">{row.count}</p>
                 </div>
               ))}
             </div>
@@ -82,7 +82,7 @@ export function CapacityClienteleSection({
             <div className="space-y-2">
               {capacity.agePyramid.map((row) => (
                 <div key={row.label} className="flex items-center gap-3">
-                  <span className="w-28 shrink-0 text-xs font-semibold text-[#000000]">
+                  <span className="w-28 shrink-0 text-xs font-semibold text-[#142c6a]">
                     {row.label}
                   </span>
                   <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
@@ -123,7 +123,7 @@ export function CapacityClienteleSection({
                     className="rounded-lg border border-slate-200 bg-white px-3 py-2"
                   >
                     <dt className="text-[9px] font-bold uppercase text-slate-500">{label}</dt>
-                    <dd className="text-lg font-black text-[#000000]">{String(v)}</dd>
+                    <dd className="text-lg font-black text-[#142c6a]">{String(v)}</dd>
                   </div>
                 );
               })}

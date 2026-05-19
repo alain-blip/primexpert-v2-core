@@ -52,6 +52,8 @@ import { fetchBinaryAsBase64 } from '../lib/fetchBinaryAsBase64';
 const DRIVE_COLLECTION = 'drive_documents';
 
 export type DriveDocumentStatus = 'pending' | 'processing' | 'ready' | 'failed';
+export type DriveDocumentScope = 'property' | 'contact' | 'broker_tools';
+export type DriveItemType = 'folder' | 'file';
 
 /** Phase D-2 — Type de document Drive (recording, upload manuel, etc.) */
 export type DriveDocumentType = 'document' | 'recording';
@@ -62,7 +64,12 @@ export type DriveTranscriptionStatus = 'pending' | 'processing' | 'ready' | 'fai
 export interface DriveDocument {
   id: string;
   courtiersResponsables: string;
+  scope: DriveDocumentScope;
+  type: DriveItemType;
+  parentId?: string;
   residenceId?: string;
+  contactId?: string;
+  toolFolder?: string;
   fileName: string;
   storagePath: string;
   mime: string;
@@ -72,6 +79,7 @@ export interface DriveDocument {
   status: DriveDocumentStatus;
   /** Phase D-2 — distingue enregistrement vocal d'un document classique */
   documentType?: DriveDocumentType;
+  documentLabel?: string;
   /** Phase D-2 — durée du recording en ms (pour les recordings uniquement) */
   durationMs?: number;
   /** E-3 — transcription + résumé (après upload recording) */
@@ -88,18 +96,45 @@ export interface DriveDocument {
 
 export interface UploadParams {
   file: File;
+  scope?: DriveDocumentScope;
   residenceId?: string;
+  contactId?: string;
+  toolFolder?: string;
+  parentId?: string;
+  documentLabel?: string;
+  ctx: TenantContext;
+}
+
+export interface CreateFolderParams {
+  name: string;
+  scope: DriveDocumentScope;
+  parentId?: string;
+  residenceId?: string;
+  contactId?: string;
+  toolFolder?: string;
   ctx: TenantContext;
 }
 
 /**
  * Construit le chemin Storage déterministe.
  */
-function buildStoragePath(brokerId: string, residenceId: string | undefined, fileName: string): string {
+function buildStoragePath(
+  brokerId: string,
+  scope: DriveDocumentScope,
+  ids: { residenceId?: string; contactId?: string; toolFolder?: string },
+  fileName: string
+): string {
   const safeName = fileName.replace(/[^\w.\-]/g, '_');
   const stamp = Date.now();
-  if (residenceId) {
-    return `primexpert/${brokerId}/residences/${residenceId}/${stamp}-${safeName}`;
+  if (scope === 'property' && ids.residenceId) {
+    return `primexpert/${brokerId}/residences/${ids.residenceId}/${stamp}-${safeName}`;
+  }
+  if (scope === 'contact' && ids.contactId) {
+    return `primexpert/${brokerId}/contacts/${ids.contactId}/${stamp}-${safeName}`;
+  }
+  if (scope === 'broker_tools') {
+    const folder = (ids.toolFolder || 'modeles').replace(/[^\w.\-]/g, '_');
+    return `primexpert/${brokerId}/broker_tools/${folder}/${stamp}-${safeName}`;
   }
   return `primexpert/${brokerId}/general/${stamp}-${safeName}`;
 }
@@ -108,26 +143,49 @@ function buildStoragePath(brokerId: string, residenceId: string | undefined, fil
  * Téléverse un fichier dans Firebase Storage + crée la métadonnée Firestore.
  * Tout est multi-tenant (brokerId garanti via stampTenant).
  */
-export async function uploadDriveDocument({ file, residenceId, ctx }: UploadParams): Promise<DriveDocument> {
+export async function uploadDriveDocument({
+  file,
+  scope = 'property',
+  residenceId,
+  contactId,
+  toolFolder,
+  parentId,
+  documentLabel,
+  ctx,
+}: UploadParams): Promise<DriveDocument> {
   if (ctx.mode !== 'strict' || !ctx.tenantId) {
     throw new Error('[driveStorage.upload] Contexte tenant strict requis.');
   }
 
-  const storagePath = buildStoragePath(ctx.tenantId, residenceId, file.name);
+  const storagePath = buildStoragePath(ctx.tenantId, scope, { residenceId, contactId, toolFolder }, file.name);
   const objectRef = ref(storage, storagePath);
 
   const uploadResult: UploadResult = await uploadBytes(objectRef, file, {
     contentType: file.type || 'application/octet-stream',
     customMetadata: {
       [TENANT_FIELD]: ctx.tenantId,
+      scope,
+      type: 'file',
+      parentId: parentId ?? '',
       residenceId: residenceId ?? '',
+      contactId: contactId ?? '',
+      toolFolder: toolFolder ?? '',
+      documentType: 'document',
+      documentLabel: documentLabel ?? '',
       originalName: file.name,
     },
   });
 
   const metadataPayload = stampTenant(
     {
+      scope,
+      type: 'file' as DriveItemType,
+      parentId: parentId ?? null,
       residenceId: residenceId ?? null,
+      contactId: contactId ?? null,
+      toolFolder: toolFolder ?? null,
+      documentType: 'document' as DriveDocumentType,
+      documentLabel: documentLabel ?? '',
       fileName: file.name,
       storagePath,
       mime: file.type || 'application/octet-stream',
@@ -144,7 +202,12 @@ export async function uploadDriveDocument({ file, residenceId, ctx }: UploadPara
   return {
     id: docRef.id,
     courtiersResponsables: ctx.tenantId,
+    scope,
+    type: 'file',
+    parentId,
     residenceId,
+    contactId,
+    toolFolder,
     fileName: file.name,
     storagePath,
     mime: file.type || 'application/octet-stream',
@@ -152,14 +215,80 @@ export async function uploadDriveDocument({ file, residenceId, ctx }: UploadPara
     uploadedAtMillis: Date.now(),
     uploadedBy: ctx.tenantId,
     status: 'ready',
+    documentType: 'document',
+    documentLabel,
+  };
+}
+
+export async function createDriveFolder({
+  name,
+  scope,
+  parentId,
+  residenceId,
+  contactId,
+  toolFolder,
+  ctx,
+}: CreateFolderParams): Promise<DriveDocument> {
+  if (ctx.mode !== 'strict' || !ctx.tenantId) {
+    throw new Error('[driveStorage.createFolder] Contexte tenant strict requis.');
+  }
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('Nom du dossier requis.');
+
+  const payload = stampTenant(
+    {
+      scope,
+      type: 'folder' as DriveItemType,
+      parentId: parentId ?? null,
+      residenceId: residenceId ?? null,
+      contactId: contactId ?? null,
+      toolFolder: toolFolder ?? null,
+      fileName: trimmed,
+      storagePath: '',
+      mime: 'application/vnd.primexpert.folder',
+      size: 0,
+      uploadedBy: ctx.tenantId,
+      uploadedAt: serverTimestamp(),
+      status: 'ready' as DriveDocumentStatus,
+      documentType: 'document' as DriveDocumentType,
+      documentLabel: 'Dossier',
+    },
+    ctx
+  );
+
+  const docRef = await addDoc(collection(db, DRIVE_COLLECTION), payload);
+  return {
+    id: docRef.id,
+    courtiersResponsables: ctx.tenantId,
+    scope,
+    type: 'folder',
+    parentId,
+    residenceId,
+    contactId,
+    toolFolder,
+    fileName: trimmed,
+    storagePath: '',
+    mime: 'application/vnd.primexpert.folder',
+    size: 0,
+    uploadedAtMillis: Date.now(),
+    uploadedBy: ctx.tenantId,
+    status: 'ready',
+    documentType: 'document',
+    documentLabel: 'Dossier',
   };
 }
 
 /**
  * Récupère la liste des documents du tenant courant.
  */
-export async function listDriveDocuments(ctx: TenantContext): Promise<DriveDocument[]> {
+export async function listDriveDocuments(
+  ctx: TenantContext,
+  filters?: { scope?: DriveDocumentScope; residenceId?: string; contactId?: string }
+): Promise<DriveDocument[]> {
   const constraints = tenantConstraints(ctx);
+  if (filters?.scope) constraints.push({ field: 'scope', op: '==', value: filters.scope });
+  if (filters?.residenceId) constraints.push({ field: 'residenceId', op: '==', value: filters.residenceId });
+  if (filters?.contactId) constraints.push({ field: 'contactId', op: '==', value: filters.contactId });
   const baseRef = collection(db, DRIVE_COLLECTION);
   const q = constraints.length === 0
     ? query(baseRef)
@@ -185,7 +314,12 @@ export async function listDriveDocuments(ctx: TenantContext): Promise<DriveDocum
     return {
       id: d.id,
       courtiersResponsables: String(data[TENANT_FIELD] ?? ''),
+      scope: (data.scope ?? (data.residenceId ? 'property' : 'broker_tools')) as DriveDocumentScope,
+      type: (data.type === 'folder' ? 'folder' : 'file') as DriveItemType,
+      parentId: data.parentId ?? undefined,
       residenceId: data.residenceId ?? undefined,
+      contactId: data.contactId ?? undefined,
+      toolFolder: data.toolFolder ?? undefined,
       fileName: String(data.fileName ?? ''),
       storagePath: String(data.storagePath ?? ''),
       mime: String(data.mime ?? ''),
@@ -194,6 +328,7 @@ export async function listDriveDocuments(ctx: TenantContext): Promise<DriveDocum
       uploadedBy: String(data.uploadedBy ?? ''),
       status: (data.status ?? 'ready') as DriveDocumentStatus,
       documentType: data.documentType as DriveDocumentType | undefined,
+      documentLabel: typeof data.documentLabel === 'string' ? data.documentLabel : undefined,
       durationMs: typeof data.durationMs === 'number' ? data.durationMs : undefined,
       transcriptionStatus: data.transcriptionStatus as DriveTranscriptionStatus | undefined,
       transcriptionPlain:

@@ -113,18 +113,18 @@ export function ProvenanceStrip({
       </div>
       <span className="text-[10px] text-slate-600">
         {t('Source', 'Source')}:{' '}
-        <span className="text-[#000000] font-semibold">{srcLabel}</span>
+        <span className="text-[#142c6a] font-semibold">{srcLabel}</span>
       </span>
       {formattedDate && (
         <span className="text-[10px] text-slate-600 font-mono">
           {t('Calcul', 'Computed')}:{' '}
-          <span className="text-[#000000] font-medium">{formattedDate}</span>
+          <span className="text-[#142c6a] font-medium">{formattedDate}</span>
         </span>
       )}
       {coveragePercent != null && (
         <span className="text-[10px] text-slate-600">
           {t('Couverture', 'Coverage')}:{' '}
-          <span className="text-[#000000] font-semibold">{coveragePercent}%</span>
+          <span className="text-[#142c6a] font-semibold">{coveragePercent}%</span>
         </span>
       )}
     </div>

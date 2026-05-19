@@ -46,7 +46,7 @@ export function EditableCapacitySection({
             'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider transition',
             editing
               ? 'border-slate-300 bg-white text-slate-700'
-              : 'border-slate-200 bg-white text-slate-600 hover:border-[#D4AF37]/50 hover:text-[#000000]'
+              : 'border-slate-200 bg-white text-slate-600 hover:border-[#D4AF37]/50 hover:text-[#142c6a]'
           )}
         >
           {editing ? (
@@ -98,13 +98,13 @@ export function EditableCapacitySection({
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') e.currentTarget.blur();
                   }}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#000000] focus:border-[#D4AF37]/60 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#142c6a] focus:border-[#D4AF37]/60 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30"
                   placeholder="0"
                 />
               ) : (
                 <p
                   className={cn(
-                    'text-sm font-semibold text-[#000000]',
+                    'text-sm font-semibold text-[#142c6a]',
                     !value && 'text-slate-400 font-normal italic'
                   )}
                 >

@@ -72,12 +72,12 @@ export function DeclarationCertificationHeader({
       <div className="space-y-4">
         <div className="rounded-xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
           <div className="flex items-start gap-3">
-              <FileCheck className="h-6 w-6 shrink-0 mt-0.5 text-[#000000]" aria-hidden />
+              <FileCheck className="h-6 w-6 shrink-0 mt-0.5 text-[#142c6a]" aria-hidden />
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#D4AF37]">
                   {t('Gold Signature', 'Gold Signature')}
                 </p>
-                <h2 className="text-xl font-black text-[#000000] tracking-tight">
+                <h2 className="text-xl font-black text-[#142c6a] tracking-tight">
                   {t('Déclaration du vendeur', 'Seller disclosure')}
                 </h2>
               </div>
@@ -94,7 +94,7 @@ export function DeclarationCertificationHeader({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-3 min-w-0">
           {isLocked ? (
-            <Lock className="h-6 w-6 shrink-0 mt-0.5 text-[#000000]" aria-hidden />
+            <Lock className="h-6 w-6 shrink-0 mt-0.5 text-[#142c6a]" aria-hidden />
           ) : (
             <Shield className="h-6 w-6 shrink-0 mt-0.5 text-[#D4AF37]" aria-hidden />
           )}
@@ -102,7 +102,7 @@ export function DeclarationCertificationHeader({
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#D4AF37]">
               {t('Gold Signature', 'Gold Signature')}
             </p>
-            <h2 className="text-xl font-black text-[#000000] tracking-tight">
+            <h2 className="text-xl font-black text-[#142c6a] tracking-tight">
               {isLocked
                 ? t('Déclaration certifiée', 'Certified disclosure')
                 : t('Déclaration du vendeur', 'Seller disclosure')}
@@ -124,9 +124,9 @@ export function DeclarationCertificationHeader({
             disabled={downloading}
             onClick={() => void handleDownload()}
             className={cn(
-              'inline-flex items-center gap-2 rounded-xl border border-[#000000] bg-white px-5 py-2.5',
-              'text-[10px] font-black uppercase tracking-[0.14em] text-[#000000]',
-              'transition hover:border-[#D4AF37] hover:text-[#000000] disabled:opacity-50 disabled:cursor-not-allowed'
+              'inline-flex items-center gap-2 rounded-xl border border-[#142c6a] bg-white px-5 py-2.5',
+              'text-[10px] font-black uppercase tracking-[0.14em] text-[#142c6a]',
+              'transition hover:border-[#D4AF37] hover:text-[#142c6a] disabled:opacity-50 disabled:cursor-not-allowed'
             )}
           >
             {downloading ? (
@@ -141,10 +141,10 @@ export function DeclarationCertificationHeader({
 
       {isLocked ? (
         <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/40 px-5 py-4">
-          <p className="text-sm font-bold text-[#000000]">
+          <p className="text-sm font-bold text-[#142c6a]">
             {t('Déclaration scellée et verrouillée', 'Disclosure sealed and locked')}
           </p>
-          <dl className="mt-3 grid gap-2 sm:grid-cols-2 text-sm text-[#000000]">
+          <dl className="mt-3 grid gap-2 sm:grid-cols-2 text-sm text-[#142c6a]">
             <div>
               <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 {t('Date de certification', 'Certification date')}
@@ -164,7 +164,7 @@ export function DeclarationCertificationHeader({
                 <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   {t('Code de sécurité', 'Security code')}
                 </dt>
-                <dd className="font-mono text-sm font-bold text-[#000000] tracking-wide">
+                <dd className="font-mono text-sm font-bold text-[#142c6a] tracking-wide">
                   {progress.confirmationTag}
                 </dd>
               </div>
@@ -173,7 +173,7 @@ export function DeclarationCertificationHeader({
         </div>
       ) : (
         <div className="mt-5">
-          <p className="text-sm font-semibold text-[#000000] mb-2 tabular-nums">
+          <p className="text-sm font-semibold text-[#142c6a] mb-2 tabular-nums">
             {progressLabel}
           </p>
           <div
@@ -192,7 +192,7 @@ export function DeclarationCertificationHeader({
 
           {!progress.criticalLocksMet && criticalMessage ? (
             <p
-              className="mt-3 text-[11px] font-medium text-[#000000] border border-slate-200 rounded-lg bg-white px-3 py-2 leading-relaxed"
+              className="mt-3 text-[11px] font-medium text-[#142c6a] border border-slate-200 rounded-lg bg-white px-3 py-2 leading-relaxed"
               role="status"
             >
               {criticalMessage}
@@ -224,10 +224,10 @@ function DeclarationProvidedNotice({
     <div className="rounded-xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-sm font-black uppercase tracking-wide text-[#000000]">
+          <p className="text-sm font-black uppercase tracking-wide text-[#142c6a]">
             {lang === 'fr' ? 'DÉCLARATION FOURNIE' : 'DISCLOSURE PROVIDED'}
           </p>
-          <p className="mt-2 text-sm text-[#000000] leading-relaxed">
+          <p className="mt-2 text-sm text-[#142c6a] leading-relaxed">
             {lang === 'fr'
               ? 'Un document signé a été téléchargé. Contactez votre courtier pour toute modification.'
               : 'A signed document has been uploaded. Contact your broker for any changes.'}
@@ -240,8 +240,8 @@ function DeclarationProvidedNotice({
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
-              'inline-flex items-center gap-2 rounded-xl border border-[#000000] bg-white px-5 py-2.5',
-              'text-[10px] font-black uppercase tracking-[0.14em] text-[#000000]',
+              'inline-flex items-center gap-2 rounded-xl border border-[#142c6a] bg-white px-5 py-2.5',
+              'text-[10px] font-black uppercase tracking-[0.14em] text-[#142c6a]',
               'transition hover:border-[#D4AF37] shrink-0'
             )}
           >

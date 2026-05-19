@@ -13,7 +13,7 @@ export function FinancialReportsSection() {
     <section className="rounded-[20px] border border-slate-200 bg-white px-6 py-5 shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
       <div className="flex items-center gap-2 mb-3">
         <FileText className="h-5 w-5 text-slate-700" />
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#000000]">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#142c6a]">
           {t('Rapports certifiables', 'Certifiable reports')}
         </p>
       </div>

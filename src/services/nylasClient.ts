@@ -40,6 +40,27 @@ export async function sendViaNylas(input: {
   await fn(input);
 }
 
+export type DocumentSelectionTargetRole = 'buyer' | 'notary' | 'banker' | 'custom';
+
+export async function sendDocumentSelectionViaNylas(input: {
+  documentIds: string[];
+  targetRole: DocumentSelectionTargetRole;
+  recipientEmail: string;
+  subject: string;
+  message: string;
+  accountId: string;
+  propertyId?: string;
+  contactId?: string;
+}): Promise<{ sentCount: number; threadId: string }> {
+  const fn = httpsCallable<
+    typeof input,
+    { ok: boolean; sentCount: number; threadId: string }
+  >(functions, 'sendDocumentSelection');
+  const { data } = await fn(input);
+  if (!data?.threadId) throw new Error('Envoi Prime-Mail sans identifiant de fil.');
+  return { sentCount: data.sentCount ?? 0, threadId: data.threadId };
+}
+
 export async function sendSellerUpdateViaNylas(input: {
   toEmail: string;
   toName?: string;

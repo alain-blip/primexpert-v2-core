@@ -172,7 +172,7 @@ export function VisitorRegistrySection() {
         <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5 space-y-4">
           <div className="flex items-center gap-2">
             <DoorOpen className="h-4 w-4 text-[#D4AF37]" />
-            <h4 className="text-[10px] font-black uppercase tracking-[0.14em] text-[#000000]">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.14em] text-[#142c6a]">
               {t('Entrée exacte (visites)', 'Exact visitor entrance')}
             </h4>
           </div>
@@ -193,7 +193,7 @@ export function VisitorRegistrySection() {
                 )}
               </p>
               {entrance ? (
-                <p className="text-sm font-semibold text-[#000000] tabular-nums">
+                <p className="text-sm font-semibold text-[#142c6a] tabular-nums">
                   {entrance.lat.toFixed(6)}, {entrance.lng.toFixed(6)}
                   {offsetKm != null && (
                     <span className="text-slate-500 font-normal text-[10px] ml-2">
@@ -214,7 +214,7 @@ export function VisitorRegistrySection() {
                     type="text"
                     value={entranceLat || (entrance ? String(entrance.lat) : '')}
                     onChange={(e) => setEntranceLat(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-mono text-[#000000]"
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-mono text-[#142c6a]"
                     placeholder={hasMarket ? String(marketLat) : ''}
                   />
                 </label>
@@ -224,7 +224,7 @@ export function VisitorRegistrySection() {
                     type="text"
                     value={entranceLng || (entrance ? String(entrance.lng) : '')}
                     onChange={(e) => setEntranceLng(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-mono text-[#000000]"
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-mono text-[#142c6a]"
                     placeholder={hasMarket ? String(marketLng) : ''}
                   />
                 </label>
@@ -235,7 +235,7 @@ export function VisitorRegistrySection() {
                   type="button"
                   disabled={savingEntrance || saving}
                   onClick={() => void handleSaveEntrance()}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-wider text-[#000000] hover:border-[#D4AF37]/50 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-wider text-[#142c6a] hover:border-[#D4AF37]/50 disabled:opacity-50"
                 >
                   {savingEntrance ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
                   {t('Enregistrer l’entrée', 'Save entrance')}
@@ -245,7 +245,7 @@ export function VisitorRegistrySection() {
                     type="button"
                     disabled={savingEntrance || saving}
                     onClick={() => void handleClearEntrance()}
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:text-[#000000]"
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:text-[#142c6a]"
                   >
                     {t('Effacer', 'Clear')}
                   </button>
@@ -255,7 +255,7 @@ export function VisitorRegistrySection() {
                     href={mapsLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:text-[#000000]"
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:text-[#142c6a]"
                   >
                     {t('Ouvrir dans Maps', 'Open in Maps')}
                   </a>
@@ -268,13 +268,13 @@ export function VisitorRegistrySection() {
         {/* Fiches de visite */}
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <h4 className="text-[10px] font-black uppercase tracking-[0.14em] text-[#000000]">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.14em] text-[#142c6a]">
               {t('Fiches d’enregistrement', 'Visit log entries')}
             </h4>
             <button
               type="button"
               onClick={() => setFormOpen((o) => !o)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-wider text-[#000000] hover:border-[#D4AF37]/50"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-wider text-[#142c6a] hover:border-[#D4AF37]/50"
             >
               <Plus className="h-3.5 w-3.5" />
               {formOpen ? t('Fermer', 'Close') : t('Nouvelle visite', 'New visit')}
@@ -292,7 +292,7 @@ export function VisitorRegistrySection() {
                     type="date"
                     value={visitDate}
                     onChange={(e) => setVisitDate(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-[#000000]"
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-[#142c6a]"
                   />
                 </label>
                 <label className="block">
@@ -302,7 +302,7 @@ export function VisitorRegistrySection() {
                   <select
                     value={channel}
                     onChange={(e) => setChannel(e.target.value as VisitorVisitChannel)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-[#000000]"
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-[#142c6a]"
                   >
                     {CHANNEL_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -319,7 +319,7 @@ export function VisitorRegistrySection() {
                     type="text"
                     value={visitorName}
                     onChange={(e) => setVisitorName(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-[#000000]"
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-[#142c6a]"
                   />
                 </label>
                 <label className="block">
@@ -331,7 +331,7 @@ export function VisitorRegistrySection() {
                     value={visitorRole}
                     onChange={(e) => setVisitorRole(e.target.value)}
                     placeholder={t('Prospect, famille…', 'Prospect, family…')}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-[#000000]"
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-[#142c6a]"
                   />
                 </label>
               </div>
@@ -343,14 +343,14 @@ export function VisitorRegistrySection() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-[#000000] resize-y"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-[#142c6a] resize-y"
                 />
               </label>
               <button
                 type="button"
                 disabled={saving}
                 onClick={() => void handleAddVisit()}
-                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-wider text-[#000000] hover:border-[#D4AF37]/50 disabled:opacity-50"
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-wider text-[#142c6a] hover:border-[#D4AF37]/50 disabled:opacity-50"
               >
                 {t('Enregistrer la visite', 'Save visit')}
               </button>
@@ -378,12 +378,12 @@ export function VisitorRegistrySection() {
                     const ch = CHANNEL_OPTIONS.find((c) => c.value === entry.channel);
                     return (
                       <tr key={entry.id} className={inst.tr}>
-                        <td className="px-4 py-2.5 text-sm font-semibold text-[#000000] tabular-nums">
+                        <td className="px-4 py-2.5 text-sm font-semibold text-[#142c6a] tabular-nums">
                           {new Date(entry.visitedAt).toLocaleDateString(
                             lang === 'fr' ? 'fr-CA' : 'en-CA'
                           )}
                         </td>
-                        <td className="px-4 py-2.5 text-sm text-[#000000]">
+                        <td className="px-4 py-2.5 text-sm text-[#142c6a]">
                           {entry.visitorName || '—'}
                           {entry.visitorRole && (
                             <span className="block text-[10px] text-slate-500">

@@ -25,7 +25,7 @@ export function IdentitySectionCard({
       style={{ borderLeftWidth: 4, borderLeftColor: accent }}
     >
       <header className="px-5 py-3 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3">
-        <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-[#000000]">
+        <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-[#142c6a]">
           {title}
         </h3>
         {headerAction}

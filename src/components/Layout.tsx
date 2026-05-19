@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { useLanguage } from '../lib/i18n';
 import { Compass, Home, Users, Calculator, FileText, LogOut, Bell, TrendingUp, BarChart3, Search, Sparkles, ShieldCheck, Zap, MessageSquare, FolderOpen, Phone, Settings as SettingsIcon } from 'lucide-react';
@@ -8,6 +8,13 @@ import { useSilo } from '../context/SiloContext';
 import { type AssetNiche } from '../types/residence';
 import { isGracePeriod } from '../lib/billingAccess';
 import { GracePeriodBanner } from './GracePeriodBanner';
+import { listDriveDocuments } from '../services/driveStorage';
+import {
+  buildStorageQuotaLabel,
+  bytesUsedByDriveDocuments,
+  resolveStorageTier,
+  STORAGE_TIER_LIMITS_BYTES,
+} from '../lib/quotaStorageService';
 
 /** Logos silo (fichiers `public/`, noms avec espaces). */
 const SILO_LOGO_SRC: Record<AssetNiche, string> = {
@@ -26,6 +33,24 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
   const { profile, logOut } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const { activeSilo, setActiveSilo, canAccess } = useSilo();
+  const [driveUsedBytes, setDriveUsedBytes] = useState(0);
+  const storageTier = resolveStorageTier(profile?.tier);
+  const quotaPercent = Math.min(100, (driveUsedBytes / STORAGE_TIER_LIMITS_BYTES[storageTier]) * 100);
+
+  useEffect(() => {
+    if (!profile?.uid) return;
+    let cancelled = false;
+    void listDriveDocuments({ tenantId: profile.uid, mode: 'strict' })
+      .then((docs) => {
+        if (!cancelled) setDriveUsedBytes(bytesUsedByDriveDocuments(docs));
+      })
+      .catch(() => {
+        if (!cancelled) setDriveUsedBytes(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.uid]);
 
   const nicheConfig: Record<AssetNiche, { labelFr: string; labelEn: string }> = {
     RPA: { labelFr: 'RPA — Résidences', labelEn: 'RPA — Care homes' },
@@ -43,7 +68,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
         { id: 'stats', label: t('Statistiques', 'Statistics'), icon: BarChart3 },
         { id: 'crm', label: t('Répertoire clients', 'CRM'), icon: Users },
         { id: 'content', label: t('Rédacteur IA', 'AI Writer'), icon: FileText },
-        { id: 'drive', label: t('Espace documents', 'Documents'), icon: FolderOpen },
+        { id: 'drive', label: t('Mes Documents Professionnels', 'Professional Documents'), icon: FolderOpen },
         { id: 'phone', label: t('Téléphonie logicielle', 'Softphone'), icon: Phone },
         { id: 'mail', label: t('Boîte de courriels', 'Mailbox'), icon: Bell },
       ] as { id: string; label: string; icon: typeof Compass }[],
@@ -159,6 +184,14 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
                <p className="text-[10px] font-black truncate uppercase tracking-tight italic">{profile?.displayName}</p>
                <p className="text-[8px] font-bold text-blue-400/40 uppercase tracking-widest leading-none mt-1">{t('Courtier principal', 'Principal broker')}</p>
              </div>
+          </div>
+          <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
+            <p className="text-[8px] font-black uppercase tracking-widest text-white/55">
+              {buildStorageQuotaLabel(driveUsedBytes, storageTier)}
+            </p>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/30">
+              <div className="h-full bg-white" style={{ width: `${quotaPercent}%` }} />
+            </div>
           </div>
           <button
             type="button"

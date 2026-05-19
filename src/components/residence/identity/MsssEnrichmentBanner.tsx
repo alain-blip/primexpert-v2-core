@@ -17,7 +17,7 @@ export function MsssEnrichmentBanner({ show, msss, language }: MsssEnrichmentBan
     <div className="rounded-xl border border-violet-300/60 bg-violet-50 px-4 py-3 flex items-start gap-3">
       <Sparkles className="h-5 w-5 text-violet-600 shrink-0 mt-0.5" />
       <div>
-        <p className="text-sm font-bold text-[#000000]">
+        <p className="text-sm font-bold text-[#142c6a]">
           {t(
             'Données extractibles — Registre officiel du MSSS',
             'Extractable data — Official MSSS registry'

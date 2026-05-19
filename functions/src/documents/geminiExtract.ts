@@ -9,6 +9,12 @@ import {
   getVertexLocation,
   getVertexProject,
 } from '../services/vertexClient';
+import {
+  inferStorageCategory,
+  resolveExtractionKind,
+  resolveTaxonomyEntry,
+  taxonomyLabelsForGeminiPrompt,
+} from './documentTaxonomy';
 
 export type DetectedDocumentType =
   | 'certificat_localisation'
@@ -53,23 +59,25 @@ const EVAL_BLOCK = `
 - comparables : immeubles comparables (ville sans adresse civique)
 - amounts : seulement si l'état des résultats d'exploitation est inclus dans le rapport`;
 
-const UNIVERSAL_EXTRACT_PROMPT = `Tu es un expert en diligence immobilière (Québec, OACIQ). Analyse le CONTENU du document PDF et le nom du fichier. Le dossier de dépôt (Financier, Technique, Légal) peut être erroné — ignore-le.
+const UNIVERSAL_EXTRACT_PROMPT = `Tu es un expert en diligence immobilière (Québec, OACIQ). Analyse le CONTENU du document PDF et le nom du fichier. Le dossier de dépôt peut être erroné — ignore-le.
 
-## ÉTAPE 1 — documentType (exactement une valeur)
-Choisis selon le contenu dominant :
-- "certificat_localisation" : certificat de localisation, arpenteur-géomètre, lot cadastral, empiétement, servitude, bande riveraine, zonage, zone inondable
-- "etats_financiers" : états financiers / résultats d'exploitation (revenus et dépenses), sans rapport d'évaluation ni certificat
-- "rapport_evaluation" : rapport d'évaluation agréé, opinion de valeur, comparables de vente, TGA retenu
+## ÉTAPE 1 — documentType (libellé EXACT, un seul)
+Choisis EXACTEMENT UN libellé dans cette liste (copie caractère pour caractère, français québécois) :
+${taxonomyLabelsForGeminiPrompt()}
 
-## ÉTAPE 2 — Extraction (champs du type uniquement)
+## ÉTAPE 2 — Extraction structurée (selon le type)
+Si le document est un certificat de localisation → applique aussi :
 ${CL_BLOCK}
+Si états financiers / bilans / résultats d'exploitation → applique aussi :
 ${PNL_BLOCK}
+Si rapport d'évaluation agréé → applique aussi :
 ${EVAL_BLOCK}
+Sinon : retourne uniquement { "documentType": "<libellé exact>" }.
 
 Réponse JSON unique :
 {
-  "documentType": "certificat_localisation" | "etats_financiers" | "rapport_evaluation",
-  ...champs du type détecté uniquement
+  "documentType": "<libellé exact de l'étape 1>",
+  ...champs d'extraction pertinents uniquement
 }`;
 
 const CL_EXPIRY_YEARS = 10;
@@ -243,9 +251,16 @@ function inferDocumentTypeFromPayload(raw: Record<string, unknown>): DetectedDoc
   return 'etats_financiers';
 }
 
-function normalizeCL(raw: Record<string, unknown>): Record<string, unknown> {
+function defaultClLabel(): string {
+  return (
+    resolveTaxonomyEntry('certificat_localisation')?.labelFr ??
+    'Certificat de localisation récent (< 10 ans)'
+  );
+}
+
+function normalizeCL(raw: Record<string, unknown>, documentTypeLabel: string): Record<string, unknown> {
   const metadataCL = coerceMetadataCL(raw.metadataCL);
-  if (!metadataCL) return { amounts: [], documentType: 'certificat_localisation' };
+  if (!metadataCL) return { amounts: [], documentType: documentTypeLabel };
 
   let irregularites = coerceIrregularites(raw.irregularites);
   if (!irregularites.length && raw.alertesConformite && typeof raw.alertesConformite === 'object') {
@@ -253,7 +268,7 @@ function normalizeCL(raw: Record<string, unknown>): Record<string, unknown> {
   }
   const suggestionClauseDV = String(raw.suggestionClauseDV ?? '').trim();
   const extracted: Record<string, unknown> = {
-    documentType: 'certificat_localisation',
+    documentType: documentTypeLabel,
     amounts: [],
     metadataCL,
     irregularites,
@@ -263,7 +278,7 @@ function normalizeCL(raw: Record<string, unknown>): Record<string, unknown> {
   return extracted;
 }
 
-function normalizeFinancial(raw: Record<string, unknown>): Record<string, unknown> {
+function normalizeFinancial(raw: Record<string, unknown>, documentTypeLabel: string): Record<string, unknown> {
   const merged: { label: string; value: number; currency: string }[] = [];
   const sources = [
     ...(Array.isArray(raw.amounts) ? raw.amounts : []),
@@ -279,7 +294,7 @@ function normalizeFinancial(raw: Record<string, unknown>): Record<string, unknow
   merged.sort((a, b) => a.label.localeCompare(b.label, 'fr', { sensitivity: 'base' }));
 
   const extracted: Record<string, unknown> = {
-    documentType: 'etats_financiers',
+    documentType: documentTypeLabel,
     amounts: merged,
   };
   if (typeof raw.annee === 'number' && raw.annee > 1990 && raw.annee < 2100) {
@@ -288,7 +303,7 @@ function normalizeFinancial(raw: Record<string, unknown>): Record<string, unknow
   return extracted;
 }
 
-function normalizeEvaluation(raw: Record<string, unknown>): Record<string, unknown> {
+function normalizeEvaluation(raw: Record<string, unknown>, documentTypeLabel: string): Record<string, unknown> {
   const merged: { label: string; value: number; currency: string }[] = [];
   for (const item of Array.isArray(raw.amounts) ? raw.amounts : []) {
     const row = coerceAmountRow(item);
@@ -297,7 +312,7 @@ function normalizeEvaluation(raw: Record<string, unknown>): Record<string, unkno
   merged.sort((a, b) => a.label.localeCompare(b.label, 'fr', { sensitivity: 'base' }));
 
   const extracted: Record<string, unknown> = {
-    documentType: 'rapport_evaluation',
+    documentType: documentTypeLabel,
     amounts: merged,
   };
   if (typeof raw.annee === 'number' && raw.annee > 1990 && raw.annee < 2100) {
@@ -322,19 +337,35 @@ function normalizeEvaluation(raw: Record<string, unknown>): Record<string, unkno
   return extracted;
 }
 
-/** SSOT — normalisation selon documentType détecté par Gemini. */
+/** SSOT — normalisation selon documentType détecté par Gemini (nomenclature Alain). */
 export function normalizeExtractedData(raw: Record<string, unknown>): Record<string, unknown> {
-  const docType = inferDocumentTypeFromPayload(raw);
+  const labelFromModel = String(raw.documentType ?? '').trim();
+  const entry = resolveTaxonomyEntry(labelFromModel);
+  const documentTypeLabel = entry?.labelFr ?? (labelFromModel || 'Document non classé');
 
-  switch (docType) {
+  const kind =
+    resolveExtractionKind(documentTypeLabel) ??
+    resolveExtractionKind(labelFromModel) ??
+    inferDocumentTypeFromPayload(raw);
+
+  let extracted: Record<string, unknown>;
+  switch (kind) {
     case 'certificat_localisation':
-      return normalizeCL(raw);
+      extracted = normalizeCL(raw, entry?.labelFr ?? defaultClLabel());
+      break;
     case 'rapport_evaluation':
-      return normalizeEvaluation(raw);
+      extracted = normalizeEvaluation(raw, documentTypeLabel);
+      break;
     case 'etats_financiers':
+      extracted = normalizeFinancial(raw, documentTypeLabel);
+      break;
     default:
-      return normalizeFinancial(raw);
+      extracted = { documentType: documentTypeLabel, amounts: [] };
   }
+
+  extracted.documentType = documentTypeLabel;
+  extracted.inferredStorageCategory = inferStorageCategory(documentTypeLabel);
+  return extracted;
 }
 
 function formatVertexError(err: unknown): string {

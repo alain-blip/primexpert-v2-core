@@ -63,16 +63,16 @@ export function MarketPenetrationSection() {
         <div className="rounded-xl border border-slate-200 bg-white px-5 py-6">
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <TrendingUp className="h-4 w-4 text-[#D4AF37]" />
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#000000]">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#142c6a]">
               {t('Taux de pénétration (75 ans +)', 'Penetration rate (75+)')}
             </p>
           </div>
 
-          <p className="text-4xl font-black text-[#000000] tabular-nums tracking-tight">
+          <p className="text-4xl font-black text-[#142c6a] tabular-nums tracking-tight">
             {formatPenetrationPercent(rate)}
           </p>
 
-          <div className="mt-5 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-[#000000] font-semibold">
+          <div className="mt-5 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-[#142c6a] font-semibold">
             <span className="tabular-nums">
               [{formatPopulationCount(sectorUnits > 0 ? sectorUnits : null)}{' '}
               {t('unités RPA du secteur', 'sector RPA units')}]
@@ -100,7 +100,7 @@ export function MarketPenetrationSection() {
           )}
 
           {population75 == null && (
-            <p className="mt-3 text-sm text-[#000000]">
+            <p className="mt-3 text-sm text-[#142c6a]">
               {t(
                 'Renseignez la population 75 ans et plus (section bassin démographique) ou actualisez les comparables pour estimer le secteur.',
                 'Enter the 75+ population (demographic basin section) or refresh comparables to estimate the sector.'

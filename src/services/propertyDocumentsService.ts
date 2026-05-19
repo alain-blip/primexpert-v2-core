@@ -44,6 +44,7 @@ import type {
   ParsingStatus,
   VirusScanStatus,
 } from '../types/propertyDocument';
+import { inferDocumentCategoryForRecord } from '../lib/propertyDocumentTaxonomy';
 
 const RESIDENCES_COLLECTION = 'residences';
 const DOCUMENTS_SUBCOLLECTION = 'documents';
@@ -119,6 +120,7 @@ function mapDoc(
 
   return {
     id,
+    scope: 'property',
     propertyId,
     category,
     fileName,
@@ -172,6 +174,30 @@ export function subscribeAllPropertyDocuments(
   );
 }
 
+/** Reclasse le vrac Alain au chargement (Firestore category uniquement, Storage inchangé). */
+export async function reconcilePropertyDocumentCategories(
+  propertyId: string,
+  docs: PropertyDocumentRecord[]
+): Promise<number> {
+  if (!propertyId || !docs.length) return 0;
+
+  const updates = docs
+    .map((d) => ({ doc: d, target: inferDocumentCategoryForRecord(d) }))
+    .filter(({ doc: d, target }) => !d.promesseScope && target !== d.category);
+
+  await Promise.all(
+    updates.map(({ doc: d, target }) =>
+      updateDoc(doc(db, RESIDENCES_COLLECTION, propertyId, DOCUMENTS_SUBCOLLECTION, d.id), {
+        category: target,
+        categoryReconciledAtMillis: Date.now(),
+        categoryReconciledReason: 'taxonomy_alain_documents_acheteurs',
+      })
+    )
+  );
+
+  return updates.length;
+}
+
 /** Écoute temps réel des documents d'une catégorie. */
 export function subscribePropertyDocuments(
   propertyId: string,
@@ -210,13 +236,16 @@ export interface UploadPropertyDocumentInput {
   category: PropertyDocumentCategory;
   file: File;
   uploadedBy: string;
+  /** Onglet Promesses d'achat — pièce rattachée au dossier PA. */
+  promesseScope?: boolean;
+  promesseDocLabel?: string;
 }
 
 /** Téléverse vers Storage + métadonnées Firestore (après validation stricte). */
 export async function uploadPropertyDocument(
   input: UploadPropertyDocumentInput
 ): Promise<PropertyDocumentRecord> {
-  const { propertyId, category, file, uploadedBy } = input;
+  const { propertyId, category, file, uploadedBy, promesseScope, promesseDocLabel } = input;
   if (!propertyId || !file || !uploadedBy) {
     throw new Error('propertyId, file et uploadedBy requis.');
   }
@@ -237,6 +266,7 @@ export async function uploadPropertyDocument(
 
   const docRef = await addDoc(documentsCol(propertyId), {
     propertyId,
+    scope: 'property',
     category,
     fileName: file.name,
     storagePath,
@@ -249,6 +279,13 @@ export async function uploadPropertyDocument(
     parsingStatus: 'not_applicable' satisfies ParsingStatus,
     parsingEligible,
     extractedData: EMPTY_EXTRACTED_DATA,
+    ...(promesseScope
+      ? {
+          promesseScope: true,
+          promesseDocument: true,
+          ...(promesseDocLabel ? { promesseDocLabel } : {}),
+        }
+      : {}),
   });
 
   const objectRef = ref(storage, storagePath);
@@ -265,6 +302,7 @@ export async function uploadPropertyDocument(
   const record: PropertyDocumentRecord = {
     id: docRef.id,
     propertyId,
+    scope: 'property',
     category,
     fileName: file.name,
     storagePath,
@@ -276,6 +314,8 @@ export async function uploadPropertyDocument(
     parsingStatus: 'not_applicable',
     parsingEligible,
     extractedData: EMPTY_EXTRACTED_DATA,
+    promesseScope: promesseScope === true,
+    promesseDocLabel,
   };
 
   try {

@@ -113,7 +113,7 @@ export function CompetitorZoneSection() {
             className={cn(
               'inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] transition',
               hasCoords
-                ? 'border-slate-300 bg-white text-[#000000] hover:border-[#D4AF37]/50'
+                ? 'border-slate-300 bg-white text-[#142c6a] hover:border-[#D4AF37]/50'
                 : 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed'
             )}
           >
@@ -140,7 +140,7 @@ export function CompetitorZoneSection() {
           <p className={inst.alertRed}>{scanError}</p>
         )}
         {scanMessage && !scanError && (
-          <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-[#000000]">
+          <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-[#142c6a]">
             {scanMessage}
           </p>
         )}
@@ -148,7 +148,7 @@ export function CompetitorZoneSection() {
         {marketScope && (
           <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-600">
             <MapPin className="h-3.5 w-3.5 text-[#D4AF37]" />
-            <span className="text-[#000000]">
+            <span className="text-[#142c6a]">
               {t('Périmètre', 'Scope')}: {marketScope.radiusKm} km ·{' '}
               {SCOPE_LABELS[lang][marketScope.level]}
             </span>
@@ -161,13 +161,13 @@ export function CompetitorZoneSection() {
         )}
 
         {scopeMessage && (
-          <p className="text-sm text-[#000000] leading-relaxed border-l-2 border-[#D4AF37] pl-4">
+          <p className="text-sm text-[#142c6a] leading-relaxed border-l-2 border-[#D4AF37] pl-4">
             {scopeMessage}
           </p>
         )}
 
         {competitors.length > 0 && competitors.length < MIN_COMPETITORS_TARGET && (
-          <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-[#000000] leading-relaxed">
+          <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-[#142c6a] leading-relaxed">
             {t(
               'Échantillon local restreint. Périmètre élargi automatiquement pour assurer la représentativité de la vérification.',
               'Limited local sample. Perimeter automatically expanded to ensure a representative verification scope.'
@@ -206,7 +206,7 @@ export function CompetitorZoneSection() {
           </>
         ) : marketScope?.level === 'regional' ? (
           <div className={inst.note}>
-            <p className="text-sm text-[#000000] font-semibold mb-1">
+            <p className="text-sm text-[#142c6a] font-semibold mb-1">
               {t('Repère régional', 'Regional benchmark')}
             </p>
             <p className="text-[10px] text-slate-600 leading-relaxed">
@@ -267,7 +267,7 @@ function CompetitorsTable({
             return (
               <tr key={comp.id} className={inst.tr}>
                 <td className={inst.td}>{index + 1}</td>
-                <td className="px-4 py-2.5 font-semibold text-[#000000]">
+                <td className="px-4 py-2.5 font-semibold text-[#142c6a]">
                   {competitorDisplayName(comp)}
                   {(comp.city || comp.address || comp.adresse) && (
                     <span className="block text-[10px] font-normal text-slate-500 mt-0.5">

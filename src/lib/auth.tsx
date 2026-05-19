@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   onAuthStateChanged,
   signInWithRedirect,
+  signInWithPopup,
   getRedirectResult,
   GoogleAuthProvider,
   signOut,
@@ -40,6 +41,8 @@ export interface UserProfile {
    * `grace_period` = 72 h après échec ; `suspended` = écran de blocage.
    */
   billingStatus?: BillingStatus;
+  /** Grille Alain — quota Drive officiel. */
+  tier?: 'solo' | 'solo_plus' | 'pro' | 'pro_plus' | 'super_pro';
   /** ISO date/heure — début période de grâce 72 h (webhook Stripe / Functions). */
   gracePeriodStartedAt?: string;
   /** Dernier courriel d’onboarding / relance (J7, J21, J30, J40). */
@@ -123,12 +126,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
-      if (firebaseUser) {
-        await loadProfile(firebaseUser);
-      } else {
+      try {
+        if (firebaseUser) {
+          await loadProfile(firebaseUser);
+        } else {
+          setProfile(null);
+        }
+      } catch (err) {
+        console.error('[auth] loadProfile', err);
         setProfile(null);
+      } finally {
+        if (active) setLoading(false);
       }
-      if (active) setLoading(false);
     });
 
     return () => {
@@ -139,8 +148,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async () => {
     setSignInPending(true);
-    const provider = new GoogleAuthProvider();
-    await signInWithRedirect(auth, provider);
+    try {
+      const provider = new GoogleAuthProvider();
+      /**
+       * En dev, `signInWithRedirect` échoue souvent (localhost vs IP, domaines autorisés,
+       * retour OAuth). Popup évite le rechargement complet et stabilise la session.
+       */
+      if (import.meta.env.DEV) {
+        await signInWithPopup(auth, provider);
+      } else {
+        await signInWithRedirect(auth, provider);
+      }
+    } catch (err) {
+      setSignInPending(false);
+      console.error('[auth] Google sign-in', err);
+      throw err;
+    } finally {
+      if (import.meta.env.DEV) {
+        setSignInPending(false);
+      }
+    }
   };
 
   const logOut = async () => {

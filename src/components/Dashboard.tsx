@@ -20,6 +20,7 @@ import {
   type DashboardPriorityFollowUpItem,
 } from '../services/dashboardPriorityFollowUp';
 import { PriorityFollowUpList } from './dashboard/PriorityFollowUpList';
+import { InstitutionalWhitePanel } from './residence/institutional/InstitutionalUi';
 import { useSilo } from '../context/SiloContext';
 import { shouldShowJ7Survey } from '../lib/trialTimeline';
 import { J7SurveyModal } from './J7SurveyModal';
@@ -187,20 +188,15 @@ export function Dashboard() {
         })}
       </div>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-7 shadow-sm">
-        <header className="mb-5">
-          <h3 className="text-lg font-black tracking-tight text-[#000000]">
-            {t('Priorités de suivi', 'Follow-up priorities')}
-          </h3>
-          <p className="text-[11px] font-medium text-[#000000] mt-1 leading-relaxed">
-            {t(
-              'Séquence serrée après libération documentaire — J+3, J+5, J+7.',
-              'Tight sequence after document release — D+3, D+5, D+7.'
-            )}
-          </p>
-        </header>
+      <InstitutionalWhitePanel
+        title={t('Priorités de suivi', 'Follow-up priorities')}
+        subtitle={t(
+          'Séquence serrée après libération documentaire — J+3, J+5, J+7 et échéances PA.',
+          'Tight sequence after document release — D+3, D+5, D+7 and PA deadlines.'
+        )}
+      >
         <PriorityFollowUpList items={priorityFollowUps} loading={dashboardDataLoading} />
-      </section>
+      </InstitutionalWhitePanel>
 
       <div className="grid grid-cols-1 2xl:grid-cols-3 gap-8">
         {/* Central Intelligence Table */}

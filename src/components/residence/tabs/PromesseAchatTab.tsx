@@ -39,7 +39,7 @@ import type { Residence } from '../../../services/residences';
 type InnerTab = 'edit' | 'summary';
 
 const fieldClass =
-  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-[#000000] focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300 disabled:bg-slate-50 disabled:text-slate-600';
+  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-[#142c6a] focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300 disabled:bg-slate-50 disabled:text-slate-600';
 
 const labelClass = 'text-[10px] font-black uppercase tracking-[0.12em] text-slate-600';
 
@@ -149,16 +149,18 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
 
   if (loading) {
     return (
-      <p className={inst.loadingText}>
-        {t('Chargement de la promesse…', 'Loading purchase promise…')}
-      </p>
+      <div className={inst.loading}>
+        <p className={inst.loadingText}>
+          {t('Chargement de la promesse…', 'Loading purchase promise…')}
+        </p>
+      </div>
     );
   }
 
   return (
     <div className="space-y-5">
       {locked && (
-        <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-[#000000]">
+        <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-[#142c6a]">
           {language === 'fr' ? WORM_LOCK_MESSAGE_FR : WORM_LOCK_MESSAGE_EN}
         </p>
       )}
@@ -180,8 +182,8 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
             className={cn(
               'rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] border transition',
               innerTab === id
-                ? 'border-[#D4AF37]/50 bg-amber-50 text-[#000000]'
-                : 'border-slate-200 bg-white text-slate-600 hover:text-[#000000]'
+                ? 'border-[#D4AF37]/50 bg-amber-50 text-[#142c6a]'
+                : 'border-slate-200 bg-white text-slate-600 hover:text-[#142c6a]'
             )}
           >
             {label}
@@ -196,7 +198,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
       {innerTab === 'summary' ? (
         <InstitutionalSection title={t('Offres reçues sur la bâtisse', 'Offers on this property')}>
           {offers.length === 0 ? (
-            <p className="text-sm text-[#000000]">
+            <p className="text-sm text-[#142c6a]">
               {t('Aucune offre enregistrée.', 'No offers recorded yet.')}
             </p>
           ) : (
@@ -216,7 +218,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
                     const st = PROMESSE_STATUS_OPTIONS.find((o) => o.value === row.status);
                     return (
                       <tr key={row.id} className={inst.tr}>
-                        <td className={cn(inst.td, 'text-[#000000] font-semibold')}>
+                        <td className={cn(inst.td, 'text-[#142c6a] font-semibold')}>
                           {language === 'fr' ? st?.labelFr : st?.labelEn}
                         </td>
                         <td className={inst.td}>{row.buyerName ?? '—'}</td>
@@ -246,7 +248,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
               <label className="block space-y-1">
                 <span className={labelClass}>{t('Statut de la promesse', 'Promise status')}</span>
                 {locked ? (
-                  <p className="text-sm font-semibold text-[#000000]">
+                  <p className="text-sm font-semibold text-[#142c6a]">
                     {language === 'fr'
                       ? PROMESSE_STATUS_OPTIONS.find((o) => o.value === form.status)?.labelFr
                       : PROMESSE_STATUS_OPTIONS.find((o) => o.value === form.status)?.labelEn}
@@ -327,7 +329,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
                 <span className={labelClass}>
                   {t('Date limite de réponse', 'Response deadline')}
                 </span>
-                <p className="text-sm font-semibold text-[#000000] tabular-nums">
+                <p className="text-sm font-semibold text-[#142c6a] tabular-nums">
                   {formatIsoDateForDisplay(vm.deadlines.dateLimiteReponse, locale)}
                 </p>
               </label>
@@ -373,7 +375,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
                         <li key={c.id}>
                           <button
                             type="button"
-                            className="w-full text-left px-3 py-2 text-sm text-[#000000] hover:bg-slate-50"
+                            className="w-full text-left px-3 py-2 text-sm text-[#142c6a] hover:bg-slate-50"
                             onClick={() => linkContact(c)}
                           >
                             {c.fullName} · {c.email}
@@ -386,12 +388,12 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
               )}
               {form.buyer ? (
                 <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-                  <p className="text-sm font-semibold text-[#000000]">{form.buyer.fullName}</p>
+                  <p className="text-sm font-semibold text-[#142c6a]">{form.buyer.fullName}</p>
                   {form.buyer.company ? (
-                    <p className="text-sm text-[#000000]">({form.buyer.company})</p>
+                    <p className="text-sm text-[#142c6a]">({form.buyer.company})</p>
                   ) : null}
-                  <p className="text-sm text-[#000000] mt-1">{form.buyer.email}</p>
-                  <p className="text-sm text-[#000000]">{form.buyer.phone}</p>
+                  <p className="text-sm text-[#142c6a] mt-1">{form.buyer.email}</p>
+                  <p className="text-sm text-[#142c6a]">{form.buyer.phone}</p>
                   <span className="inline-block mt-2 text-[9px] font-black uppercase tracking-widest text-slate-600 border border-slate-200 rounded-lg px-2 py-0.5">
                     {t('Contact interne', 'Internal contact')}
                   </span>
@@ -526,7 +528,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
                 />
               </label>
             </div>
-            <p className="mt-4 text-sm font-semibold text-[#000000]">
+            <p className="mt-4 text-sm font-semibold text-[#142c6a]">
               {t('Montant de la commission totale ($)', 'Total commission amount ($)')}:{' '}
               {formatCurrencyCad(vm.commission.montantCommissionTotale)}
             </p>
@@ -589,7 +591,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
                   type="button"
                   disabled={uploading}
                   onClick={() => fileRef.current?.click()}
-                  className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-[#000000] hover:border-slate-300 disabled:opacity-50"
+                  className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-[#142c6a] hover:border-slate-300 disabled:opacity-50"
                 >
                   {uploading ? (
                     <Loader2 className="inline h-3.5 w-3.5 animate-spin mr-2" />
@@ -599,7 +601,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
               </div>
             )}
             {docs.length === 0 ? (
-              <p className="text-sm text-[#000000]">{t('Aucune pièce jointe.', 'No attachments.')}</p>
+              <p className="text-sm text-[#142c6a]">{t('Aucune pièce jointe.', 'No attachments.')}</p>
             ) : (
               <div className={inst.tableWrap}>
                 <table className={inst.table}>
@@ -614,7 +616,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
                   <tbody>
                     {docs.map((doc) => (
                       <tr key={doc.id} className={inst.tr}>
-                        <td className={cn(inst.td, 'text-[#000000] font-medium')}>
+                        <td className={cn(inst.td, 'text-[#142c6a] font-medium')}>
                           {doc.promesseDocLabel ?? doc.fileName}
                         </td>
                         <td className={inst.td}>
@@ -626,7 +628,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
                             {doc.virusScanStatus === 'clean' && (
                               <button
                                 type="button"
-                                className="text-[10px] font-black uppercase tracking-widest underline text-[#000000]"
+                                className="text-[10px] font-black uppercase tracking-widest underline text-[#142c6a]"
                                 onClick={() =>
                                   void getPropertyDocumentDownloadUrl(doc.storagePath).then(
                                     (url) => window.open(url, '_blank')
@@ -639,7 +641,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
                             {!locked && (
                               <button
                                 type="button"
-                                className="text-[10px] font-black uppercase tracking-widest underline text-[#000000]"
+                                className="text-[10px] font-black uppercase tracking-widest underline text-[#142c6a]"
                                 onClick={() =>
                                   void removePromesseDocument(residence.id, doc)
                                 }
@@ -710,7 +712,7 @@ function DeadlineRow({
         <span className={labelClass}>
           {language === 'fr' ? labelFr.replace('(jours)', '— date') : labelEn.replace('(days)', '— date')}
         </span>
-        <p className="text-sm font-semibold text-[#000000] tabular-nums mt-2">
+        <p className="text-sm font-semibold text-[#142c6a] tabular-nums mt-2">
           {formatIsoDateForDisplay(computed, locale)}
         </p>
       </div>

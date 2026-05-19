@@ -17,6 +17,7 @@ import { useLanguage } from '../../../lib/i18n';
 import { cn } from '../../../lib/utils';
 import { DeclarationCertificationHeader } from '../declaration/DeclarationCertificationHeader';
 import { DeclarationQuestionnaire } from '../declaration/DeclarationQuestionnaire';
+import { inst } from '../institutional/InstitutionalUi';
 
 export function DeclarationVendeurTab() {
   const { t, language } = useLanguage();
@@ -170,8 +171,8 @@ export function DeclarationVendeurTab() {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white px-8 py-16 text-center">
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
+      <div className={inst.loading}>
+        <p className={inst.loadingText}>
           {t('Chargement de la déclaration…', 'Loading disclosure…')}
         </p>
       </div>
@@ -236,7 +237,7 @@ export function DeclarationVendeurTab() {
             onClick={() => void handleCertify()}
             className={cn(
               'inline-flex items-center gap-2 rounded-xl border border-[#D4AF37]/50 bg-amber-50 px-6 py-3',
-              'text-[10px] font-black uppercase tracking-[0.16em] text-[#000000]',
+              'text-[10px] font-black uppercase tracking-[0.16em] text-[#142c6a]',
               'transition hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed'
             )}
           >

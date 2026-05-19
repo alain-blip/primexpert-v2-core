@@ -351,26 +351,45 @@ export function AdminSubscriptionsDashboard() {
         </p>
       </div>
 
-      <div className="workhub-card rounded-[22px] border border-white/10 p-5 md:p-6">
+      <div className="workhub-card rounded-[22px] border border-white/10 bg-slate-900/50 p-5 shadow-[0_20px_50px_rgba(0,0,0,0.45)] md:p-6">
         <h2 className="text-lg font-black italic uppercase tracking-tight text-white">
           {t('Grille tarifaire', 'Price grid')}
         </h2>
+        <p className="mt-1 text-[11px] font-semibold text-slate-300">
+          {t(
+            'Prix catalogue Primexpert — paiement unique annuel ou prélèvement mensuel, avec capacité Prime-Drive incluse.',
+            'Primexpert catalog pricing — annual one-time payment or monthly billing, with Prime-Drive capacity included.'
+          )}
+        </p>
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-left text-[11px]">
+          <table className="w-full min-w-[760px] border-collapse text-left text-[11px]">
             <thead>
               <tr className="border-b border-white/15 text-[9px] font-black uppercase tracking-widest text-[#FACC15]">
                 <th className="py-3 pr-4">{t('Forfait', 'Plan')}</th>
+                <th className="py-3 pr-4">{t('Stockage inclus', 'Included storage')}</th>
                 <th className="py-3 pr-4">{t('Paiement unique (annuel)', 'One-time (annual)')}</th>
                 <th className="py-3">{t('Mensuel', 'Monthly')}</th>
               </tr>
             </thead>
             <tbody className="text-white">
               {PLANS.map((p) => (
-                <tr key={p.id} className="border-b border-white/10">
-                  <td className="py-3 pr-4 font-black">{locale === 'fr' ? p.labelFr : p.labelEn}</td>
+                <tr key={p.id} className="border-b border-white/10 odd:bg-white/[0.025] even:bg-slate-950/20">
+                  <td className="py-3 pr-4 align-top">
+                    <span className="font-black text-white">{locale === 'fr' ? p.labelFr : p.labelEn}</span>
+                    {p.id === 'pro' ? (
+                      <span className="ml-2 inline-block rounded border border-[#FACC15]/70 bg-[#FACC15]/15 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-[#FACC15]">
+                        {t('Recommandé', 'Recommended')}
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="py-3 pr-4 align-top">
+                    <span className="inline-flex rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2 text-[10px] font-black leading-snug text-slate-100">
+                      {locale === 'fr' ? p.storageLabelFr : p.storageLabelEn}
+                    </span>
+                  </td>
                   <td className="py-3 pr-4">
                     <span className="text-lg font-black tabular-nums text-white">{formatCad(p.annualLumpCad, locale)}</span>
-                    <span className="ml-2 inline-block rounded border border-[#FACC15]/60 bg-[#FACC15]/15 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-[#FACC15]">
+                    <span className="ml-2 inline-block rounded border border-[#FACC15]/60 bg-[#FACC15]/12 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-[#FACC15]">
                       {t('Paiement unique', 'One-time')}
                     </span>
                   </td>
@@ -384,6 +403,7 @@ export function AdminSubscriptionsDashboard() {
               ))}
               <tr className="border-b-0">
                 <td className="py-3 pr-4 font-black text-sky-200">{t('Option Tél.', 'Phone add-on')}</td>
+                <td className="py-3 pr-4 text-[10px] font-semibold text-slate-500">—</td>
                 <td className="py-3 pr-4 text-lg font-black text-white">
                   +{formatCad(PHONE_ADDON.annualLumpCad, locale)}
                 </td>

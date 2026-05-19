@@ -161,13 +161,70 @@ function preapprobationLabelFr(etat: PreapprobationEtat): string {
   }
 }
 
-export function buildProgressionText(
-  metrics: DossierProgressionMetrics
+function formatVisitesSegment(count: number): string {
+  if (count === 0) return '0 visite faite';
+  return `${count} visite${count > 1 ? 's' : ''} faite${count > 1 ? 's' : ''}`;
+}
+
+function formatComptesRendusSegment(
+  count: number,
+  statut: DossierSuiviStatutAffiche
 ): string {
-  const v = metrics.visitesCount;
-  const visites = `${v} visite${v > 1 ? 's' : ''} faite${v > 1 ? 's' : ''}`;
-  const cr = metrics.compteRendusCount;
-  const comptes = `${cr} compte${cr > 1 ? 's' : ''}-rendu${cr > 1 ? 's' : ''}`;
+  if (count === 0) return '0 compte-rendu';
+  if (statut === 'promesse_acceptee') return 'Comptes-rendus transmis';
+  return `${count} compte${count > 1 ? 's' : ''}-rendu${count > 1 ? 's' : ''}`;
+}
+
+function buildPaProgressionDelaiSegment(
+  doc: Record<string, unknown> | null | undefined,
+  now: number
+): string {
+  const promesse = parsePromesseAchatFromDoc(doc);
+  const vm = buildPromesseAchatViewModel(promesse);
+  const pending: { kind: 'inspection' | 'financement'; iso: string; hours: number }[] = [];
+
+  const inspectionIso = vm.deadlines.dateLimiteInspection;
+  if (inspectionIso && !isInspectionConditionCompleted(doc)) {
+    pending.push({
+      kind: 'inspection',
+      iso: inspectionIso,
+      hours: hoursUntilPaDeadline(inspectionIso, now),
+    });
+  }
+  const financementIso = vm.deadlines.dateLimiteFinancement;
+  if (financementIso && !isFinancementConditionCompleted(doc)) {
+    pending.push({
+      kind: 'financement',
+      iso: financementIso,
+      hours: hoursUntilPaDeadline(financementIso, now),
+    });
+  }
+
+  if (pending.length === 0) return 'Conditions en cours de suivi';
+  pending.sort((a, b) => a.hours - b.hours);
+  const next = pending[0];
+  const label = paDeadlineLabelFr(next.kind);
+  if (next.hours <= 0) {
+    return `Échéance du délai ${label} atteinte`;
+  }
+  if (next.hours <= 48) {
+    return `Échéance du délai ${label} dans 48h`;
+  }
+  const days = Math.ceil(next.hours / 24);
+  return `Échéance du délai ${label} dans ${days} jour${days > 1 ? 's' : ''}`;
+}
+
+export function buildProgressionText(
+  statut: DossierSuiviStatutAffiche,
+  doc: Record<string, unknown> | null | undefined,
+  metrics: DossierProgressionMetrics,
+  now: number
+): string {
+  const visites = formatVisitesSegment(metrics.visitesCount);
+  const comptes = formatComptesRendusSegment(metrics.compteRendusCount, statut);
+  if (statut === 'promesse_acceptee') {
+    return `${visites} | ${comptes} | ${buildPaProgressionDelaiSegment(doc, now)}`;
+  }
   return `${visites} | ${comptes} | ${preapprobationLabelFr(metrics.preapprobation)}`;
 }
 
@@ -221,9 +278,9 @@ export function buildProchaineEtape(
 
     case 'documents_partages':
       if (metrics.preapprobation !== 'validee') {
-        return 'Obtenir la lettre de préapprobation bancaire';
+        return 'Obtenir la lettre de préapprobation bancaire.';
       }
-      return 'Valider les questions de l’acheteur sur le dossier documentaire';
+      return 'Valider les questions de l’acheteur sur le dossier documentaire.';
 
     case 'promesse_acceptee': {
       const promesse = parsePromesseAchatFromDoc(doc);
@@ -248,20 +305,19 @@ export function buildProchaineEtape(
       }
 
       if (pending.length === 0) {
-        return 'Confirmer l’avancement de toutes les conditions de la promesse';
+        return 'Confirmer l’avancement de toutes les conditions de la promesse.';
       }
       pending.sort((a, b) => a.hours - b.hours);
-      const next = pending[0];
-      const label = paDeadlineLabelFr(next.kind);
-      if (next.hours <= 0) {
-        return `Confirmer l’état du délai ${label} (échéance atteinte)`;
-      }
-      if (next.hours <= 48) {
-        return `Obtenir une mise à jour sur le délai ${label} (échéance imminente)`;
-      }
-      return `Planifier le suivi du délai ${label}`;
+      return prochaineEtapePaCondition(pending[0].kind);
     }
   }
+}
+
+function prochaineEtapePaCondition(kind: 'inspection' | 'financement'): string {
+  if (kind === 'inspection') {
+    return "Obtenir la preuve écrite de la levée de la condition d'inspection.";
+  }
+  return "Obtenir la preuve écrite de la levée de la condition de financement hypothécaire.";
 }
 
 export function buildSuggestionIA(
@@ -348,7 +404,7 @@ export function buildDossierSuiviCardViewModel(
     brokerDisplayName: input.brokerDisplayName.trim() || 'Courtier responsable',
     statut,
     statutLabel: DOSSIER_STATUT_LABEL_FR[statut],
-    progressionText: buildProgressionText(metrics),
+    progressionText: buildProgressionText(statut, input.doc, metrics, now),
     prochaineEtape: buildProchaineEtape(statut, input.doc, metrics, now),
     suggestionIA: buildSuggestionIA(statut, input.doc, metrics, now),
     sortPriority: computeSortPriority(statut, input.doc, now),

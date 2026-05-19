@@ -364,3 +364,57 @@ export const nylasSendSellerUpdate = onCall({ invoker: 'public' }, async (reques
     throw new HttpsError('internal', msg);
   }
 });
+
+/** Sélection documentaire — envoi Nylas avec liens Prime-Drive signés. */
+export const sendDocumentSelection = onCall({ invoker: 'public' }, async (request) => {
+  try {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'Connexion requise.');
+    }
+    const brokerId = request.auth.uid;
+    const documentIds = Array.isArray(request.data?.documentIds)
+      ? (request.data.documentIds as unknown[]).map((id) => String(id).trim()).filter(Boolean)
+      : [];
+    const targetRole = String(request.data?.targetRole ?? 'custom').trim() as
+      | 'buyer'
+      | 'notary'
+      | 'banker'
+      | 'custom';
+    const recipientEmail = String(request.data?.recipientEmail ?? '').trim();
+    const subject = String(request.data?.subject ?? '').trim();
+    const message = String(request.data?.message ?? '').trim();
+    const accountId = String(request.data?.accountId ?? '').trim() || undefined;
+    const propertyId = String(request.data?.propertyId ?? '').trim() || undefined;
+    const contactId = String(request.data?.contactId ?? '').trim() || undefined;
+
+    if (!documentIds.length || !recipientEmail || !subject || !message) {
+      throw new HttpsError(
+        'invalid-argument',
+        'documentIds, recipientEmail, subject et message requis.'
+      );
+    }
+
+    const { sendDocumentSelectionEmail } = await import('./emails/sendDocumentSelection');
+    const result = await sendDocumentSelectionEmail({
+      brokerId,
+      documentIds,
+      targetRole,
+      recipientEmail,
+      subject,
+      message,
+      accountId,
+      propertyId,
+      contactId,
+    });
+
+    return { ok: true, sentCount: result.sentCount, threadId: result.threadId };
+  } catch (e) {
+    if (e instanceof HttpsError) throw e;
+    console.error('[sendDocumentSelection]', e);
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes('Nylas') || msg.includes('courriel')) {
+      throw new HttpsError('failed-precondition', msg);
+    }
+    throw new HttpsError('internal', msg);
+  }
+});

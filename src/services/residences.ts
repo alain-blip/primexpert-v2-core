@@ -70,6 +70,16 @@ export interface Residence {
   address: string;
   city: string;
   price: number;
+  /** Nom commercial affiché sur les cartes d'inscription, si distinct de l'adresse. */
+  residenceName?: string;
+  nomCommercial?: string;
+  nom_commercial?: string;
+  commercialName?: string;
+  name?: string;
+  askingPrice?: number;
+  prixDemande?: number;
+  commissionRate?: number;
+  potentialRevenue?: number;
   status: ResidenceStatus;
   date: string;
   /** Multi-tenant : doit toujours contenir le brokerId du propriétaire de la fiche. */
@@ -82,12 +92,11 @@ export interface Residence {
   syndication?: AssetSyndication;
 }
 
-/** Statuts visibles dans le pipeline « chaud » (hors archive non signé). */
+/** Statuts visibles dans le pipeline « chaud » (hors expirés et non signé). */
 export const PIPELINE_ACTIVE_STATUSES: ResidenceStatus[] = [
   'prospect',
   'mandate',
   'promise',
-  'expired',
   'sold',
 ];
 
@@ -153,6 +162,39 @@ function mapLegacyPrice(data: DocumentData): number {
     }
   }
   return 0;
+}
+
+function mapLegacyNumber(...candidates: unknown[]): number | undefined {
+  for (const c of candidates) {
+    if (c === undefined || c === null || c === '') continue;
+    if (typeof c === 'number' && Number.isFinite(c) && c >= 0) return c;
+    if (typeof c === 'string') {
+      const cleaned = c
+        .trim()
+        .replace(/\s/g, '')
+        .replace(/[^\d.,-]/g, '')
+        .replace(',', '.');
+      const n = Number(cleaned);
+      if (Number.isFinite(n) && n >= 0) return n;
+    }
+  }
+  return undefined;
+}
+
+function mapCommercialName(data: DocumentData): string | undefined {
+  const candidates: unknown[] = [
+    data.commercialName,
+    data.nomCommercial,
+    data.nom_commercial,
+    data.name,
+    data.residenceName,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') continue;
+    const trimmed = candidate.trim();
+    if (trimmed && trimmed !== '—') return trimmed;
+  }
+  return undefined;
 }
 
 function mapLegacyStatus(data: DocumentData): ResidenceStatus {
@@ -235,11 +277,36 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
     synRaw && typeof synRaw === 'object' && !Array.isArray(synRaw)
       ? (synRaw as AssetSyndication)
       : undefined;
+  const commercialName = mapCommercialName(data);
+  const price = mapLegacyPrice(data);
+  const commissionRate = mapLegacyNumber(
+    data.commissionRate,
+    data.tauxCommission,
+    data.commissionPct,
+    data.commission?.totalePct,
+    data.commission?.inscripteurPct
+  );
+  const potentialRevenue = mapLegacyNumber(
+    data.potentialRevenue,
+    data.revenuPotentiel,
+    data.revenuPotentielCommission,
+    data.revenuPotentielAnnuel,
+    data.revenusPotentiels
+  );
   return {
     id: doc.id,
     address: String(data.address ?? data.adresse ?? '—'),
     city: String(data.city ?? data.ville ?? '—'),
-    price: mapLegacyPrice(data),
+    price,
+    residenceName: commercialName,
+    nomCommercial: data.nomCommercial ? String(data.nomCommercial) : undefined,
+    nom_commercial: data.nom_commercial ? String(data.nom_commercial) : undefined,
+    commercialName: data.commercialName ? String(data.commercialName) : undefined,
+    name: data.name ? String(data.name) : undefined,
+    askingPrice: price,
+    prixDemande: price,
+    commissionRate,
+    potentialRevenue,
     status: mapLegacyStatus(data),
     date: String(data.date ?? data.updatedAt ?? ''),
     courtiersResponsables: data[TENANT_FIELD],

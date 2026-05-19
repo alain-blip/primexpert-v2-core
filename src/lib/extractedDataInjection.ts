@@ -15,6 +15,7 @@ import type {
   PropertyDocumentCategory,
   PropertyDocumentExtractedData,
 } from '../types/propertyDocument';
+import { inferStorageCategoryFromExtractedData } from './propertyDocumentTaxonomy';
 
 function compareLocaleAlpha(a: string, b: string): number {
   return a.localeCompare(b, 'fr', { sensitivity: 'base' });
@@ -140,37 +141,32 @@ export function listExtractedAmounts(data: PropertyDocumentExtractedData): Extra
   return rows;
 }
 
-/** Dossier Firestore cible après injection (reclassement automatique). */
+/** Dossier Firestore cible après injection (reclassement — matrice Alain). */
 export function inferCategoryFromExtractedData(
   data: PropertyDocumentExtractedData
 ): PropertyDocumentCategory {
-  const t = data.documentType;
-  if (t === 'certificat_localisation' || hasExtractedCertificateLocalisation(data)) {
-    return 'legal';
-  }
-  if (t === 'rapport_evaluation' || t === 'etats_financiers') {
-    return 'financier';
-  }
-  if ((data.comparables?.length ?? 0) > 0 || hasExtractedEvaluationSubject(data)) {
-    return 'financier';
-  }
-  if ((data.amounts?.length ?? 0) > 0) {
-    return 'financier';
-  }
-  return 'technique';
+  return inferStorageCategoryFromExtractedData(data);
+}
+
+function isLegacyStructuredKind(
+  data: PropertyDocumentExtractedData,
+  kind: 'certificat_localisation' | 'etats_financiers' | 'rapport_evaluation'
+): boolean {
+  return data.documentType === kind;
 }
 
 export function isExtractionCL(data: PropertyDocumentExtractedData): boolean {
-  return (
-    data.documentType === 'certificat_localisation' || hasExtractedCertificateLocalisation(data)
-  );
+  if (hasExtractedCertificateLocalisation(data)) return true;
+  if (isLegacyStructuredKind(data, 'certificat_localisation')) return true;
+  const label = String(data.documentType ?? '').toLowerCase();
+  return label.includes('certificat de localisation') || label.includes('localisation récent');
 }
 
 export function isExtractionFinancial(data: PropertyDocumentExtractedData): boolean {
   if (isExtractionCL(data)) return false;
   return (
-    data.documentType === 'etats_financiers' ||
-    data.documentType === 'rapport_evaluation' ||
+    isLegacyStructuredKind(data, 'etats_financiers') ||
+    isLegacyStructuredKind(data, 'rapport_evaluation') ||
     (data.amounts?.length ?? 0) > 0 ||
     (data.comparables?.length ?? 0) > 0 ||
     hasExtractedEvaluationSubject(data)

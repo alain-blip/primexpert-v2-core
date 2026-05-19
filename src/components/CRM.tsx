@@ -6,6 +6,7 @@ import { useLanguage } from '../lib/i18n';
 import { CRM_INBOUND_QUEUE_KEY, type CrmInboundDraft } from '../lib/crmInboundQueue';
 import { ASSET_NICHE_IDS, type AssetNiche } from '../types/residence';
 import { useSilo } from '../context/SiloContext';
+import { ScopedDocumentManager } from './documents/ScopedDocumentManager';
 
 interface CrmRow {
   id: number;
@@ -119,6 +120,7 @@ export function CRM() {
   const { activeSilo } = useSilo();
   const [contacts, setContacts] = useState<CrmRow[]>(SEED_CONTACTS);
   const [profileFilter, setProfileFilter] = useState<AssetNiche | 'all' | 'cockpit'>('cockpit');
+  const [selectedContactId, setSelectedContactId] = useState<number>(SEED_CONTACTS[0]?.id ?? 0);
 
   useEffect(() => {
     try {
@@ -191,6 +193,7 @@ export function CRM() {
     { key: 'all', label: t('Tous', 'All') },
     ...ASSET_NICHE_IDS.map((id) => ({ key: id, label: id })),
   ];
+  const selectedContact = visibleContacts.find((c) => c.id === selectedContactId) ?? visibleContacts[0];
 
   return (
     <div className="space-y-8">
@@ -259,10 +262,14 @@ export function CRM() {
           {visibleContacts.map((contact, i) => (
             <motion.div
               key={contact.id}
+              onClick={() => setSelectedContactId(contact.id)}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: Math.min(i * 0.05, 0.4) }}
-              className="flex items-center px-8 py-5 hover:bg-blue-500/10 transition-all cursor-pointer group"
+              className={cn(
+                'flex items-center px-8 py-5 hover:bg-blue-500/10 transition-all cursor-pointer group',
+                selectedContact?.id === contact.id && 'bg-blue-500/10'
+              )}
             >
               <div className="w-12 h-12 bg-blue-900 text-blue-300 rounded-lg flex items-center justify-center font-black italic text-lg mr-8 shadow-sm group-hover:bg-blue-500 group-hover:text-white transition-colors">
                 {contact.initials}
@@ -320,6 +327,18 @@ export function CRM() {
           ))}
         </div>
       </div>
+      {selectedContact ? (
+        <ScopedDocumentManager
+          scope="contact"
+          contactId={String(selectedContact.id)}
+          compact
+          title={t('Espace Documents — Qualification', 'Document space — Qualification')}
+          subtitle={t(
+            `Contact : ${selectedContact.name} — entente de confidentialité, preuve de fonds, lettre bancaire, CANAFE.`,
+            `Contact: ${selectedContact.name} — NDA, proof of funds, bank letter, FINTRAC.`
+          )}
+        />
+      ) : null}
     </div>
   );
 }

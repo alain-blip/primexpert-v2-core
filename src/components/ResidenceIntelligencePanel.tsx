@@ -103,37 +103,27 @@ export function ResidenceIntelligencePanel({
   const addrTitle = residence.city ? `${residence.address}, ${residence.city}` : residence.address;
 
   return (
-    <div className={cn('space-y-5', inst.page)}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-start gap-3 min-w-0">
-          {!embedded && (
+    <div className={cn('space-y-5', !embedded && inst.page)}>
+      {!embedded ? (
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-start gap-3 min-w-0">
             <button
               type="button"
               onClick={onClose}
-              className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-[#000000] transition"
+              className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-[#142c6a] transition"
               aria-label={t('Retour à mes inscriptions', 'Back to my listings')}
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
-          )}
-          <div className="min-w-0">
-            {!embedded ? (
-              <>
-                <InstitutionalPageHeader
-                  title={t('Vue 360° · Intelligence centralisée', '360° view · Centralized intelligence')}
-                />
-                <h2 className="text-xl font-black text-[#000000] tracking-tight truncate -mt-2">{addrTitle}</h2>
-              </>
-            ) : (
+            <div className="min-w-0">
               <InstitutionalPageHeader
-                icon={<Sparkles className="h-5 w-5 text-slate-700 shrink-0" />}
-                title={t('Intelligence · Chronologie', 'Intelligence · Timeline')}
-                meta={t('Appels & courriels analysés', 'Analyzed calls & emails')}
+                title={t('Vue 360° · Intelligence centralisée', '360° view · Centralized intelligence')}
               />
-            )}
+              <h2 className="text-xl font-black text-[#142c6a] tracking-tight truncate -mt-2">{addrTitle}</h2>
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
       {subError && (
         <div className={inst.alertAmber}>
@@ -194,12 +184,12 @@ export function ResidenceIntelligencePanel({
                         {st.emoji}
                       </span>
                     </div>
-                    <p className="text-[11px] font-mono text-[#000000] mt-1 truncate">{row.fileName}</p>
+                    <p className="text-[11px] font-mono text-[#142c6a] mt-1 truncate">{row.fileName}</p>
                     <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600 mt-0.5">
                       {st.label}
                     </p>
                     {row.pipelineStatus === 'analyzed' && row.executiveSummary?.trim() ? (
-                      <p className="mt-2 text-sm text-[#000000] leading-relaxed border-t border-slate-200 pt-2">
+                      <p className="mt-2 text-sm text-[#142c6a] leading-relaxed border-t border-slate-200 pt-2">
                         {row.executiveSummary}
                       </p>
                     ) : null}
@@ -226,7 +216,7 @@ export function ResidenceIntelligencePanel({
                         {t('Courriel analysé', 'Analyzed email')}
                       </span>
                     </div>
-                    <p className="text-sm font-bold text-[#000000] mt-1">{name}</p>
+                    <p className="text-sm font-bold text-[#142c6a] mt-1">{name}</p>
                     <p className="text-sm text-slate-700 mt-1 leading-snug line-clamp-3">{p.summaryOneLine}</p>
                     <p className="text-[9px] font-mono text-slate-600 mt-2">
                       {t('Intent', 'Intent')}: {p.lead.intent} · {t('Urgence', 'Urgency')}: {p.urgency}

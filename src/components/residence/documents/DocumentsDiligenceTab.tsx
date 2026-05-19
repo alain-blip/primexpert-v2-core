@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../../../lib/i18n';
-import type { PropertyDocumentCategory, PropertyDocumentRecord } from '../../../types/propertyDocument';
+import type { PropertyDocumentRecord } from '../../../types/propertyDocument';
 import type { AssetNiche } from '../../../types/residence';
 import { sortDocumentsByFileName } from '../../../lib/extractedDataInjection';
 import {
@@ -8,21 +8,30 @@ import {
   documentNeedsIaParse,
 } from '../../../lib/propertyDocumentValidation';
 import {
+  filterDocsForTab,
+  isPromesseTab,
+  tabToUploadCategory,
+  TRANSACTION_DOCUMENT_TABS,
+  type TransactionDocumentTab,
+} from '../../../lib/propertyDocumentTaxonomy';
+import {
   deletePropertyDocument,
   getPropertyDocumentDownloadUrl,
+  reconcilePropertyDocumentCategories,
   reconcilePropertyDocumentParses,
   reconcilePropertyDocumentScans,
   subscribeAllPropertyDocuments,
   uploadPropertyDocument,
 } from '../../../services/propertyDocumentsService';
-import { DocumentCategorySidebar } from './DocumentCategorySidebar';
+import { DocumentTabs } from './DocumentTabs';
 import { DocumentUploadPanel } from './DocumentUploadPanel';
 import { DocumentMetadataPanel } from './DocumentMetadataPanel';
+import { DocumentDistributionBar } from './DocumentDistributionPanel';
+import { DocumentEmailPanel } from './DocumentEmailPanel';
 
 export interface DocumentsDiligenceTabProps {
   propertyId: string;
   brokerId: string;
-  /** UID courtier assigné sur la fiche (`courtiersResponsables`). */
   courtiersResponsables?: string;
   residenceCity?: string;
   residenceRegionHint?: string;
@@ -34,10 +43,11 @@ function canUploadToResidence(brokerId: string, courtiersResponsables?: string):
   return Boolean(brokerId) && courtiersResponsables === brokerId;
 }
 
-const EMPTY_COUNTS: Record<PropertyDocumentCategory, number> = {
-  financier: 0,
-  technique: 0,
-  legal: 0,
+const EMPTY_TAB_COUNTS: Record<TransactionDocumentTab, number> = {
+  acheteurs: 0,
+  contrats: 0,
+  actes: 0,
+  promesses: 0,
 };
 
 export function DocumentsDiligenceTab({
@@ -53,12 +63,14 @@ export function DocumentsDiligenceTab({
   const locale = language === 'fr' ? 'fr' : 'en';
   const uploadAllowed = canUploadToResidence(brokerId, courtiersResponsables);
 
-  const [category, setCategory] = useState<PropertyDocumentCategory>('financier');
+  const [activeTab, setActiveTab] = useState<TransactionDocumentTab>('acheteurs');
   const [allDocs, setAllDocs] = useState<PropertyDocumentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [busyAction, setBusyAction] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [emailPanelOpen, setEmailPanelOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const hasPendingScan = useMemo(
@@ -70,7 +82,6 @@ export function DocumentsDiligenceTab({
 
   useEffect(() => {
     if (!propertyId || !uploadAllowed || !hasPendingScan) return;
-
     let cancelled = false;
     void reconcilePropertyDocumentScans(propertyId)
       .then((r) => {
@@ -96,7 +107,6 @@ export function DocumentsDiligenceTab({
 
   useEffect(() => {
     if (!propertyId || !uploadAllowed || !hasPendingParse) return;
-
     let cancelled = false;
     void reconcilePropertyDocumentParses(propertyId)
       .then((r) => {
@@ -119,6 +129,17 @@ export function DocumentsDiligenceTab({
       (rows) => {
         setAllDocs(rows);
         setLoading(false);
+        if (uploadAllowed) {
+          void reconcilePropertyDocumentCategories(propertyId, rows)
+            .then((count) => {
+              if (count > 0) {
+                console.info('[DocumentsDiligenceTab] taxonomy categories reconciled', { count });
+              }
+            })
+            .catch((e) => {
+              console.warn('[DocumentsDiligenceTab] taxonomy category reconcile failed', e);
+            });
+        }
       },
       () => {
         setError(
@@ -131,43 +152,79 @@ export function DocumentsDiligenceTab({
       }
     );
     return unsub;
-  }, [propertyId, t]);
+  }, [propertyId, t, uploadAllowed]);
 
-  const counts = useMemo(() => {
-    const next = { ...EMPTY_COUNTS };
-    for (const doc of allDocs) {
-      if (doc.category in next) next[doc.category] += 1;
+  const tabCounts = useMemo(() => {
+    const next = { ...EMPTY_TAB_COUNTS };
+    for (const tab of TRANSACTION_DOCUMENT_TABS) {
+      next[tab.id] = filterDocsForTab(allDocs, tab.id).length;
     }
     return next;
   }, [allDocs]);
 
-  const categoryDocs = useMemo(
-    () => sortDocumentsByFileName(allDocs.filter((d) => d.category === category)),
-    [allDocs, category]
+  const tabDocs = useMemo(
+    () => sortDocumentsByFileName(filterDocsForTab(allDocs, activeTab)),
+    [allDocs, activeTab]
   );
 
   const selected = useMemo(
-    () => categoryDocs.find((d) => d.id === selectedId) ?? null,
-    [categoryDocs, selectedId]
+    () => tabDocs.find((d) => d.id === selectedId) ?? null,
+    [tabDocs, selectedId]
   );
 
+  const selectedDocumentIds = useMemo(
+    () =>
+      tabDocs
+        .filter((d) => checkedIds.has(d.id))
+        .map((d) => (d.id.includes(':') ? d.id : `property:${d.id}`)),
+    [tabDocs, checkedIds]
+  );
+
+  const propertyContextLabel = useMemo(() => {
+    if (residenceCity) return residenceCity;
+    return undefined;
+  }, [residenceCity]);
+
   useEffect(() => {
-    if (selectedId && !categoryDocs.some((d) => d.id === selectedId)) {
-      setSelectedId(categoryDocs[0]?.id ?? null);
+    if (selectedId && !tabDocs.some((d) => d.id === selectedId)) {
+      setSelectedId(tabDocs[0]?.id ?? null);
     }
-  }, [category, categoryDocs, selectedId]);
+  }, [activeTab, tabDocs, selectedId]);
 
   useEffect(() => {
     setSelectedId(null);
-  }, [category]);
+    setCheckedIds(new Set());
+  }, [activeTab]);
+
+  const toggleCheck = useCallback((id: string) => {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleCheckAll = useCallback((ids: string[], checked: boolean) => {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) {
+        if (checked) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const activeTabDef = TRANSACTION_DOCUMENT_TABS.find((t) => t.id === activeTab);
 
   const handleUpload = useCallback(
     async (files: File[]) => {
       if (!uploadAllowed) {
         setError(
           t(
-            'Téléversement impossible : vous devez être le courtier responsable de cette fiche (catalogue partagé non assigné).',
-            'Upload not allowed: you must be the assigned broker for this listing (unassigned shared catalog).'
+            'Téléversement impossible : vous devez être le courtier responsable de cette fiche.',
+            'Upload not allowed: you must be the assigned broker for this listing.'
           )
         );
         return;
@@ -175,6 +232,8 @@ export function DocumentsDiligenceTab({
       setUploading(true);
       setError(null);
       try {
+        const category = tabToUploadCategory(activeTab);
+        const promesse = isPromesseTab(activeTab);
         let last: PropertyDocumentRecord | null = null;
         for (const file of files) {
           last = await uploadPropertyDocument({
@@ -182,6 +241,8 @@ export function DocumentsDiligenceTab({
             category,
             file,
             uploadedBy: brokerId,
+            promesseScope: promesse,
+            promesseDocLabel: promesse ? file.name : undefined,
           });
         }
         if (last) setSelectedId(last.id);
@@ -191,23 +252,18 @@ export function DocumentsDiligenceTab({
         if (msg.startsWith('VALIDATION_')) {
           setError(
             t(
-              'Fichier refusé par la politique de sécurité. Formats acceptés : document portable (PDF), tableur Excel (XLSX/XLS), document Word (DOCX).',
-              'File rejected by security policy. Accepted: portable document format (PDF), Excel spreadsheet (XLSX/XLS), Word document (DOCX).'
+              'Fichier refusé par la politique de sécurité. Formats acceptés : PDF, Excel, Word.',
+              'File rejected by security policy. Accepted: PDF, Excel, Word.'
             )
           );
         } else {
-          setError(
-            t(
-              'Échec du téléversement. Vérifiez les droits d’accès et la taille du fichier (max. 25 Mo).',
-              'Upload failed. Check access rights and file size (max 25 MB).'
-            )
-          );
+          setError(t('Échec du téléversement.', 'Upload failed.'));
         }
       } finally {
         setUploading(false);
       }
     },
-    [propertyId, category, brokerId, t, uploadAllowed]
+    [propertyId, activeTab, brokerId, t, uploadAllowed]
   );
 
   const handleDownload = useCallback(
@@ -215,8 +271,8 @@ export function DocumentsDiligenceTab({
       if (!canDownloadPropertyDocument(doc.virusScanStatus)) {
         setError(
           t(
-            'Téléchargement bloqué : vérification de sécurité en cours ou fichier non conforme.',
-            'Download blocked: security verification in progress or file not cleared.'
+            'Téléchargement bloqué : vérification de sécurité en cours.',
+            'Download blocked: security verification in progress.'
           )
         );
         return;
@@ -231,8 +287,7 @@ export function DocumentsDiligenceTab({
         anchor.rel = 'noopener noreferrer';
         anchor.target = '_blank';
         anchor.click();
-      } catch (e) {
-        console.error('[DocumentsDiligenceTab] download failed', e);
+      } catch {
         setError(t('Téléchargement impossible.', 'Download failed.'));
       } finally {
         setBusyAction(false);
@@ -248,8 +303,12 @@ export function DocumentsDiligenceTab({
       try {
         await deletePropertyDocument(propertyId, doc);
         if (selectedId === doc.id) setSelectedId(null);
-      } catch (e) {
-        console.error('[DocumentsDiligenceTab] delete failed', e);
+        setCheckedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(doc.id);
+          return next;
+        });
+      } catch {
         setError(t('Suppression impossible.', 'Delete failed.'));
       } finally {
         setBusyAction(false);
@@ -263,20 +322,18 @@ export function DocumentsDiligenceTab({
       locale === 'fr'
         ? {
             dropTitle: 'Glissez-déposez vos fichiers ici',
-            dropHint:
-              'document portable (PDF), tableur Excel (XLSX/XLS), document Word (DOCX) — max. 25 Mo',
+            dropHint: 'PDF, Excel (XLSX/XLS), Word (DOCX) — max. 25 Mo',
             browse: 'Parcourir',
             uploadedTitle: 'Fichiers du dossier',
-            empty: 'Aucun fichier dans ce dossier.',
+            empty: 'Aucun fichier dans cet onglet.',
             loading: 'Chargement…',
           }
         : {
             dropTitle: 'Drag and drop files here',
-            dropHint:
-              'portable document format (PDF), Excel spreadsheet (XLSX/XLS), Word document (DOCX) — max 25 MB',
+            dropHint: 'PDF, Excel (XLSX/XLS), Word (DOCX) — max 25 MB',
             browse: 'Browse',
             uploadedTitle: 'Folder files',
-            empty: 'No files in this folder.',
+            empty: 'No files in this tab.',
             loading: 'Loading…',
           },
     [locale]
@@ -292,6 +349,7 @@ export function DocumentsDiligenceTab({
             size: 'Taille',
             date: 'Date de téléversement',
             type: 'Type de contenu',
+            taxonomy: 'Type documentaire (IA)',
             security: 'Sécurité',
             analysis: 'Analyse intelligente',
             securityPendingNote:
@@ -311,6 +369,7 @@ export function DocumentsDiligenceTab({
             size: 'Size',
             date: 'Upload date',
             type: 'Content type',
+            taxonomy: 'Document type (AI)',
             security: 'Security',
             analysis: 'Intelligent analysis',
             securityPendingNote:
@@ -325,26 +384,25 @@ export function DocumentsDiligenceTab({
   );
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 px-1">
-        <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800">
-            {t('Espace Documents — diligence raisonnable', 'Document space — due diligence')}
-          </p>
-          <p className="mt-0.5 text-[11px] text-slate-600">
-            {t(
-              'Dossiers institutionnels : financier, technique et légal.',
-              'Institutional folders: financial, technical, and legal.'
-            )}
-          </p>
-        </div>
-      </div>
+    <div className="p-4">
+      {activeTabDef ? (
+        <p className="mb-4 px-1 text-[11px] font-medium text-[#142c6a] leading-relaxed">
+          {locale === 'fr' ? activeTabDef.descriptionFr : activeTabDef.descriptionEn}
+        </p>
+      ) : null}
+      {shareDraft ? (
+        <p className="mb-3 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-900">
+          {locale === 'fr'
+            ? `Package préparé : ${shareDraft.documentIds.length} doc(s) → ${shareDraft.recipients.join(', ')}`
+            : `Package ready: ${shareDraft.documentIds.length} doc(s) → ${shareDraft.recipients.join(', ')}`}
+        </p>
+      ) : null}
 
       {!uploadAllowed ? (
         <p className="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-950" role="status">
           {t(
-            'Cette fiche n’est pas assignée à votre compte. Assignez-vous comme courtier responsable avant de téléverser des documents.',
-            'This listing is not assigned to your account. Assign yourself as responsible broker before uploading documents.'
+            'Assignez-vous comme courtier responsable avant de téléverser des documents.',
+            'Assign yourself as responsible broker before uploading documents.'
           )}
         </p>
       ) : null}
@@ -355,40 +413,64 @@ export function DocumentsDiligenceTab({
         </p>
       ) : null}
 
-      <div className="flex min-h-[520px] gap-4">
-        <DocumentCategorySidebar
-          activeCategory={category}
-          onCategoryChange={setCategory}
-          counts={counts}
+      <div className="relative flex min-h-[520px] flex-col gap-0">
+        <div className="flex min-h-0 flex-1 gap-4 pb-16">
+          <DocumentTabs
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            counts={tabCounts}
+            locale={locale}
+          />
+          <DocumentUploadPanel
+            documents={tabDocs}
+            selectedId={selectedId}
+            checkedIds={checkedIds}
+            onToggleCheck={toggleCheck}
+            onToggleCheckAll={toggleCheckAll}
+            activeTab={activeTab}
+            loading={loading}
+            uploading={uploading}
+            uploadDisabled={!uploadAllowed}
+            onSelect={(doc) => setSelectedId(doc.id)}
+            onUpload={handleUpload}
+            locale={locale}
+            labels={uploadLabels}
+          />
+          <DocumentMetadataPanel
+            document={selected}
+            propertyId={propertyId}
+            brokerId={brokerId}
+            residenceCity={residenceCity}
+            residenceRegionHint={residenceRegionHint}
+            assetNiche={assetNiche}
+            propertyType={propertyType}
+            locale={locale}
+            busy={busyAction}
+            onDownload={handleDownload}
+            onDelete={handleDelete}
+            labels={metaLabels}
+          />
+        </div>
+
+        <DocumentDistributionBar
+          selectedCount={selectedDocumentIds.length}
           locale={locale}
-          title={t('Dossiers', 'Folders')}
-        />
-        <DocumentUploadPanel
-          documents={categoryDocs}
-          selectedId={selectedId}
-          loading={loading}
-          uploading={uploading}
-          uploadDisabled={!uploadAllowed}
-          onSelect={(doc) => setSelectedId(doc.id)}
-          onUpload={handleUpload}
-          locale={locale}
-          labels={uploadLabels}
-        />
-        <DocumentMetadataPanel
-          document={selected}
-          propertyId={propertyId}
-          brokerId={brokerId}
-          residenceCity={residenceCity}
-          residenceRegionHint={residenceRegionHint}
-          assetNiche={assetNiche}
-          propertyType={propertyType}
-          locale={locale}
-          busy={busyAction}
-          onDownload={handleDownload}
-          onDelete={handleDelete}
-          labels={metaLabels}
+          onOpenPanel={() => setEmailPanelOpen(true)}
         />
       </div>
+
+      <DocumentEmailPanel
+        open={emailPanelOpen}
+        locale={locale}
+        documentIds={selectedDocumentIds}
+        propertyId={propertyId}
+        contextLabel={propertyContextLabel}
+        onClose={() => setEmailPanelOpen(false)}
+        onSent={() => {
+          setCheckedIds(new Set());
+          setEmailPanelOpen(false);
+        }}
+      />
     </div>
   );
 }

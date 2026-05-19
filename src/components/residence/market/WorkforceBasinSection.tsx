@@ -61,7 +61,7 @@ function DemographicCell({
         value={local}
         onChange={(e) => setLocal(e.target.value)}
         onBlur={handleBlur}
-        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xl font-black text-[#000000] tabular-nums focus:border-[#D4AF37]/50 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/25"
+        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xl font-black text-[#142c6a] tabular-nums focus:border-[#D4AF37]/50 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/25"
         placeholder="—"
       />
     </div>
@@ -95,7 +95,7 @@ export function WorkforceBasinSection() {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Users className="h-4 w-4 text-[#D4AF37]" />
-            <h4 className="text-[10px] font-black uppercase tracking-[0.14em] text-[#000000]">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.14em] text-[#142c6a]">
               {t("Bassin d'emploi disponible", 'Available labour pool')}
             </h4>
             {employmentTotal != null && employmentTotal > 0 && (
@@ -129,7 +129,7 @@ export function WorkforceBasinSection() {
         </div>
 
         <div>
-          <h4 className="text-[10px] font-black uppercase tracking-[0.14em] text-[#000000] mb-3">
+          <h4 className="text-[10px] font-black uppercase tracking-[0.14em] text-[#142c6a] mb-3">
             {t('Bassin de clients potentiels', 'Potential client pool')}
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">

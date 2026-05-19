@@ -39,7 +39,7 @@ function CfoKpiCard({
       {sublabel ? (
         <p className="text-[9px] text-slate-500 mt-0.5 normal-case font-medium">{sublabel}</p>
       ) : null}
-      <p className="mt-2 text-2xl font-black tracking-tight text-[#000000] tabular-nums">
+      <p className="mt-2 text-2xl font-black tracking-tight text-[#142c6a] tabular-nums">
         {value}
       </p>
     </div>
@@ -113,7 +113,7 @@ export function BilanExecutifTab({ residence }: BilanExecutifTabProps) {
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 pb-4">
         <Landmark className="h-5 w-5 text-slate-700 shrink-0" />
         <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#000000]">
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#142c6a]">
             {t('Vue CFO · Résumé financier de l’inscription', 'CFO view · Listing financial summary')}
           </p>
           <p className="text-[10px] text-slate-600 font-mono mt-0.5">
@@ -128,7 +128,7 @@ export function BilanExecutifTab({ residence }: BilanExecutifTabProps) {
           role="alert"
         >
           <AlertTriangle className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
-          <p className="text-sm font-semibold text-[#000000] leading-relaxed">
+          <p className="text-sm font-semibold text-[#142c6a] leading-relaxed">
             {t(
               'Données financières de l’inscription incomplètes pour la simulation.',
               'Listing financial data incomplete for simulation.'
@@ -147,7 +147,7 @@ export function BilanExecutifTab({ residence }: BilanExecutifTabProps) {
       />
 
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-[#000000] mb-4">
+        <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-[#142c6a] mb-4">
           {t('Performance de l’inscription', 'Listing performance')}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -180,7 +180,7 @@ export function BilanExecutifTab({ residence }: BilanExecutifTabProps) {
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-[#000000] mb-1">
+        <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-[#142c6a] mb-1">
           {t('Bancabilité commerciale', 'Commercial bankability')}
         </h3>
         <p className="text-[10px] text-slate-600 mb-4">
@@ -209,7 +209,7 @@ export function BilanExecutifTab({ residence }: BilanExecutifTabProps) {
         {bank.canSimulate && bank.ratioCouverture != null && (
           <p className="mt-3 text-[10px] font-mono text-slate-600">
             {t('DSCR résultant', 'Resulting DSCR')}:{' '}
-            <span className="font-bold text-[#000000]">{fmtDscr(bank.ratioCouverture)}</span>
+            <span className="font-bold text-[#142c6a]">{fmtDscr(bank.ratioCouverture)}</span>
           </p>
         )}
       </section>

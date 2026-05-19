@@ -83,7 +83,13 @@ async function markParseCompleted(
   docRef: DocumentReference,
   extractedData: Record<string, unknown>
 ): Promise<void> {
+  const inferredStorageCategory = extractedData.inferredStorageCategory;
   await docRef.update({
+    ...(inferredStorageCategory === 'financier' ||
+    inferredStorageCategory === 'legal' ||
+    inferredStorageCategory === 'technique'
+      ? { category: inferredStorageCategory }
+      : {}),
     parsingStatus: 'completed',
     parsedAtMillis: Date.now(),
     extractedData,

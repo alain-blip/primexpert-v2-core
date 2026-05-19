@@ -26,9 +26,12 @@ import { IdentiteImmeubleTab } from './tabs/IdentiteImmeubleTab';
 import { DeclarationVendeurTab } from './tabs/DeclarationVendeurTab';
 import { MarcheConcurrenceTab } from './tabs/MarcheConcurrenceTab';
 import { ResidenceDocumentProvider } from '../../context/ResidenceDocumentContext';
-import { InstitutionalPlaceholder } from './institutional/InstitutionalUi';
+import {
+  InstitutionalResidenceTabShell,
+} from './institutional/InstitutionalUi';
 import { DocumentsDiligenceTab } from './documents/DocumentsDiligenceTab';
 import { PromesseAchatTab } from './tabs/PromesseAchatTab';
+import { Synthese360Tab } from './tabs/Synthese360Tab';
 
 export type ResidenceDetailTab =
   | 'synthese'
@@ -64,6 +67,100 @@ const TABS: {
   { id: 'intelligence', icon: Sparkles, labelFr: 'Intelligence', labelEn: 'Intelligence' },
   { id: 'promesse', icon: Handshake, labelFr: 'Promesse', labelEn: 'Promise' },
 ];
+
+type InstitutionalShellTab =
+  | 'synthese'
+  | 'finances'
+  | 'declaration'
+  | 'marche'
+  | 'documents'
+  | 'intelligence'
+  | 'promesse';
+
+const INSTITUTIONAL_TAB_SHELL: Record<
+  InstitutionalShellTab,
+  {
+    titleFr: string;
+    titleEn: string;
+    subtitleFr?: string;
+    subtitleEn?: string;
+    variant: 'card' | 'stack';
+    useAddressSubtitle?: boolean;
+  }
+> = {
+  synthese: {
+    titleFr: 'Bilan exécutif 360°',
+    titleEn: '360° Executive Summary',
+    subtitleFr: 'Synthèse commerciale · rétribution · conformité C-73.2 · notes courtier',
+    subtitleEn: 'Commercial summary · compensation · C-73.2 compliance · broker notes',
+    variant: 'stack',
+  },
+  finances: {
+    titleFr: 'Hub Finance institutionnel',
+    titleEn: 'Institutional Finance Hub',
+    subtitleFr: 'Bilan exécutif · revenus · finançabilité · ratios · analyse 360°',
+    subtitleEn: 'Executive summary · revenue · financing · ratios · 360° analysis',
+    variant: 'card',
+  },
+  declaration: {
+    titleFr: 'Déclaration du vendeur',
+    titleEn: 'Seller disclosure',
+    subtitleFr: 'Questionnaire OACIQ · certification Gold Signature',
+    subtitleEn: 'OACIQ questionnaire · Gold Signature certification',
+    variant: 'stack',
+  },
+  marche: {
+    titleFr: 'Marché & Concurrence',
+    titleEn: 'Market & Competition',
+    variant: 'stack',
+    useAddressSubtitle: true,
+  },
+  documents: {
+    titleFr: 'Espace Documents',
+    titleEn: 'Document space',
+    subtitleFr: 'Matrice transactionnelle — acheteurs, contrats, actes, promesses',
+    subtitleEn: 'Transaction matrix — buyers, contracts, deeds, promises',
+    variant: 'card',
+  },
+  intelligence: {
+    titleFr: 'Intelligence · Chronologie',
+    titleEn: 'Intelligence · Timeline',
+    subtitleFr: 'Rapport vendeur · vélocité J+7 · historique appels et courriels',
+    subtitleEn: 'Seller report · D+7 velocity · calls and email history',
+    variant: 'stack',
+  },
+  promesse: {
+    titleFr: "Promesse d'achat",
+    titleEn: 'Purchase promise',
+    subtitleFr: 'Pilotage transactionnel OACIQ · conservation WORM 6 ans',
+    subtitleEn: 'OACIQ transaction control · 6-year WORM retention',
+    variant: 'stack',
+  },
+};
+
+function wrapInstitutionalTab(
+  tab: ResidenceDetailTab,
+  content: React.ReactNode,
+  residence: Residence,
+  language: 'fr' | 'en'
+): React.ReactNode {
+  const shell = INSTITUTIONAL_TAB_SHELL[tab as InstitutionalShellTab];
+  if (!shell) return content;
+  const title = language === 'fr' ? shell.titleFr : shell.titleEn;
+  let subtitle: string | undefined;
+  if (shell.useAddressSubtitle) {
+    subtitle = residence.city
+      ? `${residence.address}, ${residence.city}`
+      : residence.address;
+  } else {
+    subtitle = language === 'fr' ? shell.subtitleFr : shell.subtitleEn;
+  }
+  return (
+    <InstitutionalResidenceTabShell title={title} subtitle={subtitle} variant={shell.variant}>
+      {content}
+    </InstitutionalResidenceTabShell>
+  );
+}
 
 export interface ResidenceDetailProps {
   brokerId: string;
@@ -102,16 +199,7 @@ export function ResidenceDetail({
           />
         );
       case 'synthese':
-        return (
-          <InstitutionalPlaceholder
-            phase={t('Phase 3 — Vue CFO', 'Phase 3 — CFO view')}
-            title={t('Bilan exécutif & synthèse 360°', 'Executive summary & 360° overview')}
-            subtitle={t(
-              'Le Hub Finance (normalizeFinancialData + Bilan exécutif) sera branché ici après la migration des sous-collections financial/dataV2.',
-              'The Finance Hub (normalizeFinancialData + executive summary) will connect here after financial/dataV2 subcollection migration.'
-            )}
-          />
-        );
+        return <Synthese360Tab residence={residence} residenceId={residence.id} />;
       case 'identite':
         return <IdentiteImmeubleTab residence={residence} />;
       case 'finances':
@@ -143,6 +231,11 @@ export function ResidenceDetail({
     }
   }, [activeTab, brokerId, residence, onClose, t]);
 
+  const panelContent = useMemo(
+    () => wrapInstitutionalTab(activeTab, tabContent, residence, language === 'fr' ? 'fr' : 'en'),
+    [activeTab, tabContent, residence, language]
+  );
+
   return (
     <div className="space-y-6 min-h-[70vh] font-sans">
       {/* En-tête institutionnel */}
@@ -152,7 +245,7 @@ export function ResidenceDetail({
             <button
               type="button"
               onClick={onClose}
-              className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-[#D4AF37]/60 hover:text-[#000000] transition"
+              className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-[#D4AF37]/60 hover:text-[#142c6a] transition"
               aria-label={t('Retour à mes inscriptions', 'Back to my listings')}
             >
               <ArrowLeft className="h-4 w-4" />
@@ -161,9 +254,9 @@ export function ResidenceDetail({
               <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#D4AF37]">
                 {t('Fiche résidence · Primexpert V2', 'Residence file · Primexpert V2')}
               </p>
-              <h1 className="text-2xl font-black text-[#000000] tracking-tight truncate">{addrTitle}</h1>
+              <h1 className="text-2xl font-black text-[#142c6a] tracking-tight truncate">{addrTitle}</h1>
               <p className="text-[11px] font-bold text-slate-600 mt-1 font-mono">
-                <span className="text-[#000000]">{formatCurrency(residence.price)}</span> · {statusLabel} · ID{' '}
+                <span className="text-[#142c6a]">{formatCurrency(residence.price)}</span> · {statusLabel} · ID{' '}
                 {residence.id}
               </p>
             </div>
@@ -197,8 +290,8 @@ export function ResidenceDetail({
               className={cn(
                 'flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] transition border',
                 active
-                  ? 'border-[#D4AF37]/50 bg-amber-50 text-[#000000]'
-                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-[#000000]'
+                  ? 'border-[#D4AF37]/50 bg-amber-50 text-[#142c6a]'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-[#142c6a]'
               )}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -210,7 +303,7 @@ export function ResidenceDetail({
 
       <ResidenceDocumentProvider residenceId={residence.id}>
         <div key={activeTab} role="tabpanel">
-          {tabContent}
+          {panelContent}
         </div>
       </ResidenceDocumentProvider>
     </div>

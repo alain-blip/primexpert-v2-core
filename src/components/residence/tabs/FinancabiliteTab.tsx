@@ -53,7 +53,7 @@ function DscrGauge({
     <div className={cn(inst.kpi, 'p-6')}>
       <p className={inst.kpiLabel}>{language === 'fr' ? 'Jauge DSCR' : 'DSCR gauge'}</p>
       <div className="flex items-end justify-between gap-4 mb-3 mt-2">
-        <p className="text-4xl font-black tracking-tight text-[#000000] tabular-nums">
+        <p className="text-4xl font-black tracking-tight text-[#142c6a] tabular-nums">
           {ratio != null ? `${ratio.toFixed(2)}×` : '—'}
         </p>
         <p className="text-sm font-semibold text-slate-600 text-right">
@@ -166,7 +166,7 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
         <div className="flex flex-wrap items-center gap-4">
           <Building2 className="h-10 w-10 text-slate-700 shrink-0" />
           <div className="min-w-0 flex-1">
-            <p className="text-xl font-black text-[#000000] tracking-tight">
+            <p className="text-xl font-black text-[#142c6a] tracking-tight">
               {language === 'fr' ? model.financingLabelFr : model.financingLabelEn}
             </p>
             <p className="text-sm text-slate-700 mt-1 leading-relaxed">
@@ -197,7 +197,7 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
               : 'APH Select program (assisted private housing)'
           }
         >
-          <p className="text-sm font-bold text-[#000000]" style={{ color: model.aphSelectEligibility.overallColor }}>
+          <p className="text-sm font-bold text-[#142c6a]" style={{ color: model.aphSelectEligibility.overallColor }}>
             {language === 'fr'
               ? model.aphSelectEligibility.overallLabelFr
               : model.aphSelectEligibility.overallLabelEn}
@@ -208,7 +208,7 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
                 <span>{language === 'fr' ? c.labelFr : c.labelEn}</span>
                 <span
                   className={cn(
-                    'shrink-0 font-semibold text-[#000000]',
+                    'shrink-0 font-semibold text-[#142c6a]',
                     c.status === 'conforme' && 'text-emerald-700',
                     c.status === 'hors_normes' && 'text-red-700',
                     c.status === 'a_verifier' && 'text-amber-700'

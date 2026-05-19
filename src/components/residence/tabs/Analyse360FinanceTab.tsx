@@ -175,11 +175,11 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
         </div>
         <div className="flex justify-between mt-2 text-[10px] font-mono">
           <span className="text-slate-700">
-            {t('Perdu', 'Lost')} <span className="font-black text-[#000000]">{fmt(audit.valeurPerdue)}</span>
+            {t('Perdu', 'Lost')} <span className="font-black text-[#142c6a]">{fmt(audit.valeurPerdue)}</span>
           </span>
           <span className="text-slate-700">
             {t('Récupérable', 'Recover')}{' '}
-            <span className="font-black text-[#000000]">{fmt(audit.valeurRecuperable)}</span>
+            <span className="font-black text-[#142c6a]">{fmt(audit.valeurRecuperable)}</span>
           </span>
         </div>
       </div>
@@ -202,7 +202,7 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
             <tbody>
               {audit.rows.map((row) => (
                 <tr key={row.id} className={inst.tr}>
-                  <td className="px-5 py-3 font-semibold text-[#000000] whitespace-nowrap">
+                  <td className="px-5 py-3 font-semibold text-[#142c6a] whitespace-nowrap">
                     <span className="inline-flex items-center gap-1.5">
                       {row.direction === 'recover' ? (
                         <ArrowUpRight className="h-3.5 w-3.5 text-emerald-700" />
@@ -215,7 +215,7 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
                   <td className="px-5 py-3 text-slate-600 text-xs max-w-md">
                     {language === 'fr' ? row.constatFr : row.constatEn}
                   </td>
-                  <td className="px-5 py-3 text-right font-mono font-black text-[#000000] tabular-nums">
+                  <td className="px-5 py-3 text-right font-mono font-black text-[#142c6a] tabular-nums">
                     {fmt(row.noiGapAnnual)}
                   </td>
                   <td className={inst.tdValueMono}>{fmt(row.valueImpact)}</td>
@@ -256,7 +256,7 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
               <tbody>
                 {audit.expenseVarianceTop.map((row) => (
                   <tr key={row.key} className={inst.tr}>
-                    <td className="px-5 py-2.5 font-semibold text-[#000000]">{row.label}</td>
+                    <td className="px-5 py-2.5 font-semibold text-[#142c6a]">{row.label}</td>
                     <td className={inst.tdValueMono}>{fmt(row.actualNorm)}</td>
                     <td className="px-5 py-2.5 text-right font-mono text-slate-600 tabular-nums">
                       {fmt(row.benchmarkDollar)}
@@ -264,7 +264,7 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
                     <td
                       className={cn(
                         'px-5 py-2.5 text-right font-mono font-black tabular-nums',
-                        row.ecartDollar > 0 ? 'text-red-800' : row.ecartDollar < 0 ? 'text-emerald-800' : 'text-[#000000]'
+                        row.ecartDollar > 0 ? 'text-red-800' : row.ecartDollar < 0 ? 'text-emerald-800' : 'text-[#142c6a]'
                       )}
                     >
                       {row.ecartDollar > 0 ? '+' : ''}

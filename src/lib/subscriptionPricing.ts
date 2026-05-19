@@ -12,6 +12,9 @@ export interface PlanDefinition {
   id: PlanId;
   labelFr: string;
   labelEn: string;
+  /** Capacité Prime-Drive affichée dans la grille tarifaire. */
+  storageLabelFr: string;
+  storageLabelEn: string;
   /** Paiement unique annuel (CAD). */
   annualLumpCad: number;
   /** Prélèvement mensuel sans engagement (CAD). */
@@ -30,6 +33,8 @@ export const PLANS: PlanDefinition[] = [
     id: 'solo',
     labelFr: 'Solo',
     labelEn: 'Solo',
+    storageLabelFr: '15 Go de stockage Prime-Drive sécurisé',
+    storageLabelEn: '15 GB secure Prime-Drive storage',
     annualLumpCad: 1800,
     monthlyRecurringCad: 175,
     badgeClass: 'border-emerald-400/80 ring-2 ring-emerald-500/30',
@@ -38,6 +43,8 @@ export const PLANS: PlanDefinition[] = [
     id: 'solo_plus',
     labelFr: 'Solo +',
     labelEn: 'Solo +',
+    storageLabelFr: '30 Go de stockage Prime-Drive sécurisé',
+    storageLabelEn: '30 GB secure Prime-Drive storage',
     annualLumpCad: 2220,
     monthlyRecurringCad: 215,
     badgeClass: 'border-teal-400/80 ring-2 ring-teal-500/30',
@@ -46,6 +53,8 @@ export const PLANS: PlanDefinition[] = [
     id: 'pro',
     labelFr: 'Pro',
     labelEn: 'Pro',
+    storageLabelFr: '100 Go de stockage Prime-Drive sécurisé (Recommandé)',
+    storageLabelEn: '100 GB secure Prime-Drive storage (Recommended)',
     annualLumpCad: 2700,
     monthlyRecurringCad: 260,
     badgeClass: 'border-blue-400/80 ring-2 ring-blue-500/30',
@@ -54,6 +63,8 @@ export const PLANS: PlanDefinition[] = [
     id: 'pro_plus',
     labelFr: 'Pro +',
     labelEn: 'Pro +',
+    storageLabelFr: '250 Go de stockage Prime-Drive sécurisé',
+    storageLabelEn: '250 GB secure Prime-Drive storage',
     annualLumpCad: 3120,
     monthlyRecurringCad: 300,
     badgeClass: 'border-indigo-400/80 ring-2 ring-indigo-500/30',
@@ -62,6 +73,8 @@ export const PLANS: PlanDefinition[] = [
     id: 'super_pro',
     labelFr: 'Super Pro',
     labelEn: 'Super Pro',
+    storageLabelFr: '1 To (1000 Go) de stockage Prime-Drive institutionnel',
+    storageLabelEn: '1 TB (1000 GB) institutional Prime-Drive storage',
     annualLumpCad: 5400,
     monthlyRecurringCad: 525,
     badgeClass: 'border-amber-400/80 ring-2 ring-amber-500/40',

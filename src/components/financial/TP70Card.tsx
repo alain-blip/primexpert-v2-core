@@ -39,7 +39,7 @@ export function TP70Card({ residenceHints }: TP70CardProps) {
     <section className="rounded-[20px] border border-slate-200 bg-white px-6 py-5 shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <Users className="h-5 w-5 text-violet-600" />
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#000000]">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#142c6a]">
           {language === 'fr' ? TP70_GLOSSARY.labelFr : TP70_GLOSSARY.label}
         </p>
         {tp70.confidenceTier === 'low' && (
@@ -60,7 +60,7 @@ export function TP70Card({ residenceHints }: TP70CardProps) {
             {TP70_GLOSSARY.labelFr}
             <Info className="h-3 w-3" title={TP70_GLOSSARY.definition} />
           </p>
-          <p className="text-3xl font-black tracking-tight text-[#000000]" style={{ color: tp70.tp70 != null ? color : '#6c757d' }}>
+          <p className="text-3xl font-black tracking-tight text-[#142c6a]" style={{ color: tp70.tp70 != null ? color : '#6c757d' }}>
             {tp70.tp70Label}
           </p>
           <p className="text-[11px] text-slate-600 mt-1">
@@ -72,7 +72,7 @@ export function TP70Card({ residenceHints }: TP70CardProps) {
           <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500 mb-1">
             {t('Référence Québec', 'Quebec benchmark')}
           </p>
-          <p className="text-2xl font-black text-[#000000]">{tp70.benchmarkLabel}</p>
+          <p className="text-2xl font-black text-[#142c6a]">{tp70.benchmarkLabel}</p>
           {tp70.interpretation ? (
             <div
               className="mt-3 rounded-xl border px-3 py-2 text-sm font-medium"

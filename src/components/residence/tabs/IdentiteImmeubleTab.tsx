@@ -147,7 +147,7 @@ export function IdentiteImmeubleTab({ residence }: IdentiteImmeubleTabProps) {
           <div className="space-y-2">
             {view.capacity.agePyramid.map((row) => (
               <div key={row.label} className="flex items-center gap-3">
-                <span className="w-28 shrink-0 text-xs font-semibold text-[#000000]">
+                <span className="w-28 shrink-0 text-xs font-semibold text-[#142c6a]">
                   {row.label}
                 </span>
                 <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">

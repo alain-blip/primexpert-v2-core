@@ -44,7 +44,7 @@ function ReadinessRow({
   label: string;
 }) {
   return (
-    <li className="flex items-start gap-2 text-[10px] text-[#000000]">
+    <li className="flex items-start gap-2 text-[10px] text-[#142c6a]">
       <span className="font-mono tabular-nums shrink-0">{ok ? '✓' : '○'}</span>
       <span className={ok ? '' : 'text-slate-600'}>{label}</span>
     </li>
@@ -276,7 +276,7 @@ export function SellerWeeklyReportModule({
           disabled={generating || !hasWeeklyActivity}
           className={cn(
             'inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] transition',
-            'bg-[#000000] text-white hover:bg-slate-900 disabled:opacity-40 disabled:cursor-not-allowed'
+            'bg-[#142c6a] text-white hover:bg-[#0f1f4d] disabled:opacity-40 disabled:cursor-not-allowed'
           )}
         >
           {generating ? (
@@ -292,7 +292,7 @@ export function SellerWeeklyReportModule({
 
       <div className="p-5 space-y-4">
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#000000] mb-2">
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#142c6a] mb-2">
             {t('Contrôles production', 'Production checks')}
           </p>
           <ul className="space-y-1">
@@ -330,7 +330,7 @@ export function SellerWeeklyReportModule({
             />
           </ul>
           {sendReadiness.vendeurEmail ? (
-            <p className="mt-2 text-[10px] font-mono text-[#000000]">
+            <p className="mt-2 text-[10px] font-mono text-[#142c6a]">
               {sendReadiness.vendeurEmail}
             </p>
           ) : null}
@@ -349,7 +349,7 @@ export function SellerWeeklyReportModule({
           </p>
         )}
         {success && !error && (
-          <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-[#000000]">
+          <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-[#142c6a]">
             {success}
           </p>
         )}
@@ -362,7 +362,7 @@ export function SellerWeeklyReportModule({
               rows={14}
               className={cn(
                 'w-full rounded-xl border border-slate-200 bg-white px-4 py-4 text-sm leading-relaxed',
-                'text-[#000000] resize-y min-h-[220px]',
+                'text-[#142c6a] resize-y min-h-[220px]',
                 'focus:border-[#D4AF37]/50 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/25'
               )}
               aria-label={t('Texte de la mise à jour', 'Update text')}
@@ -371,7 +371,7 @@ export function SellerWeeklyReportModule({
               <button
                 type="button"
                 onClick={() => void handleCopy()}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-[#000000] hover:border-slate-400 transition"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-[#142c6a] hover:border-slate-400 transition"
               >
                 <ClipboardCopy className="h-3.5 w-3.5" />
                 {t('Copier le message', 'Copy message')}
@@ -380,7 +380,7 @@ export function SellerWeeklyReportModule({
                 type="button"
                 onClick={() => void handleSend()}
                 disabled={sending || !sendReadiness.ready}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-[#000000] hover:border-[#D4AF37]/50 disabled:opacity-40 transition"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-[#142c6a] hover:border-[#D4AF37]/50 disabled:opacity-40 transition"
               >
                 {sending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />

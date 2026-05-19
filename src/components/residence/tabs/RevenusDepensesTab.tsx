@@ -32,11 +32,11 @@ function fmtPct(n: number | null | undefined): string {
 }
 
 function gapStyle(declaredPct: number | null, marketPct: number | null): string {
-  if (declaredPct == null || marketPct == null) return 'text-[#000000]';
+  if (declaredPct == null || marketPct == null) return 'text-[#142c6a]';
   const gap = declaredPct - marketPct;
   if (gap > 3) return 'text-amber-700';
   if (gap < -3) return 'text-emerald-700';
-  return 'text-[#000000]';
+  return 'text-[#142c6a]';
 }
 
 export function RevenusDepensesTab({ residence }: RevenusDepensesTabProps) {
@@ -157,7 +157,7 @@ export function RevenusDepensesTab({ residence }: RevenusDepensesTabProps) {
                 <tr key={row.key} className={cn(inst.tr, row.isPrimary && 'bg-slate-50')}>
                   <td className={inst.td}>
                     {row.isPrimary && <span className="text-[#D4AF37] mr-1">★</span>}
-                    <span className="font-semibold text-[#000000]">{row.label}</span>
+                    <span className="font-semibold text-[#142c6a]">{row.label}</span>
                   </td>
                   <td
                     className={cn(
@@ -199,10 +199,10 @@ export function RevenusDepensesTab({ residence }: RevenusDepensesTabProps) {
                 </tr>
               ))}
               <tr className="bg-slate-50 border-t border-slate-200">
-                <td colSpan={5} className="px-4 py-3 font-bold text-[#000000]">
+                <td colSpan={5} className="px-4 py-3 font-bold text-[#142c6a]">
                   {t('Total dépenses normalisées', 'Total normalized expenses')}
                 </td>
-                <td className="px-3 py-3 text-right font-black text-[#000000] tabular-nums">
+                <td className="px-3 py-3 text-right font-black text-[#142c6a] tabular-nums">
                   {fmt(grid.depensesNormaliseesTotal)}
                 </td>
                 <td />
@@ -221,7 +221,7 @@ export function RevenusDepensesTab({ residence }: RevenusDepensesTabProps) {
             .filter((r) => r.verification.note?.trim())
             .map((r) => (
               <p key={`note-${r.key}`} className="text-xs text-slate-700">
-                <span className="font-semibold text-[#000000]">{r.label}:</span> {r.verification.note}
+                <span className="font-semibold text-[#142c6a]">{r.label}:</span> {r.verification.note}
               </p>
             ))}
         </section>

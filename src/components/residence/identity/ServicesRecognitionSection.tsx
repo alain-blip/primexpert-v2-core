@@ -54,7 +54,7 @@ export function ServicesRecognitionSection({
             'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider transition',
             editing
               ? 'border-slate-300 bg-white text-slate-700'
-              : 'border-slate-200 bg-white text-slate-600 hover:border-[#D4AF37]/50 hover:text-[#000000]'
+              : 'border-slate-200 bg-white text-slate-600 hover:border-[#D4AF37]/50 hover:text-[#142c6a]'
           )}
         >
           {editing ? (
@@ -98,7 +98,7 @@ export function ServicesRecognitionSection({
               className={cn(
                 'rounded-xl border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition',
                 badge.active
-                  ? 'border-emerald-300 bg-emerald-50 text-[#000000]'
+                  ? 'border-emerald-300 bg-emerald-50 text-[#142c6a]'
                   : 'border-slate-200 bg-white text-slate-500',
                 !editing && 'cursor-default opacity-90',
                 editing && 'hover:border-[#D4AF37]/50'

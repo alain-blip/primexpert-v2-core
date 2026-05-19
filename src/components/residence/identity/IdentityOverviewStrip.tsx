@@ -22,7 +22,7 @@ function Tile({
         {icon}
         <span className="text-[9px] font-black uppercase tracking-[0.16em]">{label}</span>
       </div>
-      <p className="text-sm font-bold text-[#000000] leading-snug break-words">{value ?? '—'}</p>
+      <p className="text-sm font-bold text-[#142c6a] leading-snug break-words">{value ?? '—'}</p>
     </div>
   );
 }
