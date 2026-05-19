@@ -73,14 +73,17 @@ Migration Copilote (optionnel)
     → financial/dataV2 + documents/*
     ↓
 Fiche V2 (Listings → ResidenceDetail)
+    ├─ Synthèse          [✅ Synthese360Tab — rétribution affichée, C-73.2, notes]
     ├─ Identité          [✅ doc racine + core/identity]
     ├─ Hub Finance       [✅ dataV2 + 5 sous-onglets]
+    ├─ Déclaration       [✅ DeclarationVendeurTab — OACIQ]
+    ├─ Marché            [✅ MarcheConcurrenceTab]
+    ├─ Documents         [✅ Espace Documents + scan + parse IA Vertex + distribution / courriel]
     ├─ Intelligence      [✅ call_analyses + mailbox_analyses]
-    ├─ Synthèse          [⏳ placeholder]
-    ├─ Déclaration       [⏳ Gold Signature]
-    ├─ Marché            [⏳ géointelligence]
-    └─ Documents         [✅ Espace Documents + scan + parse IA Vertex]
+    └─ Promesse          [✅ PromesseAchatTab]
 ```
+
+**Inscriptions :** vue **pipeline** en **4 colonnes** (prospect · mandat · promesse · vendu) ; statut `expired` conservé en données mais **hors** colonnes actives (`PIPELINE_ACTIVE_STATUSES`).
 
 ### Pipeline Espace Documents (diligence)
 
@@ -103,7 +106,7 @@ Téléversement (Financier | Technique | Légal)
 `prospect` → `mandate` → `promise` → `sold`  
 Branches : `expired`, `unsigned`
 
-**Ne pas renommer** (charte Copilote / export).
+**Ne pas renommer** (charte Copilote / export). Le **Kanban « Mes inscriptions »** n’affiche que les statuts **actifs** (`PIPELINE_ACTIVE_STATUSES` : sans `expired`).
 
 ### Données financières (Hub)
 
@@ -136,7 +139,10 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 | Intelligence chronologie + rapport vendeur | ✅ |
 | Priorités suivi KISS (J+3/J+5/J+7) dashboard | ✅ |
 | Espace Documents + parse IA Vertex | ✅ |
-| UI institutionnelle claire | ✅ |
+| UI institutionnelle (`primexpert-*`, coquilles onglets) | ✅ |
+| Inscriptions Kanban + cartes institutionnelles | ✅ |
+| Onglet Synthèse 360 + notes `residences/{id}/notes` | ✅ |
+| Déclaration, Marché, Promesse (onglets livrés) | ✅ |
 | Webhooks Stripe → Firestore | ⏳ |
 | Cron relances J30/J40 | ⏳ |
 | Stripe Customer Portal prod | ⏳ env |
@@ -148,12 +154,12 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 
 1. **Stripe** : webhook `invoice.payment_failed` → `grace_period` ; succès → `active`.
 2. **Cron** : `grace_period` → `suspended` après 72 h ; relances J30/J40.
-3. **Synthèse** : agrégat CFO depuis Hub Finance (onglet placeholder).
-4. **Déclaration vendeur** : parcours Gold Signature + verrou post-certification.
-5. **Marché** : carte, comparables Haversine, forces/faiblesses.
-6. **Documents** : enrichir `extractedData` → préremplissage Hub Finance / preuves A2.
-7. **Vertex** : surveiller cycle de vie `gemini-2.0-flash-001` (migration modèle si retrait GCP).
+3. **Synthèse** : enrichir avec modules métier V2 (`OwnersManagement`, `ActivitiesSection`, `ResidenceTasks`) lorsque portés depuis Copilote-RPA.
+4. **Marché** : carte, comparables Haversine, forces/faiblesses (extensions).
+5. **Documents** : enrichir `extractedData` → préremplissage Hub Finance / preuves A2.
+6. **Vertex** : surveiller cycle de vie `gemini-2.0-flash-001` (migration modèle si retrait GCP).
+7. **Node Functions** : planifier montée runtime (Node 20 → 22+ avant fin 2026).
 
 ---
 
-*Dernière mise à jour : 2026-05-18.*
+*Dernière mise à jour : 2026-05-19.*

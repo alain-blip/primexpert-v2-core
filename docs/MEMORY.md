@@ -39,25 +39,26 @@
 ## Règle #0 — SSOT métier
 
 - **Toute logique financière, identité, valuation, mail parser** vit dans `packages/core/` (`@primexpert/core`).
-- Les composants React **ne calculent pas** : ils consomment des view models (`computeBilanCfoViewModel`, `buildRevenusDepensesGrid`, `buildIdentityViewModel`, etc.).
+- Les composants React **ne calculent pas** le cœur financier : ils consomment des view models (`computeBilanCfoViewModel`, `buildRevenusDepensesGrid`, `buildIdentityViewModel`, etc.). **Exception affichage** : onglet **Synthèse** et cartes **inscriptions** — cascade de **lecture** sur champs `residences` / formatage monétaire (pas de nouveau moteur dans `@primexpert/core`).
 - Firestore listeners : `FinancialDataContext` → `residences/{id}/financial/dataV2` ; `ResidenceDocumentContext` → `residences/{id}`.
 
 ---
 
-## Charte visuelle — fiche résidence (2026-05-16)
+## Charte visuelle — fiche résidence & inscriptions (2026-05-19)
 
-**Étalon : onglet Identité** — outil de travail CPA / vérificateur (conformité OACIQ).
+**Étalon :** cockpit institutionnel — encre sur fond **primexpert** (tokens Tailwind `tailwind.config.js` + `@config` dans `src/index.css`).
 
 | Token | Usage |
 |-------|--------|
-| Fond page | `bg-slate-50` / blanc |
-| Cartes | `bg-white`, `border-slate-200`, `shadow-sm` |
-| Valeurs chiffrées | `text-[#000000]` font-black |
-| Labels | `text-slate-600` |
-| Accent or (signature) | `#D4AF37` — statuts Déclaration / onglet actif uniquement |
-| Interdit | `bg-vault`, dégradés sombres, texte blanc sur fond noir dans les onglets fiche |
+| Fond panneaux / liste inscriptions | `bg-primexpert-blue` (`#2656b7`) — zone « Navigateur » |
+| Cadres, titres, bordures fortes | `border-primexpert-dark`, `text-primexpert-dark` (`#142c6a`) |
+| Fonds cartes / bandeaux neutres | `bg-primexpert-light` (`#f1f5f9`) ou blanc |
+| Accent transaction (ex. promesse) | `primexpert-gold` (`#D4AF37`) |
+| Valeurs chiffrées (Hub / fiches) | Contraste élevé — `text-black` / `font-black` sur fond clair |
 
-Kit partagé : `src/components/residence/institutional/InstitutionalUi.tsx` (`inst`, `InstitutionalKpi`, `InstitutionalSection`, `InstitutionalPlaceholder`).
+Kit partagé : `src/lib/institutionalTheme.ts` + `src/components/residence/institutional/InstitutionalUi.tsx` (`inst`, `InstitutionalResidenceTabShell`, `InstitutionalSection`, `InstitutionalKpi`, `InstitutionalPlaceholder` si besoin).
+
+**Inscriptions (« Mes inscriptions ») :** pipeline **4 colonnes** (prospect · mandat · promesse · vendu) — cartes `ListingInstitutionalCard` + view model `listingCardViewModel.ts` ; `PIPELINE_ACTIVE_STATUSES` exclut `expired` du Kanban chaud.
 
 **Hotfix prod (2026-05-16) :** l’onglet Déclaration référençait encore `PlaceholderPanel` (supprimé) → `InstitutionalPlaceholder` ; commit `0a65adf`.
 
@@ -97,18 +98,25 @@ Données : sous-collection **`residences/{id}/financial/dataV2`** (migration dep
 - Client : `functions/src/services/vertexClient.ts` ; erreurs typées (`VERTEX_API_DISABLED`, `VERTEX_MODEL_NOT_FOUND`, …).
 - Réconciliation UI : relance automatique des docs `pending` ou `failed` à l’ouverture de l’onglet.
 
-### Placeholders (phases futures)
+### Phase 4c — Onglets fiche résidence (Synthèse, Déclaration, Marché, Promesse)
 
-- **Synthèse** : bilan CFO agrégé (à brancher sur Hub Finance)
-- **Déclaration** : Gold Signature `#D4AF37`
-- **Marché** : géointelligence, Haversine, entrée visiteurs
+- **Synthèse** : `Synthese360Tab` — bilan exécutif, bloc rétribution (lecture champs + affichage), jalons Loi sur le courtage immobilier (C-73.2) J+3 / J+180, notes `residences/{id}/notes`
+- **Déclaration** : `DeclarationVendeurTab` — questionnaire OACIQ, coquille institutionnelle
+- **Marché** : `MarcheConcurrenceTab` — marché & concurrence, coquille institutionnelle
+- **Promesse** : `PromesseAchatTab` — pilotage promesse, coquille institutionnelle
 
 ### Intelligence (`ResidenceIntelligencePanel`)
 
 - Composant **`IntelligenceChronologie`** : chronologie appels + courriels, guardrails NDA / mise de fonds.
 - Données : `users/{uid}/call_analyses`, `mailbox_analyses` ; rapport vendeur anonymisé (`@primexpert/core/intelligence`).
 - Boutons : rapport vendeur / mise à jour → `contentGenPrefill` + onglet ContentGen.
-- Thème institutionnel clair (2026-05-16)
+- Thème institutionnel (`InstitutionalResidenceTabShell` + tokens `primexpert-*`, 2026-05-19)
+
+### Authentification — développement local (2026-05-19)
+
+- En **`import.meta.env.DEV`**, connexion Google via **`signInWithPopup`** (évite les boucles `signInWithRedirect` sur localhost).
+- Production : **`signInWithRedirect`** inchangé.
+- `App.tsx` : navigation vers `/workhub` après session effective ; garde courte si `auth.currentUser` est défini avant le contexte React.
 
 ### Tableau de bord — Priorités de suivi KISS (2026-05-17)
 
@@ -181,20 +189,20 @@ Côté client : `resolveEffectiveBillingStatus()` — règle 72 h si Firestore e
 
 ```bash
 cd "01_PRIMEXPERT_SYSTEME_APP_STABLE_V2"
-npm run build
+npm run build                        # toujours avant hosting si le front a changé
 firebase deploy --only hosting
 firebase deploy --only firestore:rules,storage:rules   # si règles modifiées
 cd functions && npm run build
 FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
-# ou depuis functions/ : npm run deploy  (inclut le timeout discovery)
+# Déploiement complet (hosting + règles + functions) : firebase deploy
 ```
 
 **Notes :**
 - Timeout discovery Firebase (~10 s par défaut) : utiliser `FUNCTIONS_DISCOVERY_TIMEOUT=60` si échec « Cannot determine backend specification ».
-- Hosting + Functions parse documents déployés **2026-05-18**.
+- **2026-05-19** : commit `5cfbb9b` sur `main` — charte institutionnelle, inscriptions, Synthèse 360, documents ; déploiement Firebase hosting + indexes.
 
 **Repo :** https://github.com/alain-blip/primexpert-v2-core.git — branche `main`.
 
 ---
 
-*Journal mis à jour : 2026-05-18 — Espace Documents, Vertex AI ADC, Nylas déployé, priorités KISS.*
+*Journal mis à jour : 2026-05-19 — Charte primexpert, inscriptions Kanban, Synthèse 360, auth dev, déploiement.*

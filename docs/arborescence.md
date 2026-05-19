@@ -46,7 +46,10 @@
 │       │   ├── scanPropertyDocument.ts
 │       │   ├── parsePropertyDocument.ts
 │       │   ├── geminiExtract.ts     # Extraction JSON via gemini-2.0-flash-001
+│       │   ├── documentTaxonomy.ts  # Taxonomie catégories documents
 │       │   └── validateStorageDocument.ts
+│       ├── emails/
+│       │   └── sendDocumentSelection.ts  # Envoi sélection documents (callable)
 │       ├── lib/firestore.ts
 │       └── nylas/                   # OAuth, webhook, envoi, dossiers
 ├── scripts/                         # Utilitaires (facture sample, régions QC)
@@ -55,6 +58,7 @@
 ├── hydrate_pipeline.js
 ├── migrate_financial_subcollections.js  # Copilote → residences/{id}/financial/dataV2
 ├── firebase.json                    # Hosting (dist), Firestore (2 bases), Functions, Storage
+├── tailwind.config.js               # Couleurs primexpert (blue, dark, light, gold) — @config dans index.css
 ├── firestore.rules
 ├── firestore.indexes.json
 ├── storage.rules
@@ -64,6 +68,7 @@
 ├── public/                          # Logos silo, Primexpert…
 └── src/
     ├── main.tsx
+    ├── index.css                    # Tailwind v4 — @config ../tailwind.config.js, @theme primexpert-*
     ├── App.tsx                      # Routes, garde billing, lazy routes Workhub
     ├── components/
     │   ├── Layout.tsx               # Sidebar Radar, header
@@ -76,27 +81,36 @@
     │   │   └── PriorityFollowUpList.tsx
     │   ├── intelligence/
     │   │   └── IntelligenceChronologie.tsx
-    │   ├── Listings.tsx             # Mes inscriptions + ResidenceDetail
+    │   ├── Listings.tsx             # Mes inscriptions — pipeline Kanban 4 colonnes + inventaire
     │   ├── ListingsInventoryVirtual.tsx
-    │   ├── ListingRow.tsx
+    │   ├── ListingRow.tsx           # Délègue à ListingInstitutionalCard
+    │   ├── ListingInstitutionalCard.tsx  # Carte institutionnelle (nom commercial, prix, rétribution)
+    │   ├── BrokerToolsDocuments.tsx # Outils courtier — documents
     │   ├── ResidenceIntelligencePanel.tsx  # Chronologie appels / courriels (onglet Intelligence)
     │   ├── residence/
-    │   │   ├── ResidenceDetail.tsx  # Coquille fiche — 7 onglets
+    │   │   ├── ResidenceDetail.tsx  # Coquille fiche — 8 onglets + InstitutionalResidenceTabShell
     │   │   ├── institutional/
-    │   │   │   └── InstitutionalUi.tsx   # Kit UI audit (fond clair, #000000)
+    │   │   │   └── InstitutionalUi.tsx   # Kit UI institutionnel (coquilles, KPI, sections)
     │   │   ├── identity/            # Sections Identité (lecture seule)
     │   │   ├── documents/           # Espace Documents — diligence 3 colonnes
     │   │   │   ├── DocumentsDiligenceTab.tsx
     │   │   │   ├── DocumentCategorySidebar.tsx
     │   │   │   ├── DocumentUploadPanel.tsx
-    │   │   │   └── DocumentMetadataPanel.tsx
+    │   │   │   ├── DocumentMetadataPanel.tsx
+    │   │   │   ├── DocumentTabs.tsx
+    │   │   │   ├── DocumentDistributionPanel.tsx
+    │   │   │   └── DocumentEmailPanel.tsx
     │   │   └── tabs/
+    │   │       ├── Synthese360Tab.tsx      # Bilan exécutif 360°, rétribution, C-73.2, notes
     │   │       ├── IdentiteImmeubleTab.tsx
     │   │       ├── FinanceHubTab.tsx
     │   │       ├── BilanExecutifTab.tsx
     │   │       ├── RevenusDepensesTab.tsx
     │   │       ├── FinancabiliteTab.tsx
-    │   │       └── Analyse360FinanceTab.tsx
+    │   │       ├── Analyse360FinanceTab.tsx
+    │   │       ├── DeclarationVendeurTab.tsx
+    │   │       ├── MarcheConcurrenceTab.tsx
+    │   │       └── PromesseAchatTab.tsx
     │   ├── financial/               # Composants partagés Hub Finance
     │   │   ├── PerformanceRatiosTab.tsx
     │   │   ├── ProvenanceStrip.tsx
@@ -105,6 +119,8 @@
     │   ├── mailbox/                 # IA Mailbox (Nylas)
     │   ├── msss/
     │   │   └── RaphaelBadge.tsx
+    │   ├── documents/
+    │   │   └── ScopedDocumentManager.tsx
     │   ├── CRM.tsx, ACM.tsx, ContentGen.tsx
     │   ├── Drive/, Softphone/
     │   ├── GracePeriodBanner.tsx
@@ -128,6 +144,11 @@
     │   ├── financeNavigation.ts
     │   ├── propertyDocumentValidation.ts
     │   ├── propertyDocumentPipeline.ts
+    │   ├── propertyDocumentTaxonomy.ts
+    │   ├── institutionalTheme.ts    # Chaînes Tailwind charte (primexpert-*)
+    │   ├── listingCardViewModel.ts  # ViewModel cartes inscriptions (nom, prix, commission, revenu)
+    │   ├── documentEmailTemplates.ts
+    │   ├── quotaStorageService.ts
     │   ├── emailAccounts.ts
     │   ├── quebecInvoiceTax.ts
     │   ├── stripePortal.ts
@@ -160,15 +181,18 @@
 
 ## Fiche résidence — onglets (`ResidenceDetail.tsx`)
 
+Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`) sur les onglets concernés.
+
 | Onglet | Composant | Statut |
 |--------|-----------|--------|
-| Synthèse | `InstitutionalPlaceholder` | Placeholder — branchement CFO à venir |
+| Synthèse | `Synthese360Tab` | ✅ Bilan exécutif, bloc rétribution, jalons C-73.2 (J+3 / J+180), notes `residences/{id}/notes` |
 | Identité | `IdentiteImmeubleTab` + `ResidenceDocumentProvider` | ✅ Phase 4a |
 | Finances | `FinanceHubTab` + `FinancialDataProvider` | ✅ Hub + 5 sous-onglets |
-| Déclaration | `InstitutionalPlaceholder` | Placeholder — Gold Signature |
-| Marché | `InstitutionalPlaceholder` | Placeholder — géointelligence |
-| Documents | `DocumentsDiligenceTab` | ✅ Financier / Technique / Légal + scan + parse IA |
+| Déclaration | `DeclarationVendeurTab` | ✅ Questionnaire OACIQ — coquille institutionnelle |
+| Marché | `MarcheConcurrenceTab` | ✅ Marché et concurrence — coquille institutionnelle |
+| Documents | `DocumentsDiligenceTab` | ✅ Financier / Technique / Légal + scan + parse IA + onglets / distribution / courriel |
 | Intelligence | `ResidenceIntelligencePanel` + `IntelligenceChronologie` | ✅ Appels E-3 + courriels E-2 + rapport vendeur |
+| Promesse | `PromesseAchatTab` | ✅ Promesse d'achat — coquille institutionnelle |
 
 ### Hub Finance — sous-onglets (`FinanceHubTab.tsx`)
 
@@ -180,7 +204,7 @@
 | Ratios performance | `PerformanceRatiosTab` | `computePerformanceRatiosViewModel()` |
 | Vérification performance | `Analyse360FinanceTab` | `computePerformanceAudit360()` |
 
-**Règle #0 :** aucun calcul métier dans les composants React — uniquement formatage et présentation.
+**Règle #0 :** le Hub Finance et l’identité consomment `@primexpert/core` — pas de moteur financier dupliqué dans l’UI. L’onglet **Synthèse** affiche une **lecture** rétribution / jalons (cascade sur champs `residences` + formatage), distincte du SSOT `financial/dataV2`.
 
 ---
 
@@ -206,7 +230,8 @@
 | Multi-tenant résidences | `src/services/residences.ts`, `packages/core/src/tenant/`, `firestore.rules` |
 | Données financières | `src/context/FinancialDataContext.tsx`, `packages/core/src/financial/` |
 | Identité immeuble | `src/context/ResidenceDocumentContext.tsx`, `packages/core/src/identity/` |
-| Charte UI institutionnelle | `src/components/residence/institutional/InstitutionalUi.tsx` |
+| Charte UI institutionnelle | `tailwind.config.js`, `src/index.css` (`@theme` / `@config`), `src/lib/institutionalTheme.ts`, `InstitutionalUi.tsx` |
+| Inscriptions (cartes, view model) | `Listings.tsx`, `ListingInstitutionalCard.tsx`, `listingCardViewModel.ts`, `residences.ts` (`PIPELINE_ACTIVE_STATUSES`) |
 | Billing / Chérif | `src/lib/billingAccess.ts`, `src/App.tsx`, `SuspendedAccountScreen.tsx` |
 | Rôles & essai | `src/lib/auth.tsx`, `firestore.rules` (`users`) |
 | KPIs Finance admin | `AdminSubscriptionsDashboard.tsx`, `subscriptionPricing.ts` |
@@ -223,9 +248,10 @@
 | `propertyDocumentsReconcileScan` | Réconcilie scans `pending` |
 | `propertyDocumentParseIA` | Extraction Vertex (PDF/XLSX financiers `clean`) |
 | `propertyDocumentsReconcileParse` | Réconcilie `parsingStatus` `pending` ou `failed` |
+| `sendDocumentSelection` | Envoi courriel sélection documents (callable authentifié) |
 
 Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions:propertyDocumentParseIA,…`
 
 ---
 
-*Dernière mise à jour : 2026-05-18 — Espace Documents, Vertex AI ADC, Intelligence chronologie, priorités KISS.*
+*Dernière mise à jour : 2026-05-19 — Charte `primexpert-*` (Tailwind), inscriptions institutionnelles, Synthèse 360°, onglets fiche complets, Functions documents + envoi sélection.*

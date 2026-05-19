@@ -38,20 +38,25 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 3. **Finance** — Document unique `residences/{id}/financial/dataV2` ; contexte `FinancialDataProvider`.
 4. **Identité** — Document racine `residences/{id}` ; contexte `ResidenceDocumentProvider`.
 5. **Documents** — Sous-collection `residences/{id}/documents/` ; scan + parse IA via Cloud Functions (Vertex ADC).
-6. **UI fiche** — Charte institutionnelle (fond clair, valeurs `#000000`) via `InstitutionalUi.tsx`.
+6. **UI fiche & inscriptions** — Tokens **`primexpert-*`** (`tailwind.config.js`, `src/index.css`) ; coquilles `InstitutionalResidenceTabShell` ; cartes **Mes inscriptions** (`ListingInstitutionalCard`, `listingCardViewModel.ts`).
 7. **Langage Québec** — Pas de « audit » à l’écran ; abréviations toujours développées (voir [MEMORY.md](./MEMORY.md)).
 
 ---
 
-## État des onglets fiche résidence (2026-05-18)
+## État des onglets fiche résidence (2026-05-19)
 
 | Onglet | Statut |
 |--------|--------|
+| Synthèse | ✅ `Synthese360Tab` — bilan, rétribution, C-73.2, notes |
 | Identité | ✅ Livré |
 | Finances (Hub 5 sous-onglets) | ✅ Livré |
-| Documents (Financier / Technique / Légal) | ✅ Livré — scan sécurité + extraction Vertex |
+| Déclaration | ✅ Livré — questionnaire OACIQ |
+| Marché | ✅ Livré — marché & concurrence |
+| Documents (Financier / Technique / Légal) | ✅ Livré — scan sécurité + extraction Vertex + distribution / courriel |
 | Intelligence (chronologie + rapport vendeur) | ✅ Livré |
-| Synthèse, Déclaration, Marché | ⏳ Placeholders institutionnels |
+| Promesse | ✅ Livré — pilotage promesse d'achat |
+
+**Mes inscriptions :** pipeline **4 colonnes** + inventaire virtualisé — charte **primexpert-blue** / cartes blanches bordées **primexpert-dark**.
 
 **Tableau de bord :** priorités de suivi KISS (J+3 / J+5 / J+7) — `PriorityFollowUpList`.
 
@@ -61,7 +66,7 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 | Couche | Détail |
 |--------|--------|
-| UI | `DocumentsDiligenceTab` — 3 colonnes, réconciliation auto scan/parse |
+| UI | `DocumentsDiligenceTab` — 3 colonnes, onglets, réconciliation auto scan/parse, distribution, courriel |
 | Storage | `primexpert/{brokerId}/properties/{propertyId}/documents/{category}/` |
 | Parse IA | Vertex `gemini-2.0-flash-001` (`us-central1`) — `functions/src/services/vertexClient.ts` |
 | Auth prod | ADC compte de service `250702494735-compute@developer.gserviceaccount.com` — **sans** clé JSON |
@@ -74,4 +79,4 @@ Copie possible sur disque : `00_PRIMEXPERT_SYSTEME_APP/docs/` — maintenir alig
 
 ---
 
-*Index mis à jour : 2026-05-18.*
+*Index mis à jour : 2026-05-19.*

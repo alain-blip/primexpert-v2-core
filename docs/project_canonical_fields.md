@@ -59,6 +59,10 @@ Document racine — **SSOT onglet Identité** (`ResidenceDocumentContext`) + Rad
 | **`courtiersResponsables`** | string | **UID courtier propriétaire** (clé multi-tenant) |
 | `address`, `city` | string | Adresse affichée |
 | `price` / `prixDemande` | number | Prix demandé (priorité finance V2) |
+| `askingPrice` | number | Alias / miroir prix demandé (cartes inscriptions, Synthèse) |
+| **`residenceName`**, `commercialName`, `nomCommercial`, `nom_commercial`, `name` | string | Nom commercial affiché (cartes inscriptions, mapping `mapCommercialName`) |
+| **`commissionRate`**, `tauxCommission`, `commissionPct` | number | Taux commission (%) — lecture UI rétribution / inscriptions |
+| **`potentialRevenue`**, `revenuPotentiel`, … | number | Revenu potentiel affiché si présent ; sinon dérivé `prix × taux` côté affichage |
 | **`status`** | string | `prospect`, `mandate`, `promise`, `expired`, `unsigned`, `sold` — **ne pas renommer** |
 | `assetNiche` | string | `RPA` \| `CPE` \| `PLEX` |
 | `propertyType` | string | `rpa`, `cpe`, `plex`, `commercial` |
@@ -99,7 +103,9 @@ Document racine — **SSOT onglet Identité** (`ResidenceDocumentContext`) + Rad
 
 > Lecture UI : priorité `administrateursREQ` racine, puis `structureJuridique.administrateursREQ`, alias `administrateurs` / `administrateursRegistre`.
 
-### Bâtiment — 5 silos d'audit (sous-objets Firestore)
+> Le type Firestore inclut encore `expired` pour l’héritage et les filtres ; le **pipeline Kanban « chaud »** (`PIPELINE_ACTIVE_STATUSES` côté app) exclut `expired` des quatre colonnes actives.
+
+### Bâtiment — 5 silos de vérification identité (sous-objets Firestore)
 
 Chaque silo est un **map** sur le document racine. Les champs peuvent aussi exister en **racine** (legacy Copilote / alias) ; l'UI résout via `resolveIdentityField()` et `getResidenceField()`.
 
@@ -387,13 +393,32 @@ Téléchargement client : autorisé **uniquement** si `virusScanStatus === 'clea
 | Déclaration vendeur | `packages/core/src/declaration/` |
 | View models finance | `packages/core/src/financial/*.ts` |
 | Documents diligence | `src/types/propertyDocument.ts`, `src/services/propertyDocumentsService.ts` |
-| Validation / pipeline docs | `src/lib/propertyDocumentValidation.ts`, `propertyDocumentPipeline.ts` |
-| Parse IA serveur | `functions/src/documents/parsePropertyDocument.ts`, `geminiExtract.ts` |
+| Validation / pipeline docs | `src/lib/propertyDocumentValidation.ts`, `propertyDocumentPipeline.ts`, `propertyDocumentTaxonomy.ts` |
+| Parse IA serveur | `functions/src/documents/parsePropertyDocument.ts`, `geminiExtract.ts`, `documentTaxonomy.ts` |
+| Envoi sélection documents | `functions/src/emails/sendDocumentSelection.ts` |
 | Vertex ADC | `functions/src/services/vertexClient.ts` |
 | Priorités dashboard | `packages/core/src/intelligence/dashboardPriorityFollowUp.ts` |
 | Taxes + PDF | `src/lib/quebecInvoiceTax.ts`, `src/services/invoicePdfService.ts` |
 | Règles Firestore / Storage | `firestore.rules`, `storage.rules` |
+| Inscriptions & cartes | `src/components/Listings.tsx`, `ListingInstitutionalCard.tsx`, `listingCardViewModel.ts` |
+| Synthèse 360 | `src/components/residence/tabs/Synthese360Tab.tsx` |
 
 ---
 
-*Dernière mise à jour : 2026-05-18 — Espace Documents (champs scan/parse IA, chemins Storage, Vertex).*
+## Sous-collection `residences/{id}/notes/{noteId}`
+
+Notes courtier (diligence) — écoute temps réel dans l’onglet Synthèse ; tri `orderBy('createdAt', 'desc')`.
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `text` | string | Contenu de la note |
+| `authorId` | string | UID Firebase |
+| `authorName` | string | optionnel — affichage |
+| `createdAt` | Timestamp | Création |
+| `updatedAt` | Timestamp | optionnel — édition |
+
+Lors de l’ajout d’une note : mise à jour document racine `lastCommunicationAt`, `lastCommunicationType: 'note'`, `updatedAt`.
+
+---
+
+*Dernière mise à jour : 2026-05-19 — Champs rétribution / nom commercial, notes courtier, pipeline Kanban vs `expired`, taxonomie documents.*
