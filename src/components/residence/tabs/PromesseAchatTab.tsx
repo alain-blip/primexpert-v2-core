@@ -12,12 +12,16 @@ import {
   buildPromesseAchatViewModel,
   formatCurrencyCad,
   formatIsoDateForDisplay,
+  parseOffreTroncFromDoc,
   parsePromesseAchatFromDoc,
   parsePromesseOffersFromDoc,
+  serializeOffreTroncForFirestore,
   serializePromesseAchatForFirestore,
+  type OffreTroncInput,
   type PromesseAchatInput,
   type PromesseOfferSummaryRow,
 } from '@primexpert/core/transaction';
+import { OffreTroncFinancierSection } from '../promesse/OffreTroncFinancierSection';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { useAuth } from '../../../lib/auth';
 import { useLanguage } from '../../../lib/i18n';
@@ -61,6 +65,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
   const { residenceDoc, loading, saving, saveError, updateResidence } = useResidenceDocument();
 
   const [innerTab, setInnerTab] = useState<InnerTab>('edit');
+  const [offreTronc, setOffreTronc] = useState<OffreTroncInput>({});
   const [form, setForm] = useState<PromesseAchatInput>({ status: 'draft' });
   const [offers, setOffers] = useState<PromesseOfferSummaryRow[]>([]);
   const [contactQuery, setContactQuery] = useState('');
@@ -74,7 +79,13 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
 
   useEffect(() => {
     if (!residenceDoc) return;
-    setForm(parsePromesseAchatFromDoc(residenceDoc));
+    const offre = parseOffreTroncFromDoc(residenceDoc);
+    setOffreTronc(offre);
+    const parsed = parsePromesseAchatFromDoc(residenceDoc);
+    setForm({
+      ...parsed,
+      prixOffert: offre.prixOffert ?? parsed.prixOffert,
+    });
     setOffers(parsePromesseOffersFromDoc(residenceDoc));
   }, [residenceDoc]);
 
@@ -88,18 +99,51 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
     [contactQuery]
   );
 
+  const persistOffreTronc = useCallback(
+    async (next: OffreTroncInput) => {
+      if (locked) return;
+      setOffreTronc(next);
+      const syncedForm: PromesseAchatInput = {
+        ...form,
+        prixOffert: next.prixOffert ?? form.prixOffert,
+      };
+      if (next.prixOffert !== form.prixOffert) {
+        setForm(syncedForm);
+      }
+      await updateResidence({
+        ...serializeOffreTroncForFirestore(next),
+        ...(next.prixOffert !== form.prixOffert
+          ? serializePromesseAchatForFirestore(syncedForm)
+          : {}),
+      });
+    },
+    [form, locked, updateResidence]
+  );
+
   const persist = useCallback(
     async (next: PromesseAchatInput) => {
-      setForm(next);
-      const patch = serializePromesseAchatForFirestore(next);
-      const nextOffers = appendOfferSummary(offers, next);
+      const synced: PromesseAchatInput = {
+        ...next,
+        prixOffert: offreTronc.prixOffert ?? next.prixOffert,
+      };
+      setForm(synced);
+      const patch = {
+        ...serializePromesseAchatForFirestore(synced),
+        ...serializeOffreTroncForFirestore({
+          ...offreTronc,
+          prixOffert: synced.prixOffert,
+          acheteurId: synced.buyer?.contactId ?? offreTronc.acheteurId,
+          acheteurNom: synced.buyer?.fullName ?? offreTronc.acheteurNom,
+        }),
+      };
+      const nextOffers = appendOfferSummary(offers, synced);
       await updateResidence({
         ...patch,
         promesseOffers: nextOffers,
       });
       setOffers(nextOffers);
     },
-    [offers, updateResidence]
+    [offers, offreTronc, updateResidence]
   );
 
   const patchField = useCallback(
@@ -112,6 +156,11 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
 
   const linkContact = (c: InternalContact) => {
     if (locked) return;
+    setOffreTronc({
+      ...offreTronc,
+      acheteurId: c.id,
+      acheteurNom: c.fullName,
+    });
     void persist({
       ...form,
       buyer: {
@@ -243,6 +292,12 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
         </InstitutionalSection>
       ) : (
         <>
+          <OffreTroncFinancierSection
+            offre={offreTronc}
+            locked={locked}
+            onPersist={persistOffreTronc}
+          />
+
           <InstitutionalSection title={t("Promesse d'achat et infos de vente", 'Purchase promise & sale info')}>
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block space-y-1">
@@ -269,19 +324,6 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
                     ))}
                   </select>
                 )}
-              </label>
-
-              <label className="block space-y-1">
-                <span className={labelClass}>{t('Prix offert ($)', 'Offered price ($)')}</span>
-                <input
-                  type="number"
-                  className={fieldClass}
-                  value={form.prixOffert ?? ''}
-                  disabled={locked || saving}
-                  onChange={(e) =>
-                    patchField('prixOffert', e.target.value === '' ? undefined : Number(e.target.value))
-                  }
-                />
               </label>
 
               <label className="block space-y-1">

@@ -12,6 +12,7 @@ import type {
   PromesseOfferSummaryRow,
   PromesseStatus,
 } from './types';
+import { parseOffreTroncFromDoc } from './offreTronc';
 
 export const PROMESSE_STATUS_OPTIONS: {
   value: PromesseStatus;
@@ -251,9 +252,13 @@ export function parsePromesseAchatFromDoc(
       ? (doc.promesseAchat as Record<string, unknown>)
       : doc;
 
+  const offreTronc = parseOffreTroncFromDoc(doc);
+
   return {
     status: parsePromesseStatus(block.status ?? block.statutPromesse),
-    prixOffert: toNumber(block.prixOffert ?? block.prixOffre),
+    prixOffert:
+      offreTronc.prixOffert ??
+      toNumber(block.prixOffert ?? block.prixOffre ?? block.montantOffre),
     prixAccepte: toNumber(block.prixAccepte),
     dateReception: toIsoDateString(
       block.dateReception ?? block.dateReceptionOffre
@@ -282,6 +287,7 @@ export function serializePromesseAchatForFirestore(
   return {
     promesseAchat: {
       status: input.status,
+      /** @deprecated Préférer `offre.prixOffert` (SSOT). Conservé pour repli lecture. */
       prixOffert: input.prixOffert ?? null,
       prixAccepte: input.prixAccepte ?? null,
       dateReception: input.dateReception ?? null,
