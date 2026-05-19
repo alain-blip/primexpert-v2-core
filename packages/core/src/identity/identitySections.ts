@@ -162,6 +162,86 @@ export const IDENTITY_SECTION_DEFS: IdentitySectionDef[] = [
       },
     ],
   },
+  {
+    id: 'regulatory',
+    titleFr: 'Conformité MSSS / RQRA',
+    titleEn: 'MSSS / RQRA compliance',
+    accent: '#dc2626',
+    fields: [
+      {
+        id: 'numeroMSSS',
+        canonicalKey: 'numeroMSSS',
+        labelFr: 'Numéro de permis MSSS',
+        labelEn: 'MSSS permit number',
+      },
+      {
+        id: 'certificationActive',
+        canonicalKey: 'certificationActive',
+        labelFr: 'Certification MSSS active',
+        labelEn: 'MSSS certification active',
+      },
+      {
+        id: 'categorieRpaEnum',
+        canonicalKey: 'categorieRpaEnum',
+        labelFr: 'Catégorie RPA (A · B · C · D)',
+        labelEn: 'RPA category (A · B · C · D)',
+      },
+      {
+        id: 'exploitantReseauRpaUnique',
+        canonicalKey: 'exploitantReseauRpaUnique',
+        labelFr: 'Exploitant — réseau unique (RPA unique)',
+        labelEn: 'Operator — single-site network',
+      },
+      {
+        id: 'autresRPA',
+        canonicalKey: 'autresRPA',
+        labelFr: 'Autres RPA du même exploitant',
+        labelEn: 'Other RPAs of the same operator',
+      },
+      {
+        id: 'numeroCertification',
+        canonicalKey: 'numeroCertification',
+        labelFr: 'Numéro de certification',
+        labelEn: 'Certification number',
+      },
+      {
+        id: 'numeroRQRA',
+        canonicalKey: 'numeroRQRA',
+        labelFr: 'Numéro RQRA',
+        labelEn: 'RQRA number',
+      },
+      {
+        id: 'membreRQRA',
+        canonicalKey: 'membreRQRA',
+        labelFr: 'Membre du regroupement québécois des résidences pour aînés (RQRA)',
+        labelEn: 'Member of Quebec association of seniors’ residences (RQRA)',
+      },
+      {
+        id: 'niveauSoins',
+        canonicalKey: 'niveauSoins',
+        labelFr: 'Niveau de soins',
+        labelEn: 'Care level',
+      },
+      {
+        id: 'dateInspectionMAPAQ',
+        canonicalKey: 'dateInspectionMAPAQ',
+        labelFr: 'Dernière inspection MAPAQ',
+        labelEn: 'Last MAPAQ inspection',
+      },
+      {
+        id: 'gestionMedicaments',
+        canonicalKey: 'gestionMedicaments',
+        labelFr: 'Gestion des médicaments',
+        labelEn: 'Medication management',
+      },
+      {
+        id: 'ententesReseau',
+        canonicalKey: 'ententesReseau',
+        labelFr: 'Ententes réseau (CISSS / CIUSSS)',
+        labelEn: 'Network agreements (CISSS / CIUSSS)',
+      },
+    ],
+  },
 ];
 
 export const SERVICES_SECTION_DEF: IdentitySectionDef = {

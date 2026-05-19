@@ -474,6 +474,120 @@ export const ACCOUNTING_FIELDS: CanonicalFieldDefinition[] = [
 ];
 
 /**
+ * Champs de conformité réglementaire (MSSS / RQRA / MAPAQ)
+ *
+ * Lot R1 — registre canonique des 12 indicateurs réglementaires
+ * surveillés par le cockpit Identité. Les alias couvrent les imports
+ * legacy RPA (snake/camel) et les variantes anglaises courantes.
+ */
+export const REGULATORY_FIELDS: CanonicalFieldDefinition[] = [
+  {
+    canonical: 'numeroMSSS',
+    aliases: ['codeMSSS', 'msssNumber', 'numeroRegistreMsss', 'numeroPermisMsss'],
+    category: 'regulatory',
+    type: 'string',
+    description: 'Numéro de permis MSSS (registre des RPA).',
+  },
+  {
+    canonical: 'certificationActive',
+    aliases: [
+      'certificationMsssActive',
+      'isCertificationActive',
+      'permisActif',
+      'msssCertificationActive',
+    ],
+    category: 'regulatory',
+    type: 'boolean',
+    description: 'Certification MSSS active (permis RPA en vigueur).',
+  },
+  {
+    canonical: 'categorieRpaEnum',
+    aliases: [
+      'categorieRpaCode',
+      'rpaCategoryEnum',
+      'rpaCategoryCode',
+      'categorieRPALettre',
+    ],
+    category: 'regulatory',
+    type: 'string',
+    description: "Catégorie RPA officielle (A · Autonome, B · Repas, C · Soins, D · Lourds).",
+  },
+  {
+    canonical: 'exploitantReseauRpaUnique',
+    aliases: [
+      'exploitantReseauUnique',
+      'reseauRpaUnique',
+      'isSoleNetworkOperator',
+      'singleNetworkOperator',
+    ],
+    category: 'regulatory',
+    type: 'boolean',
+    description: "L'exploitant ne possède qu'une seule RPA (vs réseau multi-sites).",
+  },
+  {
+    canonical: 'autresRPA',
+    aliases: ['autresResidences', 'otherRpas', 'networkOtherRpas', 'reseauAutresRpa'],
+    category: 'regulatory',
+    type: 'string',
+    description: "Liste textuelle des autres RPA du même exploitant (si réseau).",
+  },
+  {
+    canonical: 'numeroCertification',
+    aliases: ['numeroPermisMsss', 'permitNumber', 'certificationNumber'],
+    category: 'regulatory',
+    type: 'string',
+    description: 'Numéro officiel de certification rattaché au permis MSSS.',
+  },
+  {
+    canonical: 'numeroRQRA',
+    aliases: ['rqraNumber', 'numeroRqra', 'numeroAdhesionRqra'],
+    category: 'regulatory',
+    type: 'string',
+    description: "Numéro d'adhésion au Regroupement québécois des résidences pour aînés (RQRA).",
+  },
+  {
+    canonical: 'membreRQRA',
+    aliases: ['isRqraMember', 'membreRqra', 'adhesionRqra', 'rqraActive'],
+    category: 'regulatory',
+    type: 'boolean',
+    description: 'Adhésion active au Regroupement québécois des résidences pour aînés (RQRA).',
+  },
+  {
+    canonical: 'niveauSoins',
+    aliases: ['careLevel', 'niveauSoinsRpa', 'rpaCareLevel'],
+    category: 'regulatory',
+    type: 'string',
+    description: 'Niveau de soins offert (autonome, soins légers, soins lourds, etc.).',
+  },
+  {
+    canonical: 'dateInspectionMAPAQ',
+    aliases: [
+      'dateInspectionMapaq',
+      'lastMapaqInspectionDate',
+      'mapaqInspectionDate',
+      'derniereInspectionMapaq',
+    ],
+    category: 'regulatory',
+    type: 'date',
+    description: "Date de la dernière inspection alimentaire MAPAQ (cuisine de la RPA).",
+  },
+  {
+    canonical: 'gestionMedicaments',
+    aliases: ['medicationManagement', 'gestionRx', 'medicationProtocol'],
+    category: 'regulatory',
+    type: 'string',
+    description: 'Mode de gestion et de distribution des médicaments.',
+  },
+  {
+    canonical: 'ententesReseau',
+    aliases: ['networkAgreements', 'ententesCisss', 'ententeReseauSante', 'reseauEntentes'],
+    category: 'regulatory',
+    type: 'string',
+    description: "Ententes formelles de réseau (CISSS / CIUSSS, CHSLD, soins infirmiers).",
+  },
+];
+
+/**
  * Champs de transaction
  */
 export const TRANSACTION_FIELDS: CanonicalFieldDefinition[] = [
@@ -551,6 +665,7 @@ export const ALL_CANONICAL_FIELDS: CanonicalFieldDefinition[] = [
   ...SAFETY_FIELDS,
   ...FINANCE_FIELDS,
   ...ACCOUNTING_FIELDS,
+  ...REGULATORY_FIELDS,
   ...TRANSACTION_FIELDS,
   ...PROPERTY_DOCUMENT_EXTRACTION_FIELDS,
 ];

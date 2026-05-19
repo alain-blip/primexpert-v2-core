@@ -6,6 +6,7 @@ export type IdentitySectionId =
   | 'overview'
   | 'establishment'
   | 'legal'
+  | 'regulatory'
   | 'building_cadastre'
   | 'building_crossval'
   | 'building_structure'

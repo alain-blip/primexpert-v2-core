@@ -1,13 +1,19 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import type { IdentityFieldRow } from '@primexpert/core/identity';
 import { RaphaelBadge } from '../../msss/RaphaelBadge';
-import { cn } from '../../../lib/utils';
 import { Loader2 } from 'lucide-react';
 
+/**
+ * Grille de champs éditables — charte Confort 66+ (inline, pas de toggle d'édition).
+ *
+ * Chaque cellule expose en permanence son <input> ou <select> natif. La
+ * sauvegarde Firestore est déclenchée à la sortie du champ (onBlur) ou
+ * sur Enter, via le hook `useIdentityFieldSave` (consommé par les
+ * sections parentes — pas d'écriture directe ici).
+ */
 export interface EditableFieldGridProps {
   fields: IdentityFieldRow[];
   language: 'fr' | 'en';
-  editing: boolean;
   savingFieldId: string | null;
   getDraftValue: (fieldId: string) => string;
   onDraftChange: (fieldId: string, value: string) => void;
@@ -17,7 +23,6 @@ export interface EditableFieldGridProps {
 export function EditableFieldGrid({
   fields,
   language,
-  editing,
   savingFieldId,
   getDraftValue,
   onDraftChange,
@@ -25,20 +30,19 @@ export function EditableFieldGrid({
 }: EditableFieldGridProps) {
   if (fields.length === 0) {
     return (
-      <p className="text-sm text-slate-500 italic">
+      <p className="text-[15px] font-semibold text-slate-500 italic">
         {language === 'fr' ? 'Aucune donnée renseignée.' : 'No data on file.'}
       </p>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {fields.map((field) => (
         <FieldCell
           key={field.id}
           field={field}
           language={language}
-          editing={editing}
           saving={savingFieldId === field.id}
           draft={getDraftValue(field.id)}
           onDraftChange={(v) => onDraftChange(field.id, v)}
@@ -49,10 +53,12 @@ export function EditableFieldGrid({
   );
 }
 
+const TEXT_INPUT_CLASSES =
+  'h-12 w-full rounded-xl border-2 border-black/30 bg-white px-3 text-[16px] font-black text-black placeholder-slate-400 focus:border-[#142c6a] focus:outline-none focus:ring-2 focus:ring-[#142c6a]/30';
+
 function FieldCell({
   field,
   language,
-  editing,
   saving,
   draft,
   onDraftChange,
@@ -60,7 +66,6 @@ function FieldCell({
 }: {
   field: IdentityFieldRow;
   language: 'fr' | 'en';
-  editing: boolean;
   saving: boolean;
   draft: string;
   onDraftChange: (v: string) => void;
@@ -87,51 +92,40 @@ function FieldCell({
     field.inputType === 'percent';
 
   return (
-    <div className="min-w-0">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1">
+    <div className="min-w-0 rounded-xl border-2 border-black/10 bg-white py-4 px-4">
+      <p className="mb-2 flex items-center gap-2 text-[13px] font-black uppercase tracking-wider text-[#142c6a]">
         <span>{label}</span>
         <RaphaelBadge show={field.showRaphaelBadge} />
-        {saving ? <Loader2 className="h-3 w-3 animate-spin text-slate-400" /> : null}
+        {saving ? <Loader2 className="h-4 w-4 animate-spin text-slate-500" /> : null}
       </p>
-      {editing ? (
-        isSprinkler ? (
-          <select
-            value={local}
-            onChange={(e) => {
-              setLocal(e.target.value);
-              onDraftChange(e.target.value);
-            }}
-            onBlur={handleBlur}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#142c6a] focus:border-[#D4AF37]/60 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30"
-          >
-            <option value="">{language === 'fr' ? '—' : '—'}</option>
-            <option value="Oui">{language === 'fr' ? 'Oui' : 'Yes'}</option>
-            <option value="Non">{language === 'fr' ? 'Non' : 'No'}</option>
-          </select>
-        ) : (
-          <input
-            type={isNumber ? 'number' : 'text'}
-            value={local}
-            onChange={(e) => setLocal(e.target.value)}
-            onBlur={handleBlur}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.currentTarget.blur();
-              }
-            }}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#142c6a] placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30"
-            placeholder={language === 'fr' ? 'Saisir…' : 'Enter…'}
-          />
-        )
-      ) : (
-        <p
-          className={cn(
-            'text-sm font-semibold text-[#142c6a] break-words',
-            field.empty && 'text-slate-400 font-normal italic'
-          )}
+      {isSprinkler ? (
+        <select
+          value={local}
+          onChange={(e) => {
+            setLocal(e.target.value);
+            onDraftChange(e.target.value);
+          }}
+          onBlur={handleBlur}
+          className={TEXT_INPUT_CLASSES}
         >
-          {field.value}
-        </p>
+          <option value="">—</option>
+          <option value="Oui">{language === 'fr' ? 'Oui' : 'Yes'}</option>
+          <option value="Non">{language === 'fr' ? 'Non' : 'No'}</option>
+        </select>
+      ) : (
+        <input
+          type={isNumber ? 'number' : 'text'}
+          value={local}
+          onChange={(e) => setLocal(e.target.value)}
+          onBlur={handleBlur}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.currentTarget.blur();
+            }
+          }}
+          className={TEXT_INPUT_CLASSES}
+          placeholder={language === 'fr' ? 'Saisir…' : 'Enter…'}
+        />
       )}
     </div>
   );

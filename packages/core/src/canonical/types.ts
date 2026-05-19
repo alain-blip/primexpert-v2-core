@@ -63,7 +63,8 @@ export type FieldCategory =
   | 'finance'       // Finances
   | 'accounting'    // Comptabilité / Amortissements / BAIIA
   | 'operations'    // Opérations
-  | 'transaction';  // Transaction
+  | 'transaction'   // Transaction
+  | 'regulatory';   // Conformité réglementaire MSSS / RQRA / MAPAQ
 
 // ============================================================================
 // DÉFINITION D'UN CHAMP CANONIQUE

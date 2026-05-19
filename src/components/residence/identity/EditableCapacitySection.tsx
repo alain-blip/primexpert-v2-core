@@ -1,26 +1,32 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
   CAPACITY_EDITABLE_FIELDS,
   getNestedValue,
   shouldShowRaphaelForField,
 } from '@primexpert/core/identity';
-import { Pencil, X, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { IdentitySectionCard } from './IdentitySectionCard';
 import { RaphaelBadge } from '../../msss/RaphaelBadge';
 import { useIdentityFieldSave } from '../../../hooks/useIdentityFieldSave';
-import { cn } from '../../../lib/utils';
 
+/**
+ * Effectifs par quart — charte Confort 66+, édition inline permanente.
+ *
+ * Les unités sont gérées dans la tarification des loyers ; cette section
+ * ne couvre que les ressources humaines (effectifs par poste / quart).
+ */
 export interface EditableCapacitySectionProps {
   residenceDoc: Record<string, unknown>;
   language: 'fr' | 'en';
 }
 
-/** Effectifs RH — les unités sont gérées dans Tarification des loyers. */
+const CAPACITY_INPUT_CLASSES =
+  'h-12 w-full rounded-xl border-2 border-black/30 bg-white px-3 text-[16px] font-black text-black focus:border-[#142c6a] focus:outline-none focus:ring-2 focus:ring-[#142c6a]/30';
+
 export function EditableCapacitySection({
   residenceDoc,
   language,
 }: EditableCapacitySectionProps) {
-  const [editing, setEditing] = useState(false);
   const { savingFieldId, getCapacityDraftValue, setDraft, saveCapacityField } =
     useIdentityFieldSave();
 
@@ -38,32 +44,8 @@ export function EditableCapacitySection({
     <IdentitySectionCard
       title={t('Effectifs par quart', 'Staffing by shift')}
       accent="#059669"
-      headerAction={
-        <button
-          type="button"
-          onClick={() => setEditing((v) => !v)}
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider transition',
-            editing
-              ? 'border-slate-300 bg-white text-slate-700'
-              : 'border-slate-200 bg-white text-slate-600 hover:border-[#D4AF37]/50 hover:text-[#142c6a]'
-          )}
-        >
-          {editing ? (
-            <>
-              <X className="h-3 w-3" />
-              {t('Terminer', 'Done')}
-            </>
-          ) : (
-            <>
-              <Pencil className="h-3 w-3" />
-              {t('Modifier', 'Edit')}
-            </>
-          )}
-        </button>
-      }
     >
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {CAPACITY_EDITABLE_FIELDS.map((def) => {
           const label = language === 'fr' ? def.labelFr : def.labelEn;
           const path = def.nestedPath ?? (def.canonicalKey ? [def.canonicalKey] : [def.id]);
@@ -82,35 +64,27 @@ export function EditableCapacitySection({
           const saving = savingFieldId === def.id;
 
           return (
-            <div key={def.id} className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1">
+            <div
+              key={def.id}
+              className="min-w-0 rounded-xl border-2 border-black/10 bg-white py-4 px-4"
+            >
+              <p className="mb-2 flex items-center gap-2 text-[13px] font-black uppercase tracking-wider text-[#142c6a]">
                 <span>{label}</span>
                 <RaphaelBadge show={showBadge} />
-                {saving ? <Loader2 className="h-3 w-3 animate-spin text-slate-400" /> : null}
+                {saving ? <Loader2 className="h-4 w-4 animate-spin text-slate-500" /> : null}
               </p>
-              {editing ? (
-                <input
-                  type="number"
-                  min={0}
-                  value={value}
-                  onChange={(e) => setDraft(def.id, e.target.value)}
-                  onBlur={(e) => void handleBlur(def.id, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') e.currentTarget.blur();
-                  }}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#142c6a] focus:border-[#D4AF37]/60 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30"
-                  placeholder="0"
-                />
-              ) : (
-                <p
-                  className={cn(
-                    'text-sm font-semibold text-[#142c6a]',
-                    !value && 'text-slate-400 font-normal italic'
-                  )}
-                >
-                  {value || '—'}
-                </p>
-              )}
+              <input
+                type="number"
+                min={0}
+                value={value}
+                onChange={(e) => setDraft(def.id, e.target.value)}
+                onBlur={(e) => void handleBlur(def.id, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur();
+                }}
+                className={CAPACITY_INPUT_CLASSES}
+                placeholder="0"
+              />
             </div>
           );
         })}

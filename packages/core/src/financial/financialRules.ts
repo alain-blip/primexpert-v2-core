@@ -492,6 +492,10 @@ export interface AphSelectEligibilityInput {
   hasQualifiedManagementContract?: boolean | null;
   careLevelMeetsAssisted?: boolean | null;
   aphSelectPoints?: number | null;
+  /** Adhésion active au Regroupement québécois des résidences pour aînés (RQRA). */
+  membreRQRA?: boolean | null;
+  /** Certification MSSS (permis RPA) active à la date de l'analyse. */
+  certificationActive?: boolean | null;
 }
 
 function numFrom(obj: Record<string, unknown> | null | undefined, keys: string[]): number | null {
@@ -550,7 +554,49 @@ export function buildAphSelectEligibilityInput(
         String(financement?.niveauSoins ?? financement?.careLevel ?? '').toLowerCase()
       ),
     aphSelectPoints: resolveAphSelectPoints(financement),
+    membreRQRA: resolveRegulatoryBoolean(residence, baseData, financement, [
+      'membreRQRA',
+      'membreRqra',
+      'isRqraMember',
+      'adhesionRqra',
+      'rqraActive',
+    ]),
+    certificationActive: resolveRegulatoryBoolean(residence, baseData, financement, [
+      'certificationActive',
+      'certificationMsssActive',
+      'isCertificationActive',
+      'permisActif',
+      'msssCertificationActive',
+    ]),
   };
+}
+
+/**
+ * Lecture résiliente d'un drapeau réglementaire dans residence / baseData / financement.
+ * Retourne `true`, `false` ou `null` (inconnu) — distinction critique pour ne pas
+ * pénaliser un dossier juste parce que le champ n'a pas encore été renseigné.
+ */
+function resolveRegulatoryBoolean(
+  residence: Record<string, unknown> | null | undefined,
+  baseData: Record<string, unknown> | null | undefined,
+  financement: Record<string, unknown> | null | undefined,
+  keys: string[]
+): boolean | null {
+  const sources = [residence, baseData, financement];
+  for (const src of sources) {
+    if (!src || typeof src !== 'object') continue;
+    for (const k of keys) {
+      const raw = (src as Record<string, unknown>)[k];
+      if (raw === true || raw === 1) return true;
+      if (raw === false || raw === 0) return false;
+      if (typeof raw === 'string') {
+        const norm = raw.trim().toLowerCase();
+        if (['true', 'oui', 'yes', '1'].includes(norm)) return true;
+        if (['false', 'non', 'no', '0'].includes(norm)) return false;
+      }
+    }
+  }
+  return null;
 }
 
 export function evaluateAphSelectEligibility(
@@ -752,13 +798,83 @@ export function evaluateAphSelectEligibility(
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Cross-link réglementaire — Lot R1
+  //
+  // La SCHL exige que l'exploitant détienne un permis MSSS actif ET soit
+  // membre du RQRA pour qu'un dossier APH Select / SCHL Standard soit
+  // structurellement admissible. Un FAUX explicite sur l'un ou l'autre
+  // déclasse immédiatement l'éligibilité, peu importe le DSCR et les
+  // autres critères qualitatifs.
+  // ---------------------------------------------------------------------------
+  if (input.certificationActive === false) {
+    push(
+      'msss_certification_active',
+      'Certification MSSS active',
+      'MSSS certification active',
+      'hors_normes',
+      'Permis MSSS inactif ou expiré — admissibilité bloquée par la SCHL.',
+      'MSSS permit inactive or expired — CMHC blocks eligibility.'
+    );
+  } else if (input.certificationActive === true) {
+    push(
+      'msss_certification_active',
+      'Certification MSSS active',
+      'MSSS certification active',
+      'conforme',
+      'Permis MSSS actif (registre RPA en règle).',
+      'MSSS permit active (RPA registry in good standing).'
+    );
+  } else {
+    push(
+      'msss_certification_active',
+      'Certification MSSS active',
+      'MSSS certification active',
+      'a_verifier',
+      'État du permis MSSS non renseigné dans la fiche.',
+      'MSSS permit status not provided in the file.'
+    );
+  }
+
+  if (input.membreRQRA === false) {
+    push(
+      'rqra_membership',
+      'Adhésion RQRA active',
+      'RQRA membership active',
+      'hors_normes',
+      "Adhésion au Regroupement québécois des résidences pour aînés (RQRA) inactive — exigence SCHL non respectée.",
+      'Quebec association of seniors’ residences (RQRA) membership inactive — CMHC requirement not met.'
+    );
+  } else if (input.membreRQRA === true) {
+    push(
+      'rqra_membership',
+      'Adhésion RQRA active',
+      'RQRA membership active',
+      'conforme',
+      'Membre actif du RQRA.',
+      'Active RQRA member.'
+    );
+  } else {
+    push(
+      'rqra_membership',
+      'Adhésion RQRA active',
+      'RQRA membership active',
+      'a_verifier',
+      "Statut d'adhésion au RQRA non renseigné.",
+      'RQRA membership status not provided.'
+    );
+  }
+
+  const regulatoryHardFail =
+    input.certificationActive === false || input.membreRQRA === false;
+
   const measured = criteria.filter((c) => c.status !== 'a_verifier');
   const allMeasuredOk = measured.length > 0 && measured.every((c) => c.status === 'conforme');
   const anyHorsNormes = criteria.some((c) => c.status === 'hors_normes');
   const pointsOk = !requireAphPoints || (points != null && points >= MIN_POINTS_FOR_BENEFITS);
 
   let isEligible: boolean | null = null;
-  if (anyHorsNormes) isEligible = false;
+  if (regulatoryHardFail || anyHorsNormes) isEligible = false;
   else if (allMeasuredOk && pointsOk) isEligible = true;
   else if (measured.length === criteria.length && pointsOk) isEligible = true;
 

@@ -1,21 +1,28 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import type { RentPricingView } from '@primexpert/core/identity';
 import { formatCurrency } from '../../../lib/utils';
-import { Pencil, X, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { IdentitySectionCard } from './IdentitySectionCard';
 import { RaphaelBadge } from '../../msss/RaphaelBadge';
 import { useIdentityFieldSave } from '../../../hooks/useIdentityFieldSave';
-import { cn } from '../../../lib/utils';
 
+/**
+ * Tarification des loyers — charte Confort 66+, édition inline permanente.
+ *
+ * Plus de toggle "Modifier" : chaque cellule numérique est un <input> natif
+ * en texte noir massif (16 px font-black). La sauvegarde Firestore est
+ * déclenchée à la sortie du champ via `useIdentityFieldSave`.
+ */
 export interface RentPricingTableSectionProps {
   rentPricing: RentPricingView;
   language: 'fr' | 'en';
 }
 
-export function RentPricingTableSection({ rentPricing, language }: RentPricingTableSectionProps) {
-  const [editing, setEditing] = useState(false);
-  const { savingFieldId, getDraftValue, setDraft, saveIdentityField } = useIdentityFieldSave();
+const NUMBER_INPUT_CLASSES =
+  'h-11 w-24 rounded-xl border-2 border-black/30 bg-white px-2 text-right text-[16px] font-black tabular-nums text-black focus:border-[#142c6a] focus:outline-none focus:ring-2 focus:ring-[#142c6a]/30';
 
+export function RentPricingTableSection({ rentPricing, language }: RentPricingTableSectionProps) {
+  const { savingFieldId, getDraftValue, setDraft, saveIdentityField } = useIdentityFieldSave();
   const t = (fr: string, en: string) => (language === 'fr' ? fr : en);
 
   const handleBlur = useCallback(
@@ -30,66 +37,45 @@ export function RentPricingTableSection({ rentPricing, language }: RentPricingTa
     <IdentitySectionCard
       title={t('Tarification des loyers', 'Rent pricing')}
       accent="#b45309"
-      headerAction={
-        <button
-          type="button"
-          onClick={() => setEditing((v) => !v)}
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider transition',
-            editing
-              ? 'border-slate-300 bg-white text-slate-700'
-              : 'border-slate-200 bg-white text-slate-600 hover:border-[#D4AF37]/50 hover:text-[#142c6a]'
-          )}
-        >
-          {editing ? (
-            <>
-              <X className="h-3 w-3" />
-              {t('Terminer', 'Done')}
-            </>
-          ) : (
-            <>
-              <Pencil className="h-3 w-3" />
-              {t('Modifier', 'Edit')}
-            </>
-          )}
-        </button>
-      }
     >
-      <p className="text-xs text-slate-600 mb-4">
+      <p className="mb-5 text-[15px] font-semibold leading-relaxed text-slate-700">
         {t(
-          'Fail-safe financier : si le revenu brut effectif (RBE) est absent, la somme des revenus potentiels alimente la normalisation finance.',
-          'Financial fail-safe: if effective gross income (EGI) is missing, total potential revenue feeds finance normalization.'
+          'Diligence raisonnable financière : si le revenu brut effectif (RBE) est absent, la somme des revenus potentiels alimente la normalisation finance.',
+          'Financial due diligence: if effective gross income (EGI) is missing, total potential revenue feeds finance normalization.'
         )}
       </p>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-xl border-2 border-black/10">
+        <table className="w-full">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="text-left px-4 py-2.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">
+            <tr className="border-b-2 border-black/10 bg-[#142c6a] text-white">
+              <th className="px-4 py-3 text-left text-[12px] font-black uppercase tracking-wider">
                 {t('Type', 'Type')}
               </th>
-              <th className="text-right px-4 py-2.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">
+              <th className="px-4 py-3 text-right text-[12px] font-black uppercase tracking-wider">
                 {t('Qté', 'Qty')}
               </th>
-              <th className="text-right px-4 py-2.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">
+              <th className="px-4 py-3 text-right text-[12px] font-black uppercase tracking-wider">
                 {t('Occupation %', 'Occupancy %')}
               </th>
-              <th className="text-right px-4 py-2.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">
+              <th className="px-4 py-3 text-right text-[12px] font-black uppercase tracking-wider">
                 {t('Loyer moyen', 'Avg rent')}
               </th>
-              <th className="text-right px-4 py-2.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">
+              <th className="px-4 py-3 text-right text-[12px] font-black uppercase tracking-wider">
                 {t('Revenu potentiel / an', 'Potential revenue / yr')}
               </th>
             </tr>
           </thead>
           <tbody>
-            {rentPricing.rows.map((row) => {
+            {rentPricing.rows.map((row, idx) => {
               const label = language === 'fr' ? row.labelFr : row.labelEn;
               return (
-                <tr key={row.typeKey} className="border-b border-slate-100 last:border-0">
-                  <td className="px-4 py-3 font-semibold text-[#142c6a]">
-                    <span className="inline-flex items-center gap-1">
+                <tr
+                  key={row.typeKey}
+                  className={idx % 2 === 0 ? 'bg-white' : 'bg-[#fafaf6]'}
+                >
+                  <td className="border-t border-black/10 px-4 py-3 text-[15px] font-black text-[#142c6a]">
+                    <span className="inline-flex items-center gap-2">
                       {label}
                       <RaphaelBadge show={row.showRaphaelBadge} />
                     </span>
@@ -110,37 +96,31 @@ export function RentPricingTableSection({ rentPricing, language }: RentPricingTa
                     const draft = getDraftValue(fieldId, display);
 
                     return (
-                      <td key={col} className="px-4 py-2 text-right">
-                        {editing ? (
-                          <span className="inline-flex items-center justify-end gap-1">
-                            <input
-                              type="number"
-                              min={0}
-                              value={draft}
-                              onChange={(e) => setDraft(fieldId, e.target.value)}
-                              onBlur={(e) => void handleBlur(fieldId, e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') e.currentTarget.blur();
-                              }}
-                              className="w-24 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-right text-sm font-semibold text-[#142c6a] focus:border-[#D4AF37]/60 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30"
-                            />
-                            {saving ? (
-                              <Loader2 className="h-3 w-3 animate-spin text-slate-400" />
-                            ) : null}
-                          </span>
-                        ) : (
-                          <span className="font-black text-[#142c6a] tabular-nums">
-                            {col === 'loyer' && row.loyerMoyen != null
-                              ? formatCurrency(row.loyerMoyen)
-                              : col === 'loyer'
-                                ? '—'
-                                : display || '—'}
-                          </span>
-                        )}
+                      <td
+                        key={col}
+                        className="border-t border-black/10 px-3 py-3 text-right"
+                      >
+                        <span className="inline-flex items-center justify-end gap-2">
+                          <input
+                            type="number"
+                            min={0}
+                            value={draft}
+                            onChange={(e) => setDraft(fieldId, e.target.value)}
+                            onBlur={(e) => void handleBlur(fieldId, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') e.currentTarget.blur();
+                            }}
+                            className={NUMBER_INPUT_CLASSES}
+                            placeholder="0"
+                          />
+                          {saving ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                          ) : null}
+                        </span>
                       </td>
                     );
                   })}
-                  <td className="px-4 py-3 text-right font-black text-[#142c6a] tabular-nums">
+                  <td className="border-t border-black/10 px-4 py-3 text-right text-[16px] font-black tabular-nums text-black">
                     {row.revenuPotentielAnnuel != null
                       ? formatCurrency(row.revenuPotentielAnnuel)
                       : '—'}
@@ -151,17 +131,17 @@ export function RentPricingTableSection({ rentPricing, language }: RentPricingTa
           </tbody>
           {rentPricing.totalRevenuPotentielAnnuel != null && (
             <tfoot>
-              <tr className="bg-amber-50/60 border-t border-slate-200">
+              <tr className="border-t-2 border-amber-700 bg-amber-100">
                 <td
                   colSpan={4}
-                  className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-600 text-right"
+                  className="px-4 py-3 text-right text-[13px] font-black uppercase tracking-wider text-amber-900"
                 >
                   {t(
-                    'Total revenus potentiels (fail-safe revenu brut effectif (RBE))',
-                    'Total potential revenue (effective gross income (EGI) fail-safe)'
+                    'Total revenus potentiels (diligence revenu brut effectif (RBE))',
+                    'Total potential revenue (effective gross income (EGI) due diligence)'
                   )}
                 </td>
-                <td className="px-4 py-3 text-right font-black text-[#142c6a] tabular-nums">
+                <td className="px-4 py-3 text-right text-[18px] font-black tabular-nums text-black">
                   {formatCurrency(rentPricing.totalRevenuPotentielAnnuel)}
                 </td>
               </tr>
