@@ -6,6 +6,8 @@
 import type {
   PromesseAchatInput,
   PromesseAchatViewModel,
+  PromesseCollaborator,
+  PromesseCommissionInput,
   PromesseCommissionView,
   PromesseComputedDeadlines,
   PromesseDelayDays,
@@ -277,6 +279,41 @@ export function parsePromesseAchatFromDoc(
   };
 }
 
+/** Firestore rejette `undefined` — normaliser en `null` pour les champs imbriqués. */
+function serializeDelayDays(delais?: PromesseDelayDays): Record<string, number | null> {
+  const d = delais ?? {};
+  return {
+    visiteLieuxJours: d.visiteLieuxJours ?? null,
+    verificationDocumentsJours: d.verificationDocumentsJours ?? null,
+    inspectionJours: d.inspectionJours ?? null,
+    financementJours: d.financementJours ?? null,
+    permisJours: d.permisJours ?? null,
+  };
+}
+
+function serializeCommission(
+  commission?: PromesseCommissionInput
+): Record<string, number | null> {
+  const c = commission ?? {};
+  return {
+    totalePct: c.totalePct ?? null,
+    inscripteurPct: c.inscripteurPct ?? null,
+    collaborateurPct: c.collaborateurPct ?? null,
+  };
+}
+
+function serializeCollaborator(
+  courtier?: PromesseCollaborator
+): Record<string, number | string | null> {
+  const c = courtier ?? {};
+  return {
+    nom: c.nom ?? null,
+    telephone: c.telephone ?? null,
+    courriel: c.courriel ?? null,
+    partCommissionPct: c.partCommissionPct ?? null,
+  };
+}
+
 export function serializePromesseAchatForFirestore(
   input: PromesseAchatInput
 ): Record<string, unknown> {
@@ -294,9 +331,9 @@ export function serializePromesseAchatForFirestore(
       delaiReponseJours: input.delaiReponseJours ?? null,
       dateAcceptation: input.dateAcceptation ?? null,
       dateNotairePrevue: input.dateNotairePrevue ?? null,
-      delais: input.delais ?? {},
-      commission: input.commission ?? {},
-      courtierCollaborateur: input.courtierCollaborateur ?? {},
+      delais: serializeDelayDays(input.delais),
+      commission: serializeCommission(input.commission),
+      courtierCollaborateur: serializeCollaborator(input.courtierCollaborateur),
       buyer: input.buyer ?? null,
       wormLockedAt,
     },

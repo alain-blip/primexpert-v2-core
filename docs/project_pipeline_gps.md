@@ -80,7 +80,7 @@ Fiche V2 (Listings → ResidenceDetail)
     ├─ Marché            [✅ MarcheConcurrenceTab]
     ├─ Documents         [✅ Espace Documents + scan + parse IA Vertex + distribution / courriel]
     ├─ Intelligence      [✅ call_analyses + mailbox_analyses]
-    └─ Promesse          [✅ PromesseAchatTab]
+    └─ Promesse          [✅ PromesseAchatTab — offre SSOT + conditions & délais RPA + clôture]
 ```
 
 **Inscriptions :** vue **pipeline** en **4 colonnes** (prospect · mandat · promesse · vendu) ; statut `expired` conservé en données mais **hors** colonnes actives (`PIPELINE_ACTIVE_STATUSES`).
@@ -142,7 +142,7 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 | UI institutionnelle (`primexpert-*`, coquilles onglets) | ✅ |
 | Inscriptions Kanban + cartes institutionnelles | ✅ |
 | Onglet Synthèse 360 + notes `residences/{id}/notes` | ✅ |
-| Déclaration, Marché, Promesse (onglets livrés) | ✅ |
+| Déclaration, Marché, Promesse (cockpit PA + `offre` SSOT) | ✅ |
 | Webhooks Stripe → Firestore | ⏳ |
 | Cron relances J30/J40 | ⏳ |
 | Stripe Customer Portal prod | ⏳ env |
@@ -162,4 +162,4 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 
 ---
 
-*Dernière mise à jour : 2026-05-19.*
+*Dernière mise à jour : 2026-05-19 — Cockpit promesse d'achat (Sprints 5.1–5.4), Identité Confort 66+.*

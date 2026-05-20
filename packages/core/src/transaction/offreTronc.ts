@@ -1,3 +1,7 @@
+import type { OffreConditionsInput } from './offreConditions';
+import { serializeOffreForFirestore } from './offreConditions';
+import type { OffreClotureInput } from './offreCloture';
+
 /**
  * SSOT — Tronc de l'offre (Axe 1 PA) : prix et structure de paiement.
  *
@@ -160,19 +164,13 @@ export function parseOffreTroncFromDoc(
   };
 }
 
-/** Patch Firestore canonique — écrit uniquement sous `offre`. */
+/** Patch Firestore canonique — fusionne tronc + conditions (évite l'écrasement). */
 export function serializeOffreTroncForFirestore(
-  input: OffreTroncInput
+  input: OffreTroncInput,
+  conditions: OffreConditionsInput = {},
+  cloture: OffreClotureInput = {}
 ): Record<string, unknown> {
-  return {
-    offre: {
-      prixOffert: input.prixOffert ?? null,
-      acompteMontant: input.acompteMontant ?? null,
-      balanceVenteMontant: input.balanceVenteMontant ?? null,
-      acheteurId: input.acheteurId ?? null,
-      acheteurNom: input.acheteurNom ?? null,
-    },
-  };
+  return serializeOffreForFirestore(input, conditions, cloture);
 }
 
 /** Fusionne un champ du tronc d'offre dans l'état courant. */

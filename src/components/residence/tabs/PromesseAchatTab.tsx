@@ -1,5 +1,5 @@
 /**
- * Promesse d'achat — pilotage transactionnel (OACIQ, WORM 6 ans).
+ * Promesse d'achat — suivi de la promesse d'achat (OACIQ, WORM 6 ans).
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -10,18 +10,25 @@ import {
   WORM_LOCK_MESSAGE_FR,
   appendOfferSummary,
   buildPromesseAchatViewModel,
-  formatCurrencyCad,
   formatIsoDateForDisplay,
+  parseOffreClotureFromDoc,
+  parseOffreConditionsFromDoc,
   parseOffreTroncFromDoc,
   parsePromesseAchatFromDoc,
   parsePromesseOffersFromDoc,
-  serializeOffreTroncForFirestore,
+  serializeOffreForFirestore,
   serializePromesseAchatForFirestore,
+  type OffreClotureInput,
+  type OffreConditionsInput,
   type OffreTroncInput,
   type PromesseAchatInput,
   type PromesseOfferSummaryRow,
 } from '@primexpert/core/transaction';
+import { OffreClotureRetributionSection } from '../promesse/OffreClotureRetributionSection';
+import { OffreConditionsLegalesSection } from '../promesse/OffreConditionsLegalesSection';
 import { OffreTroncFinancierSection } from '../promesse/OffreTroncFinancierSection';
+import { PromesseCommissionPaSection } from '../promesse/PromesseCommissionPaSection';
+import { PromesseDelaisPaSection } from '../promesse/PromesseDelaisPaSection';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { useAuth } from '../../../lib/auth';
 import { useLanguage } from '../../../lib/i18n';
@@ -66,6 +73,8 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
 
   const [innerTab, setInnerTab] = useState<InnerTab>('edit');
   const [offreTronc, setOffreTronc] = useState<OffreTroncInput>({});
+  const [offreConditions, setOffreConditions] = useState<OffreConditionsInput>({});
+  const [offreCloture, setOffreCloture] = useState<OffreClotureInput>({});
   const [form, setForm] = useState<PromesseAchatInput>({ status: 'draft' });
   const [offers, setOffers] = useState<PromesseOfferSummaryRow[]>([]);
   const [contactQuery, setContactQuery] = useState('');
@@ -80,7 +89,11 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
   useEffect(() => {
     if (!residenceDoc) return;
     const offre = parseOffreTroncFromDoc(residenceDoc);
+    const conditions = parseOffreConditionsFromDoc(residenceDoc);
+    const cloture = parseOffreClotureFromDoc(residenceDoc);
     setOffreTronc(offre);
+    setOffreConditions(conditions);
+    setOffreCloture(cloture);
     const parsed = parsePromesseAchatFromDoc(residenceDoc);
     setForm({
       ...parsed,
@@ -90,7 +103,13 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
   }, [residenceDoc]);
 
   useEffect(() => {
-    const unsub = subscribePromesseDocuments(residence.id, setDocs);
+    const unsub = subscribePromesseDocuments(
+      residence.id,
+      setDocs,
+      () => {
+        setDocs([]);
+      }
+    );
     return () => unsub();
   }, [residence.id]);
 
@@ -111,13 +130,31 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
         setForm(syncedForm);
       }
       await updateResidence({
-        ...serializeOffreTroncForFirestore(next),
+        ...serializeOffreForFirestore(next, offreConditions),
         ...(next.prixOffert !== form.prixOffert
           ? serializePromesseAchatForFirestore(syncedForm)
           : {}),
       });
     },
-    [form, locked, updateResidence]
+    [form, locked, offreCloture, offreConditions, updateResidence]
+  );
+
+  const persistOffreConditions = useCallback(
+    async (next: OffreConditionsInput) => {
+      if (locked) return;
+      setOffreConditions(next);
+      await updateResidence(serializeOffreForFirestore(offreTronc, next, offreCloture));
+    },
+    [locked, offreCloture, offreTronc, updateResidence]
+  );
+
+  const persistOffreCloture = useCallback(
+    async (next: OffreClotureInput) => {
+      if (locked) return;
+      setOffreCloture(next);
+      await updateResidence(serializeOffreForFirestore(offreTronc, offreConditions, next));
+    },
+    [locked, offreConditions, offreTronc, updateResidence]
   );
 
   const persist = useCallback(
@@ -129,21 +166,30 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
       setForm(synced);
       const patch = {
         ...serializePromesseAchatForFirestore(synced),
-        ...serializeOffreTroncForFirestore({
-          ...offreTronc,
-          prixOffert: synced.prixOffert,
-          acheteurId: synced.buyer?.contactId ?? offreTronc.acheteurId,
-          acheteurNom: synced.buyer?.fullName ?? offreTronc.acheteurNom,
-        }),
+        ...serializeOffreForFirestore(
+          {
+            ...offreTronc,
+            prixOffert: synced.prixOffert,
+            acheteurId: synced.buyer?.contactId ?? offreTronc.acheteurId,
+            acheteurNom: synced.buyer?.fullName ?? offreTronc.acheteurNom,
+          },
+          offreConditions,
+          offreCloture
+        ),
       };
       const nextOffers = appendOfferSummary(offers, synced);
-      await updateResidence({
-        ...patch,
-        promesseOffers: nextOffers,
-      });
-      setOffers(nextOffers);
+      try {
+        await updateResidence({
+          ...patch,
+          promesseOffers: nextOffers,
+        });
+        setOffers(nextOffers);
+        setLocalError(null);
+      } catch (e) {
+        setLocalError(e instanceof Error ? e.message : String(e));
+      }
     },
-    [offers, offreTronc, updateResidence]
+    [offers, offreCloture, offreConditions, offreTronc, updateResidence]
   );
 
   const patchField = useCallback(
@@ -298,6 +344,18 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
             onPersist={persistOffreTronc}
           />
 
+          <OffreConditionsLegalesSection
+            conditions={offreConditions}
+            locked={locked}
+            onPersist={persistOffreConditions}
+          />
+
+          <OffreClotureRetributionSection
+            cloture={offreCloture}
+            locked={locked}
+            onPersist={persistOffreCloture}
+          />
+
           <InstitutionalSection title={t("Promesse d'achat et infos de vente", 'Purchase promise & sale info')}>
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block space-y-1">
@@ -448,173 +506,32 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
             </div>
           </InstitutionalSection>
 
-          <InstitutionalSection title={t('Dates limites et délais', 'Deadlines & delays')}>
-            <DeadlineRow
-              labelFr="Délai visite des lieux (jours)"
-              labelEn="Property visit delay (days)"
-              days={form.delais?.visiteLieuxJours}
-              computed={vm.deadlines.dateLimiteVisiteLieux}
-              locale={locale}
-              locked={locked}
-              saving={saving}
-              onDays={(v) =>
-                patchField('delais', { ...form.delais, visiteLieuxJours: v })
-              }
-              t={t}
-            />
-            <DeadlineRow
-              labelFr="Délai vérification des documents (jours)"
-              labelEn="Document review delay (days)"
-              days={form.delais?.verificationDocumentsJours}
-              computed={vm.deadlines.dateLimiteVerificationDocuments}
-              locale={locale}
-              locked={locked}
-              saving={saving}
-              onDays={(v) =>
-                patchField('delais', { ...form.delais, verificationDocumentsJours: v })
-              }
-              t={t}
-            />
-            <DeadlineRow
-              labelFr="Délai inspection (jours)"
-              labelEn="Inspection delay (days)"
-              days={form.delais?.inspectionJours}
-              computed={vm.deadlines.dateLimiteInspection}
-              locale={locale}
-              locked={locked}
-              saving={saving}
-              onDays={(v) =>
-                patchField('delais', { ...form.delais, inspectionJours: v })
-              }
-              t={t}
-            />
-            <DeadlineRow
-              labelFr="Délai financement hypothécaire (jours)"
-              labelEn="Mortgage financing delay (days)"
-              days={form.delais?.financementJours}
-              computed={vm.deadlines.dateLimiteFinancement}
-              locale={locale}
-              locked={locked}
-              saving={saving}
-              onDays={(v) =>
-                patchField('delais', { ...form.delais, financementJours: v })
-              }
-              t={t}
-            />
-            <DeadlineRow
-              labelFr="Délai permis (jours)"
-              labelEn="Permit delay (days)"
-              days={form.delais?.permisJours}
-              computed={vm.deadlines.dateLimitePermis}
-              locale={locale}
-              locked={locked}
-              saving={saving}
-              onDays={(v) => patchField('delais', { ...form.delais, permisJours: v })}
-              t={t}
-            />
-          </InstitutionalSection>
+          <PromesseDelaisPaSection
+            form={form}
+            vm={vm}
+            locale={locale}
+            locked={locked}
+            saving={saving}
+            onPersistDelais={(delais) => {
+              if (locked) return;
+              void persist({ ...form, delais });
+            }}
+          />
 
-          <InstitutionalSection title={t('Commission et courtiers collaborateurs', 'Commission & collaborating brokers')}>
-            <div className="grid gap-4 md:grid-cols-3">
-              <label className="block space-y-1">
-                <span className={labelClass}>{t('Commission totale (%)', 'Total commission (%)')}</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  className={fieldClass}
-                  disabled={locked || saving}
-                  value={form.commission?.totalePct ?? ''}
-                  onChange={(e) =>
-                    patchField('commission', {
-                      ...form.commission,
-                      totalePct: e.target.value === '' ? undefined : Number(e.target.value),
-                    })
-                  }
-                />
-              </label>
-              <label className="block space-y-1">
-                <span className={labelClass}>
-                  {t('Commission courtier inscripteur (%)', 'Listing broker commission (%)')}
-                </span>
-                <input
-                  type="number"
-                  step="0.01"
-                  className={fieldClass}
-                  disabled={locked || saving}
-                  value={form.commission?.inscripteurPct ?? ''}
-                  onChange={(e) =>
-                    patchField('commission', {
-                      ...form.commission,
-                      inscripteurPct: e.target.value === '' ? undefined : Number(e.target.value),
-                    })
-                  }
-                />
-              </label>
-              <label className="block space-y-1">
-                <span className={labelClass}>
-                  {t('Commission courtier collaborateur (%)', 'Co-broker commission (%)')}
-                </span>
-                <input
-                  type="number"
-                  step="0.01"
-                  className={fieldClass}
-                  disabled={locked || saving}
-                  value={form.commission?.collaborateurPct ?? ''}
-                  onChange={(e) =>
-                    patchField('commission', {
-                      ...form.commission,
-                      collaborateurPct:
-                        e.target.value === '' ? undefined : Number(e.target.value),
-                    })
-                  }
-                />
-              </label>
-            </div>
-            <p className="mt-4 text-sm font-semibold text-[#142c6a]">
-              {t('Montant de la commission totale ($)', 'Total commission amount ($)')}:{' '}
-              {formatCurrencyCad(vm.commission.montantCommissionTotale)}
-            </p>
-
-            <div className="mt-6 border-t border-slate-200 pt-4 grid gap-3 md:grid-cols-2">
-              <p className={cn(labelClass, 'md:col-span-2')}>
-                {t('Courtier collaborateur (partie adverse)', 'Collaborating broker (other side)')}
-              </p>
-              {(['nom', 'telephone', 'courriel', 'partCommissionPct'] as const).map((key) => {
-                const labels = {
-                  nom: t('Nom', 'Name'),
-                  telephone: t('Téléphone', 'Phone'),
-                  courriel: t('Courriel', 'Email'),
-                  partCommissionPct: t('Part de commission (%)', 'Commission share (%)'),
-                };
-                return (
-                  <label key={key} className="block space-y-1">
-                    <span className={labelClass}>{labels[key]}</span>
-                    <input
-                      type={key === 'partCommissionPct' ? 'number' : 'text'}
-                      className={fieldClass}
-                      disabled={locked || saving}
-                      value={
-                        key === 'partCommissionPct'
-                          ? form.courtierCollaborateur?.partCommissionPct ?? ''
-                          : (form.courtierCollaborateur?.[key] ?? '')
-                      }
-                      onChange={(e) =>
-                        patchField('courtierCollaborateur', {
-                          ...form.courtierCollaborateur,
-                          [key]:
-                            key === 'partCommissionPct'
-                              ? e.target.value === ''
-                                ? undefined
-                                : Number(e.target.value)
-                              : e.target.value,
-                        })
-                      }
-                    />
-                  </label>
-                );
-              })}
-            </div>
-          </InstitutionalSection>
+          <PromesseCommissionPaSection
+            form={form}
+            vm={vm}
+            locked={locked}
+            saving={saving}
+            onPersistCommission={(commission) => {
+              if (locked) return;
+              void persist({ ...form, commission });
+            }}
+            onPersistCollaborateur={(courtierCollaborateur) => {
+              if (locked) return;
+              void persist({ ...form, courtierCollaborateur });
+            }}
+          />
 
           <InstitutionalSection
             title={t("Documents de la promesse d'achat", 'Purchase promise documents')}
@@ -713,51 +630,3 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
   );
 }
 
-function DeadlineRow({
-  labelFr,
-  labelEn,
-  days,
-  computed,
-  locale,
-  locked,
-  saving,
-  onDays,
-  t,
-}: {
-  labelFr: string;
-  labelEn: string;
-  days?: number;
-  computed?: string;
-  locale: string;
-  locked: boolean;
-  saving: boolean;
-  onDays: (v: number | undefined) => void;
-  t: (fr: string, en: string) => string;
-}) {
-  const { language } = useLanguage();
-  return (
-    <div className="grid gap-3 md:grid-cols-2 border-b border-slate-100 py-3 last:border-0">
-      <label className="block space-y-1">
-        <span className={labelClass}>{language === 'fr' ? labelFr : labelEn}</span>
-        <input
-          type="number"
-          min={0}
-          className={fieldClass}
-          disabled={locked || saving}
-          value={days ?? ''}
-          onChange={(e) =>
-            onDays(e.target.value === '' ? undefined : Number(e.target.value))
-          }
-        />
-      </label>
-      <div>
-        <span className={labelClass}>
-          {language === 'fr' ? labelFr.replace('(jours)', '— date') : labelEn.replace('(days)', '— date')}
-        </span>
-        <p className="text-sm font-semibold text-[#142c6a] tabular-nums mt-2">
-          {formatIsoDateForDisplay(computed, locale)}
-        </p>
-      </div>
-    </div>
-  );
-}

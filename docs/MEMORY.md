@@ -81,7 +81,9 @@ Données : sous-collection **`residences/{id}/financial/dataV2`** (migration dep
 ### Phase 4a — Identité fusionnée
 
 - Package `packages/core/src/identity/`
-- UI : `IdentiteImmeubleTab` + sections (`BuildingTechnicalSection`, `CapacityClienteleSection`, etc.)
+- UI : `IdentiteImmeubleTab` + sections (`EditableIdentitySection`, `RentPricingTableSection`, `EditableCapacitySection`, `BuildingAuditPanel`, etc.)
+- **Confort 66+ (2026-05-19)** : édition inline sans bouton « Modifier » ; sauvegarde `onBlur` via `ResidenceDocumentContext.updateResidence` ; libellés `text-[13px] font-black uppercase text-[#142c6a]`
+- Purge doublons UI : `RegulatoryFrameworkPanel`, `ServicesRecognitionSection` retirés de l’onglet (données conservées en doc racine)
 - Badge MSSS : `RaphaelBadge.tsx`
 - Contexte : `ResidenceDocumentProvider`
 
@@ -103,7 +105,13 @@ Données : sous-collection **`residences/{id}/financial/dataV2`** (migration dep
 - **Synthèse** : `Synthese360Tab` — bilan exécutif, bloc rétribution (lecture champs + affichage), jalons Loi sur le courtage immobilier (C-73.2) J+3 / J+180, notes `residences/{id}/notes`
 - **Déclaration** : `DeclarationVendeurTab` — questionnaire OACIQ, coquille institutionnelle
 - **Marché** : `MarcheConcurrenceTab` — marché & concurrence, coquille institutionnelle
-- **Promesse** : `PromesseAchatTab` — pilotage promesse, coquille institutionnelle
+- **Promesse** : `PromesseAchatTab` — cockpit promesse d'achat (Sprints 5.1–5.4)
+  - **SSOT** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`
+  - **Firestore** : objet racine `offre` (tronc financier + conditions + clôture) ; bloc `promesseAchat` (statut, dates, délais en jours, commission, collaborateurs, documents)
+  - **UI** (`src/components/residence/promesse/`) : `OffreTroncFinancierSection`, `OffreConditionsLegalesSection`, `OffreClotureRetributionSection`, `PromesseDelaisPaSection` (jours éditables → dates calculées), `PromesseCommissionPaSection`, `PaConfortPanel` ; `TernaryToggle` partagé
+  - **Épuration OACIQ (5.4)** : champs retirés de l’UI (Annexe 6, clause RNE/TGA, transfert fiducie, prorata MSSS) — clés core conservées pour migrations
+  - **Sérialisation Firestore** : `undefined` → `null` sur `promesseAchat.delais.*` et commission (évite `Unsupported field value: undefined`)
+  - **Écriture `offre`** : toujours envoyer l’objet `offre` complet via `serializeOffreForFirestore` (merge contexte = shallow ; un partial efface les autres clés)
 
 ### Intelligence (`ResidenceIntelligencePanel`)
 
@@ -199,10 +207,11 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 **Notes :**
 - Timeout discovery Firebase (~10 s par défaut) : utiliser `FUNCTIONS_DISCOVERY_TIMEOUT=60` si échec « Cannot determine backend specification ».
-- **2026-05-19** : commit `5cfbb9b` sur `main` — charte institutionnelle, inscriptions, Synthèse 360, documents ; déploiement Firebase hosting + indexes.
+- **2026-05-19** : charte institutionnelle, inscriptions, Synthèse 360, documents ; déploiement Firebase hosting + indexes.
+- **2026-05-19 (fin de journée)** : Sprints PA 5.1–5.4 + Identité Confort 66+ ; `npm run build` + `firebase deploy --only hosting` sur `primexpert-app-v2`.
 
 **Repo :** https://github.com/alain-blip/primexpert-v2-core.git — branche `main`.
 
 ---
 
-*Journal mis à jour : 2026-05-19 — Charte primexpert, inscriptions Kanban, Synthèse 360, auth dev, déploiement.*
+*Journal mis à jour : 2026-05-19 — Identité Confort 66+, cockpit promesse d'achat (offre SSOT, PA 5.1–5.4), fix sérialisation Firestore.*

@@ -48,13 +48,13 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 | Onglet | Statut |
 |--------|--------|
 | Synthèse | ✅ `Synthese360Tab` — bilan, rétribution, C-73.2, notes |
-| Identité | ✅ Livré |
+| Identité | ✅ Livré — édition inline Confort 66+ (`onBlur` → `updateResidence`) |
 | Finances (Hub 5 sous-onglets) | ✅ Livré |
 | Déclaration | ✅ Livré — questionnaire OACIQ |
 | Marché | ✅ Livré — marché & concurrence |
 | Documents (Financier / Technique / Légal) | ✅ Livré — scan sécurité + extraction Vertex + distribution / courriel |
 | Intelligence (chronologie + rapport vendeur) | ✅ Livré |
-| Promesse | ✅ Livré — pilotage promesse d'achat |
+| Promesse | ✅ Livré — cockpit PA (tronc `offre`, conditions & délais RPA, clôture, délais jours→dates, commission) |
 
 **Mes inscriptions :** pipeline **4 colonnes** + inventaire virtualisé — charte **primexpert-blue** / cartes blanches bordées **primexpert-dark**.
 
@@ -79,4 +79,4 @@ Copie possible sur disque : `00_PRIMEXPERT_SYSTEME_APP/docs/` — maintenir alig
 
 ---
 
-*Index mis à jour : 2026-05-19.*
+*Index mis à jour : 2026-05-19 — Identité Confort 66+, cockpit promesse d'achat (Sprints PA 5.1–5.4).*

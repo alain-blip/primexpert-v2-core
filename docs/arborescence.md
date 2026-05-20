@@ -27,6 +27,11 @@
 │           ├── canonical/           # Champs canoniques & alias
 │           ├── financial/           # normalizeFinancialData, bilan, ratios, SCHL…
 │           ├── identity/            # buildIdentityViewModel, sections MSSS/RPA
+│           ├── transaction/         # Promesse d'achat — offre SSOT, délais, commission
+│           │   ├── offreTronc.ts
+│           │   ├── offreConditions.ts
+│           │   ├── offreCloture.ts
+│           │   └── promesseAchatEngine.ts
 │           ├── valuation/           # Cap rate, comparables, TGA
 │           ├── narrative/           # Narratif vendeur
 │           ├── intelligence/        # Priorités suivi KISS, rapport vendeur, vélocité
@@ -91,7 +96,14 @@
     │   │   ├── ResidenceDetail.tsx  # Coquille fiche — 8 onglets + InstitutionalResidenceTabShell
     │   │   ├── institutional/
     │   │   │   └── InstitutionalUi.tsx   # Kit UI institutionnel (coquilles, KPI, sections)
-    │   │   ├── identity/            # Sections Identité (lecture seule)
+    │   │   ├── identity/            # Sections Identité — édition inline Confort 66+
+    │   │   ├── promesse/            # Panneaux cockpit PA (tronc offre, conditions, clôture, délais, commission)
+    │   │   │   ├── OffreTroncFinancierSection.tsx
+    │   │   │   ├── OffreConditionsLegalesSection.tsx
+    │   │   │   ├── OffreClotureRetributionSection.tsx
+    │   │   │   ├── PromesseDelaisPaSection.tsx
+    │   │   │   ├── PromesseCommissionPaSection.tsx
+    │   │   │   └── PaConfortPanel.tsx
     │   │   ├── documents/           # Espace Documents — diligence 3 colonnes
     │   │   │   ├── DocumentsDiligenceTab.tsx
     │   │   │   ├── DocumentCategorySidebar.tsx
@@ -117,6 +129,8 @@
     │   │   ├── TP70Card.tsx
     │   │   └── FinancialReportsSection.tsx
     │   ├── mailbox/                 # IA Mailbox (Nylas)
+    │   ├── ui/
+    │   │   └── TernaryToggle.tsx      # Oui / Non / N/A — conditions PA
     │   ├── msss/
     │   │   └── RaphaelBadge.tsx
     │   ├── documents/
@@ -192,7 +206,7 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Marché | `MarcheConcurrenceTab` | ✅ Marché et concurrence — coquille institutionnelle |
 | Documents | `DocumentsDiligenceTab` | ✅ Financier / Technique / Légal + scan + parse IA + onglets / distribution / courriel |
 | Intelligence | `ResidenceIntelligencePanel` + `IntelligenceChronologie` | ✅ Appels E-3 + courriels E-2 + rapport vendeur |
-| Promesse | `PromesseAchatTab` | ✅ Promesse d'achat — coquille institutionnelle |
+| Promesse | `PromesseAchatTab` + `residence/promesse/*` | ✅ Cockpit PA — `offre` + `promesseAchat` (core/transaction) |
 
 ### Hub Finance — sous-onglets (`FinanceHubTab.tsx`)
 
@@ -229,7 +243,8 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 |---------|----------|
 | Multi-tenant résidences | `src/services/residences.ts`, `packages/core/src/tenant/`, `firestore.rules` |
 | Données financières | `src/context/FinancialDataContext.tsx`, `packages/core/src/financial/` |
-| Identité immeuble | `src/context/ResidenceDocumentContext.tsx`, `packages/core/src/identity/` |
+| Identité immeuble | `src/context/ResidenceDocumentContext.tsx`, `packages/core/src/identity/`, `IdentiteImmeubleTab` |
+| Promesse d'achat | `PromesseAchatTab.tsx`, `src/components/residence/promesse/`, `packages/core/src/transaction/` |
 | Charte UI institutionnelle | `tailwind.config.js`, `src/index.css` (`@theme` / `@config`), `src/lib/institutionalTheme.ts`, `InstitutionalUi.tsx` |
 | Inscriptions (cartes, view model) | `Listings.tsx`, `ListingInstitutionalCard.tsx`, `listingCardViewModel.ts`, `residences.ts` (`PIPELINE_ACTIVE_STATUSES`) |
 | Billing / Chérif | `src/lib/billingAccess.ts`, `src/App.tsx`, `SuspendedAccountScreen.tsx` |
@@ -254,4 +269,4 @@ Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only func
 
 ---
 
-*Dernière mise à jour : 2026-05-19 — Charte `primexpert-*` (Tailwind), inscriptions institutionnelles, Synthèse 360°, onglets fiche complets, Functions documents + envoi sélection.*
+*Dernière mise à jour : 2026-05-19 — Identité Confort 66+, cockpit promesse d'achat (`transaction/`, `residence/promesse/`), `TernaryToggle`.*

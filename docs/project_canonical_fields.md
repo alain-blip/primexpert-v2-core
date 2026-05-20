@@ -4,7 +4,8 @@ Aligné sur `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2`.
 Les champs **serveur** (`billingStatus`, `gracePeriodStartedAt`) ne sont **pas** modifiables par le client (absents de `users` `allow update` dans `firestore.rules`).
 
 Référence alias / provenance : `packages/core/src/canonical/`.  
-**Identité Phase 4 (lecture + écriture)** : `packages/core/src/identity/` — définitions UI dans `identitySections.ts`, `buildingAuditSections.ts`, `servicesRecognition.ts`, `rentPricingGrid.ts`.
+**Identité Phase 4 (lecture + écriture)** : `packages/core/src/identity/` — définitions UI dans `identitySections.ts`, `buildingAuditSections.ts`, `servicesRecognition.ts`, `rentPricingGrid.ts`.  
+**Promesse d'achat (PA)** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`.
 
 ---
 
@@ -405,6 +406,69 @@ Téléchargement client : autorisé **uniquement** si `virusScanStatus === 'clea
 
 ---
 
+## Objet racine `residences/{id}.offre` (promesse d'achat — tronc & conditions)
+
+SSOT : `serializeOffreForFirestore(tronc, conditions?, cloture?)` dans `offreConditions.ts`.  
+**Important** : à chaque écriture, envoyer l’objet `offre` **complet** (merge contexte React = shallow).
+
+### Tronc financier (Sprint 5.1)
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `offre.prixOffert` | number | Prix offert |
+| `offre.acompteMontant` | number | Acompte |
+| `offre.balanceVenteMontant` | number | Balance de vente |
+| `offre.acheteurId` | string | ID contact acheteur (optionnel) |
+| `offre.acheteurNom` | string | Nom acheteur affiché |
+
+### Conditions suspensives & diligences RPA (Sprint 5.2)
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `offre.dateLimiteFinancement` | string (ISO `yyyy-mm-dd`) | Date limite financement |
+| `offre.conditionPermisMsss` | bool \| null | Permis MSSS (ternaire UI) |
+| `offre.dateLimitePermisMsss` | string | Date limite permis MSSS |
+| `offre.conditionAnnexe6` | bool \| null | Annexe 6 (clé conservée ; **retirée de l’UI** en 5.4) |
+| `offre.clauseAjustementNoi` | bool \| null | Clause ajustement RNE (clé conservée ; **retirée de l’UI** en 5.4) |
+| `offre.tgaAjustement` | number | Taux de capitalisation (TGA) d’ajustement (clé conservée ; **retirée de l’UI** en 5.4) |
+
+### Clôture & proratas (Sprint 5.3)
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `offre.datePrisePossession` | string | Date de prise de possession |
+| `offre.transfertFiducie` | bool \| null | Transfert fiducie (**retiré de l’UI** en 5.4) |
+| `offre.prorataSubventions` | bool \| null | Prorata subventions MSSS (**retiré de l’UI** en 5.4) |
+
+---
+
+## Objet racine `residences/{id}.promesseAchat`
+
+SSOT moteur : `promesseAchatEngine.ts` — dates limites dérivées de `dateAcceptation` + délais en **jours**.
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `promesseAchat.statut` | string | `draft`, `received`, `accepted`, `refused`, `cancelled` |
+| `promesseAchat.dateAcceptation` | string | Date d’acceptation (référence calcul délais) |
+| `promesseAchat.dateLimiteVisiteLieux` | string | Calculée (lecture seule UI) |
+| `promesseAchat.dateLimiteVerificationDocuments` | string | Calculée |
+| `promesseAchat.dateLimiteInspection` | string | Calculée |
+| `promesseAchat.dateLimiteFinancement` | string | Calculée (peut coexister avec `offre.dateLimiteFinancement`) |
+| `promesseAchat.dateLimitePermis` | string | Calculée |
+| `promesseAchat.delais.visiteLieuxJours` | number \| null | Jours — éditable ; sérialisé `null` si vide |
+| `promesseAchat.delais.verificationDocumentsJours` | number \| null | Jours |
+| `promesseAchat.delais.inspectionJours` | number \| null | Jours |
+| `promesseAchat.delais.financementJours` | number \| null | Jours |
+| `promesseAchat.delais.permisJours` | number \| null | Jours |
+| `promesseAchat.commission.totalePct` | number \| null | Commission totale (%) |
+| `promesseAchat.commission.inscripteurPct` | number \| null | Part inscripteur (%) |
+| `promesseAchat.commission.collaborateurPct` | number \| null | Part collaborateur (%) |
+| `promesseAchat.collaborateur` | map | `nom`, `telephone`, `courriel`, `partCommissionPct` |
+
+Sous-collection documents PA : `residences/{id}/documents` (filtre type promesse ; règles `canReadResidenceSubcollection`).
+
+---
+
 ## Sous-collection `residences/{id}/notes/{noteId}`
 
 Notes courtier (diligence) — écoute temps réel dans l’onglet Synthèse ; tri `orderBy('createdAt', 'desc')`.
@@ -421,4 +485,4 @@ Lors de l’ajout d’une note : mise à jour document racine `lastCommunication
 
 ---
 
-*Dernière mise à jour : 2026-05-19 — Champs rétribution / nom commercial, notes courtier, pipeline Kanban vs `expired`, taxonomie documents.*
+*Dernière mise à jour : 2026-05-19 — Objets `offre` et `promesseAchat`, épuration UI PA 5.4, sérialisation `null` sur délais.*

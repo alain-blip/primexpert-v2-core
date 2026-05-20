@@ -137,8 +137,8 @@ const INSTITUTIONAL_TAB_SHELL: Record<
   promesse: {
     titleFr: "Promesse d'achat",
     titleEn: 'Purchase promise',
-    subtitleFr: 'Pilotage transactionnel OACIQ · conservation WORM 6 ans',
-    subtitleEn: 'OACIQ transaction control · 6-year WORM retention',
+    subtitleFr: "Suivi de la promesse d'achat · conservation OACIQ 6 ans",
+    subtitleEn: 'Purchase promise follow-up · 6-year OACIQ retention',
     variant: 'stack',
   },
   diffusion: {
