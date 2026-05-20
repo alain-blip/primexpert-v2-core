@@ -116,7 +116,9 @@ Données : sous-collection **`residences/{id}/financial/dataV2`** (migration dep
 ### Intelligence (`ResidenceIntelligencePanel`)
 
 - Composant **`IntelligenceChronologie`** : chronologie appels + courriels, guardrails NDA / mise de fonds.
-- Données : `users/{uid}/call_analyses`, `mailbox_analyses` ; rapport vendeur anonymisé (`@primexpert/core/intelligence`).
+- Données : `users/{uid}/call_analyses` ; courriels via **`email_threads/…/messages`** (métadonnées analyse — ex-`mailbox_analyses` déprécié).
+- Lecture UI : `mailboxAnalysis.ts` + `communicationTimelineService.ts` (collectionGroup `messages`).
+- Rapport vendeur anonymisé (`@primexpert/core/intelligence`).
 - Boutons : rapport vendeur / mise à jour → `contentGenPrefill` + onglet ContentGen.
 - Thème institutionnel (`InstitutionalResidenceTabShell` + tokens `primexpert-*`, 2026-05-19)
 
@@ -184,12 +186,23 @@ Côté client : `resolveEffectiveBillingStatus()` — règle 72 h si Firestore e
 
 ---
 
-## Messagerie — comptes courriel (Nylas)
+## Messagerie — Email Center (Nylas) — SSOT 2026-05-20
 
-- `EmailAccountsSettings.tsx` — intégration Nylas multi-inbox.
-- Functions déployées : `nylasGetAuthUrl`, `nylasOAuthCallback`, `nylasWebhook`, `nylasSendMessage`, `nylasUpdateThreadFolder`, `nylasSendSellerUpdate`.
+- **UI unique** : `src/components/mailbox/MailboxContainer.tsx` (Workhub onglet `mail`). **`Mailbox.tsx` supprimé** (mocks + double silo).
+- **SSOT Firestore** : `users/{uid}/email_threads/{threadId}/messages/{messageId}` — analyse OACIQ sur le message (`matchedResidenceId`, `mailContactEmail`, `mailIntent`, `summaryOneLine`, …).
+- **`mailbox_analyses`** : déprécié — ne plus écrire ; Intelligence lit les `messages` analysés.
+- Ingestion : `syncNylasMessageToFirestore` + `@primexpert/core/mail` (vendoré `functions/src/nylas/_vendored/mail/`).
+- **Loi 25** : `verifyNylasWebhookSignature` — rejet HTTP 401 si signature Nylas invalide.
+- `EmailAccountsSettings.tsx` — OAuth Gmail/Outlook multi-inbox.
+- Functions : `nylasGetAuthUrl`, `nylasOAuthCallback`, `nylasWebhook`, `nylasSendMessage`, `nylasUpdateThreadFolder`, `nylasSendSellerUpdate`.
 - Secrets : `NYLAS_API_KEY`, `NYLAS_CLIENT_ID`, `NYLAS_CLIENT_SECRET`, `NYLAS_WEBHOOK_SECRET`.
-- Firestore : `users/{uid}/email_threads`, `emailAccounts` (champ profil).
+- Profil : `users.emailAccounts[]` (`nylasGrantId`, `emailAddress`).
+
+## Diffusion Web — prebuild Functions (2026-05-20)
+
+- SSOT : `packages/core/src/diffusion/` → `functions/src/diffusion/_vendored/` via `sync-core-diffusion.cjs` (prebuild).
+- Stub **`financialCalcTypes.ts`** généré pour `buyerPreviewKpis` (évite vendor `normalizeFinancialData` entier).
+- Callables : `saveDraftListingV2`, `publishListingV2` — guardrails publicitaires OACIQ (`publicationGuardrails.ts`).
 
 ---
 
@@ -209,9 +222,10 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 - Timeout discovery Firebase (~10 s par défaut) : utiliser `FUNCTIONS_DISCOVERY_TIMEOUT=60` si échec « Cannot determine backend specification ».
 - **2026-05-19** : charte institutionnelle, inscriptions, Synthèse 360, documents ; déploiement Firebase hosting + indexes.
 - **2026-05-19 (fin de journée)** : Sprints PA 5.1–5.4 + Identité Confort 66+ ; `npm run build` + `firebase deploy --only hosting` sur `primexpert-app-v2`.
+- **2026-05-20** : Phase 1 Email SSOT (`1c4f3c6`) ; webhook Nylas signature ; fix prebuild diffusion `financialCalcTypes`.
 
 **Repo :** https://github.com/alain-blip/primexpert-v2-core.git — branche `main`.
 
 ---
 
-*Journal mis à jour : 2026-05-19 — Identité Confort 66+, cockpit promesse d'achat (offre SSOT, PA 5.1–5.4), fix sérialisation Firestore.*
+*Journal mis à jour : 2026-05-20 — Email SSOT `email_threads`, PA persistance, diffusion prebuild, webhook Loi 25.*

@@ -5,7 +5,9 @@ Les champs **serveur** (`billingStatus`, `gracePeriodStartedAt`) ne sont **pas**
 
 Référence alias / provenance : `packages/core/src/canonical/`.  
 **Identité Phase 4 (lecture + écriture)** : `packages/core/src/identity/` — définitions UI dans `identitySections.ts`, `buildingAuditSections.ts`, `servicesRecognition.ts`, `rentPricingGrid.ts`.  
-**Promesse d'achat (PA)** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`.
+**Promesse d'achat (PA)** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`.  
+**Messagerie (Email Center)** : **SSOT unique** `users/{uid}/email_threads` + `messages` — ingestion Nylas, analyse `@primexpert/core/mail` à l’écriture serveur.  
+**Diffusion Web** : `packages/core/src/diffusion/` — vendoré dans `functions/src/diffusion/_vendored/` au prebuild.
 
 ---
 
@@ -42,10 +44,12 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 
 | Chemin | Usage |
 |--------|--------|
-| **`email_threads/{threadId}`** | **SSOT absolu** — fils messagerie Nylas (multi-boîtes) |
-| `email_threads/{threadId}/messages/{messageId}` | Messages + **métadonnées d’analyse OACIQ** (ingestion webhook) |
+| **`email_threads/{threadId}`** | **SSOT absolu des communications** — seule source pour la boîte courriel Workhub, la chronologie Intelligence et les envois métier (Nylas) |
+| **`email_threads/{threadId}/messages/{messageId}`** | **SSOT message** — corps + métadonnées d’analyse OACIQ (plus de duplication dans une autre collection) |
 | `call_analyses/{driveDocumentId}` | Transcription appel (E-3), `residenceId`, `pipelineStatus` |
-| `mailbox_analyses/{messageId}` | **Legacy (lecture seule)** — plus alimenté depuis Phase 1 mail |
+| `mailbox_analyses/{messageId}` | **Déprécié / fusionné** — ne plus écrire ; données historiques seulement. Remplacé par les champs d’analyse sur `messages` |
+
+> **Règle #0 messagerie :** une communication = un document `messages/{id}`. L’UI lit via `mailboxAnalysis.ts` (collectionGroup `messages`), pas via `mailbox_analyses`.
 
 #### Document fil `email_threads/{threadId}`
 
@@ -80,15 +84,15 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 | `attachments` | array | PJ (vide à l’ingestion — Phase ultérieure) |
 | `isOpened` | bool | Accusé lecture (sortant, webhook `message.opened`) |
 | **`mailAnalysisAtMillis`** | number | Horodatage analyse (@primexpert/core/mail) |
-| **`matchedResidenceId`** | string \| null | Résidence matchée (heuristique inventaire) |
-| **`mailContactEmail`** | string \| null | Courriel partie (traçabilité chronologie) |
-| **`mailContactName`** | string \| null | Nom extrait ou expéditeur |
-| **`mailIntent`** | string | `buyer` \| `seller` \| `peer` \| `agency` \| `unknown` |
+| **`matchedResidenceId`** | string \| null | Fiche résidence / inscription rattachée (heuristique inventaire courtier) |
+| **`mailContactEmail`** | string \| null | **`contactEmail`** — courriel partie (traçabilité Loi 25 / chronologie) |
+| **`mailContactName`** | string \| null | Nom correspondant |
+| **`mailIntent`** | string \| null | **`intent`** — `buyer` \| `seller` \| `peer` \| `agency` \| `unknown` |
 | **`summaryOneLine`** | string | Résumé une ligne (diligence / Intelligence) |
 | **`mailUrgency`** | string | `low` \| `medium` \| `high` |
-| **`mailAnalysisSource`** | string | `heuristic` (Gemini optionnel — hors webhook Phase 1) |
+| **`mailAnalysisSource`** | string | `heuristic` (enrichissement Gemini optionnel — hors webhook Phase 1) |
 
-> **Écriture analyse :** serveur uniquement (`syncNylasMessageToFirestore`). Le client ne crée pas `mailbox_analyses`.
+> **Écriture analyse :** serveur uniquement (`syncNylasMessageToFirestore` + `verifyNylasWebhookSignature`). Index Firestore : `messages` collectionGroup (`brokerId` + `mailAnalysisAtMillis` ; `brokerId` + `matchedResidenceId` + `mailAnalysisAtMillis`).
 
 ---
 

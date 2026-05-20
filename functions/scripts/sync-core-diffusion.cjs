@@ -52,15 +52,49 @@ const FILES = [
   { from: path.join(CORE_DIFFUSION_DIR, 'anonymizeResidence.ts'), to: 'anonymizeResidence.ts' },
   { from: path.join(CORE_DIFFUSION_DIR, 'publicationGuardrails.ts'), to: 'publicationGuardrails.ts' },
   { from: path.join(CORE_DIFFUSION_DIR, 'index.ts'), to: 'index.ts' },
+  {
+    from: path.join(CORE_DIFFUSION_DIR, 'publicBuyerDisclosures.ts'),
+    to: 'publicBuyerDisclosures.ts',
+  },
+  {
+    from: path.join(CORE_DIFFUSION_DIR, 'transactionBanner.ts'),
+    to: 'transactionBanner.ts',
+  },
+  {
+    from: path.join(CORE_DIFFUSION_DIR, 'buyerPreviewKpis.ts'),
+    to: 'buyerPreviewKpis.ts',
+  },
+  {
+    from: path.join(CORE_DIFFUSION_DIR, 'formatPublicListingHeadline.ts'),
+    to: 'formatPublicListingHeadline.ts',
+  },
   { from: path.join(CORE_FINANCIAL_DIR, 'safeNumbers.ts'), to: 'safeNumbers.ts' },
 ];
 
 function rewriteImports(source) {
-  // ../financial/safeNumbers → ./safeNumbers (le fichier est co-localisé dans _vendored/)
-  return source.replace(
-    /from\s+['"]\.\.\/financial\/safeNumbers['"]/g,
-    "from './safeNumbers'"
-  );
+  return source
+    .replace(/from\s+['"]\.\.\/financial\/safeNumbers['"]/g, "from './safeNumbers'")
+    .replace(
+      /from\s+['"]\.\.\/financial\/normalizeFinancialData['"]/g,
+      "from './financialCalcTypes'"
+    );
+}
+
+/** Sous-ensemble de FinancialCalc pour buyerPreviewKpis (évite vendor normalizeFinancialData entier). */
+function writeFinancialCalcTypes() {
+  const body = `export interface FinancialCalc {
+  revenuNetExploitation?: number | null;
+  cashFlow?: number | null;
+  empruntMaxTransaction?: number | null;
+  empruntMaxDSCR?: number | null;
+  hypothequeMaxRecommandee?: number | null;
+  miseDeFondsRequise?: number | null;
+  [key: string]: unknown;
+}
+`;
+  const target = path.join(VENDORED_DIR, 'financialCalcTypes.ts');
+  fs.writeFileSync(target, HEADER_BANNER + body, 'utf-8');
+  return target;
 }
 
 function ensureDir(dir) {
@@ -80,7 +114,7 @@ function syncFile({ from, to }) {
 
 function main() {
   ensureDir(VENDORED_DIR);
-  const written = FILES.map(syncFile);
+  const written = [...FILES.map(syncFile), writeFinancialCalcTypes()];
   process.stdout.write(
     `[sync-core-diffusion] ${written.length} fichier(s) vendorés depuis @primexpert/core/diffusion → ${path.relative(REPO_ROOT, VENDORED_DIR)}/\n`
   );

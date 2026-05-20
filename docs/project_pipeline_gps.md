@@ -79,7 +79,7 @@ Fiche V2 (Listings → ResidenceDetail)
     ├─ Déclaration       [✅ DeclarationVendeurTab — OACIQ]
     ├─ Marché            [✅ MarcheConcurrenceTab]
     ├─ Documents         [✅ Espace Documents + scan + parse IA Vertex + distribution / courriel]
-    ├─ Intelligence      [✅ call_analyses + mailbox_analyses]
+    ├─ Intelligence      [✅ call_analyses + courriels email_threads/messages (ex-mailbox_analyses)]
     └─ Promesse          [✅ PromesseAchatTab — offre SSOT + conditions & délais RPA + clôture]
 ```
 
@@ -147,19 +147,53 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 | Cron relances J30/J40 | ⏳ |
 | Stripe Customer Portal prod | ⏳ env |
 | Cloud Functions Nylas | ✅ déployées (us-central1) |
+| Webhook Nylas — signature HMAC (Loi 25) | ✅ `verifyNylasWebhookSignature` — POST non signé → 401 |
+| Email Center — SSOT `email_threads` / `messages` | ✅ Phase 1 — analyse à l’ingestion, `mailbox_analyses` déprécié |
+| Diffusion Web — vendor prebuild + `tsc` | ✅ `sync-core-diffusion` + `financialCalcTypes` |
+| Promesse d'achat — persistance `offre` / DRY | ✅ `serializeOffreForFirestore`, merge objet complet |
 
 ---
 
-## D. Prochaines étapes techniques
+## D. Jalons session 2026-05-20 (fin de session)
+
+| Jalon | Détail |
+|-------|--------|
+| **Promesse d'achat (PA)** | Refactor DRY (`packages/core/src/transaction/`) ; correction persistance Firestore (`offre` complet, `undefined` → `null` sur `promesseAchat`) |
+| **Sécurité webhook Nylas** | Vérification `x-nylas-signature` + `NYLAS_WEBHOOK_SECRET` ; test `test-nylas-webhook-signature.cjs` |
+| **Unification SSOT Email** | Suppression `Mailbox.tsx` (UI morte) ; `MailboxContainer` seul ; analyse sur `messages` ; commit `1c4f3c6` |
+| **Diffusion Web** | Vendoring `@primexpert/core/diffusion` + stub `financialCalcTypes` ; build Functions `tsc` propre ; syndication OACIQ (guardrails publication) |
+
+### Pipeline messagerie (SSOT — post Phase 1)
+
+```text
+Nylas webhook (signature validée)
+    → syncNylasMessageToFirestore
+    → users/{uid}/email_threads/{threadId}
+    → messages/{messageId} + champs analyse (matchedResidenceId, mailContactEmail, mailIntent, summaryOneLine…)
+    → @primexpert/core/mail (heuristique + match inventaire residences)
+    ↓
+Workhub MailboxContainer (lecture temps réel)
+Intelligence / Dashboard (lecture collectionGroup messages via mailboxAnalysis.ts)
+```
+
+---
+
+## E. Prochaines priorités (au choix du PO — prochaine session)
+
+| Option | Thème |
+|--------|--------|
+| **A** | Phase 2 Email Center — rattachement explicite au contact CRM LCI (`organizations/…/contacts`, `partiesImpliquees`) |
+| **B** | Module ACM prédictif — ingestion Centris/Matrix, ajustements comparables |
+| **C** | Coffre-fort WORM OACIQ — règles Firestore verrouillage 6 ans (documents « Final ») |
+
+### Backlog technique (inchangé)
 
 1. **Stripe** : webhook `invoice.payment_failed` → `grace_period` ; succès → `active`.
 2. **Cron** : `grace_period` → `suspended` après 72 h ; relances J30/J40.
-3. **Synthèse** : enrichir avec modules métier V2 (`OwnersManagement`, `ActivitiesSection`, `ResidenceTasks`) lorsque portés depuis Copilote-RPA.
-4. **Marché** : carte, comparables Haversine, forces/faiblesses (extensions).
-5. **Documents** : enrichir `extractedData` → préremplissage Hub Finance / preuves A2.
-6. **Vertex** : surveiller cycle de vie `gemini-2.0-flash-001` (migration modèle si retrait GCP).
-7. **Node Functions** : planifier montée runtime (Node 20 → 22+ avant fin 2026).
+3. **Documents** : enrichir `extractedData` → préremplissage Hub Finance / preuves A2.
+4. **Vertex** : surveiller cycle de vie `gemini-2.0-flash-001`.
+5. **Déploiement** : `firebase deploy --only functions:nylasWebhook,firestore:indexes` après Phase 1 mail.
 
 ---
 
-*Dernière mise à jour : 2026-05-19 — Cockpit promesse d'achat (Sprints 5.1–5.4), Identité Confort 66+.*
+*Dernière mise à jour : 2026-05-20 — PA, Email SSOT Phase 1, webhook Loi 25, diffusion prebuild.*

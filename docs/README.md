@@ -40,10 +40,13 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 5. **Documents** — Sous-collection `residences/{id}/documents/` ; scan + parse IA via Cloud Functions (Vertex ADC).
 6. **UI fiche & inscriptions** — Tokens **`primexpert-*`** (`tailwind.config.js`, `src/index.css`) ; coquilles `InstitutionalResidenceTabShell` ; cartes **Mes inscriptions** (`ListingInstitutionalCard`, `listingCardViewModel.ts`).
 7. **Langage Québec** — Pas de « audit » à l’écran ; abréviations toujours développées (voir [MEMORY.md](./MEMORY.md)).
+8. **Messagerie** — SSOT `users/{uid}/email_threads` + `messages` (Nylas) ; voir [project_canonical_fields.md](./project_canonical_fields.md).
+9. **Promesse d'achat** — SSOT `packages/core/src/transaction/` + objet Firestore `offre` / `promesseAchat`.
+10. **Diffusion Web** — `@primexpert/core/diffusion` vendoré dans Cloud Functions (prebuild).
 
 ---
 
-## État des onglets fiche résidence (2026-05-19)
+## État des onglets fiche résidence (2026-05-20)
 
 | Onglet | Statut |
 |--------|--------|
@@ -79,4 +82,4 @@ Copie possible sur disque : `00_PRIMEXPERT_SYSTEME_APP/docs/` — maintenir alig
 
 ---
 
-*Index mis à jour : 2026-05-19 — Identité Confort 66+, cockpit promesse d'achat (Sprints PA 5.1–5.4).*
+*Index mis à jour : 2026-05-20 — Email SSOT Phase 1, PA, diffusion prebuild, webhook Nylas (Loi 25).*

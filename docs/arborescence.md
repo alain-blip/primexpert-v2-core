@@ -56,7 +56,12 @@
 │       ├── emails/
 │       │   └── sendDocumentSelection.ts  # Envoi sélection documents (callable)
 │       ├── lib/firestore.ts
-│       └── nylas/                   # OAuth, webhook, envoi, dossiers
+│       ├── diffusion/               # Syndication Web — _vendored/ (@primexpert/core/diffusion)
+│       └── nylas/                   # OAuth, webhook (signature Loi 25), sync email_threads
+│           ├── _vendored/mail/      # @primexpert/core/mail (prebuild sync-core-mail.cjs)
+│           ├── syncInboundMessage.ts
+│           ├── verifyWebhookSignature.ts
+│           └── mailMessageAnalysis.ts
 ├── scripts/                         # Utilitaires (facture sample, régions QC)
 ├── audit_tenant_uids.js             # Ops — audit tenant Firestore
 ├── backfill_tenant.js
@@ -128,7 +133,7 @@
     │   │   ├── ProvenanceStrip.tsx
     │   │   ├── TP70Card.tsx
     │   │   └── FinancialReportsSection.tsx
-    │   ├── mailbox/                 # IA Mailbox (Nylas)
+    │   ├── mailbox/                 # Email Center — MailboxContainer (Nylas temps réel)
     │   ├── ui/
     │   │   └── TernaryToggle.tsx      # Oui / Non / N/A — conditions PA
     │   ├── msss/
@@ -173,7 +178,8 @@
     │   ├── propertyDocumentsService.ts  # Upload Storage + Firestore documents/
     │   ├── dashboardPriorityFollowUp.ts
     │   ├── transcriptionService.ts
-    │   ├── mailboxAnalysis.ts
+    │   ├── mailboxAnalysis.ts       # Lecture analyses — collectionGroup messages (SSOT)
+    │   ├── communicationTimelineService.ts
     │   ├── emailAccountService.ts
     │   ├── emailSyncService.ts
     │   ├── nylasClient.ts
@@ -205,7 +211,7 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Déclaration | `DeclarationVendeurTab` | ✅ Questionnaire OACIQ — coquille institutionnelle |
 | Marché | `MarcheConcurrenceTab` | ✅ Marché et concurrence — coquille institutionnelle |
 | Documents | `DocumentsDiligenceTab` | ✅ Financier / Technique / Légal + scan + parse IA + onglets / distribution / courriel |
-| Intelligence | `ResidenceIntelligencePanel` + `IntelligenceChronologie` | ✅ Appels E-3 + courriels E-2 + rapport vendeur |
+| Intelligence | `ResidenceIntelligencePanel` + `IntelligenceChronologie` | ✅ Appels E-3 + courriels `email_threads/messages` + rapport vendeur |
 | Promesse | `PromesseAchatTab` + `residence/promesse/*` | ✅ Cockpit PA — `offre` + `promesseAchat` (core/transaction) |
 
 ### Hub Finance — sous-onglets (`FinanceHubTab.tsx`)
@@ -269,4 +275,4 @@ Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only func
 
 ---
 
-*Dernière mise à jour : 2026-05-19 — Identité Confort 66+, cockpit promesse d'achat (`transaction/`, `residence/promesse/`), `TernaryToggle`.*
+*Dernière mise à jour : 2026-05-20 — Email SSOT (`email_threads`), PA (`transaction/`), diffusion `_vendored/`, webhook Nylas signature.*
