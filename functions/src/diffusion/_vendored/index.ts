@@ -17,3 +17,4 @@ export * from './types';
 export * from './villeToSecteur';
 export * from './priceRanges';
 export * from './anonymizeResidence';
+export * from './publicationGuardrails';

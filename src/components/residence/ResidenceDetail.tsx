@@ -15,6 +15,7 @@ import {
   Sparkles,
   LayoutDashboard,
   Handshake,
+  Globe,
 } from 'lucide-react';
 import { cn, formatCurrency } from '../../lib/utils';
 import { useLanguage } from '../../lib/i18n';
@@ -32,6 +33,7 @@ import {
 import { DocumentsDiligenceTab } from './documents/DocumentsDiligenceTab';
 import { PromesseAchatTab } from './tabs/PromesseAchatTab';
 import { Synthese360Tab } from './tabs/Synthese360Tab';
+import { DiffusionWebTab } from './diffusion/DiffusionWebTab';
 
 export type ResidenceDetailTab =
   | 'synthese'
@@ -41,7 +43,8 @@ export type ResidenceDetailTab =
   | 'marche'
   | 'documents'
   | 'intelligence'
-  | 'promesse';
+  | 'promesse'
+  | 'diffusion';
 
 const STATUS_LABELS: Record<ResidenceStatus, { fr: string; en: string }> = {
   prospect: { fr: 'Prospection', en: 'Prospecting' },
@@ -66,6 +69,7 @@ const TABS: {
   { id: 'documents', icon: FileText, labelFr: 'Documents', labelEn: 'Documents' },
   { id: 'intelligence', icon: Sparkles, labelFr: 'Intelligence', labelEn: 'Intelligence' },
   { id: 'promesse', icon: Handshake, labelFr: 'Promesse', labelEn: 'Promise' },
+  { id: 'diffusion', icon: Globe, labelFr: 'Diffusion', labelEn: 'Syndication' },
 ];
 
 type InstitutionalShellTab =
@@ -75,7 +79,8 @@ type InstitutionalShellTab =
   | 'marche'
   | 'documents'
   | 'intelligence'
-  | 'promesse';
+  | 'promesse'
+  | 'diffusion';
 
 const INSTITUTIONAL_TAB_SHELL: Record<
   InstitutionalShellTab,
@@ -134,6 +139,15 @@ const INSTITUTIONAL_TAB_SHELL: Record<
     titleEn: 'Purchase promise',
     subtitleFr: 'Pilotage transactionnel OACIQ · conservation WORM 6 ans',
     subtitleEn: 'OACIQ transaction control · 6-year WORM retention',
+    variant: 'stack',
+  },
+  diffusion: {
+    titleFr: 'Diffusion Web',
+    titleEn: 'Web syndication',
+    subtitleFr:
+      'Publication anonymisée · silo public_listings · portails RPAaVendre.com',
+    subtitleEn:
+      'Anonymized publishing · public_listings silo · RPAaVendre.com portals',
     variant: 'stack',
   },
 };
@@ -226,6 +240,8 @@ export function ResidenceDetail({
         );
       case 'promesse':
         return <PromesseAchatTab residence={residence} brokerId={brokerId} />;
+      case 'diffusion':
+        return <DiffusionWebTab residence={residence} />;
       default:
         return null;
     }

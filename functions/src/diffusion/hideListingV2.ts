@@ -48,7 +48,7 @@ export interface HideListingResult {
 export async function hideListingHandler(
   input: HideListingInput
 ): Promise<HideListingResult> {
-  // TODO: Inject Guardrails — Sprint Jour 4 (28 points Due Diligence)
+  // Garde-fous OACIQ : volontairement absents — retrait toujours autorisé.
   const residence = await readResidenceForPublication(input.residenceId);
   if (!residence.publicId) {
     throw new Error(

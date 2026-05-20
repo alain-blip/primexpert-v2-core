@@ -47,7 +47,7 @@ export interface SaveDraftListingResult {
 export async function saveDraftListingHandler(
   input: SaveDraftListingInput
 ): Promise<SaveDraftListingResult> {
-  // TODO: Inject Guardrails — Sprint Jour 4 (28 points Due Diligence)
+  // Garde-fous OACIQ : volontairement absents — usage interne (brouillon).
   const residence = await readResidenceForPublication(input.residenceId);
   const publicId = resolvePublicId(residence.publicId);
   const draftToken = resolveDraftToken(residence.draftToken);

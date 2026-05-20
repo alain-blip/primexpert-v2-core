@@ -31,6 +31,7 @@ export default defineConfig(({mode}) => {
         { find: /^@primexpert\/core\/market$/, replacement: path.resolve(__dirname, 'packages/core/src/market/index.ts') },
         { find: /^@primexpert\/core\/intelligence$/, replacement: path.resolve(__dirname, 'packages/core/src/intelligence/index.ts') },
         { find: /^@primexpert\/core\/transaction$/, replacement: path.resolve(__dirname, 'packages/core/src/transaction/index.ts') },
+        { find: /^@primexpert\/core\/diffusion$/, replacement: path.resolve(__dirname, 'packages/core/src/diffusion/index.ts') },
         { find: /^@primexpert\/core\/utils\/formatting$/, replacement: path.resolve(__dirname, 'packages/core/src/utils/formatting.ts') },
         { find: /^@primexpert\/core\/services\/aiNarrativeService$/, replacement: path.resolve(__dirname, 'packages/core/src/services/aiNarrativeService.ts') },
         { find: /^@primexpert\/core$/, replacement: path.resolve(__dirname, 'packages/core/src/index.ts') },

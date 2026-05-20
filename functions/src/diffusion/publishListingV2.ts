@@ -13,9 +13,11 @@
  */
 
 import { FieldValue } from 'firebase-admin/firestore';
+import { HttpsError } from 'firebase-functions/v2/https';
 import {
   PUBLIC_LISTING_STATUS,
   buildPublicListing,
+  evaluatePublicationGuardrails,
 } from './_vendored';
 import { getDb } from '../lib/firestore';
 import { buildWordPressPayload } from './buildWordPressPayload';
@@ -41,16 +43,23 @@ export interface PublishListingResult {
   visibility: typeof PUBLIC_LISTING_STATUS.VISIBLE;
 }
 
+const GUARDRAILS_FAILED_MESSAGE =
+  'La résidence ne respecte pas les 28 points de conformité OACIQ.';
+
 export async function publishListingHandler(
   input: PublishListingInput
 ): Promise<PublishListingResult> {
-  // TODO: Inject Guardrails — Sprint Jour 4 (28 points Due Diligence)
   const residence = await readResidenceForPublication(input.residenceId);
   const publicId = resolvePublicId(residence.publicId);
 
   const listing = buildPublicListing(residence.data, publicId, {
     visibility: PUBLIC_LISTING_STATUS.VISIBLE,
   });
+
+  const guardrails = evaluatePublicationGuardrails(residence.data, listing);
+  if (!guardrails.isPublishable) {
+    throw new HttpsError('failed-precondition', GUARDRAILS_FAILED_MESSAGE);
+  }
 
   const wpPayload = buildWordPressPayload(
     listing,

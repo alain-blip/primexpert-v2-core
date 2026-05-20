@@ -28,6 +28,9 @@
       "@primexpert/core/services/aiNarrativeService": [
         "./packages/core/src/services/aiNarrativeService.ts"
       ],
+      "@primexpert/core/diffusion": [
+        "./packages/core/src/diffusion/index.ts"
+      ],
       "@primexpert/core/*": [
         "./packages/core/src/*/index.ts"
       ]

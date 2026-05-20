@@ -16,6 +16,7 @@
  *   packages/core/src/diffusion/villeToSecteur.ts       → _vendored/villeToSecteur.ts
  *   packages/core/src/diffusion/priceRanges.ts          → _vendored/priceRanges.ts
  *   packages/core/src/diffusion/anonymizeResidence.ts   → _vendored/anonymizeResidence.ts
+ *   packages/core/src/diffusion/publicationGuardrails.ts → _vendored/publicationGuardrails.ts
  *   packages/core/src/diffusion/index.ts                → _vendored/index.ts
  *   packages/core/src/financial/safeNumbers.ts          → _vendored/safeNumbers.ts
  *
@@ -49,6 +50,7 @@ const FILES = [
   { from: path.join(CORE_DIFFUSION_DIR, 'villeToSecteur.ts'), to: 'villeToSecteur.ts' },
   { from: path.join(CORE_DIFFUSION_DIR, 'priceRanges.ts'), to: 'priceRanges.ts' },
   { from: path.join(CORE_DIFFUSION_DIR, 'anonymizeResidence.ts'), to: 'anonymizeResidence.ts' },
+  { from: path.join(CORE_DIFFUSION_DIR, 'publicationGuardrails.ts'), to: 'publicationGuardrails.ts' },
   { from: path.join(CORE_DIFFUSION_DIR, 'index.ts'), to: 'index.ts' },
   { from: path.join(CORE_FINANCIAL_DIR, 'safeNumbers.ts'), to: 'safeNumbers.ts' },
 ];

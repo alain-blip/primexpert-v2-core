@@ -188,6 +188,69 @@ export interface ResidenceForPublicListing {
 }
 
 // ============================================================================
+// GARDE-FOUS PUBLICATION — entrée élargie (pipeline + conformité RPA)
+// ============================================================================
+
+/** Champs additionnels pour `evaluatePublicationGuardrails` (structurel, sans couplage UI). */
+export interface ResidenceForPublicationGuardrails extends ResidenceForPublicListing {
+  status?: string | null;
+  stage?: string | null;
+  pipelineStatus?: string | null;
+  statut?: string | null;
+  assetNiche?: string | null;
+  numeroPermisMsss?: string | null;
+  numeroRegistreMsss?: string | null;
+  codeMSSS?: string | null;
+  msssNumber?: string | null;
+  permitNumber?: string | null;
+  numeroRqra?: string | null;
+  rqraNumber?: string | null;
+  numeroAdhesionRqra?: string | null;
+  courtiersResponsables?: string | null;
+  courtierResponsable?: string | null;
+  contratCourtage?: string | null;
+  telephone?: string | null;
+  courriel?: string | null;
+  email?: string | null;
+  adresse?: string | null;
+  address?: string | null;
+  ville?: string | null;
+  municipalite?: string | null;
+  annexeGActive?: boolean | null;
+  contratCourtageSigne?: boolean | null;
+}
+
+export const PUBLICATION_GUARDRAIL_STATUS = {
+  PASS: 'PASS',
+  WARN: 'WARN',
+  FAIL: 'FAIL',
+} as const;
+
+export type PublicationGuardrailStatus =
+  (typeof PUBLICATION_GUARDRAIL_STATUS)[keyof typeof PUBLICATION_GUARDRAIL_STATUS];
+
+export interface PublicationGuardrailResult {
+  id: string;
+  labelFr: string;
+  labelEn: string;
+  status: PublicationGuardrailStatus;
+  /** Si vrai, un échec (`FAIL`) bloque `isPublishable`. */
+  blocking: boolean;
+  detailFr?: string;
+  detailEn?: string;
+}
+
+export interface PublicationGuardrailsEvaluation {
+  isPublishable: boolean;
+  /** Nombre de vérifications réussies (PASS uniquement). */
+  score: number;
+  maxScore: number;
+  /** Score normalisé 0–100 (arrondi). */
+  scorePercent: number;
+  results: PublicationGuardrailResult[];
+}
+
+// ============================================================================
 // DOCUMENT PUBLIC LISTING — silo public_listings/{publicId}
 // ============================================================================
 

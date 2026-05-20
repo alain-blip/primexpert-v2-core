@@ -3,7 +3,7 @@
   "private": true,
   "main": "lib/index.js",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "scripts": {
     "sync:core-diffusion": "node scripts/sync-core-diffusion.cjs",
@@ -16,7 +16,7 @@
   "dependencies": {
     "@google-cloud/vertexai": "^1.10.0",
     "firebase-admin": "^13.10.0",
-    "firebase-functions": "^6.3.2"
+    "firebase-functions": "^7.2.5"
   },
   "devDependencies": {
     "typescript": "~5.8.2"
