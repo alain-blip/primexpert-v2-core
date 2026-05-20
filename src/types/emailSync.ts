@@ -31,6 +31,14 @@ export interface EmailMessage {
   /** Horodatage d’ouverture (ms). */
   openedAtMillis?: number;
   nylasMessageId?: string;
+  /** Métadonnées analyse OACIQ (ingestion Nylas — SSOT message). */
+  mailAnalysisAtMillis?: number;
+  matchedResidenceId?: string | null;
+  mailContactEmail?: string | null;
+  mailContactName?: string | null;
+  mailIntent?: string;
+  summaryOneLine?: string;
+  mailUrgency?: string;
 }
 
 export interface EmailThread {

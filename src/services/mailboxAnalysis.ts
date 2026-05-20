@@ -1,30 +1,30 @@
 /**
- * Persistance des analyses IA Mailbox (Phase E-2 durcie).
+ * Lecture des métadonnées d’analyse courriel — SSOT `email_threads/{id}/messages`.
  *
- * Charte : aucun accès Firestore dans @primexpert/core/mail — ce module
- * est la couche unique d’écriture/lecture côté app.
- *
- * Chemin : users/{brokerId}/mailbox_analyses/{messageId}
- * (brokerId = uid Firebase Auth — aligné sur le modèle multi-tenant courtier.)
+ * Les analyses sont produites à l’ingestion Nylas (Cloud Function + @primexpert/core/mail).
+ * La collection legacy `mailbox_analyses` n’est plus alimentée (Phase 1).
  */
 
 import {
-  collection,
-  doc,
-  getDoc,
+  collectionGroup,
   getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
-  setDoc,
-  serverTimestamp,
   where,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import type { MailParseResult } from '@primexpert/core/mail';
+import type {
+  MailContactIntent,
+  MailParseResult,
+  MailUrgency,
+  ResidenceMatchConfidence,
+} from '@primexpert/core/mail';
+import { EMAIL_MESSAGES_SUBCOLLECTION } from './emailSyncService';
 
+/** @deprecated Conservé pour compatibilité des imports UI — même chemin logique que messages. */
 export const MAILBOX_ANALYSES_SUBCOLLECTION = 'mailbox_analyses';
 
 export interface SavedMailboxAnalysis {
@@ -32,113 +32,95 @@ export interface SavedMailboxAnalysis {
   mergedParse: MailParseResult;
   replyDraft: string | null;
   analyzedAtMillis: number;
-  /** Résidence inventaire matchée (E-2 → fiche résidence). */
   matchedResidenceId?: string;
-  /** Horodatage du dernier brouillon IA (E-4 relance). */
   replyDraftAtMillis?: number;
 }
 
-function analysisRef(brokerId: string, messageId: string) {
-  return doc(db, 'users', brokerId, MAILBOX_ANALYSES_SUBCOLLECTION, messageId);
-}
-
-function isMailParseResult(x: unknown): x is MailParseResult {
-  if (!x || typeof x !== 'object') return false;
-  const o = x as Record<string, unknown>;
-  if (!o.lead || typeof o.lead !== 'object') return false;
-  const lead = o.lead as Record<string, unknown>;
-  return typeof lead.intent === 'string';
-}
-
-/**
- * Lit l’analyse persistée pour un message (retourne null si absente).
- */
-export async function getMailboxAnalysis(
-  brokerId: string,
-  messageId: string
-): Promise<SavedMailboxAnalysis | null> {
-  if (!brokerId || !messageId) return null;
-  try {
-    const snap = await getDoc(analysisRef(brokerId, messageId));
-    if (!snap.exists()) return null;
-    const d = snap.data();
-    if (!d?.mergedParse || !isMailParseResult(d.mergedParse)) return null;
-    const reply =
-      typeof d.replyDraft === 'string' && d.replyDraft.trim()
-        ? d.replyDraft
-        : null;
-    const matched =
-      typeof d.matchedResidenceId === 'string' && d.matchedResidenceId.trim()
-        ? d.matchedResidenceId.trim()
-        : undefined;
-    return {
-      messageId: String(d.messageId ?? messageId),
-      mergedParse: d.mergedParse,
-      replyDraft: reply,
-      analyzedAtMillis:
-        typeof d.analyzedAtMillis === 'number' ? d.analyzedAtMillis : 0,
-      matchedResidenceId: matched,
-      replyDraftAtMillis:
-        typeof d.replyDraftAtMillis === 'number' ? d.replyDraftAtMillis : undefined,
-    };
-  } catch (e) {
-    console.error('[mailboxAnalysis] get failed', e);
-    return null;
-  }
-}
-
-/**
- * Enregistre ou met à jour l’analyse (merge shallow — préserve les champs non envoyés).
- */
-export async function saveMailboxAnalysis(
-  brokerId: string,
-  messageId: string,
-  payload: {
-    mergedParse: MailParseResult;
-    replyDraft?: string | null;
-    replyDraftAtMillis?: number | null;
-  }
-): Promise<void> {
-  if (!brokerId || !messageId) return;
-  const matchedId =
-    typeof payload.mergedParse.residence?.matchedResidenceId === 'string'
-      ? payload.mergedParse.residence.matchedResidenceId.trim()
-      : '';
-
-  const draftStr =
-    typeof payload.replyDraft === 'string' ? payload.replyDraft.trim() : '';
-  const draftAt =
-    draftStr.length > 0
-      ? (payload.replyDraftAtMillis ?? Date.now())
-      : null;
-
-  await setDoc(
-    analysisRef(brokerId, messageId),
-    {
-      messageId,
-      mergedParse: payload.mergedParse,
-      replyDraft: payload.replyDraft ?? null,
-      analyzedAtMillis: Date.now(),
-      matchedResidenceId: matchedId,
-      replyDraftAtMillis: draftAt,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
+function isMailIntent(x: unknown): x is MailContactIntent {
+  return (
+    x === 'buyer' ||
+    x === 'seller' ||
+    x === 'peer' ||
+    x === 'agency' ||
+    x === 'unknown'
   );
 }
 
-/** Abonnement aux analyses courriel rattachées à une résidence (recherche indexée). */
+function isMailUrgency(x: unknown): x is MailUrgency {
+  return x === 'low' || x === 'medium' || x === 'high';
+}
+
+function isConfidence(x: unknown): x is ResidenceMatchConfidence {
+  return x === 'high' || x === 'medium' || x === 'low' || x === 'none';
+}
+
+function mapMessageToSaved(docId: string, data: Record<string, unknown>): SavedMailboxAnalysis | null {
+  const analyzedAtMillis =
+    typeof data.mailAnalysisAtMillis === 'number' ? data.mailAnalysisAtMillis : 0;
+  if (analyzedAtMillis <= 0) return null;
+
+  const matchedRaw =
+    typeof data.matchedResidenceId === 'string' ? data.matchedResidenceId.trim() : '';
+  const matchedResidenceId = matchedRaw || undefined;
+
+  const intent = isMailIntent(data.mailIntent) ? data.mailIntent : 'unknown';
+  const urgency = isMailUrgency(data.mailUrgency) ? data.mailUrgency : 'low';
+  const confidence: ResidenceMatchConfidence = matchedResidenceId ? 'medium' : 'none';
+
+  const mergedParse: MailParseResult = {
+    lead: {
+      contactName:
+        typeof data.mailContactName === 'string' && data.mailContactName.trim()
+          ? data.mailContactName.trim()
+          : null,
+      phone: null,
+      email:
+        typeof data.mailContactEmail === 'string' && data.mailContactEmail.trim()
+          ? data.mailContactEmail.trim().toLowerCase()
+          : null,
+      intent,
+    },
+    residence: {
+      matchedResidenceId: matchedRaw || null,
+      mentionedAddress: null,
+      matchConfidence: isConfidence(data.mailMatchConfidence)
+        ? data.mailMatchConfidence
+        : confidence,
+    },
+    urgency,
+    summaryOneLine:
+      typeof data.summaryOneLine === 'string' ? data.summaryOneLine : '',
+  };
+
+  return {
+    messageId: docId,
+    mergedParse,
+    replyDraft: null,
+    analyzedAtMillis,
+    matchedResidenceId,
+  };
+}
+
+function messagesAnalysisQuery(brokerId: string) {
+  return query(
+    collectionGroup(db, EMAIL_MESSAGES_SUBCOLLECTION),
+    where('brokerId', '==', brokerId),
+    orderBy('mailAnalysisAtMillis', 'desc')
+  );
+}
+
+/** Abonnement aux courriels analysés rattachés à une résidence. */
 export function subscribeMailboxAnalysesForResidence(
   brokerId: string,
   residenceId: string,
   onUpdate: (rows: SavedMailboxAnalysis[]) => void,
   onError?: (e: Error) => void
 ): Unsubscribe {
-  const col = collection(db, 'users', brokerId, MAILBOX_ANALYSES_SUBCOLLECTION);
   const q = query(
-    col,
+    collectionGroup(db, EMAIL_MESSAGES_SUBCOLLECTION),
+    where('brokerId', '==', brokerId),
     where('matchedResidenceId', '==', residenceId),
-    orderBy('analyzedAtMillis', 'desc'),
+    orderBy('mailAnalysisAtMillis', 'desc'),
     limit(30)
   );
   return onSnapshot(
@@ -146,22 +128,8 @@ export function subscribeMailboxAnalysesForResidence(
     (snap) => {
       const rows: SavedMailboxAnalysis[] = [];
       for (const d of snap.docs) {
-        const data = d.data();
-        if (!data?.mergedParse || !isMailParseResult(data.mergedParse)) continue;
-        const reply =
-          typeof data.replyDraft === 'string' && data.replyDraft.trim()
-            ? data.replyDraft
-            : null;
-        rows.push({
-          messageId: String(data.messageId ?? d.id),
-          mergedParse: data.mergedParse,
-          replyDraft: reply,
-          analyzedAtMillis:
-            typeof data.analyzedAtMillis === 'number' ? data.analyzedAtMillis : 0,
-          matchedResidenceId: residenceId,
-          replyDraftAtMillis:
-            typeof data.replyDraftAtMillis === 'number' ? data.replyDraftAtMillis : undefined,
-        });
+        const row = mapMessageToSaved(d.id, d.data() as Record<string, unknown>);
+        if (row) rows.push(row);
       }
       onUpdate(rows);
     },
@@ -172,42 +140,23 @@ export function subscribeMailboxAnalysesForResidence(
   );
 }
 
-/** Snapshot récent (E-4 — stagnation & tableau de bord). */
+/** Snapshot récent (priorités tableau de bord, stagnation). */
 export async function fetchRecentMailboxAnalyses(
   brokerId: string,
   limitN = 200
 ): Promise<SavedMailboxAnalysis[]> {
   if (!brokerId) return [];
   try {
-    const col = collection(db, 'users', brokerId, MAILBOX_ANALYSES_SUBCOLLECTION);
-    const q = query(col, orderBy('analyzedAtMillis', 'desc'), limit(limitN));
+    const q = query(messagesAnalysisQuery(brokerId), limit(limitN));
     const snap = await getDocs(q);
     const rows: SavedMailboxAnalysis[] = [];
     for (const d of snap.docs) {
-      const data = d.data();
-      if (!data?.mergedParse || !isMailParseResult(data.mergedParse)) continue;
-      const reply =
-        typeof data.replyDraft === 'string' && data.replyDraft.trim()
-          ? data.replyDraft
-          : null;
-      const matched =
-        typeof data.matchedResidenceId === 'string' && data.matchedResidenceId.trim()
-          ? data.matchedResidenceId.trim()
-          : undefined;
-      rows.push({
-        messageId: String(data.messageId ?? d.id),
-        mergedParse: data.mergedParse,
-        replyDraft: reply,
-        analyzedAtMillis:
-          typeof data.analyzedAtMillis === 'number' ? data.analyzedAtMillis : 0,
-        matchedResidenceId: matched,
-        replyDraftAtMillis:
-          typeof data.replyDraftAtMillis === 'number' ? data.replyDraftAtMillis : undefined,
-      });
+      const row = mapMessageToSaved(d.id, d.data() as Record<string, unknown>);
+      if (row) rows.push(row);
     }
     return rows;
   } catch (e) {
-    console.error('[E-4] fetchRecentMailboxAnalyses', e);
+    console.error('[mailboxAnalysis] fetchRecent failed', e);
     return [];
   }
 }

@@ -42,9 +42,53 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 
 | Chemin | Usage |
 |--------|--------|
-| `mailbox_analyses/{messageId}` | Analyse IA courriel (E-2), `matchedResidenceId` |
+| **`email_threads/{threadId}`** | **SSOT absolu** — fils messagerie Nylas (multi-boîtes) |
+| `email_threads/{threadId}/messages/{messageId}` | Messages + **métadonnées d’analyse OACIQ** (ingestion webhook) |
 | `call_analyses/{driveDocumentId}` | Transcription appel (E-3), `residenceId`, `pipelineStatus` |
-| `email_threads/{threadId}/messages/{messageId}` | Messagerie synchronisée Nylas |
+| `mailbox_analyses/{messageId}` | **Legacy (lecture seule)** — plus alimenté depuis Phase 1 mail |
+
+#### Document fil `email_threads/{threadId}`
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `brokerId` | string | UID courtier (= `users/{uid}`) |
+| `accountId` | string | Compte `users.emailAccounts[].id` |
+| `nylasThreadId` | string \| null | Identifiant fil Nylas |
+| `subject` | string | Objet |
+| `contactName` | string | Nom affiché du correspondant |
+| `contactEmail` | string \| null | Courriel correspondant |
+| `lastMessageSnippet` | string | Extrait dernier message |
+| `lastMessageAtMillis` | number | Horodatage dernier message (ms) |
+| `isUnread` | bool | Non-lu côté PrimeXpert |
+| `mailboxFolder` | string | `INBOX`, `SENT`, `ARCHIVE`, `TRASH`, `DRAFT` |
+| `propertyId` | string \| null | Fiche résidence liée (envoi métier ou match analyse) |
+| `propertyLabel` | string \| null | Libellé affiché inscription |
+| `createdAtMillis` | number | Création fil (ms) |
+
+#### Sous-document `messages/{messageId}`
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `threadId` | string | Parent |
+| `brokerId` | string | UID courtier (requêtes `collectionGroup`) |
+| `nylasMessageId` | string | Clé déduplication Nylas |
+| `body` | string | Corps (texte / HTML selon Nylas) |
+| `sentAtMillis` | number | Date envoi (ms) |
+| `direction` | string | `inbound` \| `outbound` |
+| `fromAccountId` | string | Boîte source |
+| `fromEmailAddress` | string | Adresse expéditeur |
+| `attachments` | array | PJ (vide à l’ingestion — Phase ultérieure) |
+| `isOpened` | bool | Accusé lecture (sortant, webhook `message.opened`) |
+| **`mailAnalysisAtMillis`** | number | Horodatage analyse (@primexpert/core/mail) |
+| **`matchedResidenceId`** | string \| null | Résidence matchée (heuristique inventaire) |
+| **`mailContactEmail`** | string \| null | Courriel partie (traçabilité chronologie) |
+| **`mailContactName`** | string \| null | Nom extrait ou expéditeur |
+| **`mailIntent`** | string | `buyer` \| `seller` \| `peer` \| `agency` \| `unknown` |
+| **`summaryOneLine`** | string | Résumé une ligne (diligence / Intelligence) |
+| **`mailUrgency`** | string | `low` \| `medium` \| `high` |
+| **`mailAnalysisSource`** | string | `heuristic` (Gemini optionnel — hors webhook Phase 1) |
+
+> **Écriture analyse :** serveur uniquement (`syncNylasMessageToFirestore`). Le client ne crée pas `mailbox_analyses`.
 
 ---
 
@@ -68,6 +112,36 @@ Document racine — **SSOT onglet Identité** (`ResidenceDocumentContext`) + Rad
 | `assetNiche` | string | `RPA` \| `CPE` \| `PLEX` |
 | `propertyType` | string | `rpa`, `cpe`, `plex`, `commercial` |
 | `date` | string | Date inscription / mandat (UI) |
+
+### Champs racine — parties & diligence (Phase C CRM RPA)
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| **`partiesImpliquees`** | array | Intervenants liés au CRM — `{ contactId, role, assigneLe }` |
+| **`complianceChecklist`** | map | Checklist diligence RPA — voir ci-dessous |
+
+#### Objet élément `partiesImpliquees[]`
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `contactId` | string | ID `organizations/{orgId}/contacts/{contactId}` |
+| `role` | string | `VENDEUR` \| `ACHETEUR` \| `NOTAIRE` \| `COLLABORATEUR` |
+| `assigneLe` | string (ISO) ou Timestamp | Date d’assignation au dossier |
+
+> Écriture : patches diff-based via `@primexpert/core/residence` (`buildAddPartiePatch`, `buildRemovePartiePatch`) — ne pas écraser le reste du document.
+
+#### Objet `complianceChecklist`
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `items` | map | Clé = id item (ex. `certification_ciusss`) → `{ status, verifiedAt?, notes? }` |
+| `updatedAt` | string (ISO) | Dernière mise à jour checklist |
+
+Statuts item : `PENDING` \| `VERIFIED` \| `REJECTED` \| `NOT_APPLICABLE`.
+
+Items RPA de base (SSOT `RPA_DILIGENCE_CHECKLIST_ITEMS`) : certification CIUSSS, registre des baux, inspection incendie, états financiers normalisés, assurance responsabilité.
+
+> Écriture : `buildComplianceItemStatusPatch()` fusionne un item sans écraser les autres clés du document racine.
 
 ### Champs racine — établissement (section « Identification »)
 

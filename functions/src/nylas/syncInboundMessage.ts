@@ -1,6 +1,11 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { getDb, threadMessagesCol, userThreadsCol } from '../lib/firestore';
 import { resolveMailboxFolderFromNylas } from './mailboxFolder';
+import {
+  buildInboundMailAnalysis,
+  loadBrokerResidenceInventory,
+  mailAnalysisToFirestoreFields,
+} from './mailMessageAnalysis';
 import type { NylasMessageObject } from './types';
 
 export interface SyncInboundInput {
@@ -20,6 +25,16 @@ function pickContact(message: NylasMessageObject, direction: 'inbound' | 'outbou
   };
 }
 
+async function resolveResidenceLabel(residenceId: string): Promise<string | null> {
+  const snap = await getDb().collection('residences').doc(residenceId).get();
+  if (!snap.exists) return null;
+  const d = snap.data() ?? {};
+  const address = String(d.address ?? '').trim();
+  const city = String(d.city ?? '').trim();
+  if (address && city) return `${address}, ${city}`;
+  return address || city || null;
+}
+
 /** Trouve ou crée un fil PrimeXpert à partir d’un message Nylas. */
 export async function syncNylasMessageToFirestore(input: SyncInboundInput): Promise<void> {
   const { brokerId, accountId, message, direction } = input;
@@ -35,6 +50,25 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
   const contact = pickContact(message, direction);
   const mailboxFolder = resolveMailboxFolderFromNylas(message.folders, direction);
 
+  const residences = await loadBrokerResidenceInventory(brokerId);
+  const parse = buildInboundMailAnalysis({
+    brokerId,
+    body,
+    subject: message.subject,
+    sender: contact.name,
+    contactEmail: contact.email,
+    residences,
+  });
+  const analysisAt = Date.now();
+  const analysisFields = mailAnalysisToFirestoreFields(brokerId, parse, {
+    contactEmail: contact.email,
+    analyzedAtMillis: analysisAt,
+  });
+  const matchedResidenceId =
+    typeof analysisFields.matchedResidenceId === 'string'
+      ? analysisFields.matchedResidenceId
+      : null;
+
   let threadDocId: string | null = null;
 
   if (nylasThreadId) {
@@ -44,6 +78,20 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
       .limit(1)
       .get();
     if (!existing.empty) threadDocId = existing.docs[0].id;
+  }
+
+  const threadPatch: Record<string, unknown> = {
+    lastMessageSnippet: snippet,
+    lastMessageAtMillis: sentAtMillis,
+    lastMessageAt: FieldValue.serverTimestamp(),
+    isUnread: direction === 'inbound',
+    mailboxFolder,
+  };
+
+  if (direction === 'inbound' && matchedResidenceId) {
+    threadPatch.propertyId = matchedResidenceId;
+    const label = await resolveResidenceLabel(matchedResidenceId);
+    if (label) threadPatch.propertyLabel = label;
   }
 
   if (!threadDocId) {
@@ -61,26 +109,22 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
       isUnread: direction === 'inbound',
       createdAtMillis: sentAtMillis,
       mailboxFolder,
+      ...(direction === 'inbound' && matchedResidenceId
+        ? {
+            propertyId: matchedResidenceId,
+            propertyLabel: threadPatch.propertyLabel ?? null,
+          }
+        : {}),
     });
     threadDocId = ref.id;
   } else {
-    await userThreadsCol(brokerId)
-      .doc(threadDocId)
-      .update({
-        lastMessageSnippet: snippet,
-        lastMessageAtMillis: sentAtMillis,
-        lastMessageAt: FieldValue.serverTimestamp(),
-        isUnread: direction === 'inbound',
-        mailboxFolder,
-      });
+    await userThreadsCol(brokerId).doc(threadDocId).update(threadPatch);
   }
 
   const messagesCol = threadMessagesCol(brokerId, threadDocId);
   const dup = await messagesCol.where('nylasMessageId', '==', nylasMessageId).limit(1).get();
   if (!dup.empty) {
-    if (threadDocId) {
-      await userThreadsCol(brokerId).doc(threadDocId).update({ mailboxFolder });
-    }
+    await dup.docs[0].ref.update(analysisFields);
     return;
   }
 
@@ -106,6 +150,7 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
     authorId: direction === 'outbound' ? brokerId : null,
     fromAccountId: accountId,
     attachments: [],
+    ...analysisFields,
   };
   const fromEmailAddress =
     direction === 'outbound'

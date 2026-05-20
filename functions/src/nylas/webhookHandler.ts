@@ -1,6 +1,6 @@
 /**
  * Webhook Nylas — challenge instantané + ACK HTTP < 2 s, traitement Firestore en arrière-plan.
- * Collections `users/{uid}/email_threads` inchangées.
+ * SSOT messagerie : `users/{uid}/email_threads` + métadonnées d'analyse sur `messages`.
  */
 
 import type { Request, Response } from 'express';
@@ -12,6 +12,7 @@ import type {
   NylasMessageObject,
   NylasWebhookEnvelope,
 } from './types';
+import { verifyNylasWebhookSignature } from './verifyWebhookSignature';
 
 /** Extrait le challenge Nylas (query GET ou corps POST de vérification). */
 export function extractNylasChallenge(req: Request): string | null {
@@ -130,7 +131,7 @@ function scheduleWebhookProcessing(body: unknown): void {
 }
 
 /**
- * Point d’entrée unique GET/POST — challenge prioritaire, ACK immédiat, Firestore en async.
+ * Point d’entrée unique GET/POST — challenge prioritaire, signature POST, ACK, traitement async.
  */
 export async function handleNylasWebhookRequest(
   req: Request,
@@ -154,6 +155,12 @@ export async function handleNylasWebhookRequest(
       return;
     }
 
+    if (!verifyNylasWebhookSignature(req)) {
+      logger.warn('[nylasWebhook] signature invalide ou absente');
+      res.status(401).type('text/plain').send('Unauthorized');
+      return;
+    }
+
     const payload =
       req.body && typeof req.body === 'object'
         ? req.body
@@ -166,10 +173,7 @@ export async function handleNylasWebhookRequest(
       error: e instanceof Error ? e.message : String(e),
     });
     if (!res.headersSent) {
-      res.status(200).json({ success: true });
-    }
-    if (req.method === 'POST' && req.body) {
-      scheduleWebhookProcessing(req.body);
+      res.status(500).type('text/plain').send('Internal error');
     }
   }
 }

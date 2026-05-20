@@ -25,11 +25,20 @@
       ]
     },
     {
-      "collectionGroup": "mailbox_analyses",
+      "collectionGroup": "messages",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
+        { "fieldPath": "brokerId", "order": "ASCENDING" },
+        { "fieldPath": "mailAnalysisAtMillis", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "brokerId", "order": "ASCENDING" },
         { "fieldPath": "matchedResidenceId", "order": "ASCENDING" },
-        { "fieldPath": "analyzedAtMillis", "order": "DESCENDING" }
+        { "fieldPath": "mailAnalysisAtMillis", "order": "DESCENDING" }
       ]
     },
     {
@@ -75,6 +84,30 @@
       "fields": [
         { "fieldPath": "category", "order": "ASCENDING" },
         { "fieldPath": "uploadedAtMillis", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "contacts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerId", "order": "ASCENDING" },
+        { "fieldPath": "visibility", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "contacts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "visibility", "order": "ASCENDING" },
+        { "fieldPath": "silo", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "contacts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerId", "order": "ASCENDING" },
+        { "fieldPath": "silo", "order": "ASCENDING" }
       ]
     }
   ],
