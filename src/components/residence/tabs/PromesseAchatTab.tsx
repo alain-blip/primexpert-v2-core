@@ -11,6 +11,7 @@ import {
   appendOfferSummary,
   buildPromesseAchatViewModel,
   formatIsoDateForDisplay,
+  mergeOffreConditionsWithDelais,
   parseOffreClotureFromDoc,
   parseOffreConditionsFromDoc,
   parseOffreTroncFromDoc,
@@ -94,11 +95,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
     setOffreTronc(offre);
     setOffreConditions(conditions);
     setOffreCloture(cloture);
-    const parsed = parsePromesseAchatFromDoc(residenceDoc);
-    setForm({
-      ...parsed,
-      prixOffert: offre.prixOffert ?? parsed.prixOffert,
-    });
+    setForm(parsePromesseAchatFromDoc(residenceDoc));
     setOffers(parsePromesseOffersFromDoc(residenceDoc));
   }, [residenceDoc]);
 
@@ -118,66 +115,82 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
     [contactQuery]
   );
 
+  const conditionsSyncedWithDelais = useCallback(
+    (promesse: PromesseAchatInput, conditions: OffreConditionsInput) =>
+      mergeOffreConditionsWithDelais(conditions, {
+        dateAcceptation: promesse.dateAcceptation,
+        delais: promesse.delais,
+      }),
+    []
+  );
+
+  const buildOffreFirestorePatch = useCallback(
+    (
+      tronc: OffreTroncInput,
+      conditions: OffreConditionsInput,
+      cloture: OffreClotureInput,
+      promesse: PromesseAchatInput
+    ) =>
+      serializeOffreForFirestore(
+        {
+          ...tronc,
+          acheteurId: promesse.buyer?.contactId ?? tronc.acheteurId,
+          acheteurNom: promesse.buyer?.fullName ?? tronc.acheteurNom,
+        },
+        conditionsSyncedWithDelais(promesse, conditions),
+        cloture
+      ),
+    [conditionsSyncedWithDelais]
+  );
+
   const persistOffreTronc = useCallback(
     async (next: OffreTroncInput) => {
       if (locked) return;
       setOffreTronc(next);
-      const syncedForm: PromesseAchatInput = {
-        ...form,
-        prixOffert: next.prixOffert ?? form.prixOffert,
-      };
-      if (next.prixOffert !== form.prixOffert) {
-        setForm(syncedForm);
-      }
-      await updateResidence({
-        ...serializeOffreForFirestore(next, offreConditions),
-        ...(next.prixOffert !== form.prixOffert
-          ? serializePromesseAchatForFirestore(syncedForm)
-          : {}),
-      });
+      await updateResidence(buildOffreFirestorePatch(next, offreConditions, offreCloture, form));
     },
-    [form, locked, offreCloture, offreConditions, updateResidence]
+    [buildOffreFirestorePatch, form, locked, offreCloture, offreConditions, updateResidence]
   );
 
   const persistOffreConditions = useCallback(
     async (next: OffreConditionsInput) => {
       if (locked) return;
       setOffreConditions(next);
-      await updateResidence(serializeOffreForFirestore(offreTronc, next, offreCloture));
+      await updateResidence(
+        buildOffreFirestorePatch(offreTronc, next, offreCloture, form)
+      );
     },
-    [locked, offreCloture, offreTronc, updateResidence]
+    [buildOffreFirestorePatch, form, locked, offreCloture, offreTronc, updateResidence]
   );
 
   const persistOffreCloture = useCallback(
     async (next: OffreClotureInput) => {
       if (locked) return;
       setOffreCloture(next);
-      await updateResidence(serializeOffreForFirestore(offreTronc, offreConditions, next));
+      await updateResidence(
+        buildOffreFirestorePatch(offreTronc, offreConditions, next, form)
+      );
     },
-    [locked, offreConditions, offreTronc, updateResidence]
+    [buildOffreFirestorePatch, form, locked, offreConditions, offreTronc, updateResidence]
   );
 
   const persist = useCallback(
     async (next: PromesseAchatInput) => {
-      const synced: PromesseAchatInput = {
-        ...next,
-        prixOffert: offreTronc.prixOffert ?? next.prixOffert,
+      setForm(next);
+      const nextTronc: OffreTroncInput = {
+        ...offreTronc,
+        prixOffert: offreTronc.prixOffert,
+        acheteurId: next.buyer?.contactId ?? offreTronc.acheteurId,
+        acheteurNom: next.buyer?.fullName ?? offreTronc.acheteurNom,
       };
-      setForm(synced);
+      if (next.buyer) {
+        setOffreTronc(nextTronc);
+      }
       const patch = {
-        ...serializePromesseAchatForFirestore(synced),
-        ...serializeOffreForFirestore(
-          {
-            ...offreTronc,
-            prixOffert: synced.prixOffert,
-            acheteurId: synced.buyer?.contactId ?? offreTronc.acheteurId,
-            acheteurNom: synced.buyer?.fullName ?? offreTronc.acheteurNom,
-          },
-          offreConditions,
-          offreCloture
-        ),
+        ...serializePromesseAchatForFirestore(next),
+        ...buildOffreFirestorePatch(nextTronc, offreConditions, offreCloture, next),
       };
-      const nextOffers = appendOfferSummary(offers, synced);
+      const nextOffers = appendOfferSummary(offers, next);
       try {
         await updateResidence({
           ...patch,
@@ -189,7 +202,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
         setLocalError(e instanceof Error ? e.message : String(e));
       }
     },
-    [offers, offreCloture, offreConditions, offreTronc, updateResidence]
+    [buildOffreFirestorePatch, offers, offreCloture, offreConditions, offreTronc, updateResidence]
   );
 
   const patchField = useCallback(

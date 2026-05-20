@@ -1,6 +1,12 @@
 import type { OffreConditionsInput } from './offreConditions';
 import { serializeOffreForFirestore } from './offreConditions';
 import type { OffreClotureInput } from './offreCloture';
+import {
+  firstNumber,
+  firstString,
+  readNested,
+  toNumber,
+} from './transactionParseUtils';
 
 /**
  * SSOT — Tronc de l'offre (Axe 1 PA) : prix et structure de paiement.
@@ -38,46 +44,6 @@ export const OFFRE_FIRESTORE_PATHS = {
   acheteurId: 'offre.acheteurId',
   acheteurNom: 'offre.acheteurNom',
 } as const;
-
-function toNumber(raw: unknown): number | undefined {
-  if (raw == null || raw === '') return undefined;
-  const n =
-    typeof raw === 'number'
-      ? raw
-      : Number(String(raw).replace(/\s/g, '').replace(',', '.'));
-  return Number.isFinite(n) ? n : undefined;
-}
-
-function toString(raw: unknown): string | undefined {
-  if (raw == null) return undefined;
-  const s = String(raw).trim();
-  return s.length > 0 ? s : undefined;
-}
-
-function readNested(doc: Record<string, unknown>, path: string[]): unknown {
-  let cur: unknown = doc;
-  for (const key of path) {
-    if (!cur || typeof cur !== 'object') return undefined;
-    cur = (cur as Record<string, unknown>)[key];
-  }
-  return cur;
-}
-
-function firstNumber(sources: unknown[]): number | undefined {
-  for (const raw of sources) {
-    const n = toNumber(raw);
-    if (n != null) return n;
-  }
-  return undefined;
-}
-
-function firstString(sources: unknown[]): string | undefined {
-  for (const raw of sources) {
-    const s = toString(raw);
-    if (s) return s;
-  }
-  return undefined;
-}
 
 /**
  * Solde à financer = prix offert − acompte − balance de prix de vente.
@@ -181,3 +147,5 @@ export function patchOffreTroncField<K extends OffreTroncFieldKey>(
 ): OffreTroncInput {
   return { ...current, [key]: value };
 }
+
+export { toNumber };

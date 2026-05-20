@@ -15,6 +15,7 @@ import type {
   PromesseStatus,
 } from './types';
 import { parseOffreTroncFromDoc } from './offreTronc';
+import { isoFromDate, toIsoDateString, toNumber } from './transactionParseUtils';
 
 export const PROMESSE_STATUS_OPTIONS: {
   value: PromesseStatus;
@@ -35,43 +36,6 @@ export const WORM_LOCK_MESSAGE_EN =
   '🔒 Final classified document — mandatory 6-year OACIQ retention protocol active.';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-function toNumber(raw: unknown): number | undefined {
-  if (raw == null || raw === '') return undefined;
-  const n = typeof raw === 'number' ? raw : Number(String(raw).replace(/\s/g, '').replace(',', '.'));
-  return Number.isFinite(n) ? n : undefined;
-}
-
-function toIsoDateString(raw: unknown): string | undefined {
-  if (raw == null || raw === '') return undefined;
-  if (typeof raw === 'string') {
-    const trimmed = raw.trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
-    const t = Date.parse(trimmed);
-    if (Number.isFinite(t)) return isoFromDate(new Date(t));
-  }
-  if (typeof raw === 'object') {
-    const o = raw as Record<string, unknown>;
-    if (typeof o.toMillis === 'function') {
-      try {
-        return isoFromDate(new Date((o.toMillis as () => number)()));
-      } catch {
-        return undefined;
-      }
-    }
-    if (typeof o.seconds === 'number') {
-      return isoFromDate(new Date(o.seconds * 1000));
-    }
-  }
-  return undefined;
-}
-
-function isoFromDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
 
 function parseDelayDays(raw: unknown): PromesseDelayDays | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
@@ -324,8 +288,6 @@ export function serializePromesseAchatForFirestore(
   return {
     promesseAchat: {
       status: input.status,
-      /** @deprecated Préférer `offre.prixOffert` (SSOT). Conservé pour repli lecture. */
-      prixOffert: input.prixOffert ?? null,
       prixAccepte: input.prixAccepte ?? null,
       dateReception: input.dateReception ?? null,
       delaiReponseJours: input.delaiReponseJours ?? null,

@@ -34,6 +34,7 @@ import { DocumentsDiligenceTab } from './documents/DocumentsDiligenceTab';
 import { PromesseAchatTab } from './tabs/PromesseAchatTab';
 import { Synthese360Tab } from './tabs/Synthese360Tab';
 import { DiffusionWebTab } from './diffusion/DiffusionWebTab';
+import { ResidenceTransactionBanner } from './ResidenceTransactionBanner';
 
 export type ResidenceDetailTab =
   | 'synthese'
@@ -183,12 +184,12 @@ export interface ResidenceDetailProps {
   initialTab?: ResidenceDetailTab;
 }
 
-export function ResidenceDetail({
+function ResidenceDetailContent({
   brokerId,
   residence,
   onClose,
-  initialTab = 'synthese',
-}: ResidenceDetailProps) {
+  initialTab,
+}: ResidenceDetailProps & { initialTab: ResidenceDetailTab }) {
   const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<ResidenceDetailTab>(initialTab);
 
@@ -271,6 +272,9 @@ export function ResidenceDetail({
                 {t('Fiche résidence · Primexpert V2', 'Residence file · Primexpert V2')}
               </p>
               <h1 className="text-2xl font-black text-[#142c6a] tracking-tight truncate">{addrTitle}</h1>
+              <div className="mt-3 max-w-3xl">
+                <ResidenceTransactionBanner />
+              </div>
               <p className="text-[11px] font-bold text-slate-600 mt-1 font-mono">
                 <span className="text-[#142c6a]">{formatCurrency(residence.price)}</span> · {statusLabel} · ID{' '}
                 {residence.id}
@@ -317,11 +321,27 @@ export function ResidenceDetail({
         })}
       </div>
 
-      <ResidenceDocumentProvider residenceId={residence.id}>
-        <div key={activeTab} role="tabpanel">
-          {panelContent}
-        </div>
-      </ResidenceDocumentProvider>
+      <div key={activeTab} role="tabpanel">
+        {panelContent}
+      </div>
     </div>
+  );
+}
+
+export function ResidenceDetail({
+  brokerId,
+  residence,
+  onClose,
+  initialTab = 'synthese',
+}: ResidenceDetailProps) {
+  return (
+    <ResidenceDocumentProvider residenceId={residence.id}>
+      <ResidenceDetailContent
+        brokerId={brokerId}
+        residence={residence}
+        onClose={onClose}
+        initialTab={initialTab}
+      />
+    </ResidenceDocumentProvider>
   );
 }
