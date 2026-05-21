@@ -234,8 +234,8 @@ export function FinanceHubMasterPanel({ onOpenAnalyse360, residence }: FinanceHu
       {financialLoadError ? (
         <p className="text-[13px] font-bold text-amber-900" role="status">
           {t(
-            'Accès Firestore limité (financial/dataV2) — vérifiez que vous êtes courtier responsable de cette résidence.',
-            'Limited Firestore access (financial/dataV2) — confirm you are the responsible broker for this residence.'
+            'Accès finances limité — allez dans Identité → Identification de l’établissement → M’attribuer cette résidence.',
+            'Limited finance access — go to Identity → Establishment identification → Assign this residence to me.'
           )}{' '}
           ({financialLoadError.message})
         </p>

@@ -22,7 +22,9 @@ import {
 import { buildIdentityViewModel } from '@primexpert/core/identity';
 import { cn } from '../../../lib/utils';
 import { useLanguage } from '../../../lib/i18n';
+import { useAuth } from '../../../lib/auth';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
+import { ResponsibleBrokerCard } from '../identity/ResponsibleBrokerCard';
 import type { Residence } from '../../../services/residences';
 import { IdentityOverviewStrip } from '../identity/IdentityOverviewStrip';
 import { EditableIdentitySection } from '../identity/EditableIdentitySection';
@@ -1043,6 +1045,7 @@ function RpaSpacesAndParkingPanel({
 
 export function IdentiteImmeubleTab({ residence }: IdentiteImmeubleTabProps) {
   const { language, t } = useLanguage();
+  const { profile } = useAuth();
   const {
     residenceDoc,
     loading,
@@ -1093,6 +1096,11 @@ export function IdentiteImmeubleTab({ residence }: IdentiteImmeubleTabProps) {
 
   const establishmentSection = view.sections.find((s) => s.id === 'establishment');
   const legalSection = view.sections.find((s) => s.id === 'legal');
+
+  const courtiersResponsables =
+    typeof residenceDoc?.courtiersResponsables === 'string'
+      ? residenceDoc.courtiersResponsables
+      : residence.courtiersResponsables;
 
   if (!isInProvider) {
     return (
@@ -1175,9 +1183,19 @@ export function IdentiteImmeubleTab({ residence }: IdentiteImmeubleTabProps) {
       <IdentityOverviewStrip overview={view.overview} language={lang} />
 
       {/* A · Identification de l'établissement (nom, contacts, dates) */}
-      {establishmentSection && (
-        <EditableIdentitySection section={establishmentSection} language={lang} />
-      )}
+      {establishmentSection && profile?.uid ? (
+        <EditableIdentitySection
+          section={establishmentSection}
+          language={lang}
+          leadingContent={
+            <ResponsibleBrokerCard
+              brokerId={profile.uid}
+              brokerDisplayName={profile.displayName}
+              courtiersResponsables={courtiersResponsables}
+            />
+          }
+        />
+      ) : null}
 
       {/* Parties CRM — liaisons contacts ↔ fiche résidence */}
       <PartiesIntervenantsSection />

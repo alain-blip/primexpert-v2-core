@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, type ReactNode } from 'react';
 import type { IdentitySectionView } from '@primexpert/core/identity';
 import { IdentitySectionCard } from './IdentitySectionCard';
 import { EditableFieldGrid } from './EditableFieldGrid';
@@ -14,9 +14,15 @@ import { useIdentityFieldSave } from '../../../hooks/useIdentityFieldSave';
 export interface EditableIdentitySectionProps {
   section: IdentitySectionView;
   language: 'fr' | 'en';
+  /** Contenu affiché en tête de section (ex. attribution courtier responsable). */
+  leadingContent?: ReactNode;
 }
 
-export function EditableIdentitySection({ section, language }: EditableIdentitySectionProps) {
+export function EditableIdentitySection({
+  section,
+  language,
+  leadingContent,
+}: EditableIdentitySectionProps) {
   const { savingFieldId, getDraftValue, setDraft, saveIdentityField } = useIdentityFieldSave();
   const title = language === 'fr' ? section.titleFr : section.titleEn;
 
@@ -32,6 +38,7 @@ export function EditableIdentitySection({ section, language }: EditableIdentityS
 
   return (
     <IdentitySectionCard title={title} accent={section.accent}>
+      {leadingContent}
       <EditableFieldGrid
         fields={section.fields}
         language={language}

@@ -194,7 +194,13 @@ service cloud.firestore {
     match /residences/{residenceId} {
       allow read:   if isTenantOwner() || isSharedCatalogResidence();
       allow create: if isIncomingTenantOwner();
-      allow update: if isTenantOwner() && isIncomingTenantOwner();
+      allow update: if (isTenantOwner() && isIncomingTenantOwner())
+        || (
+          isSharedCatalogResidence() &&
+          incoming().courtiersResponsables == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['courtiersResponsables'])
+        );
       allow delete: if isTenantOwner();
 
       // Hub Finance V2 — financial/dataV2 (normalizeFinancialData, Bilan, Revenus & Dépenses)
