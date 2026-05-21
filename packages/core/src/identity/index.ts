@@ -1,4 +1,5 @@
 export * from './types';
+export * from './contacts';
 export * from './resolveIdentityField';
 export * from './formatIdentityDisplay';
 export * from './msssRaphaelBadge';

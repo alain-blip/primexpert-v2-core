@@ -30,6 +30,9 @@ export function PublicFieldsEditor({ disabled }: PublicFieldsEditorProps) {
   const [publicVisualUrl, setPublicVisualUrl] = useState('');
   const [buyerTargetProfile, setBuyerTargetProfile] = useState('OUVERT');
   const [buyerTargetNotes, setBuyerTargetNotes] = useState('');
+  const [publicCaracteristiquesBatiment, setPublicCaracteristiquesBatiment] = useState('');
+  const [publicServicesEtConditions, setPublicServicesEtConditions] = useState('');
+  const [publicSoinsSanteOfferts, setPublicSoinsSanteOfferts] = useState('');
 
   useEffect(() => {
     if (!residenceDoc) return;
@@ -41,6 +44,9 @@ export function PublicFieldsEditor({ disabled }: PublicFieldsEditorProps) {
     const profile = pickString(residenceDoc, 'buyerTargetProfile') || 'OUVERT';
     setBuyerTargetProfile(profile);
     setBuyerTargetNotes(pickString(residenceDoc, 'buyerTargetNotes'));
+    setPublicCaracteristiquesBatiment(pickString(residenceDoc, 'publicCaracteristiquesBatiment'));
+    setPublicServicesEtConditions(pickString(residenceDoc, 'publicServicesEtConditions'));
+    setPublicSoinsSanteOfferts(pickString(residenceDoc, 'publicSoinsSanteOfferts'));
   }, [residenceDoc]);
 
   const saveField = useCallback(
@@ -158,6 +164,58 @@ export function PublicFieldsEditor({ disabled }: PublicFieldsEditorProps) {
             value={buyerTargetNotes}
             onChange={(e) => setBuyerTargetNotes(e.target.value)}
             onBlur={() => saveField('buyerTargetNotes', buyerTargetNotes)}
+          />
+        </label>
+
+        <label className="block">
+          <span className={LABEL}>
+            {t('Caractéristiques du bâtiment (public)', 'Building characteristics (public)')}
+            {savingKey === 'publicCaracteristiquesBatiment' ? (
+              <Loader2 className="inline h-4 w-4 ml-2 animate-spin" />
+            ) : null}
+          </span>
+          <textarea
+            className={cnTextarea(FIELD)}
+            rows={4}
+            value={publicCaracteristiquesBatiment}
+            onChange={(e) => setPublicCaracteristiquesBatiment(e.target.value)}
+            onBlur={() =>
+              saveField('publicCaracteristiquesBatiment', publicCaracteristiquesBatiment)
+            }
+          />
+        </label>
+
+        <label className="block">
+          <span className={LABEL}>
+            {t('Services et conditions (public)', 'Services and conditions (public)')}
+            {savingKey === 'publicServicesEtConditions' ? (
+              <Loader2 className="inline h-4 w-4 ml-2 animate-spin" />
+            ) : null}
+          </span>
+          <textarea
+            className={cnTextarea(FIELD)}
+            rows={4}
+            value={publicServicesEtConditions}
+            onChange={(e) => setPublicServicesEtConditions(e.target.value)}
+            onBlur={() =>
+              saveField('publicServicesEtConditions', publicServicesEtConditions)
+            }
+          />
+        </label>
+
+        <label className="block">
+          <span className={LABEL}>
+            {t('Soins de santé offerts (public)', 'Health care services offered (public)')}
+            {savingKey === 'publicSoinsSanteOfferts' ? (
+              <Loader2 className="inline h-4 w-4 ml-2 animate-spin" />
+            ) : null}
+          </span>
+          <textarea
+            className={cnTextarea(FIELD)}
+            rows={4}
+            value={publicSoinsSanteOfferts}
+            onChange={(e) => setPublicSoinsSanteOfferts(e.target.value)}
+            onBlur={() => saveField('publicSoinsSanteOfferts', publicSoinsSanteOfferts)}
           />
         </label>
 

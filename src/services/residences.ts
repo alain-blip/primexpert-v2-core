@@ -32,6 +32,13 @@ import { tenantConstraints, TENANT_FIELD, type TenantContext } from '@primexpert
 import type { AssetNiche, AssetNicheMetadata, AssetSyndication } from '../types/residence';
 import { parseAssetNiche, residenceMatchesNiche } from '../types/residence';
 import type { RadarPropertyType } from '../types/radarAccess';
+import {
+  extractPipelineStatusRaw,
+  isPipelineActiveStatus,
+  PIPELINE_ACTIVE_STATUSES,
+  resolveResidenceStatus,
+  type ResidenceStatus,
+} from '../config/pipelineStages';
 
 function parseRadarPropertyType(raw: unknown): RadarPropertyType | undefined {
   if (typeof raw !== 'string') return undefined;
@@ -50,16 +57,7 @@ function applySiloFilter(rows: Residence[], silo: AssetNiche | undefined): Resid
   return rows.filter((r) => residenceMatchesNiche(r.assetNiche, silo));
 }
 
-/**
- * Statut canonique pipeline (Charte §V Zone Rouge — ne JAMAIS renommer).
- */
-export type ResidenceStatus =
-  | 'prospect'
-  | 'mandate'
-  | 'promise'
-  | 'expired'
-  | 'unsigned'
-  | 'sold';
+export type { ResidenceStatus } from '../config/pipelineStages';
 
 /**
  * Forme minimale d'une résidence côté UI V2.
@@ -92,13 +90,7 @@ export interface Residence {
   syndication?: AssetSyndication;
 }
 
-/** Statuts visibles dans le pipeline « chaud » (hors expirés et non signé). */
-export const PIPELINE_ACTIVE_STATUSES: ResidenceStatus[] = [
-  'prospect',
-  'mandate',
-  'promise',
-  'sold',
-];
+export { PIPELINE_ACTIVE_STATUSES };
 
 const PAGE_SIZE_DEFAULT = 50;
 
@@ -126,10 +118,6 @@ const FIRESTORE_PIPELINE_STATUS_IN: readonly string[] = [
   'En promesse',
   'en promesse',
 ];
-
-function stripDiacritics(s: string): string {
-  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-}
 
 function mapLegacyPrice(data: DocumentData): number {
   const candidates: unknown[] = [
@@ -197,74 +185,6 @@ function mapCommercialName(data: DocumentData): string | undefined {
   return undefined;
 }
 
-function mapLegacyStatus(data: DocumentData): ResidenceStatus {
-  const raw =
-    data.status ??
-    data.pipelineStatus ??
-    data.etat ??
-    data.phase ??
-    data.stage ??
-    data.statut ??
-    '';
-  if (typeof raw !== 'string') {
-    return 'prospect';
-  }
-  const trimmed = raw.trim();
-  if (!trimmed) return 'unsigned';
-
-  const lower = trimmed.toLowerCase();
-  if ((PIPELINE_ACTIVE_STATUSES as readonly string[]).includes(lower)) {
-    return lower as ResidenceStatus;
-  }
-  if (
-    lower === 'unsigned' ||
-    lower === 'archive' ||
-    lower === 'sans status' ||
-    lower === 'sans statut' ||
-    lower === 'non signé' ||
-    stripDiacritics(lower) === 'non signe'
-  ) {
-    return 'unsigned';
-  }
-  if (lower === 'lead') {
-    return 'prospect';
-  }
-
-  const slug = stripDiacritics(lower).replace(/[^a-z0-9]+/g, '');
-
-  const table: Record<string, ResidenceStatus> = {
-    prospect: 'prospect',
-    prospection: 'prospect',
-    lead: 'prospect',
-    enprospection: 'prospect',
-    mandate: 'mandate',
-    mandat: 'mandate',
-    enmandat: 'mandate',
-    listed: 'mandate',
-    promise: 'promise',
-    promesse: 'promise',
-    enpromesse: 'promise',
-    expired: 'expired',
-    expire: 'expired',
-    expires: 'expired',
-    sold: 'sold',
-    vendu: 'sold',
-    vendue: 'sold',
-    succes: 'sold',
-    success: 'sold',
-  };
-
-  if (table[slug]) return table[slug];
-
-  if (slug.includes('mandat')) return 'mandate';
-  if (slug.includes('promess')) return 'promise';
-  if (slug.includes('vendu') || slug.includes('vendue') || slug.includes('sold')) return 'sold';
-  if (slug.includes('expir')) return 'expired';
-  if (slug.includes('prospect') || slug.includes('prosp')) return 'prospect';
-
-  return 'prospect';
-}
-
 function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
   const data = doc.data();
   const metaRaw = data.nicheMetadata;
@@ -307,7 +227,7 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
     prixDemande: price,
     commissionRate,
     potentialRevenue,
-    status: mapLegacyStatus(data),
+    status: resolveResidenceStatus(extractPipelineStatusRaw(data as Record<string, unknown>)),
     date: String(data.date ?? data.updatedAt ?? ''),
     courtiersResponsables: data[TENANT_FIELD],
     assetNiche: parseAssetNiche(data.assetNiche ?? data.niche),
@@ -371,7 +291,7 @@ export async function listResidencesPipeline(
 
   if (ctx.mode === 'admin') {
     const rows = await listResidences(ctx, opts);
-    return rows.filter((r) => PIPELINE_ACTIVE_STATUSES.includes(r.status));
+    return rows.filter((r) => isPipelineActiveStatus(r.status));
   }
 
   const constraints = tenantConstraints(ctx);
@@ -387,12 +307,12 @@ export async function listResidencesPipeline(
     );
     const snapshot = await getDocs(qy);
     return applySiloFilter(mapSnapshot(snapshot), silo).filter((r) =>
-      PIPELINE_ACTIVE_STATUSES.includes(r.status)
+      isPipelineActiveStatus(r.status)
     );
   } catch (e) {
     console.warn('[residences.listResidencesPipeline] indexed query failed, fallback:', e);
     const rows = await listResidences(ctx, opts);
-    return rows.filter((r) => PIPELINE_ACTIVE_STATUSES.includes(r.status));
+    return rows.filter((r) => isPipelineActiveStatus(r.status));
   }
 }
 

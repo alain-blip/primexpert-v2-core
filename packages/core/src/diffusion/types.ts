@@ -117,6 +117,7 @@ export const PUBLIC_ALLOWED_FIELDS = [
   'nombreUnites',
   'anneeConstruction',
   'fourchettePrix',
+  'fourchetteUnites',
   'tauxOccupation',
   'publicInclusions',
   'publicExclusions',
@@ -185,6 +186,18 @@ export interface ResidenceForPublicListing {
 
   // Méta éligibilité
   dataHealth?: DataHealthStatus | string | null;
+
+  // Transaction (bandeaux CRM + ACF WordPress)
+  stage?: string | null;
+  status?: string | null;
+  pipelineStatus?: string | null;
+  statut?: string | null;
+  dateNotairePrevu?: string | null;
+  promesseAchat?: {
+    statut?: string | null;
+    dateNotairePrevue?: string | null;
+    dateNotaire?: string | null;
+  } | null;
 }
 
 // ============================================================================
@@ -288,8 +301,11 @@ export interface PublicListing {
   /** Secteur large optionnel (ex. « Rive-Sud »). Jamais la ville. */
   secteur: string | null;
 
-  /** Nombre d'unités (valeur brute, mais non identifiante à elle seule). */
+  /** Nombre d'unités (interne / garde-fous — jamais affiché tel quel en public). */
   nombreUnites: number;
+
+  /** Fourchette d'unités anonymisée (ex. « entre 35 et 40 unités »). */
+  fourchetteUnites: string;
 
   /** Année construction — masquée à `XXXX+` si moins de 5 ans. */
   anneeConstruction: string | null;

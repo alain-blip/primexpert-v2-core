@@ -1,9 +1,10 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Globe, Loader2, X } from 'lucide-react';
 import { useLanguage } from '../../../lib/i18n';
 import type { Residence } from '../../../services/residences';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
-import { parseSyndicationMeta } from '../../../lib/diffusionSyndication';
+import { FinancialDataProvider } from '../../../context/FinancialDataContext';
+import { buildSellerPreviewUrl, parseSyndicationMeta } from '../../../lib/diffusionSyndication';
 import { useDiffusionPublication } from '../../../hooks/useDiffusionPublication';
 import { usePublicationGuardrails } from '../../../hooks/usePublicationGuardrails';
 import { inst } from '../institutional/InstitutionalUi';
@@ -13,6 +14,7 @@ import { PublicPreviewPanel } from './PublicPreviewPanel';
 import { SyndicationToggleGrid } from './SyndicationToggleGrid';
 import { ConfidentialityChecklist } from './ConfidentialityChecklist';
 import { InstitutionalToastBanner } from './InstitutionalToastBanner';
+import { DraftPreviewModal } from './DraftPreviewModal';
 
 const PRIVATE_ITEMS_FR = [
   'Nom commercial réel de la résidence',
@@ -60,11 +62,33 @@ export function DiffusionWebTab({ residence }: DiffusionWebTabProps) {
 
   const guardrails = usePublicationGuardrails(residenceDoc);
 
+  const [draftPreviewOpen, setDraftPreviewOpen] = useState(false);
+  const [sellerLinkCopied, setSellerLinkCopied] = useState(false);
+
+  const sellerPreviewUrl = useMemo(
+    () => buildSellerPreviewUrl(meta, residence.id),
+    [meta, residence.id]
+  );
+
   const privateItems = language === 'fr' ? PRIVATE_ITEMS_FR : PRIVATE_ITEMS_EN;
 
   const handleViewOnline = useCallback(() => {
     if (meta.wpUrl) window.open(meta.wpUrl, '_blank', 'noopener,noreferrer');
   }, [meta.wpUrl]);
+
+  const handleCopySellerLink = useCallback(async () => {
+    if (!sellerPreviewUrl) return;
+    try {
+      await navigator.clipboard.writeText(sellerPreviewUrl);
+      setSellerLinkCopied(true);
+      window.setTimeout(() => setSellerLinkCopied(false), 2500);
+    } catch {
+      window.prompt(
+        t('Copiez ce lien pour le vendeur :', 'Copy this link for the seller:'),
+        sellerPreviewUrl
+      );
+    }
+  }, [sellerPreviewUrl, t]);
 
   const handleSyndicationToggle = useCallback(
     async (portal: 'rpaAVendre' | 'cpeAVendre' | 'plexAVendre', enabled: boolean) => {
@@ -118,6 +142,16 @@ export function DiffusionWebTab({ residence }: DiffusionWebTabProps) {
         onViewOnline={handleViewOnline}
         onSaveDraft={() => void saveDraft()}
         onHide={() => void hide('MASQUE')}
+        onOpenDraftPreview={() => setDraftPreviewOpen(true)}
+        onCopySellerLink={() => void handleCopySellerLink()}
+        sellerLinkCopied={sellerLinkCopied}
+        sellerLinkAvailable={Boolean(sellerPreviewUrl)}
+      />
+
+      <DraftPreviewModal
+        open={draftPreviewOpen}
+        onClose={() => setDraftPreviewOpen(false)}
+        residenceId={residence.id}
       />
 
       <section className="rounded-xl border-4 border-red-900 bg-red-50 px-6 py-6">
@@ -159,7 +193,9 @@ export function DiffusionWebTab({ residence }: DiffusionWebTabProps) {
 
         <PublicFieldsEditor disabled={isBusy} />
 
-        <PublicPreviewPanel />
+        <FinancialDataProvider residenceId={residence.id}>
+          <PublicPreviewPanel />
+        </FinancialDataProvider>
       </section>
 
       <ConfidentialityChecklist evaluation={guardrails} />

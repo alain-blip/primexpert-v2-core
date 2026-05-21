@@ -15,6 +15,7 @@ import { formatCurrency as formatCurrencyCore } from '@primexpert/core/utils/for
 import { cn } from '../../../lib/utils';
 import { useLanguage } from '../../../lib/i18n';
 import { useFinancialData } from '../../../context/FinancialDataContext';
+import { useFinanceHubLock } from '../../../context/FinanceHubLockContext';
 import { ProvenanceStrip } from '../../financial/ProvenanceStrip';
 import {
   inst,
@@ -138,6 +139,7 @@ function AuditRneToggle({
   noiDeclared,
   noiAudit,
   formatValue,
+  disabled = false,
 }: {
   useAuditRne: boolean;
   onChange: (next: boolean) => void;
@@ -145,6 +147,7 @@ function AuditRneToggle({
   noiDeclared: number | null;
   noiAudit: number | null;
   formatValue: (n: number | null) => string;
+  disabled?: boolean;
 }) {
   const optionA = useAuditRne === false;
   const optionB = useAuditRne === true;
@@ -181,9 +184,11 @@ function AuditRneToggle({
           type="button"
           role="radio"
           aria-checked={optionA}
+          disabled={disabled}
           onClick={() => onChange(false)}
           className={cn(
             'flex flex-col items-start gap-1 rounded-2xl border-2 px-5 py-4 text-left transition-colors',
+            disabled && 'cursor-not-allowed opacity-60',
             optionA
               ? 'border-[#142c6a] bg-[#142c6a] text-white shadow-md'
               : 'border-[#142c6a]/30 bg-white text-[#142c6a] hover:border-[#142c6a]'
@@ -211,9 +216,11 @@ function AuditRneToggle({
           type="button"
           role="radio"
           aria-checked={optionB}
+          disabled={disabled}
           onClick={() => onChange(true)}
           className={cn(
             'flex flex-col items-start gap-1 rounded-2xl border-2 px-5 py-4 text-left transition-colors',
+            disabled && 'cursor-not-allowed opacity-60',
             optionB
               ? 'border-emerald-700 bg-emerald-700 text-white shadow-md'
               : 'border-emerald-700/30 bg-white text-emerald-900 hover:border-emerald-700'
@@ -405,6 +412,7 @@ function SellerVerdictPanel({
 export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
   const { t, language } = useLanguage();
   const { financialData, loading, error, isInProvider } = useFinancialData();
+  const { inputsLocked } = useFinanceHubLock();
 
   const [useAuditRne, setUseAuditRne] = useState<boolean>(() => readUseAuditRneFromSession());
   const handleToggleUseAuditRne = useCallback((next: boolean) => {
@@ -617,6 +625,7 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
         noiDeclared={model.noiDeclare}
         noiAudit={model.noiAudit}
         formatValue={fmt}
+        disabled={inputsLocked}
       />
 
       <div className={cn(inst.kpi, 'border-l-4', verdictBorder, 'p-6')}>

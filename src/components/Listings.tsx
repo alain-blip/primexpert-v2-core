@@ -7,8 +7,13 @@ import { peekListingsFocusResidenceId, consumeListingsFocusResidenceId } from '.
 import {
   getResidenceById,
   type Residence,
-  type ResidenceStatus,
 } from '../services/residences';
+import {
+  getPipelineColumnLabel,
+  PIPELINE_KANBAN_COLUMNS,
+  type PipelineColumnId,
+  type ResidenceStatus,
+} from '../config/pipelineStages';
 import { fetchRecentCallAnalyses, type CallAnalysisRow } from '../services/transcriptionService';
 import { fetchRecentMailboxAnalyses, type SavedMailboxAnalysis } from '../services/mailboxAnalysis';
 import { isListingStale } from '../services/followUpIntel';
@@ -26,18 +31,8 @@ import { filterListingsForRadar, type RadarListingView, type RadarPropertyType }
 import { resolveUserSpecialties } from '../lib/userSpecialties';
 import { UpsellModal } from './UpsellModal';
 
-const STATUS_LABELS: Record<ResidenceStatus, string> = {
-  prospect: 'Prospection',
-  mandate: 'Mise en marché',
-  promise: "Promesse d'achat",
-  expired: '04 / Expirés',
-  unsigned: '05 / Non signé',
-  sold: 'Vendu',
-};
-
-/** Colonnes Kanban pipeline « chaud » — archive `unsigned` exclue. */
-/** Pipeline actif — sans mandats expirés (hors colonne dédiée). */
-const PIPELINE_STATUS_KEYS: ResidenceStatus[] = ['prospect', 'mandate', 'promise', 'sold'];
+/** Colonnes Kanban — SSOT libellés via pipelineStages (slugs Firestore inchangés). */
+const PIPELINE_COLUMN_IDS: PipelineColumnId[] = PIPELINE_KANBAN_COLUMNS.map((c) => c.id);
 
 const DEMO_LISTINGS: Residence[] = [
   { id: 'demo-1', address: '789 Ave Mont-Royal E', city: 'Montréal', price: 650000, status: 'mandate', date: '2024-03-15', assetNiche: 'RPA' },
@@ -355,8 +350,8 @@ export function Listings() {
       {tab === 'pipeline' ? (
         <div className="overflow-x-auto pb-1 custom-scrollbar">
           <div className="grid min-w-[980px] grid-cols-4 gap-4">
-            {PIPELINE_STATUS_KEYS.map((key) => {
-              const label = STATUS_LABELS[key];
+            {PIPELINE_COLUMN_IDS.map((key) => {
+              const label = getPipelineColumnLabel(key, language === 'fr' ? 'fr' : 'en');
               const count = pipelineListings.filter((l) => l.status === key).length;
               return (
                 <div key={key} className="min-w-0 space-y-2">

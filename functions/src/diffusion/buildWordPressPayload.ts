@@ -7,6 +7,11 @@
  */
 
 import type { PublicListing } from './_vendored';
+import { PUBLIC_BUYER_CONTRACTS_HTML } from './_vendored/publicBuyerDisclosures';
+import {
+  resolveAcfListingStatus,
+  type TransactionPublicationInput,
+} from './_vendored/transactionBanner';
 import type {
   WordPressPostStatus,
   WordPressUpsertRequest,
@@ -14,6 +19,13 @@ import type {
 
 const HTML_SECTION_SEP = '\n\n';
 const DEFAULT_TITLE_FR = 'Résidence privée à vendre';
+
+export interface BuildWordPressPayloadOptions {
+  /** Contexte transaction (stage, date notaire) pour ACF « sous offre » / « vendu ». */
+  transaction?: TransactionPublicationInput;
+  /** Horloge injectable (tests). */
+  now?: Date;
+}
 
 function htmlEscape(value: string): string {
   return value
@@ -40,7 +52,9 @@ function buildContentHtml(listing: PublicListing): string {
   pushFact(facts, 'Type', listing.residenceType);
   if (listing.region) pushFact(facts, 'Région', listing.region);
   if (listing.secteur) pushFact(facts, 'Secteur', listing.secteur);
-  if (listing.nombreUnites > 0) pushFact(facts, 'Unités', listing.nombreUnites);
+  if (listing.fourchetteUnites && listing.fourchetteUnites !== 'Non divulgué') {
+    pushFact(facts, 'Unités', listing.fourchetteUnites);
+  }
   if (listing.tauxOccupation != null) {
     pushFact(facts, "Taux d'occupation", `${listing.tauxOccupation} %`);
   }
@@ -63,16 +77,24 @@ function buildContentHtml(listing: PublicListing): string {
     );
   }
 
+  sections.push(PUBLIC_BUYER_CONTRACTS_HTML);
+
   return sections.join(HTML_SECTION_SEP);
 }
 
-function buildMeta(listing: PublicListing): Record<string, string | number> {
+function buildMeta(
+  listing: PublicListing,
+  transaction: TransactionPublicationInput | undefined,
+  now?: Date
+): Record<string, string | number> {
+  const acfListingStatus = resolveAcfListingStatus(transaction ?? {}, { now });
   return {
     pub_public_id: listing.publicId,
     pub_residence_type: listing.residenceType,
     pub_region: listing.region ?? '',
     pub_secteur: listing.secteur ?? '',
     pub_nombre_unites: listing.nombreUnites,
+    pub_fourchette_unites: listing.fourchetteUnites,
     pub_annee_construction: listing.anneeConstruction ?? '',
     pub_fourchette_prix: listing.fourchettePrix,
     pub_taux_occupation:
@@ -80,6 +102,8 @@ function buildMeta(listing: PublicListing): Record<string, string | number> {
     pub_categorie_visuelle: listing.categorieVisuelle,
     pub_buyer_profile: listing.buyerTargetProfile,
     pub_visual_url: listing.publicVisualUrl ?? '',
+    acf_listing_status: acfListingStatus,
+    acfListingStatus: acfListingStatus,
   };
 }
 
@@ -89,11 +113,13 @@ function buildMeta(listing: PublicListing): Record<string, string | number> {
  * @param listing  `PublicListing` déjà anonymisé par le core.
  * @param status   Statut WP cible (`publish`, `draft`, `private`).
  * @param wpPostId ID du post WP existant (si update). Absent → création.
+ * @param options  Contexte transaction pour bannières publiques ACF.
  */
 export function buildWordPressPayload(
   listing: PublicListing,
   status: WordPressPostStatus,
-  wpPostId?: number
+  wpPostId?: number,
+  options: BuildWordPressPayloadOptions = {}
 ): WordPressUpsertRequest {
   return {
     wpPostId,
@@ -101,6 +127,6 @@ export function buildWordPressPayload(
     title: listing.publicTitle ?? DEFAULT_TITLE_FR,
     content: buildContentHtml(listing),
     slug: `rpa-${listing.publicId.slice(0, 8)}`,
-    meta: buildMeta(listing),
+    meta: buildMeta(listing, options.transaction, options.now),
   };
 }

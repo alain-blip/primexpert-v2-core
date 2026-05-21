@@ -17,6 +17,7 @@ import { villeToSecteur } from './villeToSecteur';
 import {
   arrondirTauxOccupation,
   getPriceRange,
+  getPublicUnitsRangeLabel,
   getVisualCategory,
 } from './priceRanges';
 import {
@@ -160,6 +161,7 @@ export function buildPublicListing(
     region,
     secteur,
     nombreUnites,
+    fourchetteUnites: getPublicUnitsRangeLabel(nombreUnites),
     anneeConstruction: resolveAnneeConstruction(input.anneeConstruction, currentYear),
     fourchettePrix: getPriceRange(prixCandidat),
     tauxOccupation: arrondirTauxOccupation(input.tauxOccupation, nombreUnites),

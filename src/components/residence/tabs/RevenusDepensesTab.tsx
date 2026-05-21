@@ -10,6 +10,7 @@ import { formatCurrency as formatCurrencyCore } from '@primexpert/core/utils/for
 import { cn } from '../../../lib/utils';
 import { useLanguage } from '../../../lib/i18n';
 import { useFinancialData } from '../../../context/FinancialDataContext';
+import { useFinanceHubLock } from '../../../context/FinanceHubLockContext';
 import { ProvenanceStrip } from '../../financial/ProvenanceStrip';
 import {
   inst,
@@ -42,6 +43,7 @@ function gapStyle(declaredPct: number | null, marketPct: number | null): string 
 export function RevenusDepensesTab({ residence }: RevenusDepensesTabProps) {
   const { t } = useLanguage();
   const { financialData, loading, error, isInProvider } = useFinancialData();
+  const { inputsLocked } = useFinanceHubLock();
 
   const residenceHints = useMemo(
     () => ({
@@ -100,7 +102,14 @@ export function RevenusDepensesTab({ residence }: RevenusDepensesTabProps) {
   const verifiedCount = grid.rows.filter((r) => r.verification.obtained).length;
 
   return (
-    <div className={cn('space-y-5', inst.page)}>
+    <div
+      className={cn(
+        'space-y-5 relative',
+        inst.page,
+        inputsLocked && 'pointer-events-none select-none opacity-90'
+      )}
+      aria-disabled={inputsLocked || undefined}
+    >
       <InstitutionalPageHeader
         icon={<Coins className="h-5 w-5 text-slate-700 shrink-0" />}
         title={t(

@@ -66,3 +66,47 @@ export function isPortalRelevant(niche: AssetNiche | undefined, portal: AssetNic
   const active = niche ?? 'RPA';
   return active === portal;
 }
+
+const RPA_PUBLIC_SITE = 'https://rpaavendre.com';
+
+/**
+ * URL d'aperçu vendeur (brouillon) — jeton serveur ou paramètre preview.
+ */
+export function buildSellerPreviewUrl(
+  meta: ResidenceSyndicationMeta,
+  residenceId?: string
+): string | null {
+  const publicId = meta.publicListingId?.trim();
+  const wpUrl = meta.wpUrl?.trim();
+
+  if (meta.draftToken && wpUrl) {
+    try {
+      const url = new URL(wpUrl);
+      url.searchParams.set('preview', 'true');
+      url.searchParams.set('token', meta.draftToken);
+      return url.toString();
+    } catch {
+      /* fall through */
+    }
+  }
+
+  if (wpUrl) {
+    try {
+      const url = new URL(wpUrl);
+      url.searchParams.set('preview', 'true');
+      return url.toString();
+    } catch {
+      return `${wpUrl}${wpUrl.includes('?') ? '&' : '?'}preview=true`;
+    }
+  }
+
+  const slugId = publicId ?? residenceId;
+  if (!slugId) return null;
+
+  const shortSlug = slugId.startsWith('rpa-') ? slugId : `rpa-${slugId.slice(0, 8)}`;
+  const base = `${RPA_PUBLIC_SITE}/annonce_rpa/${shortSlug}/`;
+  if (meta.draftToken) {
+    return `${base}?preview=true&token=${encodeURIComponent(meta.draftToken)}`;
+  }
+  return `${base}?preview=true`;
+}

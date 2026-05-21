@@ -32,6 +32,7 @@ import { RentPricingTableSection } from '../identity/RentPricingTableSection';
 import { EditableCapacitySection } from '../identity/EditableCapacitySection';
 import { MsssEnrichmentBanner } from '../identity/MsssEnrichmentBanner';
 import { IdentitySectionCard } from '../identity/IdentitySectionCard';
+import { PartiesIntervenantsSection } from '../identity/PartiesIntervenantsSection';
 
 export interface IdentiteImmeubleTabProps {
   residence: Residence;
@@ -1177,6 +1178,9 @@ export function IdentiteImmeubleTab({ residence }: IdentiteImmeubleTabProps) {
       {establishmentSection && (
         <EditableIdentitySection section={establishmentSection} language={lang} />
       )}
+
+      {/* Parties CRM — liaisons contacts ↔ fiche résidence */}
+      <PartiesIntervenantsSection />
 
       {/* B · Structure juridique & propriétaire */}
       {legalSection && <EditableIdentitySection section={legalSection} language={lang} />}

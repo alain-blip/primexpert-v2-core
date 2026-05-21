@@ -23,13 +23,22 @@ import {
   deliverBuyerRelanceEmail,
 } from '../../services/buyerRelanceDelivery';
 import { isNylasConfigured } from '../../services/nylasClient';
+import type { UnifiedTimelineEvent } from '@primexpert/core/intelligence';
+import { CommunicationTimelineFeed } from './CommunicationTimelineFeed';
 import { inst } from '../residence/institutional/InstitutionalUi';
+
+export type ChronologieMode = 'residence-full' | 'communications-only';
 
 export interface IntelligenceChronologieProps {
   brokerId: string;
-  residence: Residence;
-  calls: CallAnalysisRow[];
-  mails: SavedMailboxAnalysis[];
+  /** Requis pour le protocole J+7 ; optionnel en mode communications-only. */
+  residence?: Residence;
+  calls?: CallAnalysisRow[];
+  mails?: SavedMailboxAnalysis[];
+  /** Mode omnicanal contact ou fil dérivé pré-calculé. */
+  mode?: ChronologieMode;
+  /** Événements agrégés (@primexpert/core/intelligence) — lecture seule. */
+  timelineEvents?: UnifiedTimelineEvent[];
 }
 
 function StepStatusText({
@@ -57,11 +66,28 @@ function StepStatusText({
   );
 }
 
-export function IntelligenceChronologie({
+export function IntelligenceChronologie(props: IntelligenceChronologieProps) {
+  if (props.mode === 'communications-only') {
+    return (
+      <CommunicationTimelineFeed
+        events={props.timelineEvents ?? []}
+        titleFr="Historique des communications"
+        titleEn="Communication history"
+        emptyFr="Aucun courriel Nylas ni appel Vertex rattaché à ce contact pour le moment."
+        emptyEn="No Nylas emails or Vertex calls linked to this contact yet."
+      />
+    );
+  }
+  if (!props.residence) return null;
+  return <IntelligenceChronologieResidence {...props} residence={props.residence} />;
+}
+
+function IntelligenceChronologieResidence({
   residence,
-  calls,
-  mails,
-}: IntelligenceChronologieProps) {
+  calls = [],
+  mails = [],
+  timelineEvents = [],
+}: IntelligenceChronologieProps & { residence: Residence }) {
   const { t, language } = useLanguage();
   const lang = language === 'fr' ? 'fr' : 'en';
   const locale = lang === 'fr' ? 'fr-CA' : 'en-CA';
@@ -411,6 +437,15 @@ export function IntelligenceChronologie({
             {success}
           </p>
         )}
+
+        <CommunicationTimelineFeed
+          events={timelineEvents}
+          titleFr="Historique des communications (dossier et intervenants)"
+          titleEn="Communication history (listing and parties)"
+          emptyFr="Aucun courriel Nylas ni appel Vertex pour ce dossier ou ses intervenants pour le moment."
+          emptyEn="No Nylas emails or Vertex calls for this listing or its parties yet."
+          className="border-0 shadow-none mt-2"
+        />
       </div>
     </section>
   );

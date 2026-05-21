@@ -105,3 +105,27 @@ export function getVisualCategory(nombreUnites: unknown): VisualCategory {
   if (n >= 40) return VISUAL_CATEGORY.MEDIUM;
   return VISUAL_CATEGORY.COMPACT;
 }
+
+// ============================================================================
+// FOURCHETTE UNITÉS — anonymisation publique (jamais le nombre exact)
+// ============================================================================
+
+export const UNITS_RANGE_EXACT_38_LABEL = 'entre 35 et 40 unités' as const;
+export const UNITS_RANGE_UNKNOWN = 'Non divulgué' as const;
+
+/**
+ * Libellé public de capacité (fourchette) — ex. « entre 35 et 40 unités ».
+ *
+ * Exception métier stricte : exactement 38 unités → libellé fixe (exonération
+ * de divulgation du dénombrement réel sur RPAaVendre.com).
+ */
+export function getPublicUnitsRangeLabel(nombreUnites: unknown): string {
+  const n = safeNum(nombreUnites);
+  if (n == null || n <= 0) return UNITS_RANGE_UNKNOWN;
+  if (n === 38) return UNITS_RANGE_EXACT_38_LABEL;
+
+  const step = n >= 40 ? 10 : 5;
+  const low = Math.max(1, Math.floor(n / step) * step);
+  const high = low + step;
+  return `entre ${low} et ${high} unités`;
+}

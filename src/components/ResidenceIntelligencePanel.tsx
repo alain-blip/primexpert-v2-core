@@ -4,8 +4,11 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Sparkles, Mail, Mic } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { parsePartiesImpliquees } from '@primexpert/core/residence';
+import type { UnifiedTimelineEvent } from '@primexpert/core/intelligence';
 import { useLanguage } from '../lib/i18n';
+import { useAuth } from '../lib/auth';
 import { cn } from '../lib/utils';
 import type { Residence } from '../services/residences';
 import {
@@ -16,33 +19,18 @@ import {
   subscribeMailboxAnalysesForResidence,
   type SavedMailboxAnalysis,
 } from '../services/mailboxAnalysis';
+import { fetchResidenceDoc } from '../services/sellerUpdateDelivery';
+import {
+  getOrganizationContactById,
+  type ContactServiceContext,
+} from '../services/contacts';
+import {
+  buildResidencePartiesTimeline,
+  fetchPartySupplementMails,
+} from '../services/communicationTimelineService';
 import { inst, InstitutionalPageHeader } from './residence/institutional/InstitutionalUi';
 import { SellerWeeklyReportModule } from './intelligence/SellerWeeklyReportModule';
 import { IntelligenceChronologie } from './intelligence/IntelligenceChronologie';
-
-interface IntelTimelineItem {
-  kind: 'call' | 'mail';
-  sortMs: number;
-  call?: CallAnalysisRow;
-  mail?: SavedMailboxAnalysis;
-}
-
-function callStatusLabel(
-  row: CallAnalysisRow,
-  t: (fr: string, en: string) => string
-): { emoji: string; label: string } {
-  switch (row.pipelineStatus) {
-    case 'recorded':
-      return { emoji: '🎙️', label: t('Enregistré', 'Recorded') };
-    case 'transcribing':
-    case 'analyzing':
-      return { emoji: '⚙️', label: t('Transcription', 'Transcribing') };
-    case 'analyzed':
-      return { emoji: '✨', label: t('Analyzed', 'Analyzed') };
-    default:
-      return { emoji: '⚠️', label: t('Échec', 'Failed') };
-  }
-}
 
 export interface ResidenceIntelligencePanelProps {
   brokerId: string;
@@ -147,88 +135,8 @@ export function ResidenceIntelligencePanel({
         residence={residence}
         calls={calls}
         mails={mails}
+        timelineEvents={partiesTimelineEvents}
       />
-
-      <section className={inst.section}>
-        <header className={cn(inst.sectionHeader, 'flex items-center gap-2')}>
-          <Sparkles className="h-4 w-4 text-slate-700" />
-          <h3 className={inst.sectionTitle}>{t('Historique intelligent', 'Smart history')}</h3>
-        </header>
-
-        {timeline.length === 0 ? (
-          <p className="px-6 py-10 text-center text-sm font-semibold text-slate-600 leading-relaxed">
-            {t(
-              'Aucun appel ni courriel analysé n’est encore rattaché à cette propriété. Enregistre un appel (Téléphonie) ou analyse un courriel matché à cette résidence.',
-              'No calls or analyzed emails are linked to this property yet. Record a call or analyze an email matched to this listing.'
-            )}
-          </p>
-        ) : (
-          <ul className="p-4 space-y-3 max-h-[min(520px,55vh)] overflow-y-auto pr-1 custom-scrollbar">
-            {timeline.map((item) => {
-              if (item.kind === 'call' && item.call) {
-                const row = item.call;
-                const st = callStatusLabel(row, t);
-                return (
-                  <li
-                    key={`call-${row.driveDocumentId}`}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Mic className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
-                          {t('Appel', 'Call')}
-                        </span>
-                      </div>
-                      <span className="text-lg leading-none shrink-0" aria-hidden>
-                        {st.emoji}
-                      </span>
-                    </div>
-                    <p className="text-[11px] font-mono text-[#142c6a] mt-1 truncate">{row.fileName}</p>
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600 mt-0.5">
-                      {st.label}
-                    </p>
-                    {row.pipelineStatus === 'analyzed' && row.executiveSummary?.trim() ? (
-                      <p className="mt-2 text-sm text-[#142c6a] leading-relaxed border-t border-slate-200 pt-2">
-                        {row.executiveSummary}
-                      </p>
-                    ) : null}
-                    {row.pipelineStatus === 'failed' && row.errorMessage ? (
-                      <p className="mt-2 text-[10px] text-red-800 font-mono">{row.errorMessage}</p>
-                    ) : null}
-                  </li>
-                );
-              }
-              if (item.kind === 'mail' && item.mail) {
-                const m = item.mail;
-                const p = m.mergedParse;
-                const name =
-                  p.lead.contactName?.trim() ||
-                  t('Contact (courriel)', 'Contact (email)');
-                return (
-                  <li
-                    key={`mail-${m.messageId}`}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-3.5 w-3.5 text-slate-700 shrink-0" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
-                        {t('Courriel analysé', 'Analyzed email')}
-                      </span>
-                    </div>
-                    <p className="text-sm font-bold text-[#142c6a] mt-1">{name}</p>
-                    <p className="text-sm text-slate-700 mt-1 leading-snug line-clamp-3">{p.summaryOneLine}</p>
-                    <p className="text-[9px] font-mono text-slate-600 mt-2">
-                      {t('Intent', 'Intent')}: {p.lead.intent} · {t('Urgence', 'Urgency')}: {p.urgency}
-                    </p>
-                  </li>
-                );
-              }
-              return null;
-            })}
-          </ul>
-        )}
-      </section>
     </div>
   );
 }

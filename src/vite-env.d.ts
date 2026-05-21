@@ -1,5 +1,30 @@
 /// <reference types="vite/client" />
 
+declare module 'html2pdf.js' {
+  interface Html2PdfOptions {
+    margin?: number | number[];
+    filename?: string;
+    image?: { type?: string; quality?: number };
+    html2canvas?: {
+      scale?: number;
+      logging?: boolean;
+      useCORS?: boolean;
+      letterRendering?: boolean;
+      onclone?: (doc: Document) => void;
+      [key: string]: unknown;
+    };
+    jsPDF?: Record<string, unknown>;
+    pagebreak?: Record<string, unknown>;
+  }
+  interface Html2PdfWorker {
+    set(options: Html2PdfOptions): Html2PdfWorker;
+    from(element: HTMLElement): Html2PdfWorker;
+    save(): Promise<void>;
+  }
+  function html2pdf(): Html2PdfWorker;
+  export default html2pdf;
+}
+
 interface ImportMetaEnv {
   readonly VITE_FIREBASE_API_KEY?: string;
   readonly VITE_FIREBASE_AUTH_DOMAIN?: string;

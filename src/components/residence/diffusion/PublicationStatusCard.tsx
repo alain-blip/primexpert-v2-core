@@ -1,4 +1,4 @@
-import { ExternalLink, FileEdit, Globe, Loader2, Ban } from 'lucide-react';
+import { ExternalLink, FileEdit, Globe, Loader2, Ban, Eye, Link2 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { useLanguage } from '../../../lib/i18n';
 import type { ResidenceSyndicationMeta } from '../../../lib/diffusionSyndication';
@@ -15,6 +15,10 @@ export interface PublicationStatusCardProps {
   onViewOnline: () => void;
   onSaveDraft: () => void;
   onHide: () => void;
+  onOpenDraftPreview: () => void;
+  onCopySellerLink: () => void;
+  sellerLinkCopied?: boolean;
+  sellerLinkAvailable?: boolean;
 }
 
 export function PublicationStatusCard({
@@ -25,6 +29,10 @@ export function PublicationStatusCard({
   onViewOnline,
   onSaveDraft,
   onHide,
+  onOpenDraftPreview,
+  onCopySellerLink,
+  sellerLinkCopied = false,
+  sellerLinkAvailable = true,
 }: PublicationStatusCardProps) {
   const { t, language } = useLanguage();
   const status = meta.publicListingStatus;
@@ -84,6 +92,36 @@ export function PublicationStatusCard({
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <button
+          type="button"
+          disabled={isBusy}
+          onClick={onOpenDraftPreview}
+          className={cn(
+            ACTION_BTN,
+            'border-sky-200 bg-sky-100 text-primexpert-dark hover:bg-sky-50'
+          )}
+        >
+          <Eye className="h-5 w-5 shrink-0" />
+          {t('Visualiser le brouillon', 'Preview draft')}
+        </button>
+
+        <button
+          type="button"
+          disabled={isBusy || !sellerLinkAvailable}
+          onClick={onCopySellerLink}
+          className={cn(
+            ACTION_BTN,
+            sellerLinkCopied
+              ? 'border-emerald-200 bg-emerald-100 text-emerald-950'
+              : 'border-white/50 bg-white/15 text-white hover:bg-white/25'
+          )}
+        >
+          <Link2 className="h-5 w-5 shrink-0" />
+          {sellerLinkCopied
+            ? t('Lien copié', 'Link copied')
+            : t('Lien vendeur', 'Seller link')}
+        </button>
+
         <button
           type="button"
           disabled={!meta.wpUrl || isBusy}

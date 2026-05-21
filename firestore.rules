@@ -6,6 +6,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Collection group `messages` — analyses messagerie (Dashboard, Listings, chronologie).
+    match /{path=**}/messages/{messageId} {
+      allow read: if isSignedIn() && resource.data.brokerId == request.auth.uid;
+    }
+
     // Global Helpers
     function isSignedIn() { return request.auth != null; }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
@@ -14,6 +19,14 @@ service cloud.firestore {
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     function isOrgMember(orgId) { 
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.orgId == orgId; 
+    }
+
+    function userProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isOrgAdmin(orgId) {
+      return isOrgMember(orgId) && userProfile().role in ['admin', 'admin_system'];
     }
 
     // Users (Split PII logic)
@@ -93,9 +106,33 @@ service cloud.firestore {
       allow write: if isOrgMember(orgId);
     }
 
+    // CRM contacts — ownerId + pool RPA (AGENCY_SHARED) ; réassignation leads pub AGENCY_AD
     match /organizations/{orgId}/contacts/{contactId} {
-      allow read: if isOrgMember(orgId);
-      allow write: if isOrgMember(orgId);
+      allow read: if isOrgMember(orgId) && (
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.visibility == 'AGENCY_SHARED'
+      );
+
+      allow create: if isOrgMember(orgId) &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().orgId == orgId &&
+        incoming().silo in ['RESIDENTIEL', 'RES_COM', 'COMMERCIAL_SPEC'] &&
+        incoming().visibility in ['PRIVATE', 'AGENCY_SHARED'] &&
+        incoming().leadSource in ['AGENCY_AD', 'BROKER_GENERATED', 'REFERRAL', 'IMPORT_LEGACY', 'OTHER'] &&
+        incoming().nom is string && incoming().nom.size() > 0 &&
+        incoming().dateNaissance is string && incoming().dateNaissance.size() > 0 &&
+        incoming().occupationProfession is string && incoming().occupationProfession.size() > 0 &&
+        incoming().adresse is map;
+
+      allow update: if isOrgMember(orgId) && (
+        (resource.data.ownerId == request.auth.uid &&
+         incoming().ownerId == resource.data.ownerId) ||
+        (isOrgAdmin(orgId) &&
+         resource.data.leadSource == 'AGENCY_AD' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ownerId', 'updatedAt']))
+      );
+
+      allow delete: if isOrgMember(orgId) && resource.data.ownerId == request.auth.uid;
     }
 
     match /organizations/{orgId}/transactions/{transactionId} {

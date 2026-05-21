@@ -4,13 +4,17 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { BarChart3, Coins, Landmark, Microscope, Percent } from 'lucide-react';
+import { BarChart3, Coins, Landmark, Microscope, Percent, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../../../lib/utils';
 import { useLanguage } from '../../../lib/i18n';
 import { useFinancialData } from '../../../context/FinancialDataContext';
+import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
+import { FinanceHubLockProvider } from '../../../context/FinanceHubLockContext';
 import { normalizeFinancialData } from '@primexpert/core/financial';
+import { isFinanceHubSealed } from '@primexpert/core/diffusion';
 import type { Residence } from '../../../services/residences';
+import { FinanceHubMasterPanel } from '../finance/FinanceHubMasterPanel';
 import { BilanExecutifTab } from './BilanExecutifTab';
 import { RevenusDepensesTab } from './RevenusDepensesTab';
 import { FinancabiliteTab } from './FinancabiliteTab';
@@ -41,10 +45,38 @@ export interface FinanceHubTabProps {
   residence: Residence;
 }
 
+function resolveFinanceLockInput(
+  doc: Record<string, unknown> | null | undefined
+): Parameters<typeof isFinanceHubSealed>[0] {
+  if (!doc) return {};
+  const promesseRaw = doc.promesseAchat;
+  const promesseAchat =
+    promesseRaw && typeof promesseRaw === 'object' && !Array.isArray(promesseRaw)
+      ? (promesseRaw as {
+          statut?: string | null;
+          dateNotairePrevue?: string | null;
+          dateNotaire?: string | null;
+        })
+      : null;
+  return {
+    stage: typeof doc.stage === 'string' ? doc.stage : null,
+    status: typeof doc.status === 'string' ? doc.status : null,
+    pipelineStatus: typeof doc.pipelineStatus === 'string' ? doc.pipelineStatus : null,
+    statut: typeof doc.statut === 'string' ? doc.statut : null,
+    promesseAchat,
+  };
+}
+
 export function FinanceHubTab({ residence }: FinanceHubTabProps) {
   const { language, t } = useLanguage();
   const [subTab, setSubTab] = useState<FinanceSubTab>('bilan');
   const { financialData, loading } = useFinancialData();
+  const { residenceDoc } = useResidenceDocument();
+
+  const inputsLocked = useMemo(
+    () => isFinanceHubSealed(resolveFinanceLockInput(residenceDoc ?? undefined)),
+    [residenceDoc]
+  );
 
   const hasFinancials = useMemo(() => {
     const hints = { prixDemande: residence.price, askingPrice: residence.price };
@@ -68,8 +100,27 @@ export function FinanceHubTab({ residence }: FinanceHubTabProps) {
     }
   }, [subTab, residence]);
 
+  const openAnalyse360 = () => setSubTab('analyse-360');
+
   return (
-    <>
+    <FinanceHubLockProvider inputsLocked={inputsLocked}>
+      {inputsLocked ? (
+        <div
+          role="status"
+          className="flex items-start gap-3 border-b-4 border-amber-500 bg-amber-100 px-5 py-4 text-amber-950"
+        >
+          <ShieldAlert className="h-6 w-6 shrink-0" aria-hidden />
+          <p className="text-[15px] font-black uppercase tracking-wide leading-snug">
+            {t(
+              'Données financières scellées — Transaction en cours',
+              'Financial data sealed — Transaction in progress'
+            )}
+          </p>
+        </div>
+      ) : null}
+
+      <FinanceHubMasterPanel onOpenAnalyse360={openAnalyse360} residence={residence} />
+
       {!loading && (
         <div className="flex flex-wrap items-center justify-end gap-3 border-b border-[#142c6a]/15 bg-white px-5 py-3">
           <span
@@ -120,6 +171,6 @@ export function FinanceHubTab({ residence }: FinanceHubTabProps) {
       <motion.div key={subTab} role="tabpanel" className="p-5 min-h-[320px] bg-white">
         {panel}
       </motion.div>
-    </>
+    </FinanceHubLockProvider>
   );
 }

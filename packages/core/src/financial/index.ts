@@ -11,3 +11,7 @@ export * from './performanceRatios';
 export * from './financialOptimization360';
 export * from './tp70';
 export { REGIONS_QUEBEC, type QuebecRegionRow } from './regionsQuebec';
+export * from './financeHubGlossary';
+export * from './certifiableFinancialReport';
+export * from './acmPresentationReport';
+export * from './detailedFinancialReport';

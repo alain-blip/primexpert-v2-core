@@ -19,3 +19,5 @@ export * as mail from './mail';
 export * as audio from './audio';
 export * as financial from './financial';
 export * as diffusion from './diffusion';
+export * as crm from './crm';
+export * as residence from './residence';

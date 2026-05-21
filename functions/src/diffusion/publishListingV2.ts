@@ -64,7 +64,17 @@ export async function publishListingHandler(
   const wpPayload = buildWordPressPayload(
     listing,
     'publish',
-    residence.wpPostId ?? undefined
+    residence.wpPostId ?? undefined,
+    {
+      transaction: {
+        stage: residence.data.stage,
+        status: residence.data.status,
+        pipelineStatus: residence.data.pipelineStatus,
+        statut: residence.data.statut,
+        dateNotairePrevu: residence.data.dateNotairePrevu,
+        promesseAchat: residence.data.promesseAchat,
+      },
+    }
   );
   const wp = await upsertWordPressPost(wpPayload);
 
