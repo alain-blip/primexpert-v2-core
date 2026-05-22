@@ -13,8 +13,7 @@ import {
   type ResidenceFinancialHints,
 } from '@primexpert/core/financial';
 import { buildBrokerFooterFromProfile } from './certifiableReportPdfService';
-
-const CRAFTMYPDF_CREATE_URL = 'https://api.craftmypdf.com/v1/create';
+import { requestCraftMyPdfBlob, triggerBrowserDownload } from './craftMyPdfClient';
 
 export interface CraftMyPdfDepenseRow {
   poste: string;
@@ -49,26 +48,10 @@ export interface DownloadDetailedFinancialReportPdfInput
   financialData: FinancialDataV2Doc | null | undefined;
 }
 
-interface CraftMyPdfConfig {
-  apiKey: string;
-  templateId: string;
-}
-
-interface CraftMyPdfCreateResponse {
-  status?: string;
-  download_url?: string;
-  file?: string;
-  message?: string;
-  error?: string;
-}
-
-function readCraftMyPdfConfig(): CraftMyPdfConfig {
-  const apiKey = import.meta.env.VITE_CRAFTMYPDF_API_KEY?.trim();
+function readDetailedTemplateId(): string {
   const templateId = import.meta.env.VITE_CRAFTMYPDF_TEMPLATE_ID?.trim();
-  if (!apiKey || !templateId) {
-    throw new Error('CRAFTMYPDF_CONFIG_MISSING');
-  }
-  return { apiKey, templateId };
+  if (!templateId) throw new Error('CRAFTMYPDF_CONFIG_MISSING');
+  return templateId;
 }
 
 function finiteNum(value: unknown): number | null {
@@ -232,63 +215,6 @@ function buildFilename(slug: string, model: DetailedFinancialReportModel): strin
   return `primexpert-rapport-financier-detaille-${slug}-${stamp}.pdf`;
 }
 
-function triggerBrowserDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.rel = 'noopener';
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
-function extractPdfDownloadUrl(body: CraftMyPdfCreateResponse): string {
-  const url = body.download_url ?? body.file;
-  if (typeof url === 'string' && url.startsWith('http')) return url;
-  throw new Error(body.message ?? body.error ?? 'CRAFTMYPDF_NO_DOWNLOAD_URL');
-}
-
-/** POST /v1/create — retourne le Blob PDF (via URL pré-signée ou binaire). */
-export async function requestCraftMyPdfBlob(
-  payload: CraftMyPdfReportPayload,
-  config: CraftMyPdfConfig = readCraftMyPdfConfig()
-): Promise<Blob> {
-  const response = await fetch(CRAFTMYPDF_CREATE_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-KEY': config.apiKey,
-    },
-    body: JSON.stringify({
-      template_id: config.templateId,
-      data: payload,
-      export_type: 'json',
-    }),
-  });
-
-  if (!response.ok) {
-    const errText = await response.text().catch(() => '');
-    throw new Error(`CRAFTMYPDF_HTTP_${response.status}:${errText.slice(0, 200)}`);
-  }
-
-  const contentType = response.headers.get('content-type') ?? '';
-  if (contentType.includes('application/pdf')) {
-    return response.blob();
-  }
-
-  const body = (await response.json()) as CraftMyPdfCreateResponse;
-  if (body.status && body.status !== 'success' && body.status !== 'completed') {
-    throw new Error(body.message ?? body.error ?? `CRAFTMYPDF_STATUS_${body.status}`);
-  }
-
-  const pdfUrl = extractPdfDownloadUrl(body);
-  const pdfResponse = await fetch(pdfUrl);
-  if (!pdfResponse.ok) {
-    throw new Error(`CRAFTMYPDF_PDF_FETCH_${pdfResponse.status}`);
-  }
-  return pdfResponse.blob();
-}
-
 export async function downloadDetailedFinancialReportPdfFromModel(
   model: DetailedFinancialReportModel,
   residenceId?: string,
@@ -297,7 +223,10 @@ export async function downloadDetailedFinancialReportPdfFromModel(
   const slug = (residenceId ?? 'detail').replace(/[^a-zA-Z0-9]/g, '').slice(-10);
   const filename = buildFilename(slug, model);
   const payload = buildCraftMyPdfPayload(model, options);
-  const blob = await requestCraftMyPdfBlob(payload);
+  const blob = await requestCraftMyPdfBlob(
+    readDetailedTemplateId(),
+    payload as unknown as Record<string, unknown>
+  );
   triggerBrowserDownload(blob, filename);
 }
 

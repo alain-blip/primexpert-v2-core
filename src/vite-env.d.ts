@@ -40,6 +40,8 @@ interface ImportMetaEnv {
   /** CraftMyPDF — rapport financier détaillé (Hub Finance). */
   readonly VITE_CRAFTMYPDF_API_KEY?: string;
   readonly VITE_CRAFTMYPDF_TEMPLATE_ID?: string;
+  /** CraftMyPDF — rapport financier acheteur. */
+  readonly VITE_CRAFTMYPDF_BUYER_TEMPLATE_ID?: string;
 }
 
 interface ImportMeta {
