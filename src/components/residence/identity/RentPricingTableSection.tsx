@@ -83,6 +83,13 @@ export function RentPricingTableSection({ rentPricing, language }: RentPricingTa
                   {(['qty', 'occupation', 'loyer'] as const).map((col) => {
                     const fieldId = row.fieldIds[col];
                     const saving = savingFieldId === fieldId;
+                    const colLabel =
+                      col === 'qty'
+                        ? t('Qté', 'Qty')
+                        : col === 'occupation'
+                          ? t('Occupation %', 'Occupancy %')
+                          : t('Loyer moyen', 'Avg rent');
+                    const controlId = `rent-pricing-${row.typeKey}-${col}`;
                     const display =
                       col === 'qty'
                         ? String(row.qty || '')
@@ -100,8 +107,13 @@ export function RentPricingTableSection({ rentPricing, language }: RentPricingTa
                         key={col}
                         className="border-t border-black/10 px-3 py-3 text-right"
                       >
+                        <label htmlFor={controlId} className="sr-only">
+                          {label} — {colLabel}
+                        </label>
                         <span className="inline-flex items-center justify-end gap-2">
                           <input
+                            id={controlId}
+                            name={fieldId}
                             type="number"
                             min={0}
                             value={draft}
@@ -112,6 +124,7 @@ export function RentPricingTableSection({ rentPricing, language }: RentPricingTa
                             }}
                             className={NUMBER_INPUT_CLASSES}
                             placeholder="0"
+                            aria-label={`${label} — ${colLabel}`}
                           />
                           {saving ? (
                             <Loader2 className="h-4 w-4 animate-spin text-slate-500" />

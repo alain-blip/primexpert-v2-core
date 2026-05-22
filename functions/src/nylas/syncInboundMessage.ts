@@ -6,6 +6,7 @@ import {
   loadBrokerResidenceInventory,
   mailAnalysisToFirestoreFields,
 } from './mailMessageAnalysis';
+import { fetchNylasMessageById, resolveNylasMessageBody } from './fetchMessageBody';
 import type { NylasMessageObject } from './types';
 
 export interface SyncInboundInput {
@@ -44,7 +45,11 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
   const nylasThreadId = message.thread_id;
   const sentAtMillis =
     typeof message.date === 'number' ? message.date * 1000 : Date.now();
-  const body = message.body || message.snippet || '';
+  let body = resolveNylasMessageBody(message);
+  if (body.length < 20 && message.id) {
+    const full = await fetchNylasMessageById(input.grantId, message.id);
+    if (full) body = resolveNylasMessageBody(full);
+  }
   const snippet =
     body.length > 140 ? `${body.slice(0, 137)}…` : body || message.snippet || '';
   const contact = pickContact(message, direction);
@@ -124,7 +129,10 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
   const messagesCol = threadMessagesCol(brokerId, threadDocId);
   const dup = await messagesCol.where('nylasMessageId', '==', nylasMessageId).limit(1).get();
   if (!dup.empty) {
-    await dup.docs[0].ref.update(analysisFields);
+    const patch: Record<string, unknown> = { ...analysisFields };
+    const prevBody = String(dup.docs[0].data()?.body ?? '').trim();
+    if (!prevBody && body) patch.body = body;
+    await dup.docs[0].ref.update(patch);
     return;
   }
 

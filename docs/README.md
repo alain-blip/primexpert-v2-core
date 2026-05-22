@@ -43,6 +43,19 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 8. **Messagerie** — SSOT `users/{uid}/email_threads` + `messages` (Nylas) ; voir [project_canonical_fields.md](./project_canonical_fields.md).
 9. **Promesse d'achat** — SSOT `packages/core/src/transaction/` + objet Firestore `offre` / `promesseAchat`.
 10. **Diffusion Web** — `@primexpert/core/diffusion` vendoré dans Cloud Functions (prebuild).
+11. **CRM Contacts** — SSOT `organizations/{orgId}/contacts` ; pas de `clients/` ni `vendors/` parallèles ; liaisons `coBuyerIds` / `coSellerIds` et `partiesImpliquees` en writeBatch.
+
+---
+
+## Répertoire clients (CRM) — 2026-05-20
+
+| Élément | Détail |
+|---------|--------|
+| **Accès** | Workhub → onglet CRM (`ContactsListPage`) |
+| **Core** | `packages/core/src/crm/` |
+| **Service** | `src/services/contacts.ts` |
+| **Fiche** | `ContactFormDrawer` — LCI, rôles, préférences Loi 25/LCAP, courtier responsable (admin), critères acheteur/vendeur |
+| **Import** | `scripts/migrate-legacy-contacts-to-v2.mjs` |
 
 ---
 
@@ -82,4 +95,4 @@ Copie possible sur disque : `00_PRIMEXPERT_SYSTEME_APP/docs/` — maintenir alig
 
 ---
 
-*Index mis à jour : 2026-05-20 — Email SSOT Phase 1, PA, diffusion prebuild, webhook Nylas (Loi 25).*
+*Index mis à jour : 2026-05-20 — CRM contacts, tiers acheteur/vendeur, parties résidence, Email SSOT, PA, diffusion, Hub Finance.*

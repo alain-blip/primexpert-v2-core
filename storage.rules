@@ -24,6 +24,12 @@ service firebase.storage {
         && firestore.get(residenceRef(propertyId)).data.courtiersResponsables == request.auth.uid;
     }
 
+    function userOrgId() {
+      return firestore.get(
+        /databases/ai-studio-1214d671-efd2-47da-93b7-425feb92155a/documents/users/$(request.auth.uid)
+      ).data.orgId;
+    }
+
     // Legacy — fichiers déjà téléversés sous l’ancien chemin (lecture / suppression propriétaire)
     match /properties/{propertyId}/documents/{category}/{fileName} {
       allow read, delete: if isLegacyResidenceOwner(propertyId);
@@ -40,6 +46,15 @@ service firebase.storage {
                     && request.resource.metadata.courtiersResponsables == brokerId;
 
       allow delete: if request.auth != null && request.auth.uid == brokerId;
+    }
+
+    // Mes Documents — espace de travail agence (orgId ≠ uid possible)
+    match /primexpert/{orgId}/agency_documents/{category}/{fileName} {
+      allow read: if request.auth != null && userOrgId() == orgId;
+      allow create: if request.auth != null
+                    && userOrgId() == orgId
+                    && request.resource.size < 25 * 1024 * 1024;
+      allow delete: if request.auth != null && userOrgId() == orgId;
     }
 
     // Drive PrimeXpert — reste du silo courtier

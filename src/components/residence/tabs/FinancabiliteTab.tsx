@@ -175,25 +175,31 @@ function AuditRneToggle({
           : 'Pick the NOI that powers the scenario: the table (max loan / DSCR / down payment) updates instantly.'}
       </p>
 
-      <div
-        role="radiogroup"
-        aria-label={language === 'fr' ? 'Choix RNE' : 'NOI choice'}
-        className="mt-4 grid gap-3 sm:grid-cols-2"
+      <fieldset
+        disabled={disabled}
+        className="mt-4 grid gap-3 border-0 p-0 sm:grid-cols-2"
       >
-        <button
-          type="button"
-          role="radio"
-          aria-checked={optionA}
-          disabled={disabled}
-          onClick={() => onChange(false)}
+        <legend className="sr-only">
+          {language === 'fr' ? 'Choix RNE' : 'NOI choice'}
+        </legend>
+        <label
           className={cn(
-            'flex flex-col items-start gap-1 rounded-2xl border-2 px-5 py-4 text-left transition-colors',
+            'flex cursor-pointer flex-col items-start gap-1 rounded-2xl border-2 px-5 py-4 text-left transition-colors',
             disabled && 'cursor-not-allowed opacity-60',
             optionA
               ? 'border-[#142c6a] bg-[#142c6a] text-white shadow-md'
               : 'border-[#142c6a]/30 bg-white text-[#142c6a] hover:border-[#142c6a]'
           )}
         >
+          <input
+            type="radio"
+            id="finance-bank-noi-declared"
+            name="finance-bank-noi-basis"
+            checked={optionA}
+            disabled={disabled}
+            onChange={() => onChange(false)}
+            className="sr-only"
+          />
           <span className="text-[13px] font-black uppercase tracking-wider">{labelA}</span>
           <span
             className={cn(
@@ -211,21 +217,25 @@ function AuditRneToggle({
           >
             {subA}
           </span>
-        </button>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={optionB}
-          disabled={disabled}
-          onClick={() => onChange(true)}
+        </label>
+        <label
           className={cn(
-            'flex flex-col items-start gap-1 rounded-2xl border-2 px-5 py-4 text-left transition-colors',
+            'flex cursor-pointer flex-col items-start gap-1 rounded-2xl border-2 px-5 py-4 text-left transition-colors',
             disabled && 'cursor-not-allowed opacity-60',
             optionB
               ? 'border-emerald-700 bg-emerald-700 text-white shadow-md'
               : 'border-emerald-700/30 bg-white text-emerald-900 hover:border-emerald-700'
           )}
         >
+          <input
+            type="radio"
+            id="finance-bank-noi-audited"
+            name="finance-bank-noi-basis"
+            checked={optionB}
+            disabled={disabled}
+            onChange={() => onChange(true)}
+            className="sr-only"
+          />
           <span className="text-[13px] font-black uppercase tracking-wider">{labelB}</span>
           <span
             className={cn(
@@ -243,8 +253,8 @@ function AuditRneToggle({
           >
             {subB}
           </span>
-        </button>
-      </div>
+        </label>
+      </fieldset>
     </section>
   );
 }

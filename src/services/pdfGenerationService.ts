@@ -7,13 +7,29 @@ import { createRoot, type Root } from 'react-dom/client';
 import html2pdf from 'html2pdf.js';
 import type { ReactElement } from 'react';
 
-const LETTER_WIDTH = '8.5in';
+const A4_WIDTH_MM = '210mm';
+const LETTER_WIDTH_IN = '8.5in';
+
+export type PdfPageFormat = 'a4' | 'letter';
 
 export interface PdfGenerationOptions {
   filename: string;
+  /** Défaut : letter (8,5 × 11 po). Rapport détaillé : a4. */
+  pageFormat?: PdfPageFormat;
 }
 
 const UNSUPPORTED_COLOR_RE = /oklch|oklab|color-mix|lab\(/i;
+
+function hostWidthForFormat(format: PdfPageFormat): string {
+  return format === 'a4' ? A4_WIDTH_MM : LETTER_WIDTH_IN;
+}
+
+function jsPdfOptionsForFormat(format: PdfPageFormat) {
+  if (format === 'a4') {
+    return { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const };
+  }
+  return { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const };
+}
 
 /** html2canvas ne parse pas les couleurs Tailwind v4 (oklch) — repli RGB hex. */
 function sanitizeClonedDocumentForCanvas(clonedDoc: Document): void {
@@ -43,32 +59,35 @@ function sanitizeClonedDocumentForCanvas(clonedDoc: Document): void {
   });
 }
 
-const DEFAULT_HTML2PDF_OPTIONS = {
-  margin: 0,
-  image: { type: 'jpeg' as const, quality: 0.98 },
-  html2canvas: {
-    scale: 2,
-    logging: false,
-    useCORS: true,
-    letterRendering: true,
-    onclone: (clonedDoc: Document) => sanitizeClonedDocumentForCanvas(clonedDoc),
-  },
-  jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const },
-  pagebreak: {
-    mode: ['css', 'legacy'] as const,
-    after: '.pdf-page-break',
-    avoid: ['tr', '.pdf-avoid-break', '.pdf-table-row'],
-  },
-};
+function buildHtml2PdfOptions(format: PdfPageFormat, filename: string) {
+  return {
+    margin: 0,
+    filename,
+    image: { type: 'jpeg' as const, quality: 0.98 },
+    html2canvas: {
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      letterRendering: true,
+      onclone: (clonedDoc: Document) => sanitizeClonedDocumentForCanvas(clonedDoc),
+    },
+    jsPDF: jsPdfOptionsForFormat(format),
+    pagebreak: {
+      mode: ['css', 'legacy'] as const,
+      after: '.pdf-page-break',
+      avoid: ['tr', '.pdf-avoid-break', '.pdf-table-row', '.pdf-tile'],
+    },
+  };
+}
 
-function createOffscreenHost(): HTMLDivElement {
+function createOffscreenHost(width: string): HTMLDivElement {
   const host = document.createElement('div');
   host.setAttribute('aria-hidden', 'true');
   Object.assign(host.style, {
     position: 'fixed',
     left: '-12000px',
     top: '0',
-    width: LETTER_WIDTH,
+    width,
     zIndex: '-1',
     pointerEvents: 'none',
     overflow: 'hidden',
@@ -87,12 +106,10 @@ export async function generatePdfFromElement(
   element: HTMLElement,
   options: PdfGenerationOptions
 ): Promise<void> {
+  const format = options.pageFormat ?? 'letter';
   try {
     await html2pdf()
-      .set({
-        ...DEFAULT_HTML2PDF_OPTIONS,
-        filename: options.filename,
-      })
+      .set(buildHtml2PdfOptions(format, options.filename))
       .from(element)
       .save();
   } catch (err) {
@@ -105,7 +122,8 @@ export async function renderReactTemplateToPdf(
   renderTemplate: (mountEl: HTMLDivElement) => ReactElement,
   options: PdfGenerationOptions
 ): Promise<void> {
-  const host = createOffscreenHost();
+  const format = options.pageFormat ?? 'letter';
+  const host = createOffscreenHost(hostWidthForFormat(format));
   const mountEl = document.createElement('div');
   host.appendChild(mountEl);
   let root: Root | null = createRoot(mountEl);

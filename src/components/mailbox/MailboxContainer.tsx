@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useLanguage } from '../../lib/i18n';
@@ -18,7 +18,11 @@ import {
   updateThreadMailboxFolder,
 } from '../../services/emailSyncService';
 import type { NylasThreadFolderMove } from '../../services/nylasClient';
-import { isNylasConfigured, moveThreadViaNylas } from '../../services/nylasClient';
+import {
+  fetchNylasMessageBody,
+  isNylasConfigured,
+  moveThreadViaNylas,
+} from '../../services/nylasClient';
 import { MailboxFolderSidebar } from './MailboxFolderSidebar';
 import {
   resolveDefaultEmailAccount,
@@ -49,6 +53,9 @@ export function MailboxContainer() {
   const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
   const [activeFolder, setActiveFolder] = useState<MailboxFolder>('INBOX');
   const [composerFromAccountId, setComposerFromAccountId] = useState<string | null>(null);
+  const [resolvedBodies, setResolvedBodies] = useState<Record<string, string>>({});
+  const [hydratingMessageIds, setHydratingMessageIds] = useState<Set<string>>(new Set());
+  const hydrateAttemptedRef = useRef<Set<string>>(new Set());
 
   const emailAccounts = useMemo(
     () =>
@@ -163,6 +170,12 @@ export function MailboxContainer() {
   }, [messages, pendingOutbound, selectedThread]);
 
   useEffect(() => {
+    setResolvedBodies({});
+    setHydratingMessageIds(new Set());
+    hydrateAttemptedRef.current = new Set();
+  }, [selectedThread?.id]);
+
+  useEffect(() => {
     if (!brokerId || !selectedThread?.id) {
       setMessages([]);
       setPendingOutbound([]);
@@ -196,6 +209,51 @@ export function MailboxContainer() {
 
     return () => unsub();
   }, [brokerId, selectedThread?.id]);
+
+  useEffect(() => {
+    if (!brokerId || !selectedThread || messagesLoading || !isNylasConfigured()) return;
+
+    const accountId = selectedThread.accountId ?? composerFromAccountId;
+    if (!accountId) return;
+
+    let cancelled = false;
+
+    for (const msg of messages) {
+      if (msg.body.trim().length > 20 || !msg.nylasMessageId) continue;
+      if (hydrateAttemptedRef.current.has(msg.id)) continue;
+      hydrateAttemptedRef.current.add(msg.id);
+
+      setHydratingMessageIds((prev) => new Set(prev).add(msg.id));
+
+      void fetchNylasMessageBody({
+        threadId: selectedThread.id,
+        messageId: msg.id,
+        accountId,
+      })
+        .then(({ body }) => {
+          if (cancelled) return;
+          const trimmed = body.trim();
+          if (trimmed) {
+            setResolvedBodies((prev) => ({ ...prev, [msg.id]: trimmed }));
+          }
+        })
+        .catch((e) => {
+          console.warn('[MailboxContainer] hydrate message body failed', e);
+        })
+        .finally(() => {
+          if (cancelled) return;
+          setHydratingMessageIds((prev) => {
+            const next = new Set(prev);
+            next.delete(msg.id);
+            return next;
+          });
+        });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [brokerId, selectedThread, messages, messagesLoading, composerFromAccountId]);
 
   const handleSelectThread = useCallback(
     async (thread: EmailThread) => {
@@ -404,6 +462,14 @@ export function MailboxContainer() {
             send: t('Envoyer', 'Send'),
             fromLabel: t('Expéditeur', 'From'),
             loadingMessages: t('Chargement des messages…', 'Loading messages…'),
+            loadingMessageBody: t(
+              'Chargement du contenu du courriel…',
+              'Loading email content…'
+            ),
+            messageBodyUnavailable: t(
+              'Contenu du message non disponible.',
+              'Message content unavailable.'
+            ),
             archive: t('Archiver', 'Archive'),
             delete: t('Supprimer', 'Delete'),
             deliveredReceipt: t('Reçu par le serveur', 'Delivered to server'),

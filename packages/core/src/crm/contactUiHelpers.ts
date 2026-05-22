@@ -12,6 +12,7 @@ import {
   type ContactRelationRole,
   type ContactSilo,
   type OrganizationContact,
+  type ProfessionalType,
 } from './contactTypes';
 
 export { CONTACT_RELATION_ROLES };
@@ -50,6 +51,26 @@ export const CONTACT_ROLE_LABEL_FR: Record<ContactRelationRole, string> = {
   blacklist: 'Liste noire',
 };
 
+export const PROFESSIONAL_TYPE_LABEL_FR: Record<ProfessionalType, string> = {
+  NOTARY: 'Notaire',
+  LAWYER: 'Avocat',
+  MORTGAGE_BROKER: 'Courtier hypothécaire',
+  BANK_REP_DDH: 'Représentant bancaire (DDH)',
+  APPRAISER: 'Évaluateur',
+  TAX_SPECIALIST: 'Fiscaliste',
+  ACCOUNTANT: 'Comptable',
+};
+
+export const PROFESSIONAL_TYPE_LABEL_EN: Record<ProfessionalType, string> = {
+  NOTARY: 'Notary',
+  LAWYER: 'Lawyer',
+  MORTGAGE_BROKER: 'Mortgage broker',
+  BANK_REP_DDH: 'Bank representative (DDH)',
+  APPRAISER: 'Appraiser',
+  TAX_SPECIALIST: 'Tax specialist',
+  ACCOUNTANT: 'Accountant',
+};
+
 export const CONTACT_ROLE_LABEL_EN: Record<ContactRelationRole, string> = {
   buyer: 'Buyer',
   seller: 'Seller',
@@ -68,18 +89,34 @@ export const BUYER_QUALIFICATION_LABEL_FR: Record<BuyerQualificationStatus, stri
 
 export const BUYER_TIER_LABEL_FR: Record<BuyerCommercialTier, string> = {
   PRIVILEGED: 'Acheteur privilégié',
-  CONFIDENTIAL: 'Acheteur confidentiel',
+  QUALIFIED: 'Acheteur qualifié',
 };
 
 export const BUYER_TIER_LABEL_EN: Record<BuyerCommercialTier, string> = {
   PRIVILEGED: 'Privileged buyer',
-  CONFIDENTIAL: 'Confidential buyer',
+  QUALIFIED: 'Qualified buyer',
 };
 
 export const BUYER_TIER_FILTER_OPTIONS: readonly BuyerCommercialTier[] = [
   'PRIVILEGED',
-  'CONFIDENTIAL',
+  'QUALIFIED',
 ] as const;
+
+/** Définitions typologie acheteur — info-bulle répertoire CRM. */
+export const BUYER_TIER_TOOLTIP_FR = [
+  'Acheteur privilégié : possède une entente de confidentialité (NDA) et une preuve financière vérifiée.',
+  'Acheteur qualifié : possède une entente de confidentialité (NDA) ou une preuve financière (dossier en cours).',
+] as const;
+
+export const BUYER_TIER_TOOLTIP_EN = [
+  'Privileged buyer: holds a non-disclosure agreement (NDA) and verified financial proof.',
+  'Qualified buyer: holds a non-disclosure agreement (NDA) or financial proof (file in progress).',
+] as const;
+
+export function formatBuyerTierTooltip(language: 'fr' | 'en'): string {
+  const lines = language === 'fr' ? BUYER_TIER_TOOLTIP_FR : BUYER_TIER_TOOLTIP_EN;
+  return lines.join('\n\n');
+}
 
 export const BUYER_QUALIFICATION_LABEL_EN: Record<BuyerQualificationStatus, string> = {
   PENDING_NDA: 'Pending — non-disclosure agreement (NDA)',
@@ -187,6 +224,15 @@ export function formatBuyerTierLabel(
   language: 'fr' | 'en'
 ): string {
   return language === 'fr' ? BUYER_TIER_LABEL_FR[tier] : BUYER_TIER_LABEL_EN[tier];
+}
+
+export function formatProfessionalTypeLabel(
+  type: ProfessionalType,
+  language: 'fr' | 'en'
+): string {
+  return language === 'fr'
+    ? PROFESSIONAL_TYPE_LABEL_FR[type]
+    : PROFESSIONAL_TYPE_LABEL_EN[type];
 }
 
 /**

@@ -68,7 +68,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
         { id: 'stats', label: t('Statistiques', 'Statistics'), icon: BarChart3 },
         { id: 'crm', label: t('Répertoire clients', 'CRM'), icon: Users },
         { id: 'content', label: t('Rédacteur IA', 'AI Writer'), icon: FileText },
-        { id: 'drive', label: t('Mes Documents Professionnels', 'Professional Documents'), icon: FolderOpen },
+        { id: 'drive', label: t('Mes Documents', 'My Documents'), icon: FolderOpen },
         { id: 'phone', label: t('Téléphonie logicielle', 'Softphone'), icon: Phone },
         { id: 'mail', label: t('Boîte de courriels', 'Mailbox'), icon: Bell },
       ] as { id: string; label: string; icon: typeof Compass }[],

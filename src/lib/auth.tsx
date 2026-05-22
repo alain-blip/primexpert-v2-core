@@ -1,9 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   onAuthStateChanged,
-  signInWithRedirect,
   signInWithPopup,
-  getRedirectResult,
   GoogleAuthProvider,
   signOut,
   User as FirebaseUser,
@@ -56,13 +54,18 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   signIn: () => Promise<void>;
-  /** true pendant le retour Google OAuth (redirect). */
+  /** true pendant l’ouverture de la fenêtre Google OAuth (popup). */
   signInPending: boolean;
   logOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+function isPopupClosedByUser(err: unknown): boolean {
+  const code = (err as { code?: string })?.code ?? '';
+  return code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request';
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -116,14 +119,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true;
 
-    void getRedirectResult(auth)
-      .catch((err) => {
-        console.warn('[auth] getRedirectResult', err);
-      })
-      .finally(() => {
-        if (active) setSignInPending(false);
-      });
-
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       try {
@@ -151,22 +146,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const provider = new GoogleAuthProvider();
       /**
-       * En dev, `signInWithRedirect` échoue souvent (localhost vs IP, domaines autorisés,
-       * retour OAuth). Popup évite le rechargement complet et stabilise la session.
+       * Popup en dev et prod — évite la perte de session au retour OAuth
+       * (ITP / cookies tiers avec signInWithRedirect sur Firebase Hosting).
        */
-      if (import.meta.env.DEV) {
-        await signInWithPopup(auth, provider);
-      } else {
-        await signInWithRedirect(auth, provider);
-      }
+      await signInWithPopup(auth, provider);
     } catch (err) {
-      setSignInPending(false);
+      if (isPopupClosedByUser(err)) {
+        console.warn(
+          '[auth] Connexion Google annulée — fenêtre fermée par l’utilisateur.',
+          err
+        );
+        return;
+      }
       console.error('[auth] Google sign-in', err);
       throw err;
     } finally {
-      if (import.meta.env.DEV) {
-        setSignInPending(false);
-      }
+      setSignInPending(false);
     }
   };
 

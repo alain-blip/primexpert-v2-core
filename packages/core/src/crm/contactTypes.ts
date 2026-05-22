@@ -38,6 +38,26 @@ export const CONTACT_RELATION_ROLES = [
 ] as const;
 export type ContactRelationRole = (typeof CONTACT_RELATION_ROLES)[number];
 
+/** Spécialisation professionnelle (fiche contact `professional`). */
+export const PROFESSIONAL_TYPES = [
+  'NOTARY',
+  'LAWYER',
+  'MORTGAGE_BROKER',
+  'BANK_REP_DDH',
+  'APPRAISER',
+  'TAX_SPECIALIST',
+  'ACCOUNTANT',
+] as const;
+export type ProfessionalType = (typeof PROFESSIONAL_TYPES)[number];
+
+/** Critères fiche contact avec rôle courtier (`broker`). */
+export interface ContactBrokerCriteria {
+  /** Nom de l’agence immobilière. */
+  agencyName?: string;
+  /** Acheteurs sous la responsabilité de ce courtier (`contactId` acheteur). */
+  managedBuyerIds?: string[];
+}
+
 /** Pipeline acheteur qualifié — état sur la fiche contact (pas de collection `buyerPipeline`). */
 export const BUYER_QUALIFICATION_STATUSES = [
   'PENDING_NDA',
@@ -48,7 +68,7 @@ export const BUYER_QUALIFICATION_STATUSES = [
 export type BuyerQualificationStatus = (typeof BUYER_QUALIFICATION_STATUSES)[number];
 
 /** Typologie commerciale dérivée (non éditable manuellement). */
-export const BUYER_COMMERCIAL_TIERS = ['PRIVILEGED', 'CONFIDENTIAL'] as const;
+export const BUYER_COMMERCIAL_TIERS = ['PRIVILEGED', 'QUALIFIED'] as const;
 export type BuyerCommercialTier = (typeof BUYER_COMMERCIAL_TIERS)[number];
 
 /** Types de résidence visés (formulaire web rpaavendre.com). */
@@ -191,6 +211,10 @@ export interface OrganizationContact {
   buyerQualificationStatus?: BuyerQualificationStatus | null;
   buyerCriteria?: ContactBuyerCriteria;
   sellerCriteria?: ContactSellerCriteria;
+  /** Agence et acheteurs gérés — rôle `broker`. */
+  brokerCriteria?: ContactBrokerCriteria;
+  /** Spécialisation — rôle `professional`. */
+  professionalType?: ProfessionalType;
   /** Consentements et exclusions courriel (Loi 25 / LCAP). */
   communicationPreferences?: ContactCommunicationPreferences;
   notes?: string;
@@ -308,6 +332,16 @@ export function isAgencyShareAllowedForContact(
   return silo === 'COMMERCIAL_SPEC' && assetNiche === 'RPA';
 }
 
+/** Silo par défaut à la création selon les rôles (courtier → résidentiel). */
+export function defaultContactSiloForRoles(
+  relationRoles?: readonly ContactRelationRole[],
+  explicitSilo?: ContactSilo
+): ContactSilo {
+  if (explicitSilo) return explicitSilo;
+  if (relationRoles?.includes('broker')) return 'RESIDENTIEL';
+  return 'RESIDENTIEL';
+}
+
 /** Visibilité par défaut à la création selon silo / niche. */
 export function defaultContactVisibility(
   silo: ContactSilo,
@@ -347,19 +381,21 @@ export function buyerCriteriaHasDocument(
 }
 
 /**
- * Acheteur privilégié : NDA signée + (mise de fonds OU lettre bancaire OU préapprobation).
- * Acheteur confidentiel : préapprobation hypothécaire seule (sans critères privilégiés).
+ * Typologie acheteur dérivée des pièces téléversées (entonnoir documentaire).
+ * - Privilégié : entente de confidentialité (NDA) ET preuve financière.
+ * - Qualifié : NDA OU preuve financière (exclusivement l’un ou l’autre).
  */
 export function deriveBuyerTier(contact: BuyerTierInput): BuyerCommercialTier | null {
   if (!contact.relationRoles?.includes('buyer')) return null;
   const c = contact.buyerCriteria ?? {};
-  const nda = buyerCriteriaHasDocument(c.ndaFile, c.hasNdaSigned);
-  const funds = buyerCriteriaHasDocument(c.proofOfFundsFile, c.hasProofOfFunds);
-  const bank = buyerCriteriaHasDocument(c.bankLetterFile, c.hasBankLetter);
-  const preApproval = buyerCriteriaHasDocument(c.mortgagePreApprovalFile, c.hasMortgagePreApproval);
+  const hasNDA = buyerCriteriaHasDocument(c.ndaFile, c.hasNdaSigned);
+  const hasFinancialProof =
+    buyerCriteriaHasDocument(c.proofOfFundsFile, c.hasProofOfFunds) ||
+    buyerCriteriaHasDocument(c.bankLetterFile, c.hasBankLetter) ||
+    buyerCriteriaHasDocument(c.mortgagePreApprovalFile, c.hasMortgagePreApproval);
 
-  if (nda && (funds || bank || preApproval)) return 'PRIVILEGED';
-  if (preApproval && !nda && !funds && !bank) return 'CONFIDENTIAL';
+  if (hasNDA && hasFinancialProof) return 'PRIVILEGED';
+  if (hasNDA !== hasFinancialProof) return 'QUALIFIED';
   return null;
 }
 
@@ -484,6 +520,35 @@ export function parseContactSellerCriteria(raw: unknown): ContactSellerCriteria 
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
+function parseProfessionalType(raw: unknown): ProfessionalType | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const v = raw.trim();
+  return (PROFESSIONAL_TYPES as readonly string[]).includes(v)
+    ? (v as ProfessionalType)
+    : undefined;
+}
+
+/** Normalise `brokerCriteria` depuis Firestore. */
+export function parseContactBrokerCriteria(raw: unknown): ContactBrokerCriteria | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const o = raw as Record<string, unknown>;
+  const out: ContactBrokerCriteria = {};
+  if (typeof o.agencyName === 'string' && o.agencyName.trim()) {
+    out.agencyName = o.agencyName.trim();
+  }
+  const managedBuyerIds = parseContactPartnerIds(o.managedBuyerIds);
+  if (managedBuyerIds?.length) out.managedBuyerIds = managedBuyerIds;
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** Lit critères courtier + acheteurs gérés depuis un document contact. */
+export function parseContactBrokerFields(data: Record<string, unknown>): {
+  brokerCriteria?: ContactBrokerCriteria;
+} {
+  const brokerCriteria = parseContactBrokerCriteria(data.brokerCriteria);
+  return brokerCriteria ? { brokerCriteria } : {};
+}
+
 /** Lit critères vendeur + covendeurs depuis un document contact. */
 export function parseContactSellerFields(data: Record<string, unknown>): {
   sellerCriteria?: ContactSellerCriteria;
@@ -511,4 +576,12 @@ export function parseContactBuyerFields(data: Record<string, unknown>): {
     ...(criteria ? { buyerCriteria: criteria } : {}),
     ...(coBuyerIds ? { coBuyerIds } : {}),
   };
+}
+
+/** Lit `professionalType` depuis un document contact. */
+export function parseContactProfessionalFields(data: Record<string, unknown>): {
+  professionalType?: ProfessionalType;
+} {
+  const professionalType = parseProfessionalType(data.professionalType);
+  return professionalType ? { professionalType } : {};
 }

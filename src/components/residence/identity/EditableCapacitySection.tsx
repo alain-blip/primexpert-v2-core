@@ -62,18 +62,25 @@ export function EditableCapacitySection({
           });
           const value = getCapacityDraftValue(def.id);
           const saving = savingFieldId === def.id;
+          const controlId = `capacity-field-${def.id}`;
+          const controlName = def.canonicalKey ?? def.id;
 
           return (
             <div
               key={def.id}
               className="min-w-0 rounded-xl border-2 border-black/10 bg-white py-4 px-4"
             >
-              <p className="mb-2 flex items-center gap-2 text-[13px] font-black uppercase tracking-wider text-[#142c6a]">
+              <label
+                htmlFor={controlId}
+                className="mb-2 flex items-center gap-2 text-[13px] font-black uppercase tracking-wider text-[#142c6a]"
+              >
                 <span>{label}</span>
                 <RaphaelBadge show={showBadge} />
                 {saving ? <Loader2 className="h-4 w-4 animate-spin text-slate-500" /> : null}
-              </p>
+              </label>
               <input
+                id={controlId}
+                name={controlName}
                 type="number"
                 min={0}
                 value={value}

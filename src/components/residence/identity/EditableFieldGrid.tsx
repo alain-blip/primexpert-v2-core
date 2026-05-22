@@ -85,6 +85,8 @@ function FieldCell({
   }, [local, draft, onDraftChange, onSave]);
 
   const label = language === 'fr' ? field.labelFr : field.labelEn;
+  const controlId = `identity-field-${field.id}`;
+  const controlName = field.id;
   const isSprinkler = field.inputType === 'sprinkler';
   const isNumber =
     field.inputType === 'number' ||
@@ -93,13 +95,18 @@ function FieldCell({
 
   return (
     <div className="min-w-0 rounded-xl border-2 border-black/10 bg-white py-4 px-4">
-      <p className="mb-2 flex items-center gap-2 text-[13px] font-black uppercase tracking-wider text-[#142c6a]">
+      <label
+        htmlFor={controlId}
+        className="mb-2 flex items-center gap-2 text-[13px] font-black uppercase tracking-wider text-[#142c6a]"
+      >
         <span>{label}</span>
         <RaphaelBadge show={field.showRaphaelBadge} />
         {saving ? <Loader2 className="h-4 w-4 animate-spin text-slate-500" /> : null}
-      </p>
+      </label>
       {isSprinkler ? (
         <select
+          id={controlId}
+          name={controlName}
           value={local}
           onChange={(e) => {
             setLocal(e.target.value);
@@ -114,6 +121,8 @@ function FieldCell({
         </select>
       ) : (
         <input
+          id={controlId}
+          name={controlName}
           type={isNumber ? 'number' : 'text'}
           value={local}
           onChange={(e) => setLocal(e.target.value)}

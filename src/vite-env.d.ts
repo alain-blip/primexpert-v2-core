@@ -37,6 +37,9 @@ interface ImportMetaEnv {
   readonly VITE_GEMINI_API_KEY?: string;
   /** `true` = Listings affiche des fiches fictives si le pipeline Firestore est vide (démo UX uniquement). */
   readonly VITE_USE_FICTITIOUS_DATA?: string;
+  /** CraftMyPDF — rapport financier détaillé (Hub Finance). */
+  readonly VITE_CRAFTMYPDF_API_KEY?: string;
+  readonly VITE_CRAFTMYPDF_TEMPLATE_ID?: string;
 }
 
 interface ImportMeta {

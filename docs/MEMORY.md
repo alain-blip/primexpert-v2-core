@@ -203,6 +203,74 @@ Côté client : `resolveEffectiveBillingStatus()` — règle 72 h si Firestore e
 - SSOT : `packages/core/src/diffusion/` → `functions/src/diffusion/_vendored/` via `sync-core-diffusion.cjs` (prebuild).
 - Stub **`financialCalcTypes.ts`** généré pour `buyerPreviewKpis` (évite vendor `normalizeFinancialData` entier).
 - Callables : `saveDraftListingV2`, `publishListingV2` — guardrails publicitaires OACIQ (`publicationGuardrails.ts`).
+- Enrichissements : `publicBuyerDisclosures`, `transactionBanner`, `formatPublicListingHeadline`, aperçu acheteur (`buyerPreviewKpis`).
+
+---
+
+## CRM Contacts — SSOT `organizations/{orgId}/contacts` (2026-05-20)
+
+**Règle :** pas de collections parallèles `clients/`, `vendors/`, `buyerPipeline/` — une fiche contact unifiée.
+
+| Élément | Détail |
+|---------|--------|
+| Core | `packages/core/src/crm/` — `contactTypes.ts`, `contactUiHelpers.ts`, `coBuyers.ts`, `coSellers.ts`, `legacyContactImport.ts` |
+| Service | `src/services/contacts.ts` — CRUD, upload pièces Storage, `linkCoBuyer` / `linkCoSeller` (writeBatch) |
+| UI | `ContactsListPage`, `ContactFormDrawer`, `BuyerTierBadge`, sections documents & partenaires |
+| Cloison | `ownerId` + `visibility: AGENCY_SHARED` (pool RPA uniquement) |
+| Import | `scripts/migrate-legacy-contacts-to-v2.mjs` (Copilote `contacts/` → V2) |
+
+### Acheteur — typologie dérivée (`deriveBuyerTier`)
+
+- **Acheteur privilégié** : NDA téléversée + (mise de fonds **ou** lettre bancaire **ou** préapprobation).
+- **Acheteur confidentiel** : préapprobation seule.
+- Pièces : `buyerCriteria.ndaFile`, `proofOfFundsFile`, `bankLetterFile`, `mortgagePreApprovalFile` — Storage `buyer_documents/{kind}/`.
+
+### Vendeur — mandat & conformité
+
+- `sellerCriteria` : contrat de courtage, titre de propriété, déclaration vendeur — Storage `seller_documents/{kind}/`.
+- `corporateMandate` partagé (Inc., NEQ, fiche REQ) sur acheteur **et** vendeur.
+
+### Liaisons bidirectionnelles (writeBatch atomique)
+
+- `coBuyerIds[]` / `coSellerIds[]` — lier A↔B met à jour **les deux** fiches en une transaction.
+- Pattern identique à `residenceIds` ↔ `partiesImpliquees` (`packages/core/src/residence/partiesImpliquees.ts`).
+
+### Chronologie contact
+
+- `packages/core/src/intelligence/contactTimeline.ts` + `communicationTimelineService.ts` — fil courriel + résidences liées dans le drawer contact.
+
+---
+
+## Hub Finance — refonte master panel (2026-05-20)
+
+- `FinanceHubMasterPanel.tsx`, `FinanceHubLockContext`, rapports PDF (`certifiableFinancialReport`, `detailedFinancialReport`, `acmPresentationReport`).
+- Core : `financeHubGlossary.ts`, sentinelle anti-drift TP70, glossaire Québec (pas « audit » à l’écran).
+
+---
+
+## Identité — courtier responsable inscription (2026-05-20)
+
+- `ResponsibleBrokerCard` dans `IdentiteImmeubleTab` — revendication / affichage `courtiersResponsables` (multi-tenant).
+- Écriture : `updateResidence({ courtiersResponsables: uid })` ; commit `0e64e83`.
+
+---
+
+## Parties résidence ↔ CRM (2026-05-20)
+
+- `PartiesIntervenantsSection` — recherche contacts, liaison `partiesImpliquees` + `contact.residenceIds` via `linkContactToResidence` (writeBatch).
+- Rôles : `VENDEUR`, `ACHETEUR`, `NOTAIRE`, `COLLABORATEUR`.
+
+---
+
+## Journée 2026-05-20 — synthèse trois chantiers (commits `main`)
+
+| Chantier | Commits | Livrables clés |
+|----------|---------|----------------|
+| **1 — CRM & répertoire** | `b9fe455` | Fiche contact LCI, tiers acheteur, vendeur (documents + covendeurs), import legacy, liste + drawer |
+| **2 — Messagerie & promesse** | `1c4f3c6`, `9b8a70c` | SSOT `email_threads`/`messages`, webhook Nylas Loi 25, refactor PA `offre` (persistance complète) |
+| **3 — Fiche résidence & finance** | `0e64e83`, `b9fe455` | Courtier responsable identité, Hub Finance master, parties CRM, diffusion enrichie, chronologie Intelligence |
+
+**Push Git :** `b9fe455`, `0e64e83` → `origin/main` (https://github.com/alain-blip/primexpert-v2-core.git).
 
 ---
 
@@ -223,9 +291,10 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 - **2026-05-19** : charte institutionnelle, inscriptions, Synthèse 360, documents ; déploiement Firebase hosting + indexes.
 - **2026-05-19 (fin de journée)** : Sprints PA 5.1–5.4 + Identité Confort 66+ ; `npm run build` + `firebase deploy --only hosting` sur `primexpert-app-v2`.
 - **2026-05-20** : Phase 1 Email SSOT (`1c4f3c6`) ; webhook Nylas signature ; fix prebuild diffusion `financialCalcTypes`.
+- **2026-05-20 (soir)** : CRM contacts unifiés + vendeur/acheteur documents (`b9fe455`) ; courtier responsable identité (`0e64e83`).
 
 **Repo :** https://github.com/alain-blip/primexpert-v2-core.git — branche `main`.
 
 ---
 
-*Journal mis à jour : 2026-05-20 — Email SSOT `email_threads`, PA persistance, diffusion prebuild, webhook Loi 25.*
+*Journal mis à jour : 2026-05-20 — CRM `organizations/contacts`, tiers acheteur/vendeur, coacheteurs/covendeurs, Email SSOT, PA, diffusion, Hub Finance, parties résidence.*

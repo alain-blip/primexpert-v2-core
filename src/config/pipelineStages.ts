@@ -225,3 +225,48 @@ export function getPipelineColumnLabel(
 export function isPipelineActiveStatus(status: ResidenceStatus): status is PipelineColumnId {
   return (PIPELINE_ACTIVE_STATUSES as readonly string[]).includes(status);
 }
+
+/** Regroupement Mes Documents — 4 sections navigation inscriptions. */
+export type DocumentsListingGroupId = 'mandate' | 'promise' | 'sold' | 'other';
+
+export interface DocumentsListingGroupDef {
+  id: DocumentsListingGroupId;
+  labelFr: string;
+  labelEn: string;
+}
+
+export const DOCUMENTS_LISTING_GROUPS: readonly DocumentsListingGroupDef[] = [
+  { id: 'mandate', labelFr: 'En mandat', labelEn: 'Under listing agreement' },
+  { id: 'promise', labelFr: "En promesse d'achat", labelEn: 'Under promise to purchase' },
+  { id: 'sold', labelFr: 'Vendues', labelEn: 'Sold' },
+  { id: 'other', labelFr: 'Autres', labelEn: 'Other' },
+] as const;
+
+/**
+ * Mappe `ResidenceStatus` canonique vers les 4 sections Mes Documents.
+ * - mandate → En mandat (actif / listed / en-mandat via resolveResidenceStatus)
+ * - promise → En PA (offre acceptée, conditionnelle, due diligence, etc.)
+ * - sold → Vendues (vendu, fermé, clôturé)
+ * - prospect | expired | unsigned → Autres
+ */
+export function resolveDocumentsListingGroup(status: ResidenceStatus): DocumentsListingGroupId {
+  if (status === 'mandate') return 'mandate';
+  if (status === 'promise') return 'promise';
+  if (status === 'sold') return 'sold';
+  return 'other';
+}
+
+export function groupResidencesByDocumentsStatus<T extends { status: ResidenceStatus }>(
+  residences: T[]
+): Record<DocumentsListingGroupId, T[]> {
+  const groups: Record<DocumentsListingGroupId, T[]> = {
+    mandate: [],
+    promise: [],
+    sold: [],
+    other: [],
+  };
+  for (const r of residences) {
+    groups[resolveDocumentsListingGroup(r.status)].push(r);
+  }
+  return groups;
+}

@@ -26,17 +26,24 @@ import {
 } from '@primexpert/core/residence';
 import {
   parseContactBuyerFields,
+  parseContactBrokerFields,
   parseContactCommunicationPreferences,
+  parseContactProfessionalFields,
   parseContactSellerFields,
+  defaultContactSiloForRoles,
   syncAddCoBuyerId,
   syncAddCoSellerId,
+  syncAddManagedBuyerId,
   syncRemoveCoBuyerId,
   syncRemoveCoSellerId,
+  syncRemoveManagedBuyerId,
   type ContactCriteriaDocumentRef,
   type BuyerQualificationStatus,
   type ContactBuyerCriteria,
+  type ContactBrokerCriteria,
   type ContactCommunicationPreferences,
   type ContactSellerCriteria,
+  type ProfessionalType,
 } from '@primexpert/core/crm';
 import { db } from '../lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -99,6 +106,8 @@ export interface CreateOrganizationContactInput {
   coBuyerIds?: string[];
   sellerCriteria?: ContactSellerCriteria;
   coSellerIds?: string[];
+  brokerCriteria?: ContactBrokerCriteria;
+  professionalType?: ProfessionalType;
   notes?: string;
   legalVerification?: ContactLegalVerification;
 }
@@ -152,6 +161,8 @@ function mapContactDoc(orgId: string, id: string, data: DocumentData): Organizat
       : undefined,
     ...parseContactBuyerFields(data as Record<string, unknown>),
     ...parseContactSellerFields(data as Record<string, unknown>),
+    ...parseContactBrokerFields(data as Record<string, unknown>),
+    ...parseContactProfessionalFields(data as Record<string, unknown>),
     notes: data.notes ? String(data.notes) : undefined,
     legalVerification: normalizeContactLegalVerification(data.legalVerification),
     importMeta: parseContactImportMeta(data.importMeta),
@@ -218,11 +229,12 @@ export async function createOrganizationContact(
 
   const ownerId =
     isContactAdmin(ctx) && input.ownerId?.trim() ? input.ownerId.trim() : ctx.uid;
+  const silo = defaultContactSiloForRoles(input.relationRoles, input.silo);
 
   const payload: Omit<OrganizationContact, 'id'> & { id?: string } = {
     orgId: ctx.orgId,
     ownerId,
-    silo: input.silo,
+    silo,
     assetNiche: input.assetNiche,
     visibility,
     leadSource: input.leadSource ?? 'BROKER_GENERATED',
@@ -242,6 +254,8 @@ export async function createOrganizationContact(
     ...(input.coBuyerIds?.length ? { coBuyerIds: input.coBuyerIds } : {}),
     ...(input.sellerCriteria ? { sellerCriteria: input.sellerCriteria } : {}),
     ...(input.coSellerIds?.length ? { coSellerIds: input.coSellerIds } : {}),
+    ...(input.brokerCriteria ? { brokerCriteria: input.brokerCriteria } : {}),
+    ...(input.professionalType ? { professionalType: input.professionalType } : {}),
     notes: input.notes?.trim(),
     legalVerification: input.legalVerification,
     createdAt: now,
@@ -646,6 +660,109 @@ export async function linkCoSeller(
 /**
  * Retrait covendeur bidirectionnel atomique.
  */
+/**
+ * Assigne un acheteur à un courtier (contact `broker`) — writeBatch atomique.
+ * Met à jour `brokerCriteria.managedBuyerIds` et `ownerId` de l’acheteur (courtier responsable).
+ */
+export async function linkBuyerToBroker(
+  ctx: ContactServiceContext,
+  brokerContactId: string,
+  buyerContactId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const brokerId = brokerContactId.trim();
+  const buyerId = buyerContactId.trim();
+  if (!brokerId || !buyerId || brokerId === buyerId) {
+    return { ok: false, error: 'invalid_args' };
+  }
+
+  const [brokerContact, buyerContact] = await Promise.all([
+    getOrganizationContactDoc(ctx, brokerId),
+    getOrganizationContactDoc(ctx, buyerId),
+  ]);
+  if (!brokerContact || !buyerContact) return { ok: false, error: 'not_found' };
+  if (!brokerContact.relationRoles?.includes('broker')) {
+    return { ok: false, error: 'not_broker' };
+  }
+  if (!buyerContact.relationRoles?.includes('buyer')) {
+    return { ok: false, error: 'not_buyer' };
+  }
+  if (!canWriteOrganizationContact(ctx, brokerContact)) {
+    return { ok: false, error: 'forbidden' };
+  }
+  if (!canWriteOrganizationContact(ctx, buyerContact)) {
+    return { ok: false, error: 'buyer_not_writable' };
+  }
+
+  const responsibleOwnerId = brokerContact.ownerId.trim();
+  if (!responsibleOwnerId) return { ok: false, error: 'broker_owner_missing' };
+
+  const now = new Date().toISOString();
+  const refBroker = doc(db, 'organizations', ctx.orgId, 'contacts', brokerId);
+  const refBuyer = doc(db, 'organizations', ctx.orgId, 'contacts', buyerId);
+  const batch = writeBatch(db);
+  batch.update(refBroker, {
+    brokerCriteria: {
+      ...brokerContact.brokerCriteria,
+      managedBuyerIds: syncAddManagedBuyerId(
+        brokerContact.brokerCriteria?.managedBuyerIds,
+        buyerId
+      ),
+    },
+    updatedAt: now,
+  });
+  batch.update(refBuyer, {
+    ownerId: responsibleOwnerId,
+    updatedAt: now,
+  });
+  try {
+    await batch.commit();
+    return { ok: true };
+  } catch (e) {
+    console.warn('[contacts.linkBuyerToBroker] batch failed:', e);
+    return { ok: false, error: 'batch_failed' };
+  }
+}
+
+/**
+ * Retire un acheteur de la responsabilité d’un courtier (contact `broker`).
+ */
+export async function unlinkBuyerFromBroker(
+  ctx: ContactServiceContext,
+  brokerContactId: string,
+  buyerContactId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const brokerId = brokerContactId.trim();
+  const buyerId = buyerContactId.trim();
+  if (!brokerId || !buyerId) return { ok: false, error: 'invalid_args' };
+
+  const brokerContact = await getOrganizationContactDoc(ctx, brokerId);
+  if (!brokerContact) return { ok: false, error: 'not_found' };
+  if (!canWriteOrganizationContact(ctx, brokerContact)) {
+    return { ok: false, error: 'forbidden' };
+  }
+
+  const now = new Date().toISOString();
+  const refBroker = doc(db, 'organizations', ctx.orgId, 'contacts', brokerId);
+  const batch = writeBatch(db);
+  batch.update(refBroker, {
+    brokerCriteria: {
+      ...brokerContact.brokerCriteria,
+      managedBuyerIds: syncRemoveManagedBuyerId(
+        brokerContact.brokerCriteria?.managedBuyerIds,
+        buyerId
+      ),
+    },
+    updatedAt: now,
+  });
+  try {
+    await batch.commit();
+    return { ok: true };
+  } catch (e) {
+    console.warn('[contacts.unlinkBuyerFromBroker] batch failed:', e);
+    return { ok: false, error: 'batch_failed' };
+  }
+}
+
 export async function unlinkCoSeller(
   ctx: ContactServiceContext,
   contactId: string,

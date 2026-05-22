@@ -11,7 +11,7 @@ import { cn } from '../../lib/utils';
 const TIER_STYLES: Record<BuyerCommercialTier, string> = {
   PRIVILEGED:
     'bg-emerald-100 text-emerald-950 border-emerald-600',
-  CONFIDENTIAL:
+  QUALIFIED:
     'bg-sky-100 text-sky-950 border-sky-600',
 };
 

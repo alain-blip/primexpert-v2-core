@@ -256,6 +256,52 @@ export const nylasSendMessage = onCall({ invoker: 'public' }, async (request) =>
   }
 });
 
+/** Corps complet d’un message — GET Nylas + mise à jour Firestore si vide. */
+export const nylasFetchMessageBody = onCall({ invoker: 'public' }, async (request) => {
+  try {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'Connexion requise.');
+    }
+    const brokerId = request.auth.uid;
+    const threadId = String(request.data?.threadId ?? '');
+    const messageId = String(request.data?.messageId ?? '');
+    const accountId = String(request.data?.accountId ?? '');
+
+    if (!threadId || !messageId || !accountId) {
+      throw new HttpsError(
+        'invalid-argument',
+        'threadId, messageId et accountId requis.'
+      );
+    }
+
+    const { hydrateFirestoreMessageBody, resolveGrantIdForAccount } = await import(
+      './nylas/hydrateMessageBody'
+    );
+    const grantId = await resolveGrantIdForAccount(brokerId, accountId);
+    if (!grantId) {
+      throw new HttpsError(
+        'failed-precondition',
+        'Ce compte n’est pas relié à Nylas.'
+      );
+    }
+
+    const result = await hydrateFirestoreMessageBody({
+      brokerId,
+      threadId,
+      messageId,
+      accountId,
+      grantId,
+    });
+
+    return { ok: true, body: result.body, updated: result.updated };
+  } catch (e) {
+    if (e instanceof HttpsError) throw e;
+    console.error('[nylasFetchMessageBody]', e);
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new HttpsError('internal', msg);
+  }
+});
+
 /** Archive ou corbeille — API Nylas v3 + Firestore. */
 export const nylasUpdateThreadFolder = onCall({ invoker: 'public' }, async (request) => {
   try {

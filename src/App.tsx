@@ -30,8 +30,10 @@ const ContentGen = lazy(() => import('./components/ContentGen').then(m => ({ def
 const Mailbox    = lazy(() =>
   import('./components/mailbox/MailboxContainer').then((m) => ({ default: m.MailboxContainer }))
 );
-const BrokerToolsDocuments = lazy(() =>
-  import('./components/BrokerToolsDocuments').then((m) => ({ default: m.BrokerToolsDocuments }))
+const DocumentsDashboard = lazy(() =>
+  import('./components/documents/DocumentsDashboard').then((m) => ({
+    default: m.DocumentsDashboard,
+  }))
 );
 const Softphone  = lazy(() => import('./components/Softphone/Softphone').then(m => ({ default: m.Softphone })));
 const Settings   = lazy(() => import('./components/Settings').then(m => ({ default: m.Settings })));
@@ -71,11 +73,7 @@ function LandingPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  /**
-   * Après `signInWithRedirect`, l’utilisateur revient sur `/` sans que le clic
-   * ait encore un `user` : il ne faut pas appeler `navigate('/workhub')` tout de suite
-   * (sinon route protégée → retour accueil en boucle).
-   */
+  /** Après connexion Google (popup), rediriger vers le cockpit dès que `user` est prêt. */
   useEffect(() => {
     if (loading) return;
     if (user && location.pathname === '/') {
@@ -89,8 +87,7 @@ function LandingPage() {
       return;
     }
     await signIn();
-    /** Après popup (dev), la session est déjà sur `auth` avant le prochain rendu du contexte. */
-    if (import.meta.env.DEV && auth.currentUser) {
+    if (auth.currentUser) {
       navigate('/workhub');
     }
   };
@@ -266,7 +263,7 @@ function Workhub() {
       case 'crm': return <CRM />;
       case 'content': return <ContentGen />;
       case 'mail': return <Mailbox />;
-      case 'drive': return <BrokerToolsDocuments />;
+      case 'drive': return <DocumentsDashboard />;
       case 'phone': return <Softphone />;
       case 'settings': return <Settings />;
       default: return <Dashboard />;

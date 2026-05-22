@@ -5,7 +5,10 @@
 
 import { formatCurrency, formatPercentRaw } from '../utils/formatting';
 import { computeFinancabilite } from './computeFinancabilite';
-import { computePerformanceRatiosViewModel } from './performanceRatios';
+import {
+  computePerformanceRatiosViewModel,
+  type RatioDisplayKind,
+} from './performanceRatios';
 import { buildRevenusDepensesGrid } from './revenusDepensesGrid';
 import {
   formatCertifiableReportTimestamp,
@@ -24,6 +27,35 @@ export const DETAILED_REPORT_COMPLIANCE_LINE_FR =
 
 export const DETAILED_REPORT_COMPLIANCE_LINE_EN =
   'OACIQ compliance · Law 25 (personal information) · WORM timestamp · Source: financial/dataV2.calculatedResults' as const;
+
+/** Texte page 2 — aligné maquette Canva « Blue White Modern Business Annual Report ». */
+export const DETAILED_REPORT_CANVA_ABOUT_FR = [
+  'Ce document vous offre une lecture claire et accessible de la situation financière de votre résidence.',
+  'Il ne s’agit pas d’une évaluation immobilière officielle, mais d’un outil de compréhension et de réflexion pour éclairer vos décisions (non-évaluation agréée).',
+  'Les informations présentées sont basées sur les données que vous nous avez communiquées et sur notre connaissance du marché des résidences pour aînés (RPA) au Québec.',
+] as const;
+
+export const DETAILED_REPORT_CANVA_ABOUT_EN = [
+  'This document offers a clear, accessible view of your residence’s financial situation.',
+  'It is not an official real estate appraisal, but a decision-support tool (not a certified appraisal).',
+  'Figures are based on information you provided and our knowledge of the Québec seniors’ residence (RPA) market.',
+] as const;
+
+export const DETAILED_REPORT_AVIS_IMPORTANT_FR = [
+  'Le présent document constitue une analyse de marché indicative. Il ne doit pas être interprété comme une évaluation agréée, un avis juridique, fiscal ou comptable.',
+  'L’analyse repose sur les informations fournies par le propriétaire et sur les conditions de marché en vigueur au moment de l’exportation, lesquelles peuvent évoluer.',
+  'Avant toute décision, il est recommandé de consulter des professionnels qualifiés (évaluateur agréé, comptable professionnel agréé (CPA), avocat).',
+  'Le courtier immobilier agréé décline toute responsabilité pour les pertes découlant d’une utilisation inappropriée de ce document.',
+  'Ce rapport est strictement confidentiel et destiné aux parties autorisées dans le cadre du mandat.',
+] as const;
+
+export const DETAILED_REPORT_AVIS_IMPORTANT_EN = [
+  'This document is an indicative market analysis. It must not be construed as a certified appraisal or legal, tax or accounting advice.',
+  'The analysis relies on seller-provided information and market conditions at export time, which may change.',
+  'Consult qualified professionals before making decisions.',
+  'The licensed broker disclaims liability for losses from inappropriate use of this document.',
+  'This report is strictly confidential and intended for authorized parties under the mandate.',
+] as const;
 
 export const DETAILED_REPORT_ABOUT_INTRO_FR = [
   'Ce rapport d’analyse financière détaillée constitue une reddition exhaustive destinée aux acheteurs qualifiés et aux institutions. Il structure la diligence raisonnable pré-transaction sans constituer une évaluation agréée.',
@@ -89,6 +121,10 @@ export interface DetailedFinancialReportModel {
   complianceLineEn: string;
   aboutIntroFr: readonly string[];
   aboutIntroEn: readonly string[];
+  canvaAboutFr: readonly string[];
+  canvaAboutEn: readonly string[];
+  avisImportantFr: readonly string[];
+  avisImportantEn: readonly string[];
   deontologicalClauseFr: readonly string[];
   deontologicalClauseEn: readonly string[];
 }
@@ -110,14 +146,18 @@ function formatRatioRow(
   labelFr: string,
   labelEn: string,
   value: number | null,
-  displayKind: 'currency' | 'percent' | 'multiplier',
+  displayKind: RatioDisplayKind,
   locale: 'fr' | 'en'
 ): DetailedReportLabelValue {
   let formatted = '—';
   if (value != null && Number.isFinite(value)) {
-    if (displayKind === 'currency') formatted = fmtMoney(value, locale);
-    else if (displayKind === 'percent') formatted = fmtPctDecimal(value);
-    else formatted = `${value.toFixed(2).replace('.', ',')}×`;
+    if (displayKind === 'currency' || displayKind === 'currencyPerUnit') {
+      formatted = fmtMoney(value, locale);
+    } else if (displayKind === 'percent') {
+      formatted = fmtPctDecimal(value);
+    } else {
+      formatted = `${value.toFixed(2).replace('.', ',')}×`;
+    }
   }
   return { labelFr, labelEn, value: formatted };
 }
@@ -308,6 +348,10 @@ export function buildDetailedFinancialReportModel(
     complianceLineEn: DETAILED_REPORT_COMPLIANCE_LINE_EN,
     aboutIntroFr: DETAILED_REPORT_ABOUT_INTRO_FR,
     aboutIntroEn: DETAILED_REPORT_ABOUT_INTRO_EN,
+    canvaAboutFr: DETAILED_REPORT_CANVA_ABOUT_FR,
+    canvaAboutEn: DETAILED_REPORT_CANVA_ABOUT_EN,
+    avisImportantFr: DETAILED_REPORT_AVIS_IMPORTANT_FR,
+    avisImportantEn: DETAILED_REPORT_AVIS_IMPORTANT_EN,
     deontologicalClauseFr: DETAILED_REPORT_DEONTOLOGICAL_CLAUSE_FR,
     deontologicalClauseEn: DETAILED_REPORT_DEONTOLOGICAL_CLAUSE_EN,
   };

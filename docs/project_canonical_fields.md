@@ -7,7 +7,72 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 **Identité Phase 4 (lecture + écriture)** : `packages/core/src/identity/` — définitions UI dans `identitySections.ts`, `buildingAuditSections.ts`, `servicesRecognition.ts`, `rentPricingGrid.ts`.  
 **Promesse d'achat (PA)** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`.  
 **Messagerie (Email Center)** : **SSOT unique** `users/{uid}/email_threads` + `messages` — ingestion Nylas, analyse `@primexpert/core/mail` à l’écriture serveur.  
-**Diffusion Web** : `packages/core/src/diffusion/` — vendoré dans `functions/src/diffusion/_vendored/` au prebuild.
+**Diffusion Web** : `packages/core/src/diffusion/` — vendoré dans `functions/src/diffusion/_vendored/` au prebuild.  
+**CRM Contacts** : `packages/core/src/crm/` — fiche `organizations/{orgId}/contacts` ; liaisons `coBuyerIds` / `coSellerIds` ; typologie acheteur `deriveBuyerTier`.
+
+---
+
+## Collection `organizations/{orgId}/contacts/{contactId}`
+
+**SSOT répertoire client** — remplace les collections legacy `clients/` / `vendors/` (interdit de dupliquer).
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `orgId` | string | Organisation |
+| **`ownerId`** | string | Courtier propriétaire (cloison ; réassignation admin) |
+| `silo` | string | `RESIDENTIEL` \| `RES_COM` \| `COMMERCIAL_SPEC` |
+| `assetNiche` | string | `RPA` \| `PLEX` \| `CPE` si `COMMERCIAL_SPEC` |
+| `visibility` | string | `PRIVATE` \| `AGENCY_SHARED` (pool RPA seulement) |
+| `leadSource` | string | `AGENCY_AD`, `BROKER_GENERATED`, `REFERRAL`, `IMPORT_LEGACY`, `OTHER` |
+| `nom`, `prenom` | string | LCI |
+| `adresse` | map | `ligne1`, `ville`, `province`, `codePostal` |
+| `dateNaissance` | string | ISO `yyyy-mm-dd` |
+| `occupationProfession` | string | Métier de la partie (≠ taux d’occupation immeuble) |
+| `relationRoles` | array | `buyer`, `seller`, `professional`, `broker`, `former_owner`, `blacklist` |
+| `email`, `telephone` | string | Coordonnées |
+| **`residenceIds`** | array | Dossiers résidence liés (cache bidirectionnel avec `partiesImpliquees`) |
+| **`coBuyerIds`** | array | Coacheteurs — liaison bidirectionnelle writeBatch |
+| **`coSellerIds`** | array | Covendeurs — liaison bidirectionnelle writeBatch |
+| `buyerQualificationStatus` | string \| null | Legacy pipeline (optionnel) |
+| **`buyerCriteria`** | map | Critères acheteur — voir ci-dessous |
+| **`sellerCriteria`** | map | Critères vendeur — voir ci-dessous |
+| **`communicationPreferences`** | map | `unsubscribedFromEmails`, `excludedFromMassMailing` (Loi 25 / LCAP) |
+| `legalVerification` | map | OACIQ art. 30 — identité / sollicitation |
+| `importMeta` | map | Import legacy (`lciIncomplete`, sources) |
+| `notes` | string | Notes libres |
+
+### Objet `buyerCriteria`
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `ndaFile`, `proofOfFundsFile`, `bankLetterFile`, `mortgagePreApprovalFile` | map | `{ url, storagePath, uploadedAt? }` — Storage `buyer_documents/{kind}/` |
+| `corporateMandate` | map | `isMandatory`, `companyName`, `reqNumber`, `reqFile?` |
+| `budgetMax`, `tgaMinimum`, `downpaymentAmount` | number | Critères financiers / web |
+| `regions` | array | Marchés visés |
+| `residenceTypes` | array | `RPA`, `RI`, `CHSLD` |
+| `unitsMin`, `unitsMax` | number | Taille cible |
+| `experienceDescription` | string | Expérience gestion |
+| `hasBroker` | bool | Déjà accompagné d’un courtier |
+| `timeline` | string | Échéancier acquisition (`IMMEDIATE`, `0_3_MONTHS`, …) |
+
+> **Typologie dérivée (non éditable)** : `deriveBuyerTier()` → `PRIVILEGED` \| `CONFIDENTIAL` \| null.
+
+### Objet `sellerCriteria`
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `brokerageContractFile` | map | Contrat de courtage |
+| `ownershipProofFile` | map | Titre de propriété |
+| `sellerDeclarationFile` | map | Déclaration du vendeur |
+| `corporateMandate` | map | Inc. / NEQ / REQ — Storage `seller_documents/{kind}/` |
+
+### Chemins Storage contact
+
+| Schéma | Usage |
+|--------|--------|
+| `primexpert/{orgId}/contacts/{contactId}/id_proofs/…` | Pièce d’identité LCI |
+| `primexpert/{orgId}/contacts/{contactId}/buyer_documents/{kind}/…` | Pièces acheteur |
+| `primexpert/{orgId}/contacts/{contactId}/seller_documents/{kind}/…` | Pièces vendeur |
 
 ---
 
@@ -449,6 +514,7 @@ Téléchargement client : autorisé **uniquement** si `virusScanStatus === 'clea
 | `proprietes/{id}` | `courtiersResponsables` | Dossiers Copilote migrés (Phase 2) |
 | `drive_documents/{id}` | `courtiersResponsables` | Drive OACIQ — **delete interdit** |
 | `organizations/{orgId}` | `orgId` | Agence |
+| **`organizations/{orgId}/contacts`** | `ownerId` + `visibility` | Répertoire CRM LCI (SSOT parties) |
 
 ---
 
@@ -481,6 +547,10 @@ Téléchargement client : autorisé **uniquement** si `virusScanStatus === 'clea
 | Règles Firestore / Storage | `firestore.rules`, `storage.rules` |
 | Inscriptions & cartes | `src/components/Listings.tsx`, `ListingInstitutionalCard.tsx`, `listingCardViewModel.ts` |
 | Synthèse 360 | `src/components/residence/tabs/Synthese360Tab.tsx` |
+| CRM contacts | `packages/core/src/crm/`, `src/services/contacts.ts`, `src/components/contacts/` |
+| Liaisons coacheteurs/covendeurs | `coBuyers.ts`, `coSellers.ts`, `linkCoBuyer`, `linkCoSeller` |
+| Import contacts legacy | `scripts/migrate-legacy-contacts-to-v2.mjs` |
+| Courtier responsable inscription | `ResponsibleBrokerCard.tsx`, `courtiersResponsables` |
 
 ---
 
@@ -563,4 +633,4 @@ Lors de l’ajout d’une note : mise à jour document racine `lastCommunication
 
 ---
 
-*Dernière mise à jour : 2026-05-19 — Objets `offre` et `promesseAchat`, épuration UI PA 5.4, sérialisation `null` sur délais.*
+*Dernière mise à jour : 2026-05-20 — Collection `organizations/…/contacts`, chemins Storage CRM, tiers acheteur, critères vendeur, coacheteurs/covendeurs ; objets `offre` / `promesseAchat` inchangés.*

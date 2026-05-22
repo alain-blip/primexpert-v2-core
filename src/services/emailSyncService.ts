@@ -111,11 +111,21 @@ function mapThreadDoc(id: string, data: Record<string, unknown>): EmailThread {
   };
 }
 
+/** Corps message — plusieurs clés possibles (Nylas / import / legacy). */
+export function resolveStoredMessageBody(data: Record<string, unknown>): string {
+  for (const key of ['body', 'bodyHtml', 'html', 'text', 'snippet'] as const) {
+    const raw = data[key];
+    if (typeof raw === 'string' && raw.trim().length > 0) return raw.trim();
+  }
+  return '';
+}
+
 function mapMessageDoc(id: string, threadId: string, data: Record<string, unknown>): EmailMessage {
+  const body = resolveStoredMessageBody(data);
   return {
     id,
     threadId,
-    body: String(data.body ?? ''),
+    body,
     sentAtMillis: toMillis(data.sentAtMillis ?? data.sentAt),
     direction: data.direction === 'outbound' ? 'outbound' : 'inbound',
     authorName: typeof data.authorName === 'string' ? data.authorName : undefined,
@@ -132,6 +142,18 @@ function mapMessageDoc(id: string, threadId: string, data: Record<string, unknow
           ? toMillis(data.openedAt)
           : undefined,
     nylasMessageId: typeof data.nylasMessageId === 'string' ? data.nylasMessageId : undefined,
+    mailAnalysisAtMillis:
+      typeof data.mailAnalysisAtMillis === 'number' ? data.mailAnalysisAtMillis : undefined,
+    matchedResidenceId:
+      typeof data.matchedResidenceId === 'string' ? data.matchedResidenceId : null,
+    mailContactEmail:
+      typeof data.mailContactEmail === 'string' ? data.mailContactEmail : null,
+    mailContactName:
+      typeof data.mailContactName === 'string' ? data.mailContactName : null,
+    mailIntent: typeof data.mailIntent === 'string' ? data.mailIntent : undefined,
+    summaryOneLine:
+      typeof data.summaryOneLine === 'string' ? data.summaryOneLine : undefined,
+    mailUrgency: typeof data.mailUrgency === 'string' ? data.mailUrgency : undefined,
   };
 }
 

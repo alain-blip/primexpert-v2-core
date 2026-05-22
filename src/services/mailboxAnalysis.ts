@@ -140,6 +140,33 @@ export function subscribeMailboxAnalysesForResidence(
   );
 }
 
+function isMissingFirestoreIndexError(e: unknown): boolean {
+  const code =
+    e && typeof e === 'object' && 'code' in e ? String((e as { code: unknown }).code) : '';
+  const msg = e instanceof Error ? e.message : String(e);
+  return code === 'failed-precondition' || msg.includes('requires an index');
+}
+
+/** Repli client si l’index composite n’est pas encore déployé (brokerId + mailAnalysisAtMillis). */
+async function fetchRecentMailboxAnalysesFallback(
+  brokerId: string,
+  limitN: number
+): Promise<SavedMailboxAnalysis[]> {
+  const q = query(
+    collectionGroup(db, EMAIL_MESSAGES_SUBCOLLECTION),
+    where('brokerId', '==', brokerId),
+    limit(Math.min(limitN * 3, 500))
+  );
+  const snap = await getDocs(q);
+  const rows: SavedMailboxAnalysis[] = [];
+  for (const d of snap.docs) {
+    const row = mapMessageToSaved(d.id, d.data() as Record<string, unknown>);
+    if (row) rows.push(row);
+  }
+  rows.sort((a, b) => b.analyzedAtMillis - a.analyzedAtMillis);
+  return rows.slice(0, limitN);
+}
+
 /** Snapshot récent (priorités tableau de bord, stagnation). */
 export async function fetchRecentMailboxAnalyses(
   brokerId: string,
@@ -156,6 +183,17 @@ export async function fetchRecentMailboxAnalyses(
     }
     return rows;
   } catch (e) {
+    if (isMissingFirestoreIndexError(e)) {
+      console.warn(
+        '[mailboxAnalysis] index composite manquant — repli sans orderBy; déployez firestore:indexes.'
+      );
+      try {
+        return await fetchRecentMailboxAnalysesFallback(brokerId, limitN);
+      } catch (fallbackErr) {
+        console.error('[mailboxAnalysis] fetchRecent fallback failed', fallbackErr);
+        return [];
+      }
+    }
     console.error('[mailboxAnalysis] fetchRecent failed', e);
     return [];
   }

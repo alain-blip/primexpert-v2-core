@@ -14,6 +14,10 @@ import {
   CONTACT_VISIBILITY,
   BUYER_ACQUISITION_TIMELINES,
   BUYER_TARGET_RESIDENCE_TYPES,
+  PROFESSIONAL_TYPES,
+  PROFESSIONAL_TYPE_LABEL_EN,
+  PROFESSIONAL_TYPE_LABEL_FR,
+  defaultContactSiloForRoles,
   defaultContactVisibility,
   isAgencyShareAllowedForContact,
   validateContactLciFields,
@@ -51,6 +55,7 @@ import {
 } from './BuyerCriteriaDocumentsSection';
 import { CoBuyersSection } from './CoBuyersSection';
 import { CoSellersSection } from './CoSellersSection';
+import { ManagedBuyersSection } from './ManagedBuyersSection';
 import {
   SellerCriteriaDocumentsSection,
   buildStandardSellerDocumentRows,
@@ -134,9 +139,14 @@ export function ContactFormDrawer({
   const [excludedFromMassMailing, setExcludedFromMassMailing] = useState(false);
   const [ownerId, setOwnerId] = useState('');
   const [brokers, setBrokers] = useState<{ uid: string; displayName: string }[]>([]);
+  const [brokerAgencyName, setBrokerAgencyName] = useState('');
+  const [managedBuyerIds, setManagedBuyerIds] = useState<string[]>([]);
+  const [professionalType, setProfessionalType] = useState<ProfessionalType | ''>('');
 
   const isBuyerRole = roles.has('buyer');
   const isSellerRole = roles.has('seller');
+  const isBrokerRole = roles.has('broker');
+  const isProfessionalRole = roles.has('professional');
 
   useEffect(() => {
     if (!open || !ctx.orgId) return;
@@ -361,6 +371,9 @@ export function ContactFormDrawer({
         editing.sellerCriteria?.corporateMandate?.companyName ?? ''
       );
       setSellerCorporateReqNumber(editing.sellerCriteria?.corporateMandate?.reqNumber ?? '');
+      setBrokerAgencyName(editing.brokerCriteria?.agencyName ?? '');
+      setManagedBuyerIds(editing.brokerCriteria?.managedBuyerIds ?? []);
+      setProfessionalType(editing.professionalType ?? '');
     } else {
       setNom('');
       setPrenom('');
@@ -514,9 +527,19 @@ export function ContactFormDrawer({
     excludedFromMassMailing,
   });
 
+  const buildBrokerCriteria = (): ContactBrokerCriteria | undefined => {
+    if (!roles.has('broker')) return undefined;
+    const criteria: ContactBrokerCriteria = {};
+    const agency = brokerAgencyName.trim();
+    if (agency) criteria.agencyName = agency;
+    if (managedBuyerIds.length) criteria.managedBuyerIds = managedBuyerIds;
+    return Object.keys(criteria).length > 0 ? criteria : undefined;
+  };
+
   const buildInput = (): CreateOrganizationContactInput => {
+    const roleList = Array.from(roles);
     const base: CreateOrganizationContactInput = {
-      silo,
+      silo: defaultContactSiloForRoles(roleList, silo),
       assetNiche: silo === 'COMMERCIAL_SPEC' && assetNiche ? assetNiche : undefined,
       visibility,
       nom,
@@ -524,7 +547,7 @@ export function ContactFormDrawer({
       dateNaissance,
       occupationProfession,
       adresse: { ligne1, ville, province, codePostal },
-      relationRoles: Array.from(roles),
+      relationRoles: roleList,
       email: email.trim() || undefined,
       telephone: telephone.trim() || undefined,
       legalVerification: legalVerificationPayload,
@@ -540,6 +563,12 @@ export function ContactFormDrawer({
     if (roles.has('seller')) {
       base.sellerCriteria = buildSellerCriteria() ?? {};
       base.coSellerIds = coSellerIds.length ? coSellerIds : undefined;
+    }
+    if (roles.has('broker')) {
+      base.brokerCriteria = buildBrokerCriteria() ?? {};
+    }
+    if (roles.has('professional') && professionalType) {
+      base.professionalType = professionalType;
     }
     return base;
   };
@@ -1041,6 +1070,9 @@ export function ContactFormDrawer({
                         const next = new Set(prev);
                         if (next.has(role)) next.delete(role);
                         else next.add(role);
+                        if (role === 'broker' && !editing) {
+                          setSilo('RESIDENTIEL');
+                        }
                         return next;
                       });
                     }}
@@ -1075,8 +1107,8 @@ export function ContactFormDrawer({
               </div>
               <p className="text-[11px] font-medium text-primexpert-dark/80 leading-relaxed">
                 {t(
-                  'La typologie (privilégié / confidentiel) est calculée selon les pièces téléversées — non modifiable manuellement.',
-                  'Tier (privileged / confidential) is computed from uploaded documents — not manually editable.'
+                  'La typologie (privilégié / qualifié) est calculée selon les pièces téléversées — non modifiable manuellement.',
+                  'Tier (privileged / qualified) is computed from uploaded documents — not manually editable.'
                 )}
               </p>
               <BuyerCriteriaDocumentsSection
@@ -1400,6 +1432,63 @@ export function ContactFormDrawer({
                     />
                   </>
                 ) : null}
+              </div>
+            </section>
+          ) : null}
+
+          {isBrokerRole ? (
+            <section className="space-y-3 rounded-xl border-2 border-primexpert-dark/30 bg-white p-4">
+              <p className={labelClass}>
+                {t('Profil courtier immobilier', 'Real estate broker profile')}
+              </p>
+              <div>
+                <label className={labelClass} htmlFor="brokerAgencyName">
+                  {t('Nom de l’agence', 'Agency name')}
+                </label>
+                <input
+                  id="brokerAgencyName"
+                  className={inputClass}
+                  value={brokerAgencyName}
+                  onChange={(e) => setBrokerAgencyName(e.target.value)}
+                />
+              </div>
+              <ManagedBuyersSection
+                ctx={ctx}
+                brokerContactId={editing?.id}
+                managedBuyerIds={managedBuyerIds}
+                onManagedBuyersChange={setManagedBuyerIds}
+              />
+            </section>
+          ) : null}
+
+          {isProfessionalRole ? (
+            <section className="space-y-3 rounded-xl border-2 border-primexpert-dark/30 bg-white p-4">
+              <p className={labelClass}>
+                {t('Spécialisation professionnelle', 'Professional specialization')}
+              </p>
+              <div>
+                <label className={labelClass} htmlFor="professionalType">
+                  {t('Catégorie', 'Category')}
+                </label>
+                <select
+                  id="professionalType"
+                  className={inputClass}
+                  value={professionalType}
+                  onChange={(e) =>
+                    setProfessionalType((e.target.value || '') as ProfessionalType | '')
+                  }
+                >
+                  <option value="">
+                    {t('— Sélectionner —', '— Select —')}
+                  </option>
+                  {PROFESSIONAL_TYPES.map((pt) => (
+                    <option key={pt} value={pt}>
+                      {isFr
+                        ? PROFESSIONAL_TYPE_LABEL_FR[pt]
+                        : PROFESSIONAL_TYPE_LABEL_EN[pt]}
+                    </option>
+                  ))}
+                </select>
               </div>
             </section>
           ) : null}

@@ -47,6 +47,8 @@ export interface ChatWindowProps {
     send: string;
     fromLabel: string;
     loadingMessages: string;
+    loadingMessageBody: string;
+    messageBodyUnavailable: string;
     archive: string;
     delete: string;
     deliveredReceipt: string;
@@ -69,6 +71,8 @@ export function ChatWindow({
   onArchive,
   onDelete,
   folderActionPending = false,
+  resolvedBodies = {},
+  hydratingMessageIds,
   labels,
 }: ChatWindowProps) {
   if (!thread) {
@@ -162,7 +166,18 @@ export function ChatWindow({
                       : 'rounded-2xl rounded-bl-md border border-white/10 bg-white/[0.06] px-4 py-3 text-slate-200 shadow-sm backdrop-blur-sm'
                   )}
                 >
-                  <MessageBody body={msg.body} tone={outbound ? 'outbound' : 'inbound'} />
+                  <MessageBody
+                    body={displayBody}
+                    tone={outbound ? 'outbound' : 'inbound'}
+                    loading={hydrating}
+                    emptyLabel={
+                      hydrating
+                        ? labels.loadingMessageBody
+                        : !displayBody
+                          ? labels.messageBodyUnavailable
+                          : undefined
+                    }
+                  />
                   {msg.attachments?.length ? (
                     <ul
                       className={cn(

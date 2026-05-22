@@ -32,9 +32,16 @@
 │           │   ├── offreConditions.ts
 │           │   ├── offreCloture.ts
 │           │   └── promesseAchatEngine.ts
+│           ├── crm/                   # Contacts CRM — organizations/{orgId}/contacts
+│           │   ├── contactTypes.ts    # LCI, buyerCriteria, sellerCriteria, deriveBuyerTier
+│           │   ├── contactUiHelpers.ts
+│           │   ├── coBuyers.ts / coSellers.ts
+│           │   └── legacyContactImport.ts
+│           ├── diffusion/             # Syndication Web (rpaavendre.com, guardrails OACIQ)
 │           ├── valuation/           # Cap rate, comparables, TGA
 │           ├── narrative/           # Narratif vendeur
-│           ├── intelligence/        # Priorités suivi KISS, rapport vendeur, vélocité
+│           ├── intelligence/        # Priorités suivi KISS, rapport vendeur, contactTimeline
+│           ├── residence/             # partiesImpliquees, complianceChecklist
 │           ├── quality/             # Score qualité fiche
 │           ├── sources/             # Sources externes
 │           ├── export/              # Export dataset / politique
@@ -62,7 +69,10 @@
 │           ├── syncInboundMessage.ts
 │           ├── verifyWebhookSignature.ts
 │           └── mailMessageAnalysis.ts
-├── scripts/                         # Utilitaires (facture sample, régions QC)
+├── scripts/
+│   ├── migrate-legacy-contacts-to-v2.mjs
+│   ├── deploy-diffusion-jour-4-5.sh
+│   └── output/                      # Rapports dry-run (non versionné)
 ├── audit_tenant_uids.js             # Ops — audit tenant Firestore
 ├── backfill_tenant.js
 ├── hydrate_pipeline.js
@@ -102,6 +112,12 @@
     │   │   ├── institutional/
     │   │   │   └── InstitutionalUi.tsx   # Kit UI institutionnel (coquilles, KPI, sections)
     │   │   ├── identity/            # Sections Identité — édition inline Confort 66+
+    │   │   │   ├── ResponsibleBrokerCard.tsx   # courtiersResponsables
+    │   │   │   └── PartiesIntervenantsSection.tsx
+    │   │   ├── finance/
+    │   │   │   └── FinanceHubMasterPanel.tsx
+    │   │   ├── diffusion/
+    │   │   │   └── DraftPreviewModal.tsx
     │   │   ├── promesse/            # Panneaux cockpit PA (tronc offre, conditions, clôture, délais, commission)
     │   │   │   ├── OffreTroncFinancierSection.tsx
     │   │   │   ├── OffreConditionsLegalesSection.tsx
@@ -140,7 +156,14 @@
     │   │   └── RaphaelBadge.tsx
     │   ├── documents/
     │   │   └── ScopedDocumentManager.tsx
-    │   ├── CRM.tsx, ACM.tsx, ContentGen.tsx
+    │   ├── contacts/                  # Répertoire CRM — drawer, liste, coacheteurs/covendeurs
+    │   │   ├── ContactsListPage.tsx
+    │   │   ├── ContactFormDrawer.tsx
+    │   │   ├── CoBuyersSection.tsx / CoSellersSection.tsx
+    │   │   ├── BuyerTierBadge.tsx
+    │   │   └── ContactCriteriaDocumentsSection.tsx
+    │   ├── CRM.tsx                    # Route Workhub → ContactsListPage
+    │   ├── ACM.tsx, ContentGen.tsx
     │   ├── Drive/, Softphone/
     │   ├── GracePeriodBanner.tsx
     │   ├── SuspendedAccountScreen.tsx
@@ -174,6 +197,8 @@
     │   ├── trialTimeline.ts
     │   └── …
     ├── services/
+    │   ├── contacts.ts              # organizations/{orgId}/contacts
+    │   ├── communicationTimelineService.ts
     │   ├── residences.ts            # Queries multi-tenant residences
     │   ├── propertyDocumentsService.ts  # Upload Storage + Firestore documents/
     │   ├── dashboardPriorityFollowUp.ts
@@ -236,7 +261,7 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | **Hosting** | `dist/` — SPA, réécriture `**` → `index.html` |
 | **URL prod** | https://primexpert-app-v2.web.app |
 | **Firestore** | Bases `(default)` + `ai-studio-1214d671-efd2-47da-93b7-425feb92155a` (même rules/indexes) |
-| **Storage** | `primexpert/{brokerId}/properties/{propertyId}/documents/{category}/…` (+ legacy `properties/…` lecture) |
+| **Storage** | `primexpert/{orgId}/contacts/{id}/id_proofs|buyer_documents|seller_documents/…` ; `primexpert/{brokerId}/properties/{id}/documents/{category}/…` |
 | **Functions** | `functions/` — Nylas + Espace Documents (scan, parse Vertex, réconciliation) |
 | **Compte de service Functions** | `250702494735-compute@developer.gserviceaccount.com` (`roles/aiplatform.user`) |
 | **Vertex AI** | `aiplatform.googleapis.com` — modèle `gemini-2.0-flash-001`, région `us-central1` |
@@ -260,6 +285,11 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Espace Documents | `DocumentsDiligenceTab`, `propertyDocumentsService.ts`, `functions/src/documents/` |
 | Parse IA financier | `geminiExtract.ts` + `vertexClient.ts` (ADC, pas de clé JSON en prod) |
 | Priorités tableau de bord | `dashboardPriorityFollowUp.ts`, `PriorityFollowUpList.tsx` |
+| CRM contacts | `packages/core/src/crm/`, `src/services/contacts.ts`, `src/components/contacts/` |
+| Parties ↔ contacts | `packages/core/src/residence/partiesImpliquees.ts`, `PartiesIntervenantsSection.tsx` |
+| Chronologie omnicanale | `contactTimeline.ts`, `CommunicationTimelineFeed.tsx`, `communicationTimelineService.ts` |
+| Identité — courtier responsable | `ResponsibleBrokerCard.tsx`, champ `courtiersResponsables` |
+| Hub Finance master | `FinanceHubMasterPanel.tsx`, `FinanceHubLockContext.tsx`, rapports PDF |
 
 ### Cloud Functions — Espace Documents
 
@@ -275,4 +305,4 @@ Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only func
 
 ---
 
-*Dernière mise à jour : 2026-05-20 — Email SSOT (`email_threads`), PA (`transaction/`), diffusion `_vendored/`, webhook Nylas signature.*
+*Dernière mise à jour : 2026-05-20 — CRM `organizations/contacts`, coacheteurs/covendeurs, parties résidence, Email SSOT, PA, diffusion, Hub Finance, courtier responsable identité.*

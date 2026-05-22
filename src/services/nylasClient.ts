@@ -81,6 +81,19 @@ export async function sendSellerUpdateViaNylas(input: {
 
 export type NylasThreadFolderMove = 'ARCHIVE' | 'TRASH';
 
+export async function fetchNylasMessageBody(input: {
+  threadId: string;
+  messageId: string;
+  accountId: string;
+}): Promise<{ body: string; updated: boolean }> {
+  const fn = httpsCallable<
+    typeof input,
+    { ok: boolean; body: string; updated: boolean }
+  >(functions, 'nylasFetchMessageBody');
+  const { data } = await fn(input);
+  return { body: String(data?.body ?? ''), updated: data?.updated === true };
+}
+
 export async function moveThreadViaNylas(input: {
   threadId: string;
   accountId: string;

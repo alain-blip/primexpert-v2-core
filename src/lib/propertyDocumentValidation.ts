@@ -110,6 +110,20 @@ export function validatePropertyDocumentFile(file: File): PropertyDocumentValida
   return { ok: true, mimeType: expectedMime, extension: ext };
 }
 
+/**
+ * MIME pour `uploadBytes` — évite `application/octet-stream` sur les PDF
+ * (sinon aperçu inline bloqué dans le navigateur).
+ */
+export function resolveUploadContentType(file: File): string {
+  const validation = validatePropertyDocumentFile(file);
+  if (validation.ok) return validation.mimeType;
+  const ext = getExtension(file.name || '');
+  const fromExt = MIME_BY_EXTENSION[ext as keyof typeof MIME_BY_EXTENSION];
+  if (fromExt) return fromExt;
+  const declared = (file.type || '').trim().toLowerCase();
+  return declared && declared !== 'application/octet-stream' ? declared : 'application/octet-stream';
+}
+
 /** Téléchargement autorisé uniquement après scan antivirus « clean ». */
 export function canDownloadPropertyDocument(virusScanStatus: string | undefined): boolean {
   return virusScanStatus === 'clean';

@@ -2,6 +2,7 @@ export * from './contactTypes';
 export * from './contactUiHelpers';
 export * from './coBuyers';
 export * from './coSellers';
+export * from './brokers';
 export * from './legacyContactImport';
 export {
   buildContactFullName,

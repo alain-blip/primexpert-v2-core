@@ -7,6 +7,7 @@ import {
   UserPlus,
   UserCog,
   Filter,
+  Info,
   Loader2,
   X,
 } from 'lucide-react';
@@ -29,6 +30,8 @@ import {
   buildContactDisplayName,
   BUYER_TIER_FILTER_OPTIONS,
   formatBuyerTierLabel,
+  formatBuyerTierTooltip,
+  formatProfessionalTypeLabel,
   type BuyerCommercialTier,
   type ContactListFilter,
   type ContactRelationRole,
@@ -315,6 +318,24 @@ export function ContactsListPage() {
               {formatBuyerTierLabel(tier, isFr ? 'fr' : 'en')}
             </button>
           ))}
+          <div className="relative group ml-0.5 shrink-0">
+            <button
+              type="button"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg border-2 border-primexpert-dark/20 bg-white text-primexpert-dark/70 hover:border-primexpert-dark hover:text-primexpert-dark"
+              aria-label={t(
+                'Définitions des typologies acheteur',
+                'Buyer tier definitions'
+              )}
+            >
+              <Info className="h-4 w-4" aria-hidden />
+            </button>
+            <div
+              role="tooltip"
+              className="pointer-events-none absolute left-0 top-full z-50 mt-1 hidden w-72 rounded-lg border-2 border-primexpert-dark bg-white p-3 text-left text-[11px] font-semibold leading-relaxed text-primexpert-dark shadow-lg group-hover:block group-focus-within:block whitespace-pre-line"
+            >
+              {formatBuyerTierTooltip(isFr ? 'fr' : 'en')}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -395,6 +416,15 @@ export function ContactsListPage() {
                     {formatContactRoles(contact.relationRoles, isFr ? 'fr' : 'en')}
                   </p>
                   <BuyerTierBadge contact={contact} className="mt-1" />
+                  {contact.relationRoles?.includes('professional') &&
+                  contact.professionalType ? (
+                    <span className="mt-1 inline-block rounded-md border border-primexpert-dark/25 bg-white px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-primexpert-dark">
+                      {formatProfessionalTypeLabel(
+                        contact.professionalType,
+                        isFr ? 'fr' : 'en'
+                      )}
+                    </span>
+                  ) : null}
                 </div>
               </div>
               <div>

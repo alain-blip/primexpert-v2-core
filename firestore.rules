@@ -140,6 +140,19 @@ service cloud.firestore {
       allow write: if isOrgMember(orgId);
     }
 
+    // Mes Documents — espace de travail agence (gabarits ; distinct des inscriptions)
+    match /organizations/{orgId}/agencyDocuments/{docId} {
+      allow read: if isOrgMember(orgId);
+      allow create: if isOrgMember(orgId) &&
+        incoming().orgId == orgId &&
+        incoming().uploadedBy == request.auth.uid &&
+        incoming().category in ['gabarits', 'notes', 'autre'] &&
+        incoming().fileName is string &&
+        incoming().storagePath is string;
+      allow update, delete: if isOrgMember(orgId) &&
+        resource.data.uploadedBy == request.auth.uid;
+    }
+
     // ========================================================================
     // SILOS 2026 v4 — Multi-tenant flat collections (brokerId-based)
     //

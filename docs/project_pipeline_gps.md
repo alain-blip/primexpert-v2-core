@@ -74,8 +74,9 @@ Migration Copilote (optionnel)
     ↓
 Fiche V2 (Listings → ResidenceDetail)
     ├─ Synthèse          [✅ Synthese360Tab — rétribution affichée, C-73.2, notes]
-    ├─ Identité          [✅ doc racine + core/identity]
-    ├─ Hub Finance       [✅ dataV2 + 5 sous-onglets]
+    ├─ Identité          [✅ doc racine + core/identity + courtier responsable `courtiersResponsables`]
+    ├─ Parties           [✅ PartiesIntervenantsSection ↔ organizations/…/contacts]
+    ├─ Hub Finance       [✅ dataV2 + 5 sous-onglets + master panel PDF]
     ├─ Déclaration       [✅ DeclarationVendeurTab — OACIQ]
     ├─ Marché            [✅ MarcheConcurrenceTab]
     ├─ Documents         [✅ Espace Documents + scan + parse IA Vertex + distribution / courriel]
@@ -151,17 +152,63 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 | Email Center — SSOT `email_threads` / `messages` | ✅ Phase 1 — analyse à l’ingestion, `mailbox_analyses` déprécié |
 | Diffusion Web — vendor prebuild + `tsc` | ✅ `sync-core-diffusion` + `financialCalcTypes` |
 | Promesse d'achat — persistance `offre` / DRY | ✅ `serializeOffreForFirestore`, merge objet complet |
+| CRM — répertoire contacts LCI | ✅ `organizations/{orgId}/contacts` — tiers, documents, coacheteurs/covendeurs |
+| Parties résidence ↔ CRM | ✅ `partiesImpliquees` + `linkContactToResidence` (writeBatch) |
+| Identité — courtier responsable | ✅ `ResponsibleBrokerCard` → `courtiersResponsables` |
+| Hub Finance — master panel & rapports PDF | ✅ `FinanceHubMasterPanel`, glossaire Québec |
+| Diffusion Web — enrichissements publics | ✅ `publicBuyerDisclosures`, `transactionBanner`, aperçu brouillon |
 
 ---
 
-## D. Jalons session 2026-05-20 (fin de session)
+## D. Jalons session 2026-05-20 — trois chantiers (fin de session)
+
+Commits poussés sur `main` : `b9fe455`, `0e64e83`, `1c4f3c6`, `9b8a70c`, `da105ca`.
+
+### Chantier 1 — CRM & répertoire client (`b9fe455`)
 
 | Jalon | Détail |
 |-------|--------|
-| **Promesse d'achat (PA)** | Refactor DRY (`packages/core/src/transaction/`) ; correction persistance Firestore (`offre` complet, `undefined` → `null` sur `promesseAchat`) |
+| **SSOT contacts** | `organizations/{orgId}/contacts` — interdit `clients/`, `vendors/`, `buyerPipeline/` |
+| **Qualification acheteur** | `buyerCriteria` + pièces Storage ; typologie `deriveBuyerTier` (privilégié / confidentiel) |
+| **Qualification vendeur** | `sellerCriteria` — contrat courtage, titre, déclaration ; mandat corporatif partagé |
+| **Coacheteurs / covendeurs** | `coBuyerIds` / `coSellerIds` — liaison bidirectionnelle writeBatch (`coBuyers.ts`, `coSellers.ts`) |
+| **UI Workhub** | `ContactsListPage`, `ContactFormDrawer`, filtres, `BuyerTierBadge` |
+| **Import legacy** | `scripts/migrate-legacy-contacts-to-v2.mjs` |
+| **Chronologie** | `contactTimeline.ts` + `communicationTimelineService.ts` dans le drawer |
+
+### Chantier 2 — Messagerie & promesse (`1c4f3c6`, `9b8a70c`)
+
+| Jalon | Détail |
+|-------|--------|
+| **Promesse d'achat (PA)** | Refactor DRY (`packages/core/src/transaction/`) ; persistance Firestore `offre` **complet** ; `undefined` → `null` sur `promesseAchat` |
 | **Sécurité webhook Nylas** | Vérification `x-nylas-signature` + `NYLAS_WEBHOOK_SECRET` ; test `test-nylas-webhook-signature.cjs` |
-| **Unification SSOT Email** | Suppression `Mailbox.tsx` (UI morte) ; `MailboxContainer` seul ; analyse sur `messages` ; commit `1c4f3c6` |
-| **Diffusion Web** | Vendoring `@primexpert/core/diffusion` + stub `financialCalcTypes` ; build Functions `tsc` propre ; syndication OACIQ (guardrails publication) |
+| **Unification SSOT Email** | Suppression `Mailbox.tsx` (UI morte) ; `MailboxContainer` seul ; analyse sur `messages` à l’ingestion |
+| **Diffusion Web (prebuild)** | Vendoring `@primexpert/core/diffusion` + stub `financialCalcTypes` ; build Functions `tsc` propre |
+
+### Chantier 3 — Fiche résidence & finance (`0e64e83`, `b9fe455`)
+
+| Jalon | Détail |
+|-------|--------|
+| **Courtier responsable** | `ResponsibleBrokerCard` dans Identité — `courtiersResponsables` |
+| **Parties intervenants** | `PartiesIntervenantsSection` — rôles VENDEUR/ACHETEUR/NOTAIRE/COLLABORATEUR |
+| **Hub Finance** | Master panel, verrouillage contexte, rapports PDF certifiables |
+| **Diffusion (front)** | Divulgations acheteur, bannière transaction, modal aperçu brouillon |
+
+### Pipeline CRM — répertoire & liaisons
+
+```text
+Workhub → ContactsListPage (filtres ownerId, silo, tier, recherche LCI)
+    ↓
+ContactFormDrawer — création / édition organizations/{orgId}/contacts/{id}
+    ├─ LCI + legalVerification + communicationPreferences (Loi 25 / LCAP)
+    ├─ Acheteur : buyerCriteria + upload buyer_documents/{kind}/
+    ├─ Vendeur : sellerCriteria + upload seller_documents/{kind}/
+    ├─ linkCoBuyer / linkCoSeller → writeBatch sur 2 fiches (coBuyerIds ↔ coSellerIds)
+    └─ Chronologie : email_threads/messages + résidences liées
+    ↓
+PartiesIntervenantsSection (fiche résidence)
+    → linkContactToResidence → partiesImpliquees + contact.residenceIds (writeBatch)
+```
 
 ### Pipeline messagerie (SSOT — post Phase 1)
 
@@ -174,6 +221,8 @@ Nylas webhook (signature validée)
     ↓
 Workhub MailboxContainer (lecture temps réel)
 Intelligence / Dashboard (lecture collectionGroup messages via mailboxAnalysis.ts)
+    ↓
+[Phase 2 — backlog] rattachement explicite message → contact CRM LCI
 ```
 
 ---
@@ -182,7 +231,7 @@ Intelligence / Dashboard (lecture collectionGroup messages via mailboxAnalysis.t
 
 | Option | Thème |
 |--------|--------|
-| **A** | Phase 2 Email Center — rattachement explicite au contact CRM LCI (`organizations/…/contacts`, `partiesImpliquees`) |
+| **A** | Phase 2 Email Center — rattachement explicite message → contact CRM (`organizations/…/contacts`) |
 | **B** | Module ACM prédictif — ingestion Centris/Matrix, ajustements comparables |
 | **C** | Coffre-fort WORM OACIQ — règles Firestore verrouillage 6 ans (documents « Final ») |
 
@@ -196,4 +245,4 @@ Intelligence / Dashboard (lecture collectionGroup messages via mailboxAnalysis.t
 
 ---
 
-*Dernière mise à jour : 2026-05-20 — PA, Email SSOT Phase 1, webhook Loi 25, diffusion prebuild.*
+*Dernière mise à jour : 2026-05-20 — CRM contacts, tiers acheteur/vendeur, parties résidence, PA, Email SSOT, Hub Finance, courtier responsable, diffusion.*
