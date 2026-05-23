@@ -29,6 +29,7 @@ export async function requestCraftMyPdfBlob(
   templateId: string,
   data: Record<string, unknown>
 ): Promise<Blob> {
+  console.log('PAYLOAD ENVOYÉ À CRAFTMYPDF :', { template_id: templateId, data });
   const response = await fetch(CRAFTMYPDF_CREATE_URL, {
     method: 'POST',
     headers: {

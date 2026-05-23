@@ -7,8 +7,14 @@ service cloud.firestore {
     }
 
     // Collection group `messages` — analyses messagerie (Dashboard, Listings, chronologie).
+    // SSOT chemin : users/{uid}/email_threads/{threadId}/messages/{messageId}
     match /{path=**}/messages/{messageId} {
-      allow read: if isSignedIn() && resource.data.brokerId == request.auth.uid;
+      allow read: if isSignedIn() && (
+        resource.data.brokerId == request.auth.uid ||
+        resource.data.authorId == request.auth.uid ||
+        (resource.data.threadId is string &&
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)/email_threads/$(resource.data.threadId)))
+      );
     }
 
     // Global Helpers
@@ -76,10 +82,12 @@ service cloud.firestore {
 
         match /messages/{messageId} {
           allow read: if isOwner(userId);
+          allow update: if isOwner(userId);
+          allow delete: if isOwner(userId);
           allow create: if isOwner(userId) &&
-            incoming().body is string &&
             incoming().direction in ['inbound', 'outbound'] &&
-            incoming().sentAtMillis is int;
+            incoming().sentAtMillis is int &&
+            (!('body' in incoming()) || incoming().body is string);
         }
       }
     }

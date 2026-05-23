@@ -28,6 +28,7 @@ import {
   resolveDefaultEmailAccount,
   resolveEmailAccountsFromProfile,
 } from '../../lib/emailAccounts';
+import { emailHtmlToPlainText } from '../../lib/emailHtml';
 import { ThreadList } from './ThreadList';
 import { ChatWindow } from './ChatWindow';
 import type { SendFromSelection } from './MessageComposer';
@@ -429,7 +430,7 @@ export function MailboxContainer() {
 
       <div
         className={cn(
-          'flex min-w-0 flex-1 flex-col',
+          'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
           !selectedThread && 'hidden lg:flex'
         )}
       >
@@ -454,6 +455,8 @@ export function MailboxContainer() {
           onArchive={() => handleMoveThreadToFolder('ARCHIVE')}
           onDelete={() => handleMoveThreadToFolder('TRASH')}
           folderActionPending={folderActionPending}
+          resolvedBodies={resolvedBodies}
+          hydratingMessageIds={hydratingMessageIds}
           labels={{
             selectThread: t('Sélectionnez une conversation', 'Select a conversation'),
             secureMode: t('Mode sécurisé chiffré activé', 'Encrypted secure mode'),
@@ -474,6 +477,10 @@ export function MailboxContainer() {
             delete: t('Supprimer', 'Delete'),
             deliveredReceipt: t('Reçu par le serveur', 'Delivered to server'),
             readReceipt: t('Lu', 'Read'),
+            noMessagesInThread: t(
+              'Aucun message trouvé dans ce fil.',
+              'No messages found in this thread.'
+            ),
           }}
         />
       </div>

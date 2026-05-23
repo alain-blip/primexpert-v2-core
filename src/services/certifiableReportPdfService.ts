@@ -409,7 +409,8 @@ export function buildBrokerFooterFromProfile(profile: {
 } | null | undefined): CertifiableReportBrokerFooter {
   return {
     brokerName: profile?.displayName?.trim() || '—',
-    licenseNumber: profile?.licenseName?.trim() || profile?.title?.trim() || '—',
+    licenseNumber: profile?.licenseName?.trim() || '—',
     agencyName: profile?.agency?.trim() || '—',
+    brokerTitle: profile?.title?.trim() || undefined,
   };
 }

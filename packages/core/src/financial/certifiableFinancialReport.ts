@@ -12,6 +12,8 @@ export interface CertifiableReportBrokerFooter {
   brokerName: string;
   licenseNumber: string;
   agencyName: string;
+  /** Titre professionnel (page couverture, rapports CraftMyPDF). */
+  brokerTitle?: string;
 }
 
 export interface CertifiableReportSummaryLine {

@@ -14,7 +14,7 @@ import {
   buildBrokerFooterFromProfile,
   downloadCertifiableFinancialReportPdf,
 } from '../../../services/certifiableReportPdfService';
-import { downloadDetailedFinancialReportPdf } from '../../../services/financialReportPdfService';
+import { downloadBuyerReportPdf } from '../../../services/buyerReportPdfService';
 import type { Residence } from '../../../services/residences';
 
 const GOLD_BTN =
@@ -126,21 +126,20 @@ export function FinanceHubMasterPanel({ onOpenAnalyse360, residence }: FinanceHu
     }
     setDetailPdfPending(true);
     try {
-      await downloadDetailedFinancialReportPdf({
-        financialData: exportFinancialData,
-        residence: {
-          id: residence.id,
-          address: residence.address,
-          city: residence.city,
-          residenceName: residence.residenceName,
-          nomCommercial: residence.nomCommercial,
-          name: residence.name,
-          prixDemande: residence.price,
-          askingPrice: residence.price,
+      await downloadBuyerReportPdf(
+        {
+          financialData: exportFinancialData,
+          residence: {
+            ...residence,
+            price: residence.price,
+            prixDemande: residence.price,
+            askingPrice: residence.price,
+          },
+          broker: buildBrokerFooterFromProfile(profile),
+          locale: language === 'fr' ? 'fr' : 'en',
         },
-        broker: buildBrokerFooterFromProfile(profile),
-        locale: language === 'fr' ? 'fr' : 'en',
-      });
+        { filenameStem: 'rapport-financier-detaille' }
+      );
     } catch (e) {
       console.error('[FinanceHubMasterPanel] detailed PDF failed', e);
       const detail = e instanceof Error ? e.message : String(e);

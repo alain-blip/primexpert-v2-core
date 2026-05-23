@@ -53,7 +53,11 @@ export interface ChatWindowProps {
     delete: string;
     deliveredReceipt: string;
     readReceipt: string;
+    noMessagesInThread: string;
   };
+  /** Corps hydratés via Nylas (messageId → HTML/texte). */
+  resolvedBodies?: Record<string, string>;
+  hydratingMessageIds?: Set<string>;
 }
 
 export function ChatWindow({
@@ -72,7 +76,7 @@ export function ChatWindow({
   onDelete,
   folderActionPending = false,
   resolvedBodies = {},
-  hydratingMessageIds,
+  hydratingMessageIds = new Set(),
   labels,
 }: ChatWindowProps) {
   if (!thread) {
@@ -90,8 +94,8 @@ export function ChatWindow({
   }
 
   return (
-    <div className="flex h-full flex-1 flex-col bg-vault">
-      <header className="flex flex-wrap items-center gap-3 border-b border-white/10 bg-white/[0.03] px-4 py-3">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-vault">
+      <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-white/10 bg-white/[0.03] px-4 py-3">
         {onBack ? (
           <button
             type="button"
@@ -122,15 +126,24 @@ export function ChatWindow({
         ) : null}
       </header>
 
-      <div className="custom-scrollbar flex-1 space-y-4 overflow-y-auto px-4 py-6 lg:px-8">
+      <div className="custom-scrollbar flex-1 basis-0 min-h-[200px] space-y-4 overflow-y-auto px-4 py-6 lg:px-8">
         {messagesLoading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-slate-400">
             <Loader2 className="h-5 w-5 animate-spin" />
             <span className="text-[11px] font-black uppercase tracking-widest">{labels.loadingMessages}</span>
           </div>
+        ) : messages.length === 0 ? (
+          <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-white">
+            <p>{labels.noMessagesInThread}</p>
+            <p className="mt-2 font-mono text-[10px] text-amber-200/80">
+              threadId={thread.id} · messages={messages.length}
+            </p>
+          </div>
         ) : (
           messages.map((msg) => {
             const outbound = msg.direction === 'outbound';
+            const hydrating = hydratingMessageIds.has(msg.id);
+            const displayBody = (resolvedBodies[msg.id] ?? msg.body ?? '').trim();
             return (
               <div
                 key={msg.id}
@@ -160,7 +173,7 @@ export function ChatWindow({
                 </p>
                 <div
                   className={cn(
-                    'max-w-[min(100%,36rem)] text-sm leading-relaxed',
+                    'flex max-w-[min(100%,36rem)] min-h-0 flex-col text-sm leading-relaxed',
                     outbound
                       ? 'rounded-2xl rounded-br-md border border-blue-400/35 bg-blue-600 px-4 py-3 text-white shadow-md shadow-blue-950/30'
                       : 'rounded-2xl rounded-bl-md border border-white/10 bg-white/[0.06] px-4 py-3 text-slate-200 shadow-sm backdrop-blur-sm'
@@ -169,13 +182,21 @@ export function ChatWindow({
                   <MessageBody
                     body={displayBody}
                     tone={outbound ? 'outbound' : 'inbound'}
-                    loading={hydrating}
+                    loading={hydrating && !displayBody}
+                    className="min-h-[120px] w-full shrink-0"
+                    debugPayload={{
+                      id: msg.id,
+                      nylasMessageId: msg.nylasMessageId,
+                      direction: msg.direction,
+                      hydrating,
+                      bodyLen: msg.body?.length ?? 0,
+                      resolvedLen: resolvedBodies[msg.id]?.length ?? 0,
+                      displayLen: displayBody.length,
+                    }}
                     emptyLabel={
-                      hydrating
+                      hydrating && !displayBody
                         ? labels.loadingMessageBody
-                        : !displayBody
-                          ? labels.messageBodyUnavailable
-                          : undefined
+                        : labels.messageBodyUnavailable
                     }
                   />
                   {msg.attachments?.length ? (
@@ -263,17 +284,19 @@ export function ChatWindow({
         </div>
       ) : null}
 
-      <MessageComposer
-        disabled={messagesLoading}
-        sending={sending}
-        accounts={accounts}
-        fromAccountId={fromAccountId}
-        onFromAccountChange={onFromAccountChange}
-        placeholder={labels.composerPlaceholder}
-        sendLabel={labels.send}
-        fromLabel={labels.fromLabel}
-        onSend={onSend}
-      />
+      <div className="shrink-0">
+        <MessageComposer
+          disabled={messagesLoading}
+          sending={sending}
+          accounts={accounts}
+          fromAccountId={fromAccountId}
+          onFromAccountChange={onFromAccountChange}
+          placeholder={labels.composerPlaceholder}
+          sendLabel={labels.send}
+          fromLabel={labels.fromLabel}
+          onSend={onSend}
+        />
+      </div>
     </div>
   );
 }

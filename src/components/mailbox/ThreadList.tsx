@@ -62,12 +62,14 @@ export function ThreadList({
 }: ThreadListProps) {
   const q = search.trim().toLowerCase();
   const filtered = q
-    ? threads.filter(
-        (t) =>
+    ? threads.filter((t) => {
+        const snippetPlain = emailHtmlToPlainText(t.lastMessageSnippet).toLowerCase();
+        return (
           t.contactName.toLowerCase().includes(q) ||
           t.subject.toLowerCase().includes(q) ||
-          t.lastMessageSnippet.toLowerCase().includes(q)
-      )
+          snippetPlain.includes(q)
+        );
+      })
     : threads;
 
   return (
