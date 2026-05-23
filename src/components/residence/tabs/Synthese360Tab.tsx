@@ -772,20 +772,27 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
   useEffect(() => {
     if (!residenceId) return undefined;
     const notesQuery = query(collection(db, 'residences', residenceId, 'notes'), orderBy('createdAt', 'desc'));
-    return onSnapshot(notesQuery, (snapshot) => {
-      setNotes(
-        snapshot.docs.map((noteDoc) => {
-          const data = noteDoc.data();
-          return {
-            id: noteDoc.id,
-            text: typeof data.text === 'string' ? data.text : String(data.texte ?? ''),
-            authorId: typeof data.authorId === 'string' ? data.authorId : undefined,
-            authorName: typeof data.authorName === 'string' ? data.authorName : undefined,
-            createdAt: data.createdAt,
-          };
-        })
-      );
-    });
+    return onSnapshot(
+      notesQuery,
+      (snapshot) => {
+        setNotes(
+          snapshot.docs.map((noteDoc) => {
+            const data = noteDoc.data();
+            return {
+              id: noteDoc.id,
+              text: typeof data.text === 'string' ? data.text : String(data.texte ?? ''),
+              authorId: typeof data.authorId === 'string' ? data.authorId : undefined,
+              authorName: typeof data.authorName === 'string' ? data.authorName : undefined,
+              createdAt: data.createdAt,
+            };
+          })
+        );
+      },
+      (err) => {
+        console.error('[Synthese360Tab] notes listener failed', err);
+        setNotes([]);
+      }
+    );
   }, [residenceId]);
 
   const addNote = useCallback(async () => {

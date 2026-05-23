@@ -6,15 +6,10 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Collection group `messages` — analyses messagerie (Dashboard, Listings, chronologie).
-    // SSOT chemin : users/{uid}/email_threads/{threadId}/messages/{messageId}
+    // Collection group `messages` — requêtes brokerId (mailboxAnalysis, Dashboard).
+    // Accès direct par fil : users/{uid}/email_threads/{threadId}/messages/{messageId} (isOwner).
     match /{path=**}/messages/{messageId} {
-      allow read: if isSignedIn() && (
-        resource.data.brokerId == request.auth.uid ||
-        resource.data.authorId == request.auth.uid ||
-        (resource.data.threadId is string &&
-          exists(/databases/$(database)/documents/users/$(request.auth.uid)/email_threads/$(resource.data.threadId)))
-      );
+      allow read: if isSignedIn() && resource.data.brokerId == request.auth.uid;
     }
 
     // Global Helpers
@@ -237,6 +232,30 @@ service cloud.firestore {
         allow create, update: if isResidenceTenantOwner(residenceId);
         allow delete: if isResidenceTenantOwner(residenceId);
       }
+
+      // Synthèse 360° — notes courtier
+      match /notes/{noteId} {
+        allow read: if canReadResidenceSubcollection(residenceId);
+        allow create, update, delete: if isResidenceTenantOwner(residenceId);
+      }
+
+      // Synthèse 360° — tâches et rendez-vous
+      match /tasks/{taskId} {
+        allow read: if canReadResidenceSubcollection(residenceId);
+        allow create, update, delete: if isResidenceTenantOwner(residenceId);
+      }
+
+      // Fil d'activités (envois, appels — alimenté aussi par Cloud Functions admin SDK)
+      match /activities/{activityId} {
+        allow read: if canReadResidenceSubcollection(residenceId);
+        allow create, update: if isResidenceTenantOwner(residenceId);
+      }
+    }
+
+    // Benchmark portefeuille — lecture 360° finance (Analyse360FinanceTab)
+    match /marketSnapshots/{snapshotId} {
+      allow read: if isSignedIn();
+      allow write: if false;
     }
 
     // proprietes — dossiers / fiches Copilote migrés (Phase 2) ; même clé tenant que `residences`.
