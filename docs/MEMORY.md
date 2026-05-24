@@ -313,6 +313,43 @@ Côté client : `resolveEffectiveBillingStatus()` — règle 72 h si Firestore e
 
 ---
 
+## Plan de migration Legacy → V2 — diagnostic Data Mapping (2026-05-20)
+
+**Statut :** cartographie **validée à 100 %** par le PO (Alain) — diagnostic uniquement, **aucun script de migration final** exécuté dans cette session.
+
+**Document officiel :** [`docs/DATA_MAPPING_LEGACY_V2.md`](./DATA_MAPPING_LEGACY_V2.md)
+
+### Périmètre analysé
+
+| Source | Chemin disque |
+|--------|---------------|
+| Legacy (Copilote-RPA) | `00_RPA_SYSTEME_APP/Copilote-RPA` |
+| V2 (PrimeXpert) | `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2` |
+
+### Décisions clés (alignées Règle #0)
+
+| Sujet | Décision validée |
+|-------|------------------|
+| Contacts CRM | SSOT unique `organizations/{orgId}/contacts` — fusion `contacts/` + `vendors/` (import existant `legacyContactImport.ts`) |
+| Pipeline acheteur | **`buyerPipeline/` interdit en V2** — aplatissement sur `buyerQualificationStatus` + `buyerCriteria` ; historique stage dans `importMeta.pipelineHistory` |
+| Multi-offres PA | Offre **courante** dans `promesseAchat` + `offre` ; archives dans `importMeta.offersArchive[]` ou docs `legal` — **sans** sous-collection `purchaseOffers` |
+| Parties | `partiesImpliquees[]` ↔ `contact.residenceIds` (bidirectionnel) |
+| Documents Storage | Copie Legacy `residences/{id}/documents_*` → `primexpert/{brokerId}/properties/{id}/documents/{category}/` |
+| Dual tenant | **Critique** : `orgId`/`ownerId` sur contacts **et** `courtiersResponsables` sur résidences |
+
+### Trous prioritaires identifiés (avant scripts)
+
+1. Pas de Kanban acheteur 5 colonnes en V2 → tiers dérivés `deriveBuyerTier()`
+2. `residences_public` vs diffusion V2 (`syndication.draftToken`)
+3. `financial/years_*` — enrichir `dataV2` ou sous-docs
+4. Visites / comptes-rendus hétérogènes → `visitorVisitRegistry` + `call_analyses`
+
+### Prochaine phase (hors scope diagnostic)
+
+Ordre recommandé : users/orgId → contacts → résidences → parties → PA → finance → documents → compliance → flatten pipeline acheteur (détail dans le document lié).
+
+---
+
 ## Déploiement
 
 ```bash
@@ -337,4 +374,4 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 ---
 
-*Journal mis à jour : 2026-05-24 — Statistiques du marché (Big Data), anti-doublons idempotent, parse massif 2 GiB, Option A messagerie ↔ CRM, Kanban inscriptions Phase 2, benchmark finance global.*
+*Journal mis à jour : 2026-05-20 — Plan de migration Legacy→V2 (Data Mapping validé PO) ; voir [`DATA_MAPPING_LEGACY_V2.md`](./DATA_MAPPING_LEGACY_V2.md).*
