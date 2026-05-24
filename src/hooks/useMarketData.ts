@@ -11,10 +11,12 @@ import {
   cleanseTransactionRow,
   computeRegionalPlStatements,
   computeRegionalSummaries,
-  normalizeRatioLabelKey,
   parseMarketDateToMillis,
   sortTransactionsDesc,
   buildGpsRegionFilterOptions,
+  buildRatioSamplesFromBenchmarkRecord,
+  coerceNbUnites,
+  sanitizeRatioSamplesForPnL,
   type MarketGpsPlLine,
   type MarketGpsRatioSample,
   type MarketGpsRegionalPl,
@@ -144,51 +146,28 @@ function extractRatioSamplesFromAnalytics(
     ? (data.validatedAmounts as Array<{ label: string; value: number }>)
     : [];
 
-  const samples: MarketGpsRatioSample[] = [];
+  if (!amounts.length) return [];
+
+  const snap = (data.comparableSnapshot ?? {}) as Record<string, unknown>;
+  const txMeta = (data.marketTransactionMeta ?? {}) as Record<string, unknown>;
+  const nbUnites = coerceNbUnites(
+    benchMeta.nbUnites,
+    benchMeta.nbPortes,
+    snap.units,
+    txMeta.nbPortes
+  );
+
   const baseLabel =
     amounts[0]?.label?.split('—')[0]?.trim() ??
     (benchMeta.categorie != null ? String(benchMeta.categorie) : 'Ratio');
 
-  for (const a of amounts) {
-    const labelKey = normalizeRatioLabelKey(a.label || baseLabel);
-    const labelDisplay = a.label?.split('—')[0]?.trim() || baseLabel;
-    if (/ratio/i.test(a.label) && Number.isFinite(a.value)) {
-      samples.push({
-        region,
-        labelKey,
-        labelDisplay,
-        ratioPct: a.value,
-        sortMillis,
-      });
-    }
-    if (/porte|unit[eé]|\/\s*unit|annuel/i.test(a.label) && Number.isFinite(a.value)) {
-      if (/ratio/i.test(a.label)) continue;
-      samples.push({
-        region,
-        labelKey,
-        labelDisplay,
-        montantParPorte: a.value,
-        sortMillis,
-      });
-    }
-  }
-
-  if (!samples.length && amounts.length) {
-    const labelKey = normalizeRatioLabelKey(baseLabel);
-    for (const a of amounts) {
-      if (!Number.isFinite(a.value)) continue;
-      samples.push({
-        region,
-        labelKey,
-        labelDisplay: baseLabel,
-        ratioPct: /%|ratio/i.test(a.label) ? a.value : undefined,
-        montantParPorte: /porte|unit[eé]|\/\s*unit/i.test(a.label) ? a.value : undefined,
-        sortMillis,
-      });
-    }
-  }
-
-  return samples.length ? samples : [];
+  return buildRatioSamplesFromBenchmarkRecord({
+    region,
+    sortMillis,
+    amounts: amounts.filter((a) => Number.isFinite(a.value)),
+    baseLabel,
+    nbUnites,
+  });
 }
 
 function mapSnapshotTransaction(
@@ -246,34 +225,34 @@ function extractRatioSamplesFromSnapshotBench(
   if (!region || region === '—') return [];
 
   const label = String(row.label ?? 'Ratio').trim();
-  const labelKey = normalizeRatioLabelKey(label);
   const anneeDonnees =
     typeof row.anneeDonnees === 'number' ? row.anneeDonnees : coerceYear(row.anneeDonnees);
   const sortMillis = parseMarketDateToMillis(
     anneeDonnees != null ? String(anneeDonnees) : null,
     anneeDonnees
   );
-  const samples: MarketGpsRatioSample[] = [];
+  const nbUnites = coerceNbUnites(row.nbPortes, row.nbUnites, row.units);
 
-  if (typeof row.ratioPct === 'number') {
-    samples.push({
-      region,
-      labelKey,
-      labelDisplay: label,
-      ratioPct: row.ratioPct,
-      sortMillis,
-    });
-  }
+  const amounts: Array<{ label: string; value: number }> = [];
   if (typeof row.montantParPorte === 'number') {
-    samples.push({
-      region,
-      labelKey,
-      labelDisplay: label,
-      montantParPorte: row.montantParPorte,
-      sortMillis,
-    });
+    amounts.push({ label: `${label} — par unité`, value: row.montantParPorte });
   }
-  return samples;
+  if (typeof row.montantAnnuel === 'number') {
+    amounts.push({ label: `${label} — annuel`, value: row.montantAnnuel });
+  }
+  if (typeof row.ratioPct === 'number') {
+    amounts.push({ label: `${label} — ratio (%)`, value: row.ratioPct });
+  }
+
+  if (!amounts.length) return [];
+
+  return buildRatioSamplesFromBenchmarkRecord({
+    region,
+    sortMillis,
+    amounts,
+    baseLabel: label,
+    nbUnites,
+  });
 }
 
 function formatMacroHint(row: Record<string, unknown>, locale: 'fr' | 'en'): string {
@@ -299,8 +278,10 @@ function formatMacroHint(row: Record<string, unknown>, locale: 'fr' | 'en'): str
   return parts.join(' · ');
 }
 
-function cleanseRatioSample(s: MarketGpsRatioSample): MarketGpsRatioSample {
-  return { ...s, region: cleanseMarketRegion(s.region) };
+function cleanseRatioSample(s: MarketGpsRatioSample): MarketGpsRatioSample | null {
+  const region = cleanseMarketRegion(s.region);
+  const cleaned = sanitizeRatioSamplesForPnL([{ ...s, region }]);
+  return cleaned[0] ?? null;
 }
 
 export interface UseMarketDataResult {
@@ -441,6 +422,7 @@ export function useMarketData(locale: 'fr' | 'en', brokerId?: string | null): Us
     const merged: MarketGpsRatioSample[] = [];
     const add = (s: MarketGpsRatioSample, keyPrefix: string) => {
       const cleaned = cleanseRatioSample(s);
+      if (!cleaned) return;
       const key = `${keyPrefix}|${cleaned.region}|${cleaned.labelKey}|${cleaned.ratioPct ?? ''}|${cleaned.montantParPorte ?? ''}|${cleaned.sortMillis}`;
       if (seen.has(key)) return;
       seen.add(key);

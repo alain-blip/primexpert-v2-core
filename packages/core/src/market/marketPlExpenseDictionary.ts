@@ -62,6 +62,11 @@ Object.assign(EXPENSE_LINE_META, {
     group: 'operationnelles',
     isResidual: true,
   },
+  'poste:reserve_structurale': {
+    labelFr: 'Réserve structurale',
+    labelEn: 'Replacement reserve',
+    group: 'operationnelles',
+  },
   autre: {
     labelFr: "Autres dépenses d'exploitation (résiduel)",
     labelEn: 'Other operating expenses (residual)',
@@ -147,7 +152,40 @@ const LABEL_PATTERNS: Array<{ pattern: RegExp; key: string }> = [
   { pattern: /l[eé]gal|legal fee/i, key: 'fraisLegaux' },
   { pattern: /administration|\badmin\b/i, key: 'fraisGeneraux' },
   { pattern: /^autre(s)?\s|autres d[eé]penses|miscellaneous|\bdivers\b|^other\b/i, key: 'divers' },
+  { pattern: /r[eé]serve structurale|replacement reserve|reserve structurale/i, key: 'poste:reserve_structurale' },
+  { pattern: /valeur [eé]valu[eé]e|evaluated value/i, key: 'valeurEvaluee' },
+  { pattern: /revenu brut potentiel|potential gross income/i, key: 'rbPotentiel' },
+  { pattern: /revenu net effectif|\bnoi\b|net operating income/i, key: 'rne' },
+  { pattern: /^revenu net\b|\bnet income\b/i, key: 'rne' },
 ];
+
+/** Fusion de clés proches (extractions IA redondantes). */
+const LABEL_KEY_MERGE_ALIASES: Record<string, string> = {
+  'poste:reserve_structurale_immeuble': 'poste:reserve_structurale',
+  'poste:reserve_structurale_batiment': 'poste:reserve_structurale',
+  'poste:reserve_structurale_batisse': 'poste:reserve_structurale',
+  'poste:reserve_de_replacement': 'poste:reserve_structurale',
+  'poste:reserve_replacement': 'poste:reserve_structurale',
+  'poste:reserve_structurale_immeuble_entier': 'poste:reserve_structurale',
+  valeurEvaluee: 'valeurEvaluee',
+  rbPotentiel: 'rbPotentiel',
+};
+
+export function mergeMarketLabelKey(labelKey: string, labelDisplay: string): string {
+  const display = labelDisplay
+    .replace(/\s*[—–-]\s*(par unit[eé]|par porte|\/\s*unit[eé]|annuel|ratio\s*\(?%?\)?|ratio).*$/i, '')
+    .trim()
+    .toLowerCase();
+
+  if (/r[eé]serve structurale/.test(display)) return 'poste:reserve_structurale';
+
+  const fromAlias = LABEL_KEY_MERGE_ALIASES[labelKey];
+  if (fromAlias) return fromAlias;
+
+  if (labelKey.startsWith('poste:reserve_structurale')) return 'poste:reserve_structurale';
+
+  return labelKey;
+}
 
 export function classifyExpenseGroupForKey(labelKey: string): PlExpenseGroup {
   switch (labelKey) {
@@ -222,7 +260,7 @@ export function normalizeRatioLabelKey(label: string): string {
 
   const slug = slugifyLabel(cleaned);
   if (!slug) return 'divers';
-  return `poste:${slug}`;
+  return mergeMarketLabelKey(`poste:${slug}`, cleaned);
 }
 
 export function resolveExpenseLineMeta(

@@ -300,6 +300,13 @@ export async function injectMasterMarketExtractionServer(
       amounts.push({ label: `${label} — ratio (%)`, value: bench.ratioPct, currency: 'CAD' });
     }
 
+    const nbUnites =
+      typeof bench.nbPortes === 'number'
+        ? bench.nbPortes
+        : typeof bench.nbUnites === 'number'
+          ? bench.nbUnites
+          : null;
+
     const entryRef = db.collection(MARKET_ANALYTICS_RAW).doc(fingerprint);
     batch.set(
       entryRef,
@@ -315,6 +322,8 @@ export async function injectMasterMarketExtractionServer(
           rowId: String(bench.rowId ?? ''),
           categorie: bench.categorie ?? null,
           marketDocumentId: documentId,
+          nbUnites,
+          nbPortes: nbUnites,
         },
         injectedAtMillis: now,
         validatedBy: brokerId,

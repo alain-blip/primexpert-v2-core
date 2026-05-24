@@ -43,6 +43,8 @@ export interface MarketGpsRatioSample {
   ratioPct?: number;
   montantParPorte?: number;
   sortMillis: number;
+  /** Nombre d'unités de la résidence source (dénominateur $/unité). */
+  nbUnites?: number;
 }
 
 export interface ValueRange {

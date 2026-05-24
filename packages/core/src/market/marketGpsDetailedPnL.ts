@@ -11,6 +11,11 @@ import {
   type PlExpenseGroup,
 } from './marketPlExpenseDictionary';
 import {
+  coerceOperatingRatioPct,
+  isPnLExpenseCandidate,
+  sanitizeRatioSamplesForPnL,
+} from './marketDataNormalize';
+import {
   cleanseMarketRegion,
   computeValueRange,
   passesTemporalFilter,
@@ -48,6 +53,20 @@ function mean(values: number[]): number | undefined {
   const nums = values.filter(Number.isFinite);
   if (!nums.length) return undefined;
   return nums.reduce((a, b) => a + b, 0) / nums.length;
+}
+
+function statsFromRatioValues(values: number[]) {
+  const cleaned = values
+    .map((v) => coerceOperatingRatioPct(v))
+    .filter((v): v is number => v != null);
+  const range = computeValueRange(cleaned);
+  return {
+    sampleCount: range.count,
+    meanRatioPct: mean(cleaned),
+    medianRatioPct: range.median,
+    minRatioPct: range.min,
+    maxRatioPct: range.max,
+  };
 }
 
 function statsFromValues(values: number[]) {
@@ -93,20 +112,23 @@ const REVENUE_KEYS = new Set(['rbe', 'rne', 'rde']);
 export function computeDetailedPnLRows(samples: MarketGpsRatioSample[]): DetailedPnLRow[] {
   if (!samples.length) return [];
 
-  const rbeValues = samples
+  const cleanSamples = sanitizeRatioSamplesForPnL(samples);
+
+  const rbeValues = cleanSamples
     .filter((s) => s.labelKey === 'rbe' && s.montantParPorte != null)
     .map((s) => s.montantParPorte!);
-  const rneValues = samples
+  const rneValues = cleanSamples
     .filter((s) => s.labelKey === 'rne' && s.montantParPorte != null)
     .map((s) => s.montantParPorte!);
-  const rdeValues = samples
+  const rdeValues = cleanSamples
     .filter((s) => s.labelKey === 'rde' && s.ratioPct != null)
     .map((s) => s.ratioPct!);
 
   const expenseKeys = new Set<string>();
-  for (const s of samples) {
+  for (const s of cleanSamples) {
     if (
       !REVENUE_KEYS.has(s.labelKey) &&
+      isPnLExpenseCandidate(s.labelKey, s.labelDisplay) &&
       s.montantParPorte != null &&
       Number.isFinite(s.montantParPorte)
     ) {
@@ -117,7 +139,7 @@ export function computeDetailedPnLRows(samples: MarketGpsRatioSample[]): Detaile
   const expenseStats = new Map<string, ReturnType<typeof statsFromValues>>();
   const expenseMeans = new Map<string, number>();
   for (const key of expenseKeys) {
-    const vals = samples
+    const vals = cleanSamples
       .filter((s) => s.labelKey === key && s.montantParPorte != null)
       .map((s) => s.montantParPorte!);
     const st = statsFromValues(vals);
@@ -128,13 +150,15 @@ export function computeDetailedPnLRows(samples: MarketGpsRatioSample[]): Detaile
   }
 
   const rbeStats = statsFromValues(rbeValues);
-  const rdeStats = statsFromValues(rdeValues);
+  const rdeStats = statsFromRatioValues(rdeValues);
   let rbeMean = rbeStats.meanPerUnit;
   let rbeMedian = rbeStats.medianPerUnit;
-  if (rbeMean == null && rdeStats.medianPerUnit != null) {
-    rbeMean = estimateRbePerUnit(expenseMeans, rdeStats.medianPerUnit);
+  const rdeMedianPct = rdeStats.medianRatioPct;
+  const rdeMeanPct = rdeStats.meanRatioPct;
+  if (rbeMean == null && rdeMedianPct != null) {
+    rbeMean = estimateRbePerUnit(expenseMeans, rdeMedianPct);
   }
-  if (rbeMedian == null && rdeStats.medianPerUnit != null) {
+  if (rbeMedian == null && rdeMedianPct != null) {
     const expenseMedians = new Map<string, number>();
     for (const [k, st] of expenseStats) {
       if (st.medianPerUnit != null && !isResidualExpenseKey(k)) {
@@ -143,13 +167,14 @@ export function computeDetailedPnLRows(samples: MarketGpsRatioSample[]): Detaile
     }
     let total = 0;
     for (const [, v] of expenseMedians) total += v;
-    if (total > 0) rbeMedian = total / (rdeStats.medianPerUnit / 100);
+    if (total > 0) rbeMedian = total / (rdeMedianPct / 100);
   }
 
   const rneStats = statsFromValues(rneValues);
-  if (!rneStats.sampleCount && rbeMedian != null && rdeStats.medianPerUnit != null) {
-    const rne = rbeMedian * (1 - rdeStats.medianPerUnit / 100);
-    rneStats.meanPerUnit = rbeMean != null ? rbeMean * (1 - (rdeStats.meanPerUnit ?? rdeStats.medianPerUnit) / 100) : rne;
+  if (!rneStats.sampleCount && rbeMedian != null && rdeMedianPct != null) {
+    const rne = rbeMedian * (1 - rdeMedianPct / 100);
+    rneStats.meanPerUnit =
+      rbeMean != null ? rbeMean * (1 - (rdeMeanPct ?? rdeMedianPct) / 100) : rne;
     rneStats.medianPerUnit = rne;
     rneStats.minPerUnit = rne;
     rneStats.maxPerUnit = rne;
@@ -191,7 +216,7 @@ export function computeDetailedPnLRows(samples: MarketGpsRatioSample[]): Detaile
     rows.push(groupHeader(`grp-${group}`, groupLabels[group].fr, groupLabels[group].en));
 
     for (const key of keysInGroup) {
-      const displayOverride = dominantLabelDisplay(key, samples);
+      const displayOverride = dominantLabelDisplay(key, cleanSamples);
       const meta = resolveExpenseLineMeta(key, displayOverride);
       const st = expenseStats.get(key)!;
       rows.push({
@@ -218,12 +243,12 @@ export function computeDetailedPnLRows(samples: MarketGpsRatioSample[]): Detaile
     labelEn: 'Total expenses — operating expense ratio (OER)',
     sampleCount: rdeStats.sampleCount,
     isRatioLine: true,
-    meanRatioPct: rdeStats.meanPerUnit ?? mean(rdeValues),
-    medianRatioPct: rdeStats.medianPerUnit,
-    minPerUnit: rdeStats.minPerUnit,
-    maxPerUnit: rdeStats.maxPerUnit,
-    pctRbeMean: rdeStats.meanPerUnit ?? mean(rdeValues),
-    pctRbeMedian: rdeStats.medianPerUnit,
+    meanRatioPct: rdeMeanPct,
+    medianRatioPct: rdeMedianPct,
+    minPerUnit: rdeStats.minRatioPct,
+    maxPerUnit: rdeStats.maxRatioPct,
+    pctRbeMean: rdeMeanPct,
+    pctRbeMedian: rdeMedianPct,
   });
 
   rows.push(sectionHeader('sec-profit', '3 · Profit', '3 · Profit'));

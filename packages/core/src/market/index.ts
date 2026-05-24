@@ -10,5 +10,6 @@ export * from './marketGpsDashboardMetrics';
 export * from './marketGpsDetailedPnL';
 export * from './marketGpsTrendSeries';
 export * from './marketPlExpenseDictionary';
+export * from './marketDataNormalize';
 export * from './marketSourceTag';
 export * from './marketRegionNormalize';
