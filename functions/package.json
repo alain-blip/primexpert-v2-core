@@ -8,7 +8,9 @@
   "scripts": {
     "sync:core-diffusion": "node scripts/sync-core-diffusion.cjs",
     "sync:core-mail": "node scripts/sync-core-mail.cjs",
-    "prebuild": "npm run sync:core-diffusion && npm run sync:core-mail",
+    "sync:core-documents": "node scripts/sync-core-documents.cjs",
+    "sync:core-market": "node scripts/sync-core-market.cjs",
+    "prebuild": "npm run sync:core-diffusion && npm run sync:core-mail && npm run sync:core-documents && npm run sync:core-market",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "serve": "npm run build && firebase emulators:start --only functions",

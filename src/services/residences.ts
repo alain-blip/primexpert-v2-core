@@ -20,7 +20,9 @@ import {
   limit,
   orderBy,
   query,
+  serverTimestamp,
   startAfter,
+  updateDoc,
   where,
   type DocumentData,
   type DocumentSnapshot,
@@ -33,10 +35,12 @@ import type { AssetNiche, AssetNicheMetadata, AssetSyndication } from '../types/
 import { parseAssetNiche, residenceMatchesNiche } from '../types/residence';
 import type { RadarPropertyType } from '../types/radarAccess';
 import {
+  buildPipelineStatusFirestorePatch,
   extractPipelineStatusRaw,
   isPipelineActiveStatus,
   PIPELINE_ACTIVE_STATUSES,
   resolveResidenceStatus,
+  type PipelineColumnId,
   type ResidenceStatus,
 } from '../config/pipelineStages';
 
@@ -82,6 +86,21 @@ export interface Residence {
   date: string;
   /** Multi-tenant : doit toujours contenir le brokerId du propriétaire de la fiche. */
   courtiersResponsables?: string;
+  /** Champs identité — conformité mandat / matching. */
+  unitesRPA?: number;
+  nombreUnitesTotal?: number;
+  unitsCount?: number;
+  nombreUnites?: number;
+  region?: string;
+  residenceType?: string;
+  type?: string;
+  contratCourtage?: {
+    commissionPourcentage?: number;
+    commissionEquipe?: number;
+    commissionCollaborateur?: number;
+  };
+  /** Prix accepté (promesse d'achat) — garde-fou glisser-déposer. */
+  prixAccepte?: number;
   /** Niche active (RPA / CPE / PLEX). Absent = visible dans toutes les vues. */
   assetNiche?: AssetNiche;
   /** Type Radar explicite (sinon déduit de `assetNiche`). */
@@ -213,6 +232,29 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
     data.revenuPotentielAnnuel,
     data.revenusPotentiels
   );
+  const unitesRPA = mapLegacyNumber(
+    data.unitesRPA,
+    data.nombreUnitesTotal,
+    data.unitsCount,
+    data.nombreUnites,
+    data.nombreUnitesRPA,
+    data.unites,
+    data.capacite
+  );
+  const regionRaw = data.region ?? data.ville ?? data.city;
+  const region =
+    typeof regionRaw === 'string' && regionRaw.trim().length > 0 ? regionRaw.trim() : undefined;
+  const residenceTypeRaw = data.residenceType ?? data.type;
+  const residenceType =
+    typeof residenceTypeRaw === 'string' && residenceTypeRaw.trim().length > 0
+      ? residenceTypeRaw.trim()
+      : undefined;
+  const contratRaw = data.contratCourtage;
+  const contratCourtage =
+    contratRaw && typeof contratRaw === 'object' && !Array.isArray(contratRaw)
+      ? (contratRaw as Residence['contratCourtage'])
+      : undefined;
+  const prixAccepte = mapLegacyNumber(data.prixAccepte, data.prixOffreAccepte);
   return {
     id: doc.id,
     address: String(data.address ?? data.adresse ?? '—'),
@@ -227,6 +269,13 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
     prixDemande: price,
     commissionRate,
     potentialRevenue,
+    unitesRPA,
+    nombreUnitesTotal: unitesRPA,
+    region,
+    residenceType,
+    type: residenceType,
+    contratCourtage,
+    prixAccepte,
     status: resolveResidenceStatus(extractPipelineStatusRaw(data as Record<string, unknown>)),
     date: String(data.date ?? data.updatedAt ?? ''),
     courtiersResponsables: data[TENANT_FIELD],
@@ -453,4 +502,26 @@ export async function searchResidencesByAddressPrefix(
     console.warn('[residences.searchResidencesByAddressPrefix] query failed, empty:', e);
     return [];
   }
+}
+
+/**
+ * Met à jour le statut pipeline après glisser-déposer Kanban.
+ * Écrit le slug canonique V2 + miroir legacy `statut`.
+ */
+export async function updateResidencePipelineStatus(
+  ctx: TenantContext,
+  residenceId: string,
+  columnId: PipelineColumnId
+): Promise<void> {
+  if (!residenceId) throw new Error('residenceId requis');
+
+  const existing = await getResidenceById(ctx, residenceId);
+  if (!existing) throw new Error('Résidence introuvable ou accès refusé');
+
+  const statusPatch = buildPipelineStatusFirestorePatch(columnId);
+  const ref = doc(db, 'residences', residenceId);
+  await updateDoc(ref, {
+    ...statusPatch,
+    updatedAt: serverTimestamp(),
+  });
 }

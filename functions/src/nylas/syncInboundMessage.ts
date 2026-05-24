@@ -7,6 +7,7 @@ import {
   mailAnalysisToFirestoreFields,
 } from './mailMessageAnalysis';
 import { fetchNylasMessageById, resolveNylasMessageBody } from './fetchMessageBody';
+import { findMessageByNylasId, nylasMessageDocId } from './messageDocId';
 import type { NylasMessageObject } from './types';
 
 export interface SyncInboundInput {
@@ -15,6 +16,8 @@ export interface SyncInboundInput {
   grantId: string;
   message: NylasMessageObject;
   direction: 'inbound' | 'outbound';
+  /** Force l’écriture sur un fil Firestore existant (évite les doublons à l’envoi). */
+  preferredThreadDocId?: string;
 }
 
 function pickContact(message: NylasMessageObject, direction: 'inbound' | 'outbound') {
@@ -74,9 +77,16 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
       ? analysisFields.matchedResidenceId
       : null;
 
-  let threadDocId: string | null = null;
+  let threadDocId: string | null = input.preferredThreadDocId?.trim() || null;
 
-  if (nylasThreadId) {
+  if (threadDocId && nylasThreadId) {
+    await userThreadsCol(brokerId).doc(threadDocId).set(
+      { nylasThreadId },
+      { merge: true }
+    );
+  }
+
+  if (!threadDocId && nylasThreadId) {
     const existing = await userThreadsCol(brokerId)
       .where('nylasThreadId', '==', nylasThreadId)
       .where('accountId', '==', accountId)
@@ -127,12 +137,12 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
   }
 
   const messagesCol = threadMessagesCol(brokerId, threadDocId);
-  const dup = await messagesCol.where('nylasMessageId', '==', nylasMessageId).limit(1).get();
-  if (!dup.empty) {
+  const existingMsg = await findMessageByNylasId(messagesCol, nylasMessageId);
+  if (existingMsg?.exists) {
     const patch: Record<string, unknown> = { ...analysisFields };
-    const prevBody = String(dup.docs[0].data()?.body ?? '').trim();
+    const prevBody = String(existingMsg.data()?.body ?? '').trim();
     if (!prevBody && body) patch.body = body;
-    await dup.docs[0].ref.update(patch);
+    await existingMsg.ref.update(patch);
     return;
   }
 
@@ -169,7 +179,7 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
     messageDoc.isOpened = false;
   }
 
-  await messagesCol.add(messageDoc);
+  await messagesCol.doc(nylasMessageDocId(nylasMessageId)).set(messageDoc);
 }
 
 /** Résout brokerId + accountId + email à partir du grant Nylas. */

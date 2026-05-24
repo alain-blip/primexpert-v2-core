@@ -51,7 +51,19 @@ export function usePipelineResidences(
     };
   }, [tenantId, enabled, silo]);
 
-  return { residences, loading, error };
+  const patchResidenceStatus = useCallback((residenceId: string, status: Residence['status']) => {
+    setResidences((prev) => patchResidenceStatusInList(prev, residenceId, status));
+  }, []);
+
+  return { residences, loading, error, patchResidenceStatus };
+}
+
+function patchResidenceStatusInList(
+  rows: Residence[],
+  residenceId: string,
+  status: Residence['status']
+): Residence[] {
+  return rows.map((r) => (r.id === residenceId ? { ...r, status } : r));
 }
 
 /**

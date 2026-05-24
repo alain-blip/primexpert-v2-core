@@ -24,7 +24,7 @@ const HEADER_BANNER = [
   '',
 ].join('\n');
 
-const FILES = ['types.ts', 'mailParser.ts', 'index.ts'];
+const FILES = ['types.ts', 'mailParser.ts', 'contactMatch.ts', 'index.ts'];
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });

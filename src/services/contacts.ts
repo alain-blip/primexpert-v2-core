@@ -37,18 +37,7 @@ import {
   syncRemoveCoBuyerId,
   syncRemoveCoSellerId,
   syncRemoveManagedBuyerId,
-  type ContactCriteriaDocumentRef,
-  type BuyerQualificationStatus,
-  type ContactBuyerCriteria,
-  type ContactBrokerCriteria,
-  type ContactCommunicationPreferences,
-  type ContactSellerCriteria,
-  type ProfessionalType,
-} from '@primexpert/core/crm';
-import { db } from '../lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../lib/firebase';
-import {
+  buildContactDisplayName,
   buildContactIdProofStoragePath,
   buildContactBuyerDocumentStoragePath,
   buildContactSellerDocumentStoragePath,
@@ -57,6 +46,13 @@ import {
   normalizeContactLegalVerification,
   validateContactLciFields,
   parseContactImportMeta,
+  type ContactCriteriaDocumentRef,
+  type BuyerQualificationStatus,
+  type ContactBuyerCriteria,
+  type ContactBrokerCriteria,
+  type ContactCommunicationPreferences,
+  type ContactSellerCriteria,
+  type ProfessionalType,
   type ContactAssetNiche,
   type ContactLeadSource,
   type ContactLegalVerification,
@@ -67,6 +63,10 @@ import {
   type ContactSellerDocumentKind,
   type OrganizationContact,
 } from '@primexpert/core/crm';
+import { findContactsByEmail, normalizeMailAddress } from '@primexpert/core/mail';
+import { db } from '../lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../lib/firebase';
 
 export type {
   ContactAssetNiche,
@@ -195,6 +195,23 @@ export async function listOrganizationContacts(
     }
   }
   return Array.from(byId.values());
+}
+
+/** Recherche contacts par courriel exact (pool owner + AGENCY_SHARED). */
+export async function findOrganizationContactsByEmail(
+  ctx: ContactServiceContext,
+  emailRaw: string
+): Promise<OrganizationContact[]> {
+  const email = normalizeMailAddress(emailRaw);
+  if (!email) return [];
+  const rows = await listOrganizationContacts(ctx);
+  return findContactsByEmail(
+    rows.map((c) => ({
+      ...c,
+      displayName: buildContactDisplayName(c),
+    })),
+    email
+  );
 }
 
 export async function getOrganizationContactById(

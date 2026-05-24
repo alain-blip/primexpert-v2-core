@@ -3,7 +3,7 @@
  * Charte institutionnelle : fond clair, cartes blanches, texte noir.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
 import { BarChart3, Coins, Landmark, Microscope, Percent, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../../../lib/utils';
@@ -16,10 +16,23 @@ import { isFinanceHubSealed } from '@primexpert/core/diffusion';
 import type { Residence } from '../../../services/residences';
 import { FinanceHubMasterPanel } from '../finance/FinanceHubMasterPanel';
 import { BilanExecutifTab } from './BilanExecutifTab';
-import { RevenusDepensesTab } from './RevenusDepensesTab';
 import { FinancabiliteTab } from './FinancabiliteTab';
 import { Analyse360FinanceTab } from './Analyse360FinanceTab';
 import { PerformanceRatiosTab } from '../../financial/PerformanceRatiosTab';
+
+const RevenusDepensesTabLazy = lazy(() =>
+  import('./RevenusDepensesTab').then((m) => ({ default: m.RevenusDepensesTab }))
+);
+
+function RevenusDepensesFallback() {
+  const { t } = useLanguage();
+  return (
+    <div className="flex min-h-[240px] items-center justify-center" aria-busy="true">
+      <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#142c6a]/20 border-t-[#142c6a]" />
+      <span className="sr-only">{t('Chargement revenus et dépenses…', 'Loading revenue & expenses…')}</span>
+    </div>
+  );
+}
 
 export type FinanceSubTab =
   | 'bilan'
@@ -88,7 +101,11 @@ export function FinanceHubTab({ residence }: FinanceHubTabProps) {
       case 'bilan':
         return <BilanExecutifTab residence={residence} />;
       case 'revenus-depenses':
-        return <RevenusDepensesTab residence={residence} />;
+        return (
+          <Suspense fallback={<RevenusDepensesFallback />}>
+            <RevenusDepensesTabLazy residence={residence} />
+          </Suspense>
+        );
       case 'financabilite':
         return <FinancabiliteTab residence={residence} />;
       case 'ratios':

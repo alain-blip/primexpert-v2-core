@@ -105,6 +105,8 @@ function mapThreadDoc(id: string, data: Record<string, unknown>): EmailThread {
     isUnread: data.isUnread === true,
     propertyId: typeof data.propertyId === 'string' ? data.propertyId : undefined,
     propertyLabel: typeof data.propertyLabel === 'string' ? data.propertyLabel : undefined,
+    matchedContactId:
+      typeof data.matchedContactId === 'string' ? data.matchedContactId : null,
     createdAtMillis: toMillis(data.createdAtMillis ?? data.createdAt),
     nylasThreadId: typeof data.nylasThreadId === 'string' ? data.nylasThreadId : undefined,
     mailboxFolder: normalizeMailboxFolder(data.mailboxFolder),
@@ -154,6 +156,8 @@ function mapMessageDoc(id: string, threadId: string, data: Record<string, unknow
     summaryOneLine:
       typeof data.summaryOneLine === 'string' ? data.summaryOneLine : undefined,
     mailUrgency: typeof data.mailUrgency === 'string' ? data.mailUrgency : undefined,
+    matchedContactId:
+      typeof data.matchedContactId === 'string' ? data.matchedContactId : null,
   };
 }
 
@@ -263,7 +267,9 @@ export function subscribeEmailThreads(
   };
 }
 
-/** Écoute temps réel des messages d’un fil. */
+/** Écoute temps réel des messages d’un fil.
+ *  Chemin SSOT (aligné backend) : users/{brokerId}/email_threads/{threadId}/messages
+ */
 export function subscribeThreadMessages(
   brokerId: string,
   threadId: string,
@@ -433,6 +439,80 @@ export async function seedDemoEmailThreadsIfEmpty(
     direction: 'inbound',
     authorName: 'Mathieu Tremblay',
   });
+}
+
+function summarizeMessageBody(body: string, max = 120): string {
+  const plain = body.replace(/\s+/g, ' ').trim();
+  if (!plain) return '';
+  return plain.length <= max ? plain : `${plain.slice(0, max - 1)}…`;
+}
+
+export type LinkEmailThreadContactContext = {
+  contactEmail?: string;
+  contactName?: string;
+  messages?: ReadonlyArray<
+    Pick<EmailMessage, 'id' | 'body' | 'summaryOneLine' | 'mailContactEmail'>
+  >;
+};
+
+/** Lie un fil et ses messages à un contact CRM (Phase 2). */
+export async function linkEmailThreadToContact(
+  brokerId: string,
+  threadId: string,
+  contactId: string,
+  messageIds: readonly string[],
+  context?: LinkEmailThreadContactContext
+): Promise<void> {
+  if (!brokerId || !threadId || !contactId) return;
+
+  const linkedAt = Date.now();
+  const partyEmail = context?.contactEmail?.trim().toLowerCase();
+  const partyName = context?.contactName?.trim();
+
+  await updateDoc(threadRef(brokerId, threadId), {
+    matchedContactId: contactId,
+    updatedAt: serverTimestamp(),
+  });
+
+  await Promise.all(
+    messageIds.map((messageId) => {
+      const msgCtx = context?.messages?.find((m) => m.id === messageId);
+      const summary =
+        msgCtx?.summaryOneLine?.trim() ||
+        (msgCtx?.body ? summarizeMessageBody(msgCtx.body) : '');
+      const patch: Record<string, unknown> = {
+        brokerId,
+        matchedContactId: contactId,
+        linkedContactAtMillis: linkedAt,
+      };
+      if (partyEmail) patch.mailContactEmail = partyEmail;
+      if (partyName) patch.mailContactName = partyName;
+      if (summary) patch.summaryOneLine = summary;
+      return updateDoc(doc(messagesCol(brokerId, threadId), messageId), patch);
+    })
+  );
+}
+
+export async function unlinkEmailThreadFromContact(
+  brokerId: string,
+  threadId: string,
+  messageIds: readonly string[]
+): Promise<void> {
+  if (!brokerId || !threadId) return;
+
+  await updateDoc(threadRef(brokerId, threadId), {
+    matchedContactId: null,
+    updatedAt: serverTimestamp(),
+  });
+
+  await Promise.all(
+    messageIds.map((messageId) =>
+      updateDoc(doc(messagesCol(brokerId, threadId), messageId), {
+        matchedContactId: null,
+        linkedContactAtMillis: null,
+      })
+    )
+  );
 }
 
 export type { EmailThread, EmailMessage, EmailAttachment };

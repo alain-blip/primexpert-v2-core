@@ -292,5 +292,29 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow update, delete: if false;
     }
+
+    // Big Data — médianes régionales / portefeuille (écriture serveur uniquement).
+    match /market_financial_benchmarks/{entryId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if false;
+    }
+
+    // Vault global — rapports macro (Altus, Côté Mercier, briefs démo) hors fiche résidence.
+    match /market_documents/{documentId} {
+      allow read: if isSignedIn() && resource.data.uploadedBy == request.auth.uid;
+      allow create: if isSignedIn()
+        && incoming().uploadedBy == request.auth.uid
+        && incoming().documentCategory == 'MARKET_REPORT'
+        && incoming().fileName is string
+        && incoming().storagePath is string;
+      allow update: if isSignedIn() && resource.data.uploadedBy == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.uploadedBy == request.auth.uid;
+    }
+
+    // Stats macro validées (écriture serveur — callable injectMarketMacroStats).
+    match /market_macro_stats/{entryId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if false;
+    }
   }
 }

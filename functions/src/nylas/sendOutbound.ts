@@ -72,11 +72,19 @@ export async function sendNylasOutboundMessage(input: SendOutboundInput): Promis
     to: [{ email: contactEmail }],
   };
 
+  if (message.thread_id) {
+    await userThreadsCol(brokerId).doc(threadId).set(
+      { nylasThreadId: message.thread_id },
+      { merge: true }
+    );
+  }
+
   await syncNylasMessageToFirestore({
     brokerId,
     accountId,
     grantId,
     message,
     direction: 'outbound',
+    preferredThreadDocId: threadId,
   });
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Search, Filter, ShieldCheck, AlertTriangle, Zap, Landmark } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useLanguage } from '../lib/i18n';
@@ -6,20 +6,17 @@ import { useAuth } from '../lib/auth';
 import { peekListingsFocusResidenceId, consumeListingsFocusResidenceId } from '../lib/listingsFocus';
 import {
   getResidenceById,
+  updateResidencePipelineStatus,
   type Residence,
 } from '../services/residences';
 import {
-  getPipelineColumnLabel,
   PIPELINE_KANBAN_COLUMNS,
   type PipelineColumnId,
   type ResidenceStatus,
 } from '../config/pipelineStages';
 import { fetchRecentCallAnalyses, type CallAnalysisRow } from '../services/transcriptionService';
 import { fetchRecentMailboxAnalyses, type SavedMailboxAnalysis } from '../services/mailboxAnalysis';
-import { isListingStale } from '../services/followUpIntel';
-import { ResidenceDetail } from './residence/ResidenceDetail';
 import { ListingsInventoryVirtual } from './ListingsInventoryVirtual';
-import { ListingInstitutionalCard } from './ListingInstitutionalCard';
 import {
   institutionalPanelSubtitleClass,
   institutionalPanelTitleClass,
@@ -30,15 +27,87 @@ import { residenceMatchesNiche, type AssetNiche } from '../types/residence';
 import { filterListingsForRadar, type RadarListingView, type RadarPropertyType } from '../lib/radarAccess';
 import { resolveUserSpecialties } from '../lib/userSpecialties';
 import { UpsellModal } from './UpsellModal';
+import {
+  assessMandateCompleteness,
+  calculatePipelineColumnTotals,
+  residenceMatchesRegionFilter,
+} from '@primexpert/core/residence';
+import { ListingsPipelineKanban } from './listings/ListingsPipelineKanban';
+import { ListingsRegionFilterPanel } from './listings/ListingsRegionFilterPanel';
+import { useInstitutionalToast } from '../hooks/useInstitutionalToast';
+import { InstitutionalToastBanner } from './residence/diffusion/InstitutionalToastBanner';
+
+const ResidenceDetailLazy = lazy(() =>
+  import('./residence/ResidenceDetail').then((m) => ({ default: m.ResidenceDetail }))
+);
+
+function ResidenceDetailFallback() {
+  const { t } = useLanguage();
+  return (
+    <div
+      className="flex h-[420px] w-full items-center justify-center"
+      aria-label={t('Chargement fiche…', 'Loading listing…')}
+    >
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-400/40 border-t-blue-300" />
+    </div>
+  );
+}
 
 /** Colonnes Kanban — SSOT libellés via pipelineStages (slugs Firestore inchangés). */
 const PIPELINE_COLUMN_IDS: PipelineColumnId[] = PIPELINE_KANBAN_COLUMNS.map((c) => c.id);
 
 const DEMO_LISTINGS: Residence[] = [
-  { id: 'demo-1', address: '789 Ave Mont-Royal E', city: 'Montréal', price: 650000, status: 'mandate', date: '2024-03-15', assetNiche: 'RPA' },
-  { id: 'demo-2', address: '456 Rue De La Commune', city: 'Montréal', price: 1200000, status: 'promise', date: '2024-03-10', assetNiche: 'PLEX' },
-  { id: 'demo-3', address: '123 Chemin De La Montagne', city: 'Bromont', price: 899000, status: 'sold', date: '2024-02-28', assetNiche: 'RPA' },
-  { id: 'demo-4', address: '1010 Rue Peel', city: 'Montréal', price: 450000, status: 'prospect', date: '2024-03-18', assetNiche: 'CPE' },
+  {
+    id: 'demo-1',
+    address: '789 Ave Mont-Royal E',
+    city: 'Montréal',
+    price: 650000,
+    status: 'mandate',
+    date: '2024-03-15',
+    assetNiche: 'RPA',
+    commissionRate: 5,
+    residenceName: 'Résidence Mont-Royal',
+    unitesRPA: 42,
+    residenceType: 'RPA',
+    region: 'Montréal',
+  },
+  {
+    id: 'demo-2',
+    address: '456 Rue De La Commune',
+    city: 'Montréal',
+    price: 1200000,
+    status: 'promise',
+    date: '2024-03-10',
+    assetNiche: 'PLEX',
+    commissionRate: 4,
+    residenceType: 'PLEX',
+    unitesRPA: 6,
+    prixAccepte: 1150000,
+    region: 'Montréal',
+  },
+  {
+    id: 'demo-3',
+    address: '123 Chemin De La Montagne',
+    city: 'Bromont',
+    price: 899000,
+    status: 'sold',
+    date: '2024-02-28',
+    assetNiche: 'RPA',
+    commissionRate: 5,
+    residenceType: 'RPA',
+    unitesRPA: 55,
+    region: 'Montérégie',
+  },
+  {
+    id: 'demo-4',
+    address: '1010 Rue Peel',
+    city: 'Montréal',
+    price: 450000,
+    status: 'prospect',
+    date: '2024-03-18',
+    assetNiche: 'CPE',
+    region: 'Montréal',
+  },
   { id: 'demo-5', address: '2200 Bd Rosemont', city: 'Montréal', price: 540000, status: 'expired', date: '2023-12-01', assetNiche: 'PLEX' },
   {
     id: 'demo-commercial-1',
@@ -48,6 +117,18 @@ const DEMO_LISTINGS: Residence[] = [
     status: 'mandate',
     date: '2024-03-20',
     propertyType: 'commercial',
+    commissionRate: 3,
+  },
+  {
+    id: 'demo-incomplete',
+    address: '88 Rue Incomplete',
+    city: 'Montréal',
+    price: 780000,
+    status: 'mandate',
+    date: '2024-03-22',
+    assetNiche: 'RPA',
+    commissionRate: 5,
+    residenceName: 'Mandat à compléter (démo)',
   },
 ];
 
@@ -82,6 +163,14 @@ export function Listings() {
   const [intelCalls, setIntelCalls] = useState<CallAnalysisRow[]>([]);
   const [intelMails, setIntelMails] = useState<SavedMailboxAnalysis[]>([]);
   const [upsellType, setUpsellType] = useState<RadarPropertyType | null>(null);
+  const [incompleteMandateFilter, setIncompleteMandateFilter] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [pipelineUpdating, setPipelineUpdating] = useState(false);
+  const [demoPipelineRows, setDemoPipelineRows] = useState<Residence[]>(() =>
+    DEMO_LISTINGS.filter((l) => l.status !== 'unsigned')
+  );
+  const { toast, showInfo, showError, dismiss: dismissToast } = useInstitutionalToast();
 
   const userSpecialtyKeys = useMemo(
     () => resolveUserSpecialties(profile).map((s) => s),
@@ -115,8 +204,14 @@ export function Listings() {
     pipelineHook.residences.length === 0;
 
   const pipelineRaw = usingDemo
-    ? DEMO_LISTINGS.filter((l) => l.status !== 'unsigned')
+    ? demoPipelineRows
     : pipelineHook.residences;
+
+  useEffect(() => {
+    if (usingDemo) {
+      setDemoPipelineRows(DEMO_LISTINGS.filter((l) => l.status !== 'unsigned'));
+    }
+  }, [usingDemo]);
 
   const pipelineListings = useMemo(() => {
     const siloFiltered = pipelineRaw.filter(
@@ -124,6 +219,33 @@ export function Listings() {
     );
     return filterListingsForRadar(siloFiltered, userSpecialtyKeys);
   }, [pipelineRaw, activeSilo, userSpecialtyKeys]);
+
+  const incompleteMandateCount = useMemo(
+    () =>
+      pipelineListings.filter((l) => {
+        const check = assessMandateCompleteness(l);
+        return check.applies && !check.isComplete;
+      }).length,
+    [pipelineListings]
+  );
+
+  const pipelineListingsFiltered = useMemo(() => {
+    if (!incompleteMandateFilter) return pipelineListings;
+    return pipelineListings.filter((l) => {
+      const check = assessMandateCompleteness(l);
+      return check.applies && !check.isComplete;
+    });
+  }, [pipelineListings, incompleteMandateFilter]);
+
+  const columnTotals = useMemo(() => {
+    const totals: Partial<Record<PipelineColumnId, ReturnType<typeof calculatePipelineColumnTotals>>> =
+      {};
+    for (const colId of PIPELINE_COLUMN_IDS) {
+      const rows = pipelineListingsFiltered.filter((l) => l.status === colId);
+      totals[colId] = calculatePipelineColumnTotals(rows);
+    }
+    return totals;
+  }, [pipelineListingsFiltered]);
 
   const inventoryRowsLive = inventoryHook.residences;
   const inventoryRowsDemo = useMemo(() => {
@@ -143,8 +265,49 @@ export function Listings() {
     const siloFiltered = inventoryRowsBase.filter((l) =>
       residenceMatchesNiche(l.assetNiche, activeSilo)
     );
-    return filterListingsForRadar(siloFiltered, userSpecialtyKeys);
-  }, [inventoryRowsBase, activeSilo, userSpecialtyKeys]);
+    const radarFiltered = filterListingsForRadar(siloFiltered, userSpecialtyKeys);
+    if (selectedRegions.length === 0) return radarFiltered;
+    return radarFiltered.filter((l) => residenceMatchesRegionFilter(l, selectedRegions));
+  }, [inventoryRowsBase, activeSilo, userSpecialtyKeys, selectedRegions]);
+
+  const handlePipelineStatusChange = useCallback(
+    async (residenceId: string, newStatus: PipelineColumnId, previousStatus: PipelineColumnId) => {
+      if (usingDemo) {
+        setDemoPipelineRows((prev) =>
+          prev.map((r) => (r.id === residenceId ? { ...r, status: newStatus } : r))
+        );
+        return;
+      }
+      if (!profile?.uid) return;
+
+      pipelineHook.patchResidenceStatus(residenceId, newStatus);
+      setPipelineUpdating(true);
+      try {
+        await updateResidencePipelineStatus(
+          { tenantId: profile.uid, mode: 'strict' },
+          residenceId,
+          newStatus
+        );
+      } catch (e) {
+        pipelineHook.patchResidenceStatus(residenceId, previousStatus);
+        showError(
+          e instanceof Error
+            ? e.message
+            : t('Échec de la mise à jour du statut.', 'Status update failed.')
+        );
+      } finally {
+        setPipelineUpdating(false);
+      }
+    },
+    [usingDemo, profile?.uid, pipelineHook, showError, t]
+  );
+
+  const handleBlockedPipelineMove = useCallback(
+    (message: string) => {
+      showInfo(message);
+    },
+    [showInfo]
+  );
 
   const openListing = (l: RadarListingView) => {
     if (l.isLocked) {
@@ -228,14 +391,18 @@ export function Listings() {
   if (selectedResidence && profile?.uid) {
     return (
       <div className="space-y-8">
-        <ResidenceDetail
-          brokerId={profile.uid}
-          residence={selectedResidence}
-          onClose={() => setSelectedResidence(null)}
-        />
+        <Suspense fallback={<ResidenceDetailFallback />}>
+          <ResidenceDetailLazy
+            brokerId={profile.uid}
+            residence={selectedResidence}
+            onClose={() => setSelectedResidence(null)}
+          />
+        </Suspense>
       </div>
     );
   }
+
+  const listingsLoadError = pipelineHook.error ?? (tab === 'inventory' ? inventoryHook.error : null);
 
   const livePipelineCount = pipelineListings.length;
   const liveInventoryCount = inventoryRows.length;
@@ -251,6 +418,21 @@ export function Listings() {
           )}
         </p>
       </header>
+
+      {listingsLoadError ? (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-xl border-2 border-red-500 bg-red-50 px-5 py-3 text-red-900"
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+          <div className="text-[11px] font-medium leading-relaxed">
+            <p className="font-black uppercase tracking-[0.16em]">
+              {t('Chargement des inscriptions impossible', 'Unable to load listings')}
+            </p>
+            <p className="mt-1 font-mono text-[10px] opacity-90">{listingsLoadError}</p>
+          </div>
+        </div>
+      ) : null}
 
       <div
         className={cn(
@@ -275,6 +457,12 @@ export function Listings() {
               : t(`${liveInventoryCount} ligne(s) affichée(s)`, `${liveInventoryCount} row(s) shown`)}
             {' · '}
             silo={activeSilo}
+            {tab === 'pipeline' && incompleteMandateCount > 0
+              ? ` · ${t(
+                  `${incompleteMandateCount} dossier(s) incomplet(s)`,
+                  `${incompleteMandateCount} incomplete file(s)`
+                )}`
+              : ''}
           </p>
         </div>
       </div>
@@ -329,12 +517,38 @@ export function Listings() {
             />
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {tab === 'pipeline' && incompleteMandateCount > 0 ? (
+              <button
+                type="button"
+                onClick={() => setIncompleteMandateFilter((v) => !v)}
+                className={cn(
+                  'flex items-center gap-2 rounded-xl border-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition',
+                  incompleteMandateFilter
+                    ? 'border-red-600 bg-red-600 text-white'
+                    : 'border-red-500 bg-white text-red-800 hover:bg-red-50'
+                )}
+              >
+                <ShieldCheck className="h-4 w-4" />
+                {t(
+                  `Conformité (${incompleteMandateCount})`,
+                  `Compliance (${incompleteMandateCount})`
+                )}
+              </button>
+            ) : null}
             <button
               type="button"
-              className="flex items-center gap-2 rounded-xl border-2 border-primexpert-dark bg-primexpert-light px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-primexpert-dark hover:bg-white"
+              onClick={() => setFiltersOpen(true)}
+              className={cn(
+                'flex items-center gap-2 rounded-xl border-2 px-5 py-2.5 text-[10px] font-black uppercase tracking-widest transition',
+                selectedRegions.length > 0
+                  ? 'border-primexpert-gold bg-amber-50 text-primexpert-dark'
+                  : 'border-primexpert-dark bg-primexpert-light text-primexpert-dark hover:bg-white'
+              )}
             >
               <Filter className="h-4 w-4" />
-              {t('Filtres', 'Filters')}
+              {selectedRegions.length > 0
+                ? t(`Filtres (${selectedRegions.length})`, `Filters (${selectedRegions.length})`)
+                : t('Filtres', 'Filters')}
             </button>
             <button
               type="button"
@@ -347,53 +561,25 @@ export function Listings() {
         </div>
       </div>
 
+      {toast ? <InstitutionalToastBanner toast={toast} onDismiss={dismissToast} /> : null}
+
       {tab === 'pipeline' ? (
         <div className="overflow-x-auto pb-1 custom-scrollbar">
-          <div className="grid min-w-[980px] grid-cols-4 gap-4">
-            {PIPELINE_COLUMN_IDS.map((key) => {
-              const label = getPipelineColumnLabel(key, language === 'fr' ? 'fr' : 'en');
-              const count = pipelineListings.filter((l) => l.status === key).length;
-              return (
-                <div key={key} className="min-w-0 space-y-2">
-                  <div className="flex items-center justify-between border-b-2 border-white/30 px-1 pb-2">
-                    <span className="truncate text-[11px] font-black uppercase tracking-tight text-white">
-                      {label}
-                    </span>
-                    <span className="ml-2 flex h-6 min-w-[1.5rem] shrink-0 items-center justify-center rounded bg-primexpert-dark px-1.5 text-[10px] font-black text-white">
-                      {count}
-                    </span>
-                  </div>
-
-                  <div>
-                    {pipelineListings
-                      .filter((l) => l.status === key)
-                      .map((l) => {
-                        const stale = !usingDemo && isListingStale(l, intelCalls, intelMails);
-                        return (
-                          <ListingInstitutionalCard
-                            key={l.id}
-                            residence={l}
-                            onOpen={openListing}
-                            isLocked={l.isLocked}
-                            propertyType={l.propertyType}
-                            onLockedClick={setUpsellType}
-                            stale={stale}
-                            t={t}
-                            language={language === 'fr' ? 'fr' : 'en'}
-                          />
-                        );
-                      })}
-
-                    {count === 0 ? (
-                      <p className="rounded-xl border-2 border-dashed border-white/40 bg-white/10 py-8 text-center text-[10px] font-black uppercase tracking-widest text-white/80">
-                        {t('Aucun actif', 'No active')}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <ListingsPipelineKanban
+            columnIds={PIPELINE_COLUMN_IDS}
+            listings={pipelineListingsFiltered}
+            columnTotals={columnTotals}
+            language={language === 'fr' ? 'fr' : 'en'}
+            t={t}
+            usingDemo={usingDemo}
+            updating={pipelineUpdating}
+            intelCalls={intelCalls}
+            intelMails={intelMails}
+            onOpen={openListing}
+            onLockedClick={setUpsellType}
+            onStatusChange={handlePipelineStatusChange}
+            onBlockedMove={handleBlockedPipelineMove}
+          />
         </div>
       ) : (
         <ListingsInventoryVirtual
@@ -413,6 +599,17 @@ export function Listings() {
       {upsellType ? (
         <UpsellModal open propertyType={upsellType} onClose={() => setUpsellType(null)} />
       ) : null}
+
+      <ListingsRegionFilterPanel
+        open={filtersOpen}
+        selectedRegions={selectedRegions}
+        onChange={setSelectedRegions}
+        onClose={() => setFiltersOpen(false)}
+        onApply={() => {
+          if (selectedRegions.length > 0) setTab('inventory');
+        }}
+        t={t}
+      />
     </section>
   );
 }

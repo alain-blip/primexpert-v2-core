@@ -65,7 +65,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
         { id: 'pipeline', label: t('Suivi des dossiers', 'Pipeline'), icon: TrendingUp },
         { id: 'listings', label: t('Mes inscriptions', 'My listings'), icon: Home },
         { id: 'acm', label: t('Analyse comparative de marché (ACM)', 'Comparative market analysis (CMA)'), icon: Calculator },
-        { id: 'stats', label: t('Statistiques', 'Statistics'), icon: BarChart3 },
+        { id: 'stats', label: t('Statistiques du marché', 'Market statistics'), icon: BarChart3 },
         { id: 'crm', label: t('Répertoire clients', 'CRM'), icon: Users },
         { id: 'content', label: t('Rédacteur IA', 'AI Writer'), icon: FileText },
         { id: 'drive', label: t('Mes Documents', 'My Documents'), icon: FolderOpen },

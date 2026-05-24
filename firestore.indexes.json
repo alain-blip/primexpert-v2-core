@@ -42,6 +42,14 @@
       ]
     },
     {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "brokerId", "order": "ASCENDING" },
+        { "fieldPath": "matchedContactId", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "residences",
       "queryScope": "COLLECTION",
       "fields": [
@@ -109,6 +117,14 @@
         { "fieldPath": "ownerId", "order": "ASCENDING" },
         { "fieldPath": "silo", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "market_documents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uploadedBy", "order": "ASCENDING" },
+        { "fieldPath": "uploadedAtMillis", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [
@@ -116,6 +132,10 @@
       "collectionGroup": "messages",
       "fieldPath": "nylasMessageId",
       "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
         {
           "order": "ASCENDING",
           "queryScope": "COLLECTION_GROUP"

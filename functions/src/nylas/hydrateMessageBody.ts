@@ -1,6 +1,20 @@
 import { getDb, threadMessagesCol } from '../lib/firestore';
 import { fetchNylasMessageById, resolveNylasMessageBody } from './fetchMessageBody';
 
+function visibleBodyLength(body: string): number {
+  const trimmed = body.trim();
+  if (!trimmed) return 0;
+  if (/<[a-z][\s\S]*>/i.test(trimmed)) {
+    return trimmed
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim().length;
+  }
+  return trimmed.length;
+}
+
 export interface HydrateMessageBodyInput {
   brokerId: string;
   threadId: string;
@@ -22,7 +36,7 @@ export async function hydrateFirestoreMessageBody(
 
   const data = snap.data() ?? {};
   const existing = typeof data.body === 'string' ? data.body.trim() : '';
-  if (existing.length > 20) {
+  if (visibleBodyLength(existing) >= 80) {
     return { body: existing, updated: false };
   }
 

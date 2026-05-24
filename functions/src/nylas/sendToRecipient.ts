@@ -144,12 +144,20 @@ export async function sendNylasToRecipient(input: SendToRecipientInput): Promise
     to: [{ email: normalizedEmail, name: toName }],
   };
 
+  if (message.thread_id) {
+    await userThreadsCol(brokerId).doc(threadDocId).set(
+      { nylasThreadId: message.thread_id },
+      { merge: true }
+    );
+  }
+
   await syncNylasMessageToFirestore({
     brokerId,
     accountId,
     grantId,
     message,
     direction: 'outbound',
+    preferredThreadDocId: threadDocId,
   });
 
   await userThreadsCol(brokerId).doc(threadDocId).set(

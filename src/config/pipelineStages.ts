@@ -226,6 +226,19 @@ export function isPipelineActiveStatus(status: ResidenceStatus): status is Pipel
   return (PIPELINE_ACTIVE_STATUSES as readonly string[]).includes(status);
 }
 
+/** Patch Firestore lors d'un glisser-déposer Kanban (statut canonique + miroir legacy). */
+export function buildPipelineStatusFirestorePatch(
+  columnId: PipelineColumnId
+): { status: PipelineColumnId; statut: string } {
+  const legacyStatut: Record<PipelineColumnId, string> = {
+    prospect: 'prospect',
+    mandate: 'mandat',
+    promise: 'pa-acceptee',
+    sold: 'vendu',
+  };
+  return { status: columnId, statut: legacyStatut[columnId] };
+}
+
 /** Regroupement Mes Documents — 4 sections navigation inscriptions. */
 export type DocumentsListingGroupId = 'mandate' | 'promise' | 'sold' | 'other';
 

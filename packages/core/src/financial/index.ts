@@ -15,3 +15,7 @@ export * from './financeHubGlossary';
 export * from './certifiableFinancialReport';
 export * from './acmPresentationReport';
 export * from './detailedFinancialReport';
+export * from './marketBenchmarks';
+export * from './globalFinancialBenchmark';
+export * from './normalizationSuggestions';
+export * from './revenusDepensesPreview';

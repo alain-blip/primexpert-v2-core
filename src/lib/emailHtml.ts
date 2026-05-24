@@ -51,9 +51,30 @@ function emailHtmlForIframeSrc(html: string): string {
   return sanitized.trim() || trimmed;
 }
 
+/** Texte visible exploitable (aperçus, seuil d’hydratation Nylas). */
+export function visibleEmailTextLength(body: string): number {
+  const trimmed = (body ?? '').trim();
+  if (!trimmed) return 0;
+  if (isHtmlEmailBody(trimmed)) return emailHtmlToPlainText(trimmed).length;
+  return trimmed.length;
+}
+
+/** Corps trop court ou HTML coquille — déclencher hydratation Nylas. */
+export function messageBodyNeedsHydration(body: string, nylasMessageId?: string): boolean {
+  if (!nylasMessageId?.trim()) return false;
+  return visibleEmailTextLength(body) < 80;
+}
+
 /** Document HTML isolé pour iframe `srcDoc` (panneau de lecture). */
-export function buildEmailIframeSrcDoc(html: string): string {
+export function buildEmailIframeSrcDoc(
+  html: string,
+  theme: 'light' | 'dark' = 'light'
+): string {
   const inner = emailHtmlForIframeSrc(html);
   if (!inner) return '';
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><base target="_blank" rel="noopener noreferrer"><style>html,body{margin:0;padding:0;min-height:100%;}body{padding:12px;font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.55;color:#0f172a;background:#ffffff;}img{max-width:100%;height:auto;}a{color:#2563eb;}</style></head><body>${inner}</body></html>`;
+  const bodyStyle =
+    theme === 'dark'
+      ? 'padding:12px;font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.55;color:#e2e8f0;background:transparent;'
+      : 'padding:24px;font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.55;color:#0f172a;background:#ffffff;';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><base target="_blank" rel="noopener noreferrer"><style>html,body{margin:0;padding:0;min-height:100%;}body{${bodyStyle}}img{max-width:100%;height:auto;}a{color:#60a5fa;}</style></head><body>${inner}</body></html>`;
 }

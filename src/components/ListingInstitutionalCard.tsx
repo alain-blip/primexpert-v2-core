@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ShieldAlert } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { buildListingCardViewModel } from '../lib/listingCardViewModel';
 import type { Residence } from '../services/residences';
@@ -93,6 +93,22 @@ export function ListingInstitutionalCard({
           <p className="mb-2 flex items-center gap-1.5 rounded border border-amber-400 bg-amber-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-primexpert-dark">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-700" aria-hidden />
             {t('Stagnation 48 h+', '48h+ stagnation')}
+          </p>
+        ) : null}
+        {vm.mandateIncomplete && !isLocked ? (
+          <p
+            className="mb-2 flex items-start gap-1.5 rounded border border-red-500 bg-red-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-red-950"
+            title={vm.mandateMissingSummary}
+          >
+            <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-red-700" aria-hidden />
+            <span>
+              {t('Conformité — dossier incomplet', 'Compliance — incomplete file')}
+              {vm.mandateMissingSummary ? (
+                <span className="mt-0.5 block font-semibold normal-case tracking-normal text-red-900">
+                  {vm.mandateMissingSummary}
+                </span>
+              ) : null}
+            </span>
           </p>
         ) : null}
 

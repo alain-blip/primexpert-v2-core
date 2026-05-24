@@ -18,7 +18,8 @@
     "./financial": "./src/financial/index.ts",
     "./market": "./src/market/index.ts",
     "./intelligence": "./src/intelligence/index.ts",
-    "./diffusion": "./src/diffusion/index.ts"
+    "./diffusion": "./src/diffusion/index.ts",
+    "./documents": "./src/documents/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

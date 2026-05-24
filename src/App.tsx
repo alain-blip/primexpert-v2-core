@@ -23,7 +23,25 @@ const Dashboard  = lazy(() => import('./components/Dashboard').then(m => ({ defa
 const SuiviDossiersTab = lazy(() =>
   import('./components/SuiviDossiersTab').then((m) => ({ default: m.SuiviDossiersTab }))
 );
-const Listings   = lazy(() => import('./components/Listings').then(m => ({ default: m.Listings })));
+const Listings = lazy(() =>
+  import('./components/Listings')
+    .then((m) => ({ default: m.Listings }))
+    .catch((err) => {
+      console.error('[Listings] Échec chargement chunk', err);
+      return {
+        default: function ListingsLoadError() {
+          return (
+            <div className="rounded-2xl border-2 border-red-500 bg-red-50 p-6 text-red-900" role="alert">
+              <p className="text-sm font-bold">Mes inscriptions — module indisponible</p>
+              <p className="mt-2 font-mono text-xs opacity-90">
+                {err instanceof Error ? err.message : String(err)}
+              </p>
+            </div>
+          );
+        },
+      };
+    })
+);
 const CRM        = lazy(() => import('./components/CRM').then(m => ({ default: m.CRM })));
 const ACM        = lazy(() => import('./components/ACM').then(m => ({ default: m.ACM })));
 const ContentGen = lazy(() => import('./components/ContentGen').then(m => ({ default: m.ContentGen })));
@@ -37,8 +55,10 @@ const DocumentsDashboard = lazy(() =>
 );
 const Softphone  = lazy(() => import('./components/Softphone/Softphone').then(m => ({ default: m.Softphone })));
 const Settings   = lazy(() => import('./components/Settings').then(m => ({ default: m.Settings })));
-const AdminSubscriptionsDashboard = lazy(() =>
-  import('./components/AdminSubscriptionsDashboard').then((m) => ({ default: m.AdminSubscriptionsDashboard }))
+const MarketLibraryDashboard = lazy(() =>
+  import('./components/market/MarketLibraryDashboard').then((m) => ({
+    default: m.MarketLibraryDashboard,
+  }))
 );
 
 function LoadingScreen() {
@@ -254,12 +274,7 @@ function Workhub() {
       case 'pipeline': return <SuiviDossiersTab />;
       case 'listings': return <Listings />;
       case 'acm': return <ACM />;
-      case 'stats': return (
-        <div className="h-[600px] flex flex-col items-center justify-center opacity-20 italic">
-          <BarChart3 className="w-24 h-24 mb-4" />
-          <p className="text-[20px] font-black uppercase tracking-[0.3em]">MARKET_ANALYTICS_V4</p>
-        </div>
-      );
+      case 'stats': return <MarketLibraryDashboard />;
       case 'crm': return <CRM />;
       case 'content': return <ContentGen />;
       case 'mail': return <Mailbox />;

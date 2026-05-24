@@ -21,3 +21,13 @@ export {
   parseMailBodyHeuristic,
   safeNormalizeAiMailParse,
 } from './mailParser';
+
+export {
+  findContactsByEmail,
+  normalizeMailAddress,
+  resolveMessagePartyEmail,
+  resolveThreadPartyEmail,
+  type ContactEmailCandidate,
+  type MessagePartyEmailSource,
+  type ThreadPartyEmailSource,
+} from './contactMatch';

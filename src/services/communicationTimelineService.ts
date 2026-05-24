@@ -18,6 +18,7 @@ import {
   type CallAnalysisRow,
 } from './transcriptionService';
 import {
+  fetchMailboxAnalysesLinkedToContact,
   fetchRecentMailboxAnalyses,
   type SavedMailboxAnalysis,
 } from './mailboxAnalysis';
@@ -34,6 +35,7 @@ function toMailInput(m: SavedMailboxAnalysis): TimelineMailInput {
     summaryOneLine: m.mergedParse.summaryOneLine,
     intent: m.mergedParse.lead.intent,
     matchedResidenceId: m.matchedResidenceId,
+    matchedContactId: m.matchedContactId ?? null,
   };
 }
 
@@ -120,15 +122,19 @@ export async function fetchPartySupplementMails(
 
 export async function buildContactTimeline(
   brokerId: string,
-  contact: { email?: string; residenceIds?: string[] }
+  contact: { id?: string; email?: string; residenceIds?: string[] }
 ): Promise<UnifiedTimelineEvent[]> {
-  const [mails, callsByResidence, callsRecent] = await Promise.all([
+  const [mailsRecent, mailsLinked, callsByResidence, callsRecent] = await Promise.all([
     fetchRecentMailboxAnalyses(brokerId, 200),
+    contact.id
+      ? fetchMailboxAnalysesLinkedToContact(brokerId, contact.id, 80)
+      : Promise.resolve([]),
     contact.residenceIds?.length
       ? fetchCallAnalysesForResidenceIds(brokerId, contact.residenceIds)
       : Promise.resolve([]),
     fetchRecentCallAnalyses(brokerId, 80),
   ]);
+  const mails = dedupeTimelineMails([...mailsRecent, ...mailsLinked]);
 
   const residenceIdSet = new Set(contact.residenceIds ?? []);
   const callsMerged = [...callsByResidence];
@@ -139,6 +145,7 @@ export async function buildContactTimeline(
   }
 
   return getContactTimelineEvents({
+    contactId: contact.id,
     contactEmail: contact.email,
     residenceIds: contact.residenceIds,
     mails: mails.map(toMailInput),

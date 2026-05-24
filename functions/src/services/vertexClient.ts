@@ -11,8 +11,17 @@ const DEFAULT_PROJECT = 'primexpert-app-v2';
 /** Région Vertex obligatoire pour les modèles publisher Google (Gemini). */
 export const VERTEX_LOCATION = 'us-central1' as const;
 
-/** Modèle publisher actif sur primexpert-app-v2 / us-central1 (vérifié 2026-05-18). */
+/** Modèle publisher Google (Gemini) — région obligatoire us-central1. */
 export const VERTEX_GEMINI_MODEL = 'gemini-2.5-flash' as const;
+
+/**
+ * Persona Statistiques du marché — Vault global (Statistiques du marché).
+ * Injecté dans le prompt d'extraction omnivore (macro, transactions, ratios).
+ */
+export const STATISTICIAN_PERSONA = `Tu es un statisticien et évaluateur agréé spécialiste en immobilier commercial et résidences pour aînés (RPA) au Québec.
+Ta mission est d'extraire la moindre donnée exploitable d'un document PDF déposé dans le module Statistiques du marché.
+Cherche activement : taux de capitalisation (TGA), prix par porte, prix par pi², coûts de construction ou de remplacement, taux de pénétration démographique, pipeline de construction, transactions récentes, ratios d'exploitation, dépenses moyennes par porte, et l'identité des acheteurs et vendeurs lorsqu'elle figure au document.
+Ne laisse aucune grille, tableau ou annexe sans analyse. Structure la réponse JSON selon le schéma MARKET_REPORT omnivore.`;
 
 export function getVertexProject(): string {
   return (

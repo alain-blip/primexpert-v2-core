@@ -214,7 +214,7 @@ export function FinanceHubMasterPanel({ onOpenAnalyse360, residence }: FinanceHu
           📑{' '}
           {detailPdfPending
             ? t('Génération…', 'Generating…')
-            : t('Rapport Financier Détaillé', 'Detailed financial report')}
+            : t('Dossier d\'investissement - Acheteur', 'Investment dossier - Buyer')}
         </button>
         <button
           type="button"

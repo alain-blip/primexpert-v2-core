@@ -33,6 +33,7 @@ export interface SavedMailboxAnalysis {
   replyDraft: string | null;
   analyzedAtMillis: number;
   matchedResidenceId?: string;
+  matchedContactId?: string;
   replyDraftAtMillis?: number;
 }
 
@@ -54,14 +55,32 @@ function isConfidence(x: unknown): x is ResidenceMatchConfidence {
   return x === 'high' || x === 'medium' || x === 'low' || x === 'none';
 }
 
+function resolveTimelineSortMillis(data: Record<string, unknown>): number {
+  if (typeof data.mailAnalysisAtMillis === 'number' && data.mailAnalysisAtMillis > 0) {
+    return data.mailAnalysisAtMillis;
+  }
+  const linked =
+    typeof data.matchedContactId === 'string' && data.matchedContactId.trim().length > 0;
+  if (!linked) return 0;
+  if (typeof data.linkedContactAtMillis === 'number' && data.linkedContactAtMillis > 0) {
+    return data.linkedContactAtMillis;
+  }
+  if (typeof data.sentAtMillis === 'number' && data.sentAtMillis > 0) {
+    return data.sentAtMillis;
+  }
+  return 0;
+}
+
 function mapMessageToSaved(docId: string, data: Record<string, unknown>): SavedMailboxAnalysis | null {
-  const analyzedAtMillis =
-    typeof data.mailAnalysisAtMillis === 'number' ? data.mailAnalysisAtMillis : 0;
+  const analyzedAtMillis = resolveTimelineSortMillis(data);
   if (analyzedAtMillis <= 0) return null;
 
   const matchedRaw =
     typeof data.matchedResidenceId === 'string' ? data.matchedResidenceId.trim() : '';
   const matchedResidenceId = matchedRaw || undefined;
+  const contactRaw =
+    typeof data.matchedContactId === 'string' ? data.matchedContactId.trim() : '';
+  const matchedContactId = contactRaw || undefined;
 
   const intent = isMailIntent(data.mailIntent) ? data.mailIntent : 'unknown';
   const urgency = isMailUrgency(data.mailUrgency) ? data.mailUrgency : 'low';
@@ -98,6 +117,7 @@ function mapMessageToSaved(docId: string, data: Record<string, unknown>): SavedM
     replyDraft: null,
     analyzedAtMillis,
     matchedResidenceId,
+    matchedContactId,
   };
 }
 
@@ -195,6 +215,59 @@ export async function fetchRecentMailboxAnalyses(
       }
     }
     console.error('[mailboxAnalysis] fetchRecent failed', e);
+    return [];
+  }
+}
+
+/** Courriels explicitement liés à un contact CRM (Phase 2 messagerie). */
+export async function fetchMailboxAnalysesLinkedToContact(
+  brokerId: string,
+  contactId: string,
+  limitN = 50
+): Promise<SavedMailboxAnalysis[]> {
+  if (!brokerId || !contactId) return [];
+  try {
+    const q = query(
+      collectionGroup(db, EMAIL_MESSAGES_SUBCOLLECTION),
+      where('brokerId', '==', brokerId),
+      where('matchedContactId', '==', contactId),
+      limit(limitN)
+    );
+    const snap = await getDocs(q);
+    const rows: SavedMailboxAnalysis[] = [];
+    for (const d of snap.docs) {
+      const row = mapMessageToSaved(d.id, d.data() as Record<string, unknown>);
+      if (row) rows.push(row);
+    }
+    rows.sort((a, b) => b.analyzedAtMillis - a.analyzedAtMillis);
+    return rows;
+  } catch (e) {
+    if (isMissingFirestoreIndexError(e)) {
+      console.warn(
+        '[mailboxAnalysis] index matchedContactId manquant — repli scan brokerId.'
+      );
+      try {
+        const q = query(
+          collectionGroup(db, EMAIL_MESSAGES_SUBCOLLECTION),
+          where('brokerId', '==', brokerId),
+          limit(500)
+        );
+        const snap = await getDocs(q);
+        const rows: SavedMailboxAnalysis[] = [];
+        for (const d of snap.docs) {
+          const data = d.data() as Record<string, unknown>;
+          if (data.matchedContactId !== contactId) continue;
+          const row = mapMessageToSaved(d.id, data);
+          if (row) rows.push(row);
+        }
+        rows.sort((a, b) => b.analyzedAtMillis - a.analyzedAtMillis);
+        return rows.slice(0, limitN);
+      } catch (fallbackErr) {
+        console.error('[mailboxAnalysis] fetchLinkedToContact fallback failed', fallbackErr);
+        return [];
+      }
+    }
+    console.error('[mailboxAnalysis] fetchLinkedToContact failed', e);
     return [];
   }
 }

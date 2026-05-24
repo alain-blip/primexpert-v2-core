@@ -6,6 +6,7 @@ import type { EmailAccount } from '../../types/emailAccount';
 import { MessageComposer, type SendFromSelection } from './MessageComposer';
 import { MessageBody } from './MessageBody';
 import { MessageReadReceipt } from './MessageReadReceipt';
+import { visibleEmailTextLength } from '../../lib/emailHtml';
 
 function formatMessageDate(ms: number, locale: string): string {
   return new Date(ms).toLocaleString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
@@ -47,6 +48,7 @@ export interface ChatWindowProps {
     send: string;
     fromLabel: string;
     loadingMessages: string;
+    syncingThread: string;
     loadingMessageBody: string;
     messageBodyUnavailable: string;
     archive: string;
@@ -58,6 +60,10 @@ export interface ChatWindowProps {
   /** Corps hydratés via Nylas (messageId → HTML/texte). */
   resolvedBodies?: Record<string, string>;
   hydratingMessageIds?: Set<string>;
+  /** Hydratation fil Nylas en cours (sans bloquer l’affichage de l’extrait). */
+  threadHydrating?: boolean;
+  /** Barre rattachement CRM (Phase 2 messagerie). */
+  contactLinkBar?: React.ReactNode;
 }
 
 export function ChatWindow({
@@ -77,7 +83,9 @@ export function ChatWindow({
   folderActionPending = false,
   resolvedBodies = {},
   hydratingMessageIds = new Set(),
+  threadHydrating = false,
   labels,
+  contactLinkBar,
 }: ChatWindowProps) {
   if (!thread) {
     return (
@@ -126,121 +134,110 @@ export function ChatWindow({
         ) : null}
       </header>
 
-      <div className="custom-scrollbar flex-1 basis-0 min-h-[200px] space-y-4 overflow-y-auto px-4 py-6 lg:px-8">
+      {contactLinkBar}
+
+      {threadHydrating ? (
+        <div className="flex shrink-0 items-center gap-2 border-b border-blue-400/20 bg-blue-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-blue-200">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          {labels.syncingThread}
+        </div>
+      ) : null}
+
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-vault">
         {messagesLoading ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-slate-400">
+          <div className="flex flex-1 items-center justify-center gap-2 text-slate-400">
             <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-[11px] font-black uppercase tracking-widest">{labels.loadingMessages}</span>
+            <span className="text-[11px] font-black uppercase tracking-widest">
+              {labels.loadingMessages}
+            </span>
           </div>
         ) : messages.length === 0 ? (
-          <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-white">
+          <div className="m-4 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-white">
             <p>{labels.noMessagesInThread}</p>
             <p className="mt-2 font-mono text-[10px] text-amber-200/80">
               threadId={thread.id} · messages={messages.length}
             </p>
           </div>
         ) : (
-          messages.map((msg) => {
-            const outbound = msg.direction === 'outbound';
-            const hydrating = hydratingMessageIds.has(msg.id);
-            const displayBody = (resolvedBodies[msg.id] ?? msg.body ?? '').trim();
-            return (
-              <div
-                key={msg.id}
-                className={cn('flex flex-col gap-1.5', outbound ? 'items-end' : 'items-start')}
-              >
-                <p
+          <div
+            className={cn(
+              'custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto',
+              messages.length === 1 && 'min-h-0'
+            )}
+          >
+            {messages.map((msg) => {
+              const outbound = msg.direction === 'outbound';
+              const hydrating = hydratingMessageIds.has(msg.id);
+              const displayBody = (resolvedBodies[msg.id] ?? msg.body ?? '').trim();
+              const showBodyLoading = hydrating && visibleEmailTextLength(displayBody) < 80;
+              const fillPane = messages.length === 1;
+
+              return (
+                <article
+                  key={msg.id}
                   className={cn(
-                    'max-w-[min(100%,36rem)] px-1 text-[9px] font-bold uppercase tracking-widest',
-                    outbound ? 'text-right text-blue-200/70' : 'text-slate-500'
+                    'flex w-full flex-col border-b border-white/10',
+                    fillPane && 'min-h-0 flex-1'
                   )}
                 >
-                  {outbound && msg.fromEmailAddress
-                    ? msg.fromEmailAddress
-                    : msg.authorName ?? (outbound ? 'Moi' : thread.contactName)}{' '}
-                  · {formatMessageDate(msg.sentAtMillis, locale)}
-                  {outbound ? (
-                    <span className="ml-1.5 inline-flex align-middle">
-                      <MessageReadReceipt
-                        isOpened={msg.isOpened}
-                        openedAtMillis={msg.openedAtMillis}
-                        locale={locale}
-                        deliveredLabel={labels.deliveredReceipt}
-                        readLabel={labels.readReceipt}
-                      />
-                    </span>
-                  ) : null}
-                </p>
-                <div
-                  className={cn(
-                    'flex max-w-[min(100%,36rem)] min-h-0 flex-col text-sm leading-relaxed',
-                    outbound
-                      ? 'rounded-2xl rounded-br-md border border-blue-400/35 bg-blue-600 px-4 py-3 text-white shadow-md shadow-blue-950/30'
-                      : 'rounded-2xl rounded-bl-md border border-white/10 bg-white/[0.06] px-4 py-3 text-slate-200 shadow-sm backdrop-blur-sm'
-                  )}
-                >
-                  <MessageBody
-                    body={displayBody}
-                    tone={outbound ? 'outbound' : 'inbound'}
-                    loading={hydrating && !displayBody}
-                    className="min-h-[120px] w-full shrink-0"
-                    debugPayload={{
-                      id: msg.id,
-                      nylasMessageId: msg.nylasMessageId,
-                      direction: msg.direction,
-                      hydrating,
-                      bodyLen: msg.body?.length ?? 0,
-                      resolvedLen: resolvedBodies[msg.id]?.length ?? 0,
-                      displayLen: displayBody.length,
-                    }}
-                    emptyLabel={
-                      hydrating && !displayBody
-                        ? labels.loadingMessageBody
-                        : labels.messageBodyUnavailable
-                    }
-                  />
+                  <div className="shrink-0 border-b border-slate-200/80 bg-slate-100 px-6 py-2.5">
+                    <p className="text-[11px] font-bold text-slate-700">
+                      {outbound && msg.fromEmailAddress
+                        ? msg.fromEmailAddress
+                        : msg.authorName ?? (outbound ? 'Moi' : thread.contactName)}
+                      <span className="font-normal text-slate-500">
+                        {' '}
+                        · {formatMessageDate(msg.sentAtMillis, locale)}
+                      </span>
+                      {outbound ? (
+                        <span className="ml-2 inline-flex align-middle">
+                          <MessageReadReceipt
+                            isOpened={msg.isOpened}
+                            openedAtMillis={msg.openedAtMillis}
+                            locale={locale}
+                            deliveredLabel={labels.deliveredReceipt}
+                            readLabel={labels.readReceipt}
+                          />
+                        </span>
+                      ) : null}
+                    </p>
+                  </div>
+
+                  <div
+                    className={cn(
+                      'flex w-full flex-col bg-white',
+                      fillPane ? 'min-h-0 flex-1' : 'min-h-[320px]'
+                    )}
+                  >
+                    <MessageBody
+                      body={displayBody}
+                      loading={showBodyLoading}
+                      className="min-h-0 flex-1"
+                      emptyLabel={
+                        showBodyLoading
+                          ? labels.loadingMessageBody
+                          : labels.messageBodyUnavailable
+                      }
+                    />
+                  </div>
+
                   {msg.attachments?.length ? (
-                    <ul
-                      className={cn(
-                        'mt-4 space-y-2 border-t pt-4',
-                        outbound ? 'border-white/20' : 'border-white/10'
-                      )}
-                    >
+                    <ul className="shrink-0 space-y-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
                       {msg.attachments.map((att) => (
                         <li key={`${msg.id}-${att.name}`}>
                           <a
                             href={att.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className={cn(
-                              'flex items-center gap-3 rounded-lg border border-dashed p-3 transition',
-                              outbound
-                                ? 'border-white/25 bg-blue-700/50 hover:border-white/40'
-                                : 'border-white/15 bg-black/20 hover:border-white/25'
-                            )}
+                            className="flex items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-white p-3 transition hover:border-slate-400"
                           >
-                            <Paperclip
-                              className={cn(
-                                'h-4 w-4 shrink-0',
-                                outbound ? 'text-blue-100' : 'text-slate-400'
-                              )}
-                            />
+                            <Paperclip className="h-4 w-4 shrink-0 text-slate-500" />
                             <div className="min-w-0 text-left">
-                              <p
-                                className={cn(
-                                  'truncate text-[11px] font-black uppercase tracking-tight',
-                                  outbound ? 'text-white' : 'text-slate-200'
-                                )}
-                              >
+                              <p className="truncate text-[11px] font-black uppercase tracking-tight text-slate-800">
                                 {att.name}
                               </p>
                               {att.sizeBytes ? (
-                                <p
-                                  className={cn(
-                                    'text-[9px] font-bold',
-                                    outbound ? 'text-blue-100/80' : 'text-slate-500'
-                                  )}
-                                >
+                                <p className="text-[9px] font-bold text-slate-500">
                                   {formatFileSize(att.sizeBytes)}
                                 </p>
                               ) : null}
@@ -250,10 +247,10 @@ export function ChatWindow({
                       ))}
                     </ul>
                   ) : null}
-                </div>
-              </div>
-            );
-          })
+                </article>
+              );
+            })}
+          </div>
         )}
       </div>
 

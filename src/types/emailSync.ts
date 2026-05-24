@@ -39,6 +39,8 @@ export interface EmailMessage {
   mailIntent?: string;
   summaryOneLine?: string;
   mailUrgency?: string;
+  /** Contact CRM lié explicitement (Phase 2 messagerie). */
+  matchedContactId?: string | null;
 }
 
 export interface EmailThread {
@@ -55,6 +57,8 @@ export interface EmailThread {
   /** Lien Radar — fiche résidence / inscription. */
   propertyId?: string;
   propertyLabel?: string;
+  /** Contact CRM lié au fil (Phase 2 messagerie). */
+  matchedContactId?: string | null;
   createdAtMillis: number;
   /** Fil Nylas source (webhook / envoi). */
   nylasThreadId?: string;

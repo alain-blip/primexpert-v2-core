@@ -4,6 +4,13 @@
 
 import { formatCurrency } from './utils';
 import type { Residence, ResidenceStatus } from '../services/residences';
+import {
+  assessMandateCompleteness,
+  getListingCommissionAmount,
+  getListingCommissionRate,
+  getListingPrice,
+  mandateMissingFieldLabels,
+} from '@primexpert/core/residence';
 
 export interface ListingCardViewModel {
   residenceName: string;
@@ -16,6 +23,9 @@ export interface ListingCardViewModel {
   borderShellClass: string;
   headerTintClass: string;
   suggestionIA: string;
+  /** Garde-fou conformité — mandat actif avec champs critiques manquants. */
+  mandateIncomplete: boolean;
+  mandateMissingSummary: string;
 }
 
 const STATUS_BANNER_CLASS =
@@ -38,19 +48,8 @@ function firstText(...values: unknown[]): string | null {
   return null;
 }
 
-function firstNumber(...values: unknown[]): number | null {
-  for (const value of values) {
-    if (typeof value === 'number' && Number.isFinite(value) && value >= 0) return value;
-    if (typeof value !== 'string') continue;
-    const cleaned = value.trim().replace(/\s/g, '').replace(/[^\d.,-]/g, '').replace(',', '.');
-    const parsed = Number(cleaned);
-    if (Number.isFinite(parsed) && parsed >= 0) return parsed;
-  }
-  return null;
-}
-
 function formatPercent(value: number | null): string {
-  if (value == null) return '—';
+  if (value == null || value <= 0) return '—';
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
@@ -58,6 +57,8 @@ function residenceIdentity(residence: ListingIdentitySource): {
   residenceName: string;
   askingPriceLabel: string;
   addressLine: string;
+  commissionRateLabel: string;
+  potentialRevenueLabel: string;
 } {
   const addr = firstText(residence.address, residence.adresse) ?? '—';
   const city = residence.city?.trim();
@@ -74,37 +75,17 @@ function residenceIdentity(residence: ListingIdentitySource): {
     ) ?? (residence.status === 'mandate' || residence.status === 'promise'
       ? MISSING_COMMERCIAL_NAME_FR
       : MISSING_COMMERCIAL_NAME_EN);
-  const askingPrice =
-    firstNumber(
-      residence.askingPrice,
-      residence.prixDemande,
-      residence.prixListe,
-      residence.listPrice,
-      residence.price
-    ) ?? 0;
-  const commissionRate = firstNumber(
-    residence.commissionRate,
-    residence.tauxCommission,
-    residence.commissionPct,
-    (residence.commission as Record<string, unknown> | undefined)?.totalePct,
-    (residence.commission as Record<string, unknown> | undefined)?.inscripteurPct
-  );
-  const explicitPotentialRevenue = firstNumber(
-    residence.potentialRevenue,
-    residence.revenuPotentiel,
-    residence.revenuPotentielCommission,
-    residence.revenuPotentielAnnuel,
-    residence.revenusPotentiels
-  );
-  const calculatedPotentialRevenue =
-    explicitPotentialRevenue ?? (commissionRate != null ? askingPrice * (commissionRate / 100) : null);
+  const askingPrice = getListingPrice(residence);
+  const commissionRate = getListingCommissionRate(residence);
+  const calculatedPotentialRevenue = getListingCommissionAmount(residence);
 
   return {
     residenceName,
     askingPriceLabel: formatCurrency(askingPrice),
     addressLine: cityLabel ? `${addr}, ${cityLabel}` : addr,
-    commissionRateLabel: formatPercent(commissionRate),
-    potentialRevenueLabel: calculatedPotentialRevenue != null ? formatCurrency(calculatedPotentialRevenue) : '—',
+    commissionRateLabel: formatPercent(commissionRate > 0 ? commissionRate : null),
+    potentialRevenueLabel:
+      calculatedPotentialRevenue > 0 ? formatCurrency(calculatedPotentialRevenue) : '—',
   };
 }
 
@@ -183,6 +164,16 @@ export function buildListingCardViewModel(
       break;
   }
 
+  const mandateCheck = assessMandateCompleteness(residence as ListingIdentitySource);
+  const mandateIncomplete = mandateCheck.applies && !mandateCheck.isComplete;
+  const missingLabels = mandateMissingFieldLabels(mandateCheck, lang);
+  const mandateMissingSummary =
+    missingLabels.length > 0
+      ? lang === 'fr'
+        ? `Manque : ${missingLabels.join(', ')}`
+        : `Missing: ${missingLabels.join(', ')}`
+      : '';
+
   return {
     residenceName: identity.residenceName,
     askingPriceLabel: identity.askingPriceLabel,
@@ -194,5 +185,7 @@ export function buildListingCardViewModel(
     borderShellClass,
     headerTintClass,
     suggestionIA,
+    mandateIncomplete,
+    mandateMissingSummary,
   };
 }

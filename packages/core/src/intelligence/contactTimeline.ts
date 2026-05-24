@@ -13,6 +13,7 @@ export interface TimelineMailInput {
   summaryOneLine?: string | null;
   intent?: string | null;
   matchedResidenceId?: string | null;
+  matchedContactId?: string | null;
 }
 
 export interface TimelineCallInput {
@@ -43,8 +44,13 @@ export function normalizeContactEmail(email: unknown): string | null {
 }
 
 function mailMatchesEmail(mail: TimelineMailInput, emailNorm: string): boolean {
+  if (mail.matchedContactId) return false;
   const lead = normalizeContactEmail(mail.contactEmail);
   return lead === emailNorm;
+}
+
+function mailMatchesContactId(mail: TimelineMailInput, contactId: string): boolean {
+  return mail.matchedContactId === contactId;
 }
 
 function callMatchesContactResidences(
@@ -84,18 +90,24 @@ export function callToTimelineEvent(call: TimelineCallInput): UnifiedTimelineEve
  * Chronologie d’un contact : courriels (email) + appels (fiches résidence liées).
  */
 export function getContactTimelineEvents(input: {
+  contactId?: string | null;
   contactEmail?: string | null;
   residenceIds?: readonly string[];
   mails: TimelineMailInput[];
   calls: TimelineCallInput[];
 }): UnifiedTimelineEvent[] {
   const emailNorm = normalizeContactEmail(input.contactEmail);
+  const contactId = input.contactId?.trim() || null;
   const residenceIds = input.residenceIds ?? [];
   const events: UnifiedTimelineEvent[] = [];
 
-  if (emailNorm) {
-    for (const m of input.mails) {
-      if (mailMatchesEmail(m, emailNorm)) events.push(mailToTimelineEvent(m));
+  for (const m of input.mails) {
+    if (contactId && mailMatchesContactId(m, contactId)) {
+      events.push(mailToTimelineEvent(m));
+      continue;
+    }
+    if (emailNorm && mailMatchesEmail(m, emailNorm)) {
+      events.push(mailToTimelineEvent(m));
     }
   }
 

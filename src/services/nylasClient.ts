@@ -94,6 +94,21 @@ export async function fetchNylasMessageBody(input: {
   return { body: String(data?.body ?? ''), updated: data?.updated === true };
 }
 
+export async function hydrateNylasThread(input: {
+  threadId: string;
+  accountId: string;
+}): Promise<{ synced: number; skipped: boolean }> {
+  const fn = httpsCallable<
+    typeof input,
+    { ok: boolean; synced: number; skipped: boolean }
+  >(functions, 'nylasHydrateThread');
+  const { data } = await fn(input);
+  return {
+    synced: typeof data?.synced === 'number' ? data.synced : 0,
+    skipped: data?.skipped === true,
+  };
+}
+
 export async function moveThreadViaNylas(input: {
   threadId: string;
   accountId: string;

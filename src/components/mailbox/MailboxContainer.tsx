@@ -10,6 +10,7 @@ import type { MailboxFolder } from '../../lib/mailboxFolders';
 import {
   applyMailboxFolderFilter,
   countThreadsByFolder,
+  linkEmailThreadToContact,
   markThreadRead,
   seedDemoEmailThreadsIfEmpty,
   sendMessage,
@@ -20,6 +21,7 @@ import {
 import type { NylasThreadFolderMove } from '../../services/nylasClient';
 import {
   fetchNylasMessageBody,
+  hydrateNylasThread,
   isNylasConfigured,
   moveThreadViaNylas,
 } from '../../services/nylasClient';
@@ -28,17 +30,65 @@ import {
   resolveDefaultEmailAccount,
   resolveEmailAccountsFromProfile,
 } from '../../lib/emailAccounts';
-import { emailHtmlToPlainText } from '../../lib/emailHtml';
+import { messageBodyNeedsHydration } from '../../lib/emailHtml';
 import { ThreadList } from './ThreadList';
 import { ChatWindow } from './ChatWindow';
 import type { SendFromSelection } from './MessageComposer';
+import { useInstitutionalToast } from '../../hooks/useInstitutionalToast';
+import { InstitutionalToastBanner } from '../residence/diffusion/InstitutionalToastBanner';
+import { MailContactLinkBar } from './MailContactLinkBar';
+import {
+  findContactsByEmail,
+  resolveThreadPartyEmail,
+} from '@primexpert/core/mail';
+import { buildContactDisplayName, type OrganizationContact } from '@primexpert/core/crm';
+import {
+  getOrganizationContactById,
+  listOrganizationContacts,
+  type ContactServiceContext,
+} from '../../services/contacts';
+import {
+  ContactFormDrawer,
+  type ContactFormInitialDraft,
+} from '../contacts/ContactFormDrawer';
+
+const HYDRATE_TIMEOUT_MS = 10_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, timeoutError: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      window.setTimeout(() => reject(new Error(timeoutError)), ms);
+    }),
+  ]);
+}
 
 export function MailboxContainer() {
   const { t, language } = useLanguage();
   const locale = language === 'fr' ? 'fr' : 'en';
   const { profile } = useAuth();
   const workhubNav = useWorkhubNav();
+  const { toast, showError, showSuccess, dismiss: dismissToast } = useInstitutionalToast();
   const brokerId = profile?.uid;
+
+  const contactCtx = useMemo<ContactServiceContext | null>(() => {
+    if (!profile?.uid || !profile.orgId) return null;
+    return { uid: profile.uid, orgId: profile.orgId, role: profile.role };
+  }, [profile?.uid, profile?.orgId, profile?.role]);
+
+  const [contacts, setContacts] = useState<OrganizationContact[]>([]);
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const [contactLinkPending, setContactLinkPending] = useState(false);
+  const [optimisticContactId, setOptimisticContactId] = useState<string | null>(null);
+  const [contactDrawerOpen, setContactDrawerOpen] = useState(false);
+  const [contactDrawerEditing, setContactDrawerEditing] = useState<OrganizationContact | null>(
+    null
+  );
+  const [contactDrawerInitialDraft, setContactDrawerInitialDraft] =
+    useState<ContactFormInitialDraft | null>(null);
+  const [linkedContactOverride, setLinkedContactOverride] = useState<OrganizationContact | null>(
+    null
+  );
 
   const [threads, setThreads] = useState<EmailThread[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(true);
@@ -56,7 +106,9 @@ export function MailboxContainer() {
   const [composerFromAccountId, setComposerFromAccountId] = useState<string | null>(null);
   const [resolvedBodies, setResolvedBodies] = useState<Record<string, string>>({});
   const [hydratingMessageIds, setHydratingMessageIds] = useState<Set<string>>(new Set());
+  const [threadHydrating, setThreadHydrating] = useState(false);
   const hydrateAttemptedRef = useRef<Set<string>>(new Set());
+  const threadHydrateAttemptedRef = useRef<Set<string>>(new Set());
 
   const emailAccounts = useMemo(
     () =>
@@ -82,6 +134,203 @@ export function MailboxContainer() {
   }, [selectedThread?.id, selectedThread?.accountId]);
 
   const useDemoSeed = import.meta.env.VITE_USE_FICTITIOUS_DATA === 'true';
+
+  useEffect(() => {
+    if (!contactCtx) {
+      setContacts([]);
+      return;
+    }
+    let cancelled = false;
+    setContactsLoading(true);
+    void listOrganizationContacts(contactCtx)
+      .then((rows) => {
+        if (!cancelled) setContacts(rows);
+      })
+      .catch((e) => {
+        console.error('[MailboxContainer] load contacts failed', e);
+      })
+      .finally(() => {
+        if (!cancelled) setContactsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [contactCtx]);
+
+  const linkAfterCreateRef = useRef(false);
+  const autoLinkAttemptedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    setOptimisticContactId(null);
+    setLinkedContactOverride(null);
+  }, [selectedThread?.id]);
+
+  const partyEmail = useMemo(() => {
+    if (!selectedThread) return null;
+    return resolveThreadPartyEmail(selectedThread, messages);
+  }, [selectedThread, messages]);
+
+  const suggestedContacts = useMemo(() => {
+    if (!partyEmail) return [];
+    return findContactsByEmail(
+      contacts.map((c) => ({
+        ...c,
+        displayName: buildContactDisplayName(c),
+      })),
+      partyEmail
+    );
+  }, [contacts, partyEmail]);
+
+  const effectiveMatchedContactId = useMemo(() => {
+    if (optimisticContactId) return optimisticContactId;
+    const fromThread = selectedThread?.matchedContactId;
+    if (typeof fromThread === 'string' && fromThread.trim()) return fromThread;
+    const fromMessage = [...messages]
+      .reverse()
+      .map((m) => m.matchedContactId)
+      .find((id) => typeof id === 'string' && id.trim());
+    return typeof fromMessage === 'string' ? fromMessage : null;
+  }, [optimisticContactId, selectedThread?.matchedContactId, messages]);
+
+  const linkedContact = useMemo(() => {
+    if (!effectiveMatchedContactId) return null;
+    return (
+      contacts.find((c) => c.id === effectiveMatchedContactId) ??
+      (linkedContactOverride?.id === effectiveMatchedContactId ? linkedContactOverride : null)
+    );
+  }, [contacts, effectiveMatchedContactId, linkedContactOverride]);
+
+  useEffect(() => {
+    if (!contactCtx || !effectiveMatchedContactId || linkedContact) return;
+    let cancelled = false;
+    void getOrganizationContactById(contactCtx, effectiveMatchedContactId).then((row) => {
+      if (!cancelled && row) setLinkedContactOverride(row);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [contactCtx, effectiveMatchedContactId, linkedContact]);
+
+  const persistThreadContactLink = useCallback(
+    async (contactId: string) => {
+      if (!brokerId || !selectedThread) return;
+      const realMessageIds = messages
+        .map((m) => m.id)
+        .filter((id) => !id.startsWith('snippet-') && !id.startsWith('opt-'));
+      if (realMessageIds.length === 0) return;
+
+      setContactLinkPending(true);
+      setOptimisticContactId(contactId);
+      setSelectedThread((prev) => (prev ? { ...prev, matchedContactId: contactId } : prev));
+      setThreads((prev) =>
+        prev.map((row) =>
+          row.id === selectedThread.id ? { ...row, matchedContactId: contactId } : row
+        )
+      );
+
+      try {
+        await linkEmailThreadToContact(
+          brokerId,
+          selectedThread.id,
+          contactId,
+          realMessageIds,
+          {
+            contactEmail: partyEmail ?? selectedThread.contactEmail,
+            contactName: selectedThread.contactName,
+            messages: messages.filter((m) => realMessageIds.includes(m.id)),
+          }
+        );
+        showSuccess(
+          t(
+            'Courriel lié au dossier client.',
+            'Email linked to client file.'
+          )
+        );
+      } catch (e) {
+        console.error('[MailboxContainer] link contact failed', e);
+        setOptimisticContactId(null);
+        setSelectedThread((prev) =>
+          prev ? { ...prev, matchedContactId: selectedThread.matchedContactId ?? null } : prev
+        );
+        showError(
+          t(
+            'Impossible de lier ce courriel au dossier client.',
+            'Could not link this email to the client file.'
+          )
+        );
+      } finally {
+        setContactLinkPending(false);
+      }
+    },
+    [brokerId, selectedThread, messages, partyEmail, showSuccess, showError, t]
+  );
+
+  useEffect(() => {
+    if (
+      !selectedThread ||
+      effectiveMatchedContactId ||
+      contactLinkPending ||
+      contactsLoading ||
+      suggestedContacts.length !== 1
+    ) {
+      return;
+    }
+    const key = selectedThread.id;
+    if (autoLinkAttemptedRef.current.has(key)) return;
+    autoLinkAttemptedRef.current.add(key);
+    void persistThreadContactLink(suggestedContacts[0]!.id);
+  }, [
+    selectedThread,
+    effectiveMatchedContactId,
+    contactLinkPending,
+    contactsLoading,
+    suggestedContacts,
+    persistThreadContactLink,
+  ]);
+
+  const handleLinkToContact = useCallback(
+    (contactId: string) => {
+      void persistThreadContactLink(contactId);
+    },
+    [persistThreadContactLink]
+  );
+
+  const handleOpenCreateContact = useCallback(() => {
+    const nameParts = (selectedThread?.contactName ?? '').trim().split(/\s+/);
+    const prenom = nameParts.length > 1 ? nameParts[0] : '';
+    const nom = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0] ?? '';
+    setContactDrawerEditing(null);
+    setContactDrawerInitialDraft({
+      email: partyEmail ?? selectedThread?.contactEmail,
+      prenom: prenom || undefined,
+      nom: nom || undefined,
+    });
+    linkAfterCreateRef.current = true;
+    setContactDrawerOpen(true);
+  }, [partyEmail, selectedThread?.contactEmail, selectedThread?.contactName]);
+
+  const handleOpenContact = useCallback(
+    async (contact: OrganizationContact) => {
+      if (!contactCtx) return;
+      setContactDrawerEditing(contact);
+      setContactDrawerInitialDraft(null);
+      linkAfterCreateRef.current = false;
+      setContactDrawerOpen(true);
+    },
+    [contactCtx]
+  );
+
+  const handleContactSaved = useCallback(
+    (contactId?: string) => {
+      if (!contactCtx) return;
+      void listOrganizationContacts(contactCtx).then(setContacts);
+      if (linkAfterCreateRef.current && contactId) {
+        linkAfterCreateRef.current = false;
+        void persistThreadContactLink(contactId);
+      }
+    },
+    [contactCtx, persistThreadContactLink]
+  );
 
   useEffect(() => {
     if (!brokerId) {
@@ -167,13 +416,31 @@ export function MailboxContainer() {
   const displayMessages = useMemo(() => {
     if (!selectedThread) return [];
     const pending = pendingOutbound.filter((m) => m.threadId === selectedThread.id);
-    return [...messages, ...pending].sort((a, b) => a.sentAtMillis - b.sentAtMillis);
-  }, [messages, pendingOutbound, selectedThread]);
+    const rows = [...messages, ...pending].sort((a, b) => a.sentAtMillis - b.sentAtMillis);
+    if (rows.length > 0 || messagesLoading) return rows;
+
+    const snippet = selectedThread.lastMessageSnippet?.trim();
+    if (snippet) {
+      return [
+        {
+          id: `snippet-${selectedThread.id}`,
+          threadId: selectedThread.id,
+          body: snippet,
+          sentAtMillis: selectedThread.lastMessageAtMillis,
+          direction: 'inbound' as const,
+          authorName: selectedThread.contactName,
+        },
+      ];
+    }
+    return rows;
+  }, [messages, pendingOutbound, selectedThread, messagesLoading]);
 
   useEffect(() => {
     setResolvedBodies({});
     setHydratingMessageIds(new Set());
+    setThreadHydrating(false);
     hydrateAttemptedRef.current = new Set();
+    threadHydrateAttemptedRef.current = new Set();
   }, [selectedThread?.id]);
 
   useEffect(() => {
@@ -186,10 +453,15 @@ export function MailboxContainer() {
 
     setMessagesLoading(true);
     const threadId = selectedThread.id;
+    const listenerFailsafe = window.setTimeout(() => {
+      setMessagesLoading(false);
+    }, HYDRATE_TIMEOUT_MS);
+
     const unsub = subscribeThreadMessages(
       brokerId,
       threadId,
       (rows) => {
+        window.clearTimeout(listenerFailsafe);
         setMessages(rows);
         setPendingOutbound((prev) =>
           prev.filter(
@@ -205,11 +477,89 @@ export function MailboxContainer() {
         );
         setMessagesLoading(false);
       },
-      () => setMessagesLoading(false)
+      () => {
+        window.clearTimeout(listenerFailsafe);
+        setMessagesLoading(false);
+      }
     );
 
-    return () => unsub();
+    return () => {
+      window.clearTimeout(listenerFailsafe);
+      unsub();
+    };
   }, [brokerId, selectedThread?.id]);
+
+  useEffect(() => {
+    if (
+      !brokerId ||
+      !selectedThread ||
+      messagesLoading ||
+      messages.length > 0 ||
+      !isNylasConfigured()
+    ) {
+      return;
+    }
+
+    const accountId = selectedThread.accountId ?? composerFromAccountId;
+    if (!accountId || !selectedThread.nylasThreadId) return;
+
+    const attemptKey = `${selectedThread.id}:${accountId}`;
+    if (threadHydrateAttemptedRef.current.has(attemptKey)) return;
+    threadHydrateAttemptedRef.current.add(attemptKey);
+
+    const threadId = selectedThread.id;
+    let cancelled = false;
+    setThreadHydrating(true);
+
+    void (async () => {
+      try {
+        const result = await withTimeout(
+          hydrateNylasThread({ threadId, accountId }),
+          HYDRATE_TIMEOUT_MS,
+          'HYDRATE_TIMEOUT'
+        );
+        if (cancelled) return;
+        if (result.synced === 0 && !result.skipped) {
+          console.warn('[MailboxContainer] thread hydrate returned no messages', {
+            threadId,
+            nylasThreadId: selectedThread.nylasThreadId,
+          });
+        }
+      } catch (e) {
+        if (cancelled) return;
+        const isTimeout = e instanceof Error && e.message === 'HYDRATE_TIMEOUT';
+        showError(
+          isTimeout
+            ? t(
+                'Délai d’attente dépassé pour la récupération du message.',
+                'Timed out while retrieving the message.'
+              )
+            : t(
+                'Impossible de récupérer le fil depuis Nylas.',
+                'Could not retrieve the thread from Nylas.'
+              )
+        );
+        console.warn('[MailboxContainer] hydrate thread failed', e);
+      } finally {
+        setThreadHydrating(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      setThreadHydrating(false);
+    };
+  }, [
+    brokerId,
+    selectedThread?.id,
+    selectedThread?.nylasThreadId,
+    selectedThread?.accountId,
+    messages.length,
+    messagesLoading,
+    composerFromAccountId,
+    showError,
+    t,
+  ]);
 
   useEffect(() => {
     if (!brokerId || !selectedThread || messagesLoading || !isNylasConfigured()) return;
@@ -220,41 +570,57 @@ export function MailboxContainer() {
     let cancelled = false;
 
     for (const msg of messages) {
-      if (msg.body.trim().length > 20 || !msg.nylasMessageId) continue;
+      if (msg.id.startsWith('snippet-') || !messageBodyNeedsHydration(msg.body, msg.nylasMessageId)) {
+        continue;
+      }
       if (hydrateAttemptedRef.current.has(msg.id)) continue;
       hydrateAttemptedRef.current.add(msg.id);
 
       setHydratingMessageIds((prev) => new Set(prev).add(msg.id));
 
-      void fetchNylasMessageBody({
-        threadId: selectedThread.id,
-        messageId: msg.id,
-        accountId,
-      })
-        .then(({ body }) => {
+      void (async () => {
+        try {
+          const { body } = await withTimeout(
+            fetchNylasMessageBody({
+              threadId: selectedThread.id,
+              messageId: msg.id,
+              accountId,
+            }),
+            HYDRATE_TIMEOUT_MS,
+            'HYDRATE_BODY_TIMEOUT'
+          );
           if (cancelled) return;
           const trimmed = body.trim();
           if (trimmed) {
             setResolvedBodies((prev) => ({ ...prev, [msg.id]: trimmed }));
           }
-        })
-        .catch((e) => {
-          console.warn('[MailboxContainer] hydrate message body failed', e);
-        })
-        .finally(() => {
-          if (cancelled) return;
+        } catch (e) {
+          if (!cancelled) {
+            const isTimeout = e instanceof Error && e.message === 'HYDRATE_BODY_TIMEOUT';
+            if (isTimeout) {
+              showError(
+                t(
+                  'Délai d’attente dépassé pour la récupération du message.',
+                  'Timed out while retrieving the message.'
+                )
+              );
+            }
+            console.warn('[MailboxContainer] hydrate message body failed', e);
+          }
+        } finally {
           setHydratingMessageIds((prev) => {
             const next = new Set(prev);
             next.delete(msg.id);
             return next;
           });
-        });
+        }
+      })();
     }
 
     return () => {
       cancelled = true;
     };
-  }, [brokerId, selectedThread, messages, messagesLoading, composerFromAccountId]);
+  }, [brokerId, selectedThread, messages, messagesLoading, composerFromAccountId, showError, t]);
 
   const handleSelectThread = useCallback(
     async (thread: EmailThread) => {
@@ -440,10 +806,16 @@ export function MailboxContainer() {
             <span>{threadsError}</span>
           </div>
         ) : null}
+        {toast ? (
+          <div className="mx-4 mt-4">
+            <InstitutionalToastBanner toast={toast} onDismiss={dismissToast} />
+          </div>
+        ) : null}
         <ChatWindow
           thread={selectedThread}
           messages={displayMessages}
           messagesLoading={messagesLoading}
+          threadHydrating={threadHydrating}
           sending={sending}
           locale={locale}
           accounts={emailAccounts}
@@ -457,6 +829,31 @@ export function MailboxContainer() {
           folderActionPending={folderActionPending}
           resolvedBodies={resolvedBodies}
           hydratingMessageIds={hydratingMessageIds}
+          contactLinkBar={
+            selectedThread && contactCtx ? (
+              <MailContactLinkBar
+                partyEmail={partyEmail}
+                linkedContact={linkedContact}
+                suggestedContacts={suggestedContacts}
+                allContacts={contacts}
+                linking={contactLinkPending || contactsLoading}
+                locale={locale}
+                onLink={handleLinkToContact}
+                onCreateContact={handleOpenCreateContact}
+                onOpenContact={handleOpenContact}
+                labels={{
+                  linkedTo: t('Lié au dossier', 'Linked to file'),
+                  viewDossier: t('Voir dossier client', 'View client file'),
+                  linkToDossier: t('Lier au dossier client', 'Link to client file'),
+                  createContact: t('Créer un contact', 'Create contact'),
+                  suggested: t('Correspondance courriel', 'Email match'),
+                  searchPlaceholder: t('Rechercher un contact…', 'Search contacts…'),
+                  noMatch: t('Aucun contact trouvé.', 'No contacts found.'),
+                  partyEmail: t('Courriel', 'Email'),
+                }}
+              />
+            ) : null
+          }
           labels={{
             selectThread: t('Sélectionnez une conversation', 'Select a conversation'),
             secureMode: t('Mode sécurisé chiffré activé', 'Encrypted secure mode'),
@@ -465,6 +862,10 @@ export function MailboxContainer() {
             send: t('Envoyer', 'Send'),
             fromLabel: t('Expéditeur', 'From'),
             loadingMessages: t('Chargement des messages…', 'Loading messages…'),
+            syncingThread: t(
+              'Synchronisation du fil depuis Nylas…',
+              'Syncing thread from Nylas…'
+            ),
             loadingMessageBody: t(
               'Chargement du contenu du courriel…',
               'Loading email content…'
@@ -484,6 +885,21 @@ export function MailboxContainer() {
           }}
         />
       </div>
+      {contactCtx ? (
+        <ContactFormDrawer
+          open={contactDrawerOpen}
+          onClose={() => {
+            setContactDrawerOpen(false);
+            setContactDrawerEditing(null);
+            setContactDrawerInitialDraft(null);
+            linkAfterCreateRef.current = false;
+          }}
+          ctx={contactCtx}
+          editing={contactDrawerEditing}
+          initialDraft={contactDrawerInitialDraft}
+          onSaved={handleContactSaved}
+        />
+      ) : null}
     </div>
   );
 }

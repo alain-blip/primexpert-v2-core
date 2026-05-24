@@ -15,11 +15,18 @@ import {
   resolveTaxonomyEntry,
   taxonomyLabelsForGeminiPrompt,
 } from './documentTaxonomy';
+import { enrichExtractedDataWithOperatingBenchmarks } from './_vendored/extractionSchemas';
+import {
+  marketReportLabelsForPrompt,
+} from './_vendored/marketReportTypes';
+import { normalizeMasterMarketExtract } from './_vendored/marketReportNormalize';
+import { STATISTICIAN_PERSONA } from '../services/vertexClient';
 
 export type DetectedDocumentType =
   | 'certificat_localisation'
   | 'etats_financiers'
-  | 'rapport_evaluation';
+  | 'rapport_evaluation'
+  | 'market_report';
 
 const CL_BLOCK = `
 ### Si documentType = "certificat_localisation"
@@ -40,11 +47,18 @@ const CL_BLOCK = `
 const PNL_BLOCK = `
 ### Si documentType = "etats_financiers"
 {
-  "amounts": [{ "label": "Loyers bruts", "value": 0, "currency": "CAD" }],
-  "annee": 2024
+  "amounts": [{ "label": "Revenus totaux", "value": 0, "currency": "CAD" }],
+  "annee": 2024,
+  "nbPortes": 42,
+  "revenuTotal": 0,
+  "depensesExploitation": 0
 }
 - UNIQUEMENT état des résultats d'EXPLOITATION (revenus et dépenses détaillés)
 - IGNORER bilan, amortissements, impôts sur les sociétés, notes comptables
+- revenuTotal : revenu brut effectif (RBE) ou revenus d'exploitation totaux
+- depensesExploitation : total des frais / dépenses d'exploitation (hors financement)
+- nbPortes : nombre de portes, lits ou unités locatives si indiqué
+- Inclure postes RPA si présents : soins, alimentation, énergie (libellés distincts)
 - Libellés clairs en français québécois`;
 
 const EVAL_BLOCK = `
@@ -59,6 +73,63 @@ const EVAL_BLOCK = `
 - comparables : immeubles comparables (ville sans adresse civique)
 - amounts : seulement si l'état des résultats d'exploitation est inclus dans le rapport`;
 
+const MARKET_REPORT_BLOCK = `
+### Si documentCategory = "MARKET_REPORT" (schéma omnivore — TOUT type de PDF marché)
+${STATISTICIAN_PERSONA}
+
+Retourne documentCategory = "MARKET_REPORT" et remplis TOUTES les sections pertinentes (sections absentes = omettre la clé) :
+
+{
+  "documentCategory": "MARKET_REPORT",
+  "documentType": "<libellé — voir liste ci-dessous>",
+  "sourcePublisher": "Altus | Côté Mercier | JLR | évaluateur agréé | autre",
+  "anneePublication": 2025,
+  "anneeDonnees": 2024,
+  "macroTrends": {
+    "regions": [{
+      "regionAdministrative": "Montréal",
+      "regionDisplayName": "Montréal",
+      "tauxPenetration": [{ "typeRpa": "RPA privé", "tauxPenetrationPct": 4.2 }],
+      "coutRemplacementNeuf": { "unite": "pi2", "montant": 385, "devise": "CAD" },
+      "nouvellesUnitesEnChantier": 820,
+      "projetsEnChantier": [{ "nomProjet": "Projet X", "ville": "Laval", "nouvellesUnites": 120 }]
+    }]
+  },
+  "comparableTransactions": [{
+    "rowId": "tx-1",
+    "adresse": "123 Rue Exemple",
+    "ville": "Montréal",
+    "regionAdministrative": "Montréal",
+    "dateTransaction": "2024-06-15",
+    "prixVente": 4500000,
+    "nbPortes": 42,
+    "prixParPorte": 107142,
+    "tgaPct": 6.25,
+    "superficiePi2": 35000,
+    "prixParPi2": 128.57,
+    "vendeur": "Nom vendeur si présent",
+    "acheteur": "Nom acheteur si présent",
+    "typeImmeuble": "RPA"
+  }],
+  "operationalBenchmarks": [{
+    "rowId": "bench-1",
+    "label": "Ratio des dépenses d'exploitation (RDE)",
+    "regionAdministrative": "Montréal",
+    "ratioPct": 62.5,
+    "montantParPorte": 18500,
+    "montantAnnuel": null,
+    "categorie": "exploitation"
+  }]
+}
+
+Règles :
+- macroTrends : grilles régionales, pénétration 75+, coûts Altus, chantier RPA
+- comparableTransactions : CHAQUE vente / comparable du document (rapports évaluateur, ACM, registres)
+- operationalBenchmarks : ratios financiers, dépenses moyennes/porte, RDE, RBE, RNE
+- rowId unique par ligne (tx-1, tx-2… ou bench-1…)
+- Libellés documentType (copie exacte si applicable) :
+${marketReportLabelsForPrompt()}`;
+
 const UNIVERSAL_EXTRACT_PROMPT = `Tu es un expert en diligence immobilière (Québec, OACIQ). Analyse le CONTENU du document PDF et le nom du fichier. Le dossier de dépôt peut être erroné — ignore-le.
 
 ## ÉTAPE 1 — documentType (libellé EXACT, un seul)
@@ -72,6 +143,8 @@ Si états financiers / bilans / résultats d'exploitation → applique aussi :
 ${PNL_BLOCK}
 Si rapport d'évaluation agréé → applique aussi :
 ${EVAL_BLOCK}
+Si rapport macro / marché global (Altus, Côté Mercier, démographie, chantier RPA) → applique aussi :
+${MARKET_REPORT_BLOCK}
 Sinon : retourne uniquement { "documentType": "<libellé exact>" }.
 
 Réponse JSON unique :
@@ -227,6 +300,12 @@ function coerceIrregularitesFromAlertes(alertes: Record<string, unknown>): strin
 
 function parseDocumentType(raw: unknown): DetectedDocumentType | undefined {
   const t = String(raw ?? '').toLowerCase().trim();
+  if (raw && typeof raw === 'object' && (raw as Record<string, unknown>).documentCategory === 'MARKET_REPORT') {
+    return 'market_report';
+  }
+  if (t === 'market_report' || t.includes('altus') || t.includes('mercier') || t.includes('macro')) {
+    return 'market_report';
+  }
   if (t === 'certificat_localisation' || t === 'cl' || t.includes('localisation')) {
     return 'certificat_localisation';
   }
@@ -300,7 +379,10 @@ function normalizeFinancial(raw: Record<string, unknown>, documentTypeLabel: str
   if (typeof raw.annee === 'number' && raw.annee > 1990 && raw.annee < 2100) {
     extracted.annee = raw.annee;
   }
-  return extracted;
+  const nbPortes = coerceNumber(raw.nbPortes ?? raw.nombreUnites);
+  if (nbPortes != null && nbPortes > 0) extracted.nbPortes = Math.round(nbPortes);
+
+  return enrichExtractedDataWithOperatingBenchmarks(extracted);
 }
 
 function normalizeEvaluation(raw: Record<string, unknown>, documentTypeLabel: string): Record<string, unknown> {
@@ -337,8 +419,27 @@ function normalizeEvaluation(raw: Record<string, unknown>, documentTypeLabel: st
   return extracted;
 }
 
-/** SSOT — normalisation selon documentType détecté par Gemini (nomenclature Alain). */
-export function normalizeExtractedData(raw: Record<string, unknown>): Record<string, unknown> {
+function normalizeMarketReport(raw: Record<string, unknown>, fileName: string): Record<string, unknown> {
+  const normalized = normalizeMasterMarketExtract(raw, fileName);
+  if (normalized) return normalized;
+  return {
+    documentCategory: 'MARKET_REPORT',
+    documentType: String(raw.documentType ?? 'Registre de transactions immobilières — multilogement / RPA'),
+    macroTrends: { regions: [] },
+    comparableTransactions: [],
+    operationalBenchmarks: [],
+  };
+}
+
+/** SSOT — normalise selon documentType détecté par Gemini (nomenclature Alain). */
+export function normalizeExtractedData(
+  raw: Record<string, unknown>,
+  fileName = ''
+): Record<string, unknown> {
+  if (raw.documentCategory === 'MARKET_REPORT' || normalizeMasterMarketExtract(raw, fileName)) {
+    return normalizeMarketReport(raw, fileName);
+  }
+
   const labelFromModel = String(raw.documentType ?? '').trim();
   const entry = resolveTaxonomyEntry(labelFromModel);
   const documentTypeLabel = entry?.labelFr ?? (labelFromModel || 'Document non classé');
@@ -360,7 +461,11 @@ export function normalizeExtractedData(raw: Record<string, unknown>): Record<str
       extracted = normalizeFinancial(raw, documentTypeLabel);
       break;
     default:
-      extracted = { documentType: documentTypeLabel, amounts: [] };
+      if (normalizeMasterMarketExtract(raw, fileName)) {
+        extracted = normalizeMarketReport(raw, fileName);
+      } else {
+        extracted = { documentType: documentTypeLabel, amounts: [] };
+      }
   }
 
   extracted.documentType = documentTypeLabel;
@@ -388,13 +493,15 @@ function formatVertexError(err: unknown): string {
 export interface ExtractFinancialDocumentOptions {
   /** Ignoré — le type est déduit du contenu (pipeline universel). */
   category?: string;
+  /** Force le pipeline macro marché (Vault global). */
+  documentCategory?: 'MARKET_REPORT';
 }
 
 export async function extractFinancialDocumentWithGemini(
   mimeType: string,
   base64Data: string,
   fileName: string,
-  _options?: ExtractFinancialDocumentOptions
+  options?: ExtractFinancialDocumentOptions
 ): Promise<Record<string, unknown>> {
   const project = getVertexProject();
   const location = getVertexLocation();
@@ -425,12 +532,17 @@ export async function extractFinancialDocumentWithGemini(
       },
     });
 
+    const marketHint =
+      options?.documentCategory === 'MARKET_REPORT'
+        ? `\n\n${STATISTICIAN_PERSONA}\n\nIMPORTANT : Ce PDF provient du Vault « Statistiques du marché ». Retourne documentCategory = "MARKET_REPORT" et remplis macroTrends, comparableTransactions et operationalBenchmarks selon le contenu réel.\n`
+        : '';
+
     const result = await model.generateContent({
       contents: [
         {
           role: 'user',
           parts: [
-            { text: UNIVERSAL_EXTRACT_PROMPT },
+            { text: UNIVERSAL_EXTRACT_PROMPT + marketHint },
             { text: `Nom du fichier : ${fileName}` },
             { inlineData: { mimeType, data: base64Data } },
           ],
@@ -444,7 +556,7 @@ export async function extractFinancialDocumentWithGemini(
         .join('') ?? '';
 
     if (!text) throw new Error('VERTEX_EMPTY_RESPONSE: réponse vide du modèle Gemini.');
-    const normalized = normalizeExtractedData(parseJsonFromModelText(text));
+    const normalized = normalizeExtractedData(parseJsonFromModelText(text), fileName);
     console.info('[geminiExtract] universal pipeline done', {
       documentType: normalized.documentType,
       textLength: text.length,

@@ -65,12 +65,20 @@ import { IntelligenceChronologie } from '../intelligence/IntelligenceChronologie
 import type { UnifiedTimelineEvent } from '@primexpert/core/intelligence';
 import { institutionalInkTextClass, institutionalPanelTitleClass } from '../../lib/institutionalTheme';
 
+export interface ContactFormInitialDraft {
+  email?: string;
+  prenom?: string;
+  nom?: string;
+  leadSource?: OrganizationContact['leadSource'];
+}
+
 export interface ContactFormDrawerProps {
   open: boolean;
   onClose: () => void;
   ctx: ContactServiceContext;
   editing?: OrganizationContact | null;
-  onSaved: () => void;
+  initialDraft?: ContactFormInitialDraft | null;
+  onSaved: (contactId?: string) => void;
 }
 
 export function ContactFormDrawer({
@@ -78,6 +86,7 @@ export function ContactFormDrawer({
   onClose,
   ctx,
   editing,
+  initialDraft,
   onSaved,
 }: ContactFormDrawerProps) {
   const { t, language } = useLanguage();
@@ -283,6 +292,7 @@ export function ContactFormDrawer({
     let cancelled = false;
     setTimelineLoading(true);
     void buildContactTimeline(ctx.uid, {
+      id: editing.id,
       email: editing.email,
       residenceIds: editing.residenceIds,
     })
@@ -375,15 +385,15 @@ export function ContactFormDrawer({
       setManagedBuyerIds(editing.brokerCriteria?.managedBuyerIds ?? []);
       setProfessionalType(editing.professionalType ?? '');
     } else {
-      setNom('');
-      setPrenom('');
+      setNom(initialDraft?.nom ?? '');
+      setPrenom(initialDraft?.prenom ?? '');
       setDateNaissance('');
       setOccupationProfession('');
       setLigne1('');
       setVille('');
       setCodePostal('');
       setProvince('QC');
-      setEmail('');
+      setEmail(initialDraft?.email ?? '');
       setTelephone('');
       setSilo('RESIDENTIEL');
       setAssetNiche('');
@@ -418,7 +428,7 @@ export function ContactFormDrawer({
       setSellerCorporateCompanyName('');
       setSellerCorporateReqNumber('');
     }
-  }, [open, editing, ctx.uid]);
+  }, [open, editing, initialDraft, ctx.uid]);
 
   const agencyShareAllowed = useMemo(
     () => isAgencyShareAllowedForContact(silo, assetNiche || undefined),
@@ -649,7 +659,10 @@ export function ContactFormDrawer({
           return;
         }
       } else {
-        const res = await createOrganizationContact(ctx, payloadFinal);
+        const res = await createOrganizationContact(ctx, {
+          ...payloadFinal,
+          leadSource: initialDraft?.leadSource ?? payloadFinal.leadSource,
+        });
         if (!res.ok) {
           setSubmitError(
             res.error === 'lci_incomplete'
@@ -659,8 +672,11 @@ export function ContactFormDrawer({
           if (res.missing) setLciErrors(res.missing as ContactLciFieldKey[]);
           return;
         }
+        onSaved(res.id);
+        onClose();
+        return;
       }
-      onSaved();
+      onSaved(editing?.id);
       onClose();
     } catch (err) {
       console.error('[ContactFormDrawer] submit failed', err);

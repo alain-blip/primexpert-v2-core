@@ -395,13 +395,6 @@ export function DocumentsDiligenceTab({
           {locale === 'fr' ? activeTabDef.descriptionFr : activeTabDef.descriptionEn}
         </p>
       ) : null}
-      {shareDraft ? (
-        <p className="mb-3 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-900">
-          {locale === 'fr'
-            ? `Package préparé : ${shareDraft.documentIds.length} doc(s) → ${shareDraft.recipients.join(', ')}`
-            : `Package ready: ${shareDraft.documentIds.length} doc(s) → ${shareDraft.recipients.join(', ')}`}
-        </p>
-      ) : null}
 
       {!uploadAllowed ? (
         <p className="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-950" role="status">

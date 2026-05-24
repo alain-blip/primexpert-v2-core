@@ -43,6 +43,8 @@ export const propertyDocumentParseIA = onCall(
   {
     invoker: 'public',
     serviceAccount: VERTEX_RUNTIME_SA,
+    memory: '1GiB',
+    timeoutSeconds: 540,
   },
   async (request) => {
     try {
@@ -113,6 +115,85 @@ export const propertyDocumentsReconcileScan = onCall({ invoker: 'public' }, asyn
   } catch (e) {
     if (e instanceof HttpsError) throw e;
     console.error('[propertyDocumentsReconcileScan]', e);
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new HttpsError('failed-precondition', msg);
+  }
+});
+
+/** Parseur IA — rapport macro marché (Vault global market_documents). */
+export const marketDocumentParseIA = onCall(
+  {
+    invoker: 'public',
+    serviceAccount: VERTEX_RUNTIME_SA,
+    memory: '2GiB',
+    timeoutSeconds: 540,
+  },
+  async (request) => {
+    try {
+      const { parseSingleMarketDocument } = await import('./documents/parseMarketDocument');
+      if (!request.auth?.uid) {
+        throw new HttpsError('unauthenticated', 'Connexion requise.');
+      }
+      const documentId = String(request.data?.documentId ?? '').trim();
+      if (!documentId) {
+        throw new HttpsError('invalid-argument', 'documentId requis.');
+      }
+      const result = await parseSingleMarketDocument(documentId, request.auth.uid);
+      return { ok: true, ...result };
+    } catch (e) {
+      if (e instanceof HttpsError) throw e;
+      console.error('[marketDocumentParseIA]', e);
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new HttpsError('failed-precondition', msg);
+    }
+  }
+);
+
+/** Injection HITL omnivore → market_macro_stats + market_analytics_raw + marketSnapshots/v1. */
+export const injectMarketMacroStats = onCall({ invoker: 'public' }, async (request) => {
+  try {
+    const { injectMasterMarketExtractionServer } = await import('./documents/injectMarketMacroStats');
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'Connexion requise.');
+    }
+    const documentId = String(request.data?.documentId ?? '').trim();
+    const selectedRegions = Array.isArray(request.data?.selectedRegions)
+      ? request.data.selectedRegions
+      : [];
+    const selectedTransactions = Array.isArray(request.data?.selectedTransactions)
+      ? request.data.selectedTransactions
+      : [];
+    const selectedOperationalBenchmarks = Array.isArray(request.data?.selectedOperationalBenchmarks)
+      ? request.data.selectedOperationalBenchmarks
+      : [];
+    const siloType = String(request.data?.siloType ?? 'rpa_ri_chsld').trim();
+    if (!documentId) {
+      throw new HttpsError('invalid-argument', 'documentId requis.');
+    }
+    const result = await injectMasterMarketExtractionServer({
+      documentId,
+      brokerId: request.auth.uid,
+      siloType,
+      selectedRegions,
+      selectedTransactions,
+      selectedOperationalBenchmarks,
+    });
+    return {
+      ok: true,
+      entryIds: [...result.macroEntryIds, ...result.analyticsEntryIds],
+      macroEntryIds: result.macroEntryIds,
+      analyticsEntryIds: result.analyticsEntryIds,
+      snapshotUpdated: result.snapshotUpdated,
+      macroNewCount: result.macroNewCount,
+      macroDuplicateCount: result.macroDuplicateCount,
+      transactionsNewCount: result.transactionsNewCount,
+      transactionsDuplicateCount: result.transactionsDuplicateCount,
+      benchmarksNewCount: result.benchmarksNewCount,
+      benchmarksDuplicateCount: result.benchmarksDuplicateCount,
+    };
+  } catch (e) {
+    if (e instanceof HttpsError) throw e;
+    console.error('[injectMarketMacroStats]', e);
     const msg = e instanceof Error ? e.message : String(e);
     throw new HttpsError('failed-precondition', msg);
   }
@@ -299,6 +380,52 @@ export const nylasFetchMessageBody = onCall({ invoker: 'public' }, async (reques
     console.error('[nylasFetchMessageBody]', e);
     const msg = e instanceof Error ? e.message : String(e);
     throw new HttpsError('internal', msg);
+  }
+});
+
+function mapNylasCallableError(e: unknown, logLabel: string): HttpsError {
+  if (e instanceof HttpsError) return e;
+  const msg = e instanceof Error ? e.message : String(e);
+  const grpcCode = (e as { code?: number })?.code;
+  console.error(`[${logLabel}]`, e);
+  if (
+    grpcCode === 9 ||
+    msg.includes('FAILED_PRECONDITION') ||
+    msg.includes('requires an index')
+  ) {
+    return new HttpsError(
+      'failed-precondition',
+      `Index Firestore manquant pour la messagerie : ${msg}`
+    );
+  }
+  if (msg.includes('NYLAS_API_KEY') || msg.includes('NYLAS_CLIENT_ID')) {
+    return new HttpsError(
+      'failed-precondition',
+      `Secret Nylas manquant côté Functions : ${msg}`
+    );
+  }
+  return new HttpsError('internal', msg);
+}
+
+/** Récupère les messages Nylas d’un fil vide et les écrit dans Firestore. */
+export const nylasHydrateThread = onCall({ invoker: 'public' }, async (request) => {
+  try {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'Connexion requise.');
+    }
+    const brokerId = request.auth.uid;
+    const threadId = String(request.data?.threadId ?? '');
+    const accountId = String(request.data?.accountId ?? '');
+
+    if (!threadId || !accountId) {
+      throw new HttpsError('invalid-argument', 'threadId et accountId requis.');
+    }
+
+    const { hydrateThreadForBroker } = await import('./nylas/hydrateThreadMessages');
+    const result = await hydrateThreadForBroker({ brokerId, threadId, accountId });
+    return { ok: true, ...result };
+  } catch (e) {
+    throw mapNylasCallableError(e, 'nylasHydrateThread');
   }
 });
 
@@ -556,3 +683,6 @@ export const sendDocumentSelection = onCall({ invoker: 'public' }, async (reques
     throw new HttpsError('internal', msg);
   }
 });
+
+/** Benchmark portefeuille — médianes dépense/RBE (IQR, dataV2). */
+export { getGlobalFinancialBenchmark } from './benchmark/getGlobalFinancialBenchmark';
