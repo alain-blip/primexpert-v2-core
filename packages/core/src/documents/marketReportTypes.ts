@@ -43,8 +43,12 @@ export interface ComparableTransactionRow {
   regionAdministrative?: string;
   dateTransaction?: string;
   prixVente?: number | null;
+  /** @deprecated Préférer nbUnites — conservé pour rétrocompatibilité Firestore / extraction IA. */
   nbPortes?: number | null;
+  nbUnites?: number | null;
+  /** @deprecated Préférer prixParUnite */
   prixParPorte?: number | null;
+  prixParUnite?: number | null;
   tgaPct?: number | null;
   superficiePi2?: number | null;
   prixParPi2?: number | null;
@@ -53,13 +57,15 @@ export interface ComparableTransactionRow {
   typeImmeuble?: string;
 }
 
-/** Ratios et benchmarks opérationnels (dépenses/porte, RDE, etc.). */
+/** Ratios et benchmarks opérationnels (dépenses/unité, RDE, etc.). */
 export interface OperationalBenchmarkRow {
   rowId: string;
   label: string;
   regionAdministrative?: string;
   ratioPct?: number | null;
+  /** @deprecated Préférer montantParUnite */
   montantParPorte?: number | null;
+  montantParUnite?: number | null;
   montantAnnuel?: number | null;
   categorie?: string;
 }

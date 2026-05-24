@@ -263,9 +263,9 @@ export function computePerformanceRatiosViewModel(
     }),
     row({
       id: 'prixParPorte',
-      code: 'PRIX/PORTE',
-      labelFr: 'Prix par porte',
-      labelEn: 'Price per door',
+      code: 'PRIX/UNITE',
+      labelFr: 'Prix par unité',
+      labelEn: 'Price per unit',
       value: prixParPorte,
       displayKind: 'currency',
       definitionFr: 'Prix demandé ÷ nombre d’unités',

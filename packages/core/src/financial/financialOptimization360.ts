@@ -372,12 +372,12 @@ export function computeLostProfits360(params: ComputeLostProfits360Params): Lost
 
   const revConstat =
     loyerReelMensuel != null && loyerMarcheMensuel != null
-      ? `Loyer moyen : ${loyerReelMensuel.toFixed(0)} $ vs ${loyerMarcheMensuel.toFixed(0)} $ / porte / mois`
+      ? `Loyer moyen : ${loyerReelMensuel.toFixed(0)} $ vs ${loyerMarcheMensuel.toFixed(0)} $ / unité / mois`
       : loyerMarcheMensuel == null
         ? 'Loyer marché : renseigner sur la fiche ou en financement'
         : units <= 0
           ? 'Nombre d’unités requis pour le levier revenus'
-          : `Loyer implicite (RBE) : ${loyerReelMensuel != null ? `${loyerReelMensuel.toFixed(0)} $ / porte / mois` : '—'}`;
+          : `Loyer implicite (RBE) : ${loyerReelMensuel != null ? `${loyerReelMensuel.toFixed(0)} $ / unité / mois` : '—'}`;
 
   const rows: LostProfitsLeverRow[] = [
     {
@@ -387,7 +387,7 @@ export function computeLostProfits360(params: ComputeLostProfits360Params): Lost
       constatFr: revConstat,
       constatEn:
         loyerReelMensuel != null && loyerMarcheMensuel != null
-          ? `Avg rent: ${loyerReelMensuel.toFixed(0)} vs ${loyerMarcheMensuel.toFixed(0)} $ / door / mo`
+          ? `Avg rent: ${loyerReelMensuel.toFixed(0)} vs ${loyerMarcheMensuel.toFixed(0)} $ / unit / mo`
           : 'Market rent or unit count needed',
       noiGapAnnual: revenueGapAnnual,
       valueImpact: revenueValue,

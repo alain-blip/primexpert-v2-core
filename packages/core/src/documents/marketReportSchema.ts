@@ -67,7 +67,9 @@ export const ComparableTransactionRowSchema = z.object({
   dateTransaction: z.string().optional(),
   prixVente: z.number().nullable().optional(),
   nbPortes: z.number().nullable().optional(),
+  nbUnites: z.number().nullable().optional(),
   prixParPorte: z.number().nullable().optional(),
+  prixParUnite: z.number().nullable().optional(),
   tgaPct: z.number().nullable().optional(),
   superficiePi2: z.number().nullable().optional(),
   prixParPi2: z.number().nullable().optional(),
@@ -82,6 +84,7 @@ export const OperationalBenchmarkRowSchema = z.object({
   regionAdministrative: z.string().optional(),
   ratioPct: z.number().nullable().optional(),
   montantParPorte: z.number().nullable().optional(),
+  montantParUnite: z.number().nullable().optional(),
   montantAnnuel: z.number().nullable().optional(),
   categorie: z.string().optional(),
 });

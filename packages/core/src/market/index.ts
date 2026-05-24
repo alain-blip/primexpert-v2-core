@@ -5,3 +5,4 @@ export * from './visitorRegistry';
 export * from './zonePenetration';
 export * from './demographics';
 export * from './marketDeduplication';
+export * from './marketGpsViewModel';

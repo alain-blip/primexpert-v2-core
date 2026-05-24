@@ -1,5 +1,5 @@
 /**
- * Palmarès des concurrents majeurs — tri par nombre de portes (région élargie).
+ * Palmarès des concurrents majeurs — tri par nombre d'unités (région élargie).
  */
 
 import React, { useMemo } from 'react';
@@ -39,8 +39,8 @@ export function MajorCompetitorsLeaderboard({
         </h4>
         <p className="text-[10px] text-slate-600 mt-1 leading-relaxed">
           {t(
-            'Classement par nombre de portes dans le périmètre élargi — repère immédiat des gros joueurs locaux (distance Haversine).',
-            'Ranked by door count in the expanded perimeter — quick view of dominant local players (Haversine distance).'
+            'Classement par nombre d’unités dans le périmètre élargi — repère immédiat des gros joueurs locaux (distance Haversine).',
+            'Ranked by unit count in the expanded perimeter — quick view of dominant local players (Haversine distance).'
           )}
         </p>
       </div>
@@ -51,7 +51,7 @@ export function MajorCompetitorsLeaderboard({
             <tr>
               <th className={inst.th}>{t('Rang', 'Rank')}</th>
               <th className={inst.th}>{t('Résidence', 'Residence')}</th>
-              <th className={inst.thRight}>{t('Portes', 'Doors')}</th>
+              <th className={inst.thRight}>{t('Unités', 'Units')}</th>
               <th className={inst.thRight}>{t('Distance', 'Distance')}</th>
               <th className={inst.th}>{t('Part relative', 'Relative share')}</th>
             </tr>

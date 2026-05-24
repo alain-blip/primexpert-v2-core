@@ -283,7 +283,7 @@ export async function injectMasterMarketExtractionServer(
 
     const amounts: Array<{ label: string; value: number; currency: string }> = [];
     if (typeof bench.montantParPorte === 'number') {
-      amounts.push({ label: `${label} — par porte`, value: bench.montantParPorte, currency: 'CAD' });
+      amounts.push({ label: `${label} — par unité`, value: bench.montantParPorte, currency: 'CAD' });
     }
     if (typeof bench.montantAnnuel === 'number') {
       amounts.push({ label: `${label} — annuel`, value: bench.montantAnnuel, currency: 'CAD' });

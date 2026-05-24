@@ -25,6 +25,7 @@ import {
   uploadMarketDocument,
 } from '../../services/marketDocumentsService';
 import type { MarketDocumentRecord } from '../../types/marketDocument';
+import { MarketDataGrid } from './MarketDataGrid';
 import {
   getMacroRegions,
   parseMasterMarketExtraction,
@@ -32,6 +33,8 @@ import {
   type MarketReportRegionRow,
   type OperationalBenchmarkRow,
 } from '@primexpert/core/documents';
+
+type MarketInnerTab = 'dashboard' | 'ingestion';
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`;
@@ -138,8 +141,8 @@ function TransactionsGrid({
             <th className="px-2 py-2">{t('Adresse / Ville', 'Address / City')}</th>
             <th className="px-2 py-2">{t('Date', 'Date')}</th>
             <th className="px-2 py-2 text-right">{t('Prix', 'Price')}</th>
-            <th className="px-2 py-2 text-right">{t('Portes', 'Doors')}</th>
-            <th className="px-2 py-2 text-right">{t('Prix/porte', 'Price/door')}</th>
+            <th className="px-2 py-2 text-right">{t('Unités', 'Units')}</th>
+            <th className="px-2 py-2 text-right">{t('Prix/unité', 'Price/unit')}</th>
             <th className="px-2 py-2 text-right">{t('Taux de capitalisation (TGA)', 'Capitalization rate (cap rate)')}</th>
             <th className="px-2 py-2">{t('Vendeur', 'Seller')}</th>
             <th className="px-2 py-2">{t('Acheteur', 'Buyer')}</th>
@@ -199,7 +202,7 @@ function BenchmarksGrid({
             <th className="px-2 py-2">{t('Poste / ratio', 'Line / ratio')}</th>
             <th className="px-2 py-2">{t('Région', 'Region')}</th>
             <th className="px-2 py-2 text-right">{t('Ratio (%)', 'Ratio (%)')}</th>
-            <th className="px-2 py-2 text-right">{t('Montant / porte', 'Amount / door')}</th>
+            <th className="px-2 py-2 text-right">{t('Montant / unité', 'Amount / unit')}</th>
             <th className="px-2 py-2 text-right">{t('Montant annuel', 'Annual amount')}</th>
           </tr>
         </thead>
@@ -245,6 +248,7 @@ export function MarketLibraryDashboard() {
   const [injecting, setInjecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [innerTab, setInnerTab] = useState<MarketInnerTab>('dashboard');
   const [dragOver, setDragOver] = useState(false);
 
   useEffect(() => {
@@ -386,6 +390,47 @@ export function MarketLibraryDashboard() {
         </p>
       </header>
 
+      <div
+        className="flex flex-wrap gap-2 border-b border-white/25 pb-1"
+        role="tablist"
+        aria-label={t('Sections statistiques du marché', 'Market statistics sections')}
+      >
+        {(
+          [
+            {
+              id: 'dashboard' as const,
+              labelFr: 'Consultation GPS',
+              labelEn: 'GPS consultation',
+            },
+            {
+              id: 'ingestion' as const,
+              labelFr: 'Ingestion de documents',
+              labelEn: 'Document ingestion',
+            },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={innerTab === tab.id}
+            onClick={() => setInnerTab(tab.id)}
+            className={cn(
+              'rounded-t-lg px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition',
+              innerTab === tab.id
+                ? 'bg-white text-[#142c6a] shadow-sm'
+                : 'text-white/80 hover:bg-white/10 hover:text-white'
+            )}
+          >
+            {t(tab.labelFr, tab.labelEn)}
+          </button>
+        ))}
+      </div>
+
+      {innerTab === 'dashboard' ? (
+        <MarketDataGrid locale={locale} brokerId={profile?.uid} t={t} />
+      ) : (
+        <>
       <div
         role="button"
         tabIndex={0}
@@ -631,6 +676,8 @@ export function MarketLibraryDashboard() {
           )}
         </div>
       </div>
+        </>
+      )}
     </section>
   );
 }

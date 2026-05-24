@@ -55,8 +55,8 @@ export function MarketPenetrationSection() {
       <div className="space-y-5">
         <p className="text-sm text-slate-600 leading-relaxed">
           {t(
-            'Indicateur de maturité RPA pour la souscription : offre sectorielle (portes) rapportée à la clientèle potentielle 75 ans et plus.',
-            'RPA maturity indicator for underwriting: sector supply (doors) vs potential clientele aged 75+.'
+            'Indicateur de maturité RPA pour la souscription : offre sectorielle (unités) rapportée à la clientèle potentielle 75 ans et plus.',
+            'RPA maturity indicator for underwriting: sector supply (units) vs potential clientele aged 75+.'
           )}
         </p>
 
@@ -117,7 +117,7 @@ export function MarketPenetrationSection() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <InstitutionalKpi
-            label={t('Portes — secteur', 'Doors — sector')}
+            label={t('Unités — secteur', 'Units — sector')}
             value={formatPopulationCount(sectorUnits > 0 ? sectorUnits : null)}
           />
           <InstitutionalKpi

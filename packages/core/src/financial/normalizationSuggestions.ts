@@ -51,7 +51,7 @@ export function suggestManagementFeeNormalization(
   };
 }
 
-/** Réserve d'entretien — 500 $ / porte / an si entretien déclaré sous le marché. */
+/** Réserve d'entretien — 500 $ / unité / an si entretien déclaré sous le marché. */
 export function suggestMaintenanceReserveNormalization(
   input: NormalizationSuggestionInput
 ): NormalizationSuggestion | null {
@@ -75,8 +75,8 @@ export function suggestMaintenanceReserveNormalization(
     labelEn: 'Maintenance / repairs',
     suggestedNormalized,
     suggestedAdjustment: suggestedNormalized - declared,
-    explanationFr: `Réserve de remplacement prudente — ${CAPEX_RESERVE_PER_UNIT_ANNUAL.toLocaleString('fr-CA')} $ / porte / an (${units} portes).`,
-    explanationEn: `Prudent replacement reserve — ${CAPEX_RESERVE_PER_UNIT_ANNUAL.toLocaleString('en-CA')} $ / door / year (${units} units).`,
+    explanationFr: `Réserve de remplacement prudente — ${CAPEX_RESERVE_PER_UNIT_ANNUAL.toLocaleString('fr-CA')} $ / unité / an (${units} unités).`,
+    explanationEn: `Prudent replacement reserve — ${CAPEX_RESERVE_PER_UNIT_ANNUAL.toLocaleString('en-CA')} $ / unit / year (${units} units).`,
   };
 }
 

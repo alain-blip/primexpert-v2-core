@@ -896,13 +896,13 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
             <div>
               UNITÉS TOTALES :{' '}
               <span className="font-black text-black">
-                {totalUnits > 0 ? `${totalUnits} portes` : '—'}
+                {totalUnits > 0 ? `${totalUnits} unités` : '—'}
               </span>
             </div>
             <div>
-              PRIX PAR PORTE :{' '}
+              PRIX PAR UNITÉ :{' '}
               <span className="font-black text-black">
-                {prixParPorte > 0 ? `${formatCurrency(prixParPorte)} / porte` : '—'}
+                {prixParPorte > 0 ? `${formatCurrency(prixParPorte)} / unité` : '—'}
               </span>
             </div>
             <div>
