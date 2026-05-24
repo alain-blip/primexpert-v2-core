@@ -58,7 +58,7 @@
 
 Kit partagé : `src/lib/institutionalTheme.ts` + `src/components/residence/institutional/InstitutionalUi.tsx` (`inst`, `InstitutionalResidenceTabShell`, `InstitutionalSection`, `InstitutionalKpi`, `InstitutionalPlaceholder` si besoin).
 
-**Inscriptions (« Mes inscriptions ») :** pipeline **4 colonnes** (prospect · mandat · promesse · vendu) — cartes `ListingInstitutionalCard` + view model `listingCardViewModel.ts` ; `PIPELINE_ACTIVE_STATUSES` exclut `expired` du Kanban chaud.
+**Inscriptions (« Mes inscriptions ») :** pipeline **4 colonnes** (prospect · mandat · promesse · vendu) — cartes `ListingInstitutionalCard` + view model `listingCardViewModel.ts` ; `PIPELINE_ACTIVE_STATUSES` exclut `expired` du Kanban chaud. **Phase 2 (2026-05-24)** : totaux colonnes ($ + commissions), badge conformité mandat incomplet, **drag-and-drop** Kanban (`ListingsPipelineKanban`, `@hello-pangea/dnd`), filtres **régions Québec** (`ListingsRegionFilterPanel`, portal `document.body`), règles core `listingCommission.ts`, `mandateCompleteness.ts`, `pipelineDragRules.ts`, `quebecRegions.ts`.
 
 **Hotfix prod (2026-05-16) :** l’onglet Déclaration référençait encore `PlaceholderPanel` (supprimé) → `InstitutionalPlaceholder` ; commit `0a65adf`.
 
@@ -186,15 +186,16 @@ Côté client : `resolveEffectiveBillingStatus()` — règle 72 h si Firestore e
 
 ---
 
-## Messagerie — Email Center (Nylas) — SSOT 2026-05-20
+## Messagerie — Email Center (Nylas) — SSOT 2026-05-20 · Phase 2 CRM 2026-05-24
 
 - **UI unique** : `src/components/mailbox/MailboxContainer.tsx` (Workhub onglet `mail`). **`Mailbox.tsx` supprimé** (mocks + double silo).
 - **SSOT Firestore** : `users/{uid}/email_threads/{threadId}/messages/{messageId}` — analyse OACIQ sur le message (`matchedResidenceId`, `mailContactEmail`, `mailIntent`, `summaryOneLine`, …).
+- **Phase 2 — liaison CRM** : `matchedContactId` sur fil **et** messages ; barre `MailContactLinkBar` (« Lier au dossier client », « Créer un contact ») ; auto-liaison si courriel = **un seul** contact ; UI optimiste ; `linkEmailThreadToContact()` dans `emailSyncService.ts` ; heuristique `@primexpert/core/mail/contactMatch.ts` (`findContactsByEmail`, `resolveThreadPartyEmail`).
 - **`mailbox_analyses`** : déprécié — ne plus écrire ; Intelligence lit les `messages` analysés.
 - Ingestion : `syncNylasMessageToFirestore` + `@primexpert/core/mail` (vendoré `functions/src/nylas/_vendored/mail/`).
 - **Loi 25** : `verifyNylasWebhookSignature` — rejet HTTP 401 si signature Nylas invalide.
 - `EmailAccountsSettings.tsx` — OAuth Gmail/Outlook multi-inbox.
-- Functions : `nylasGetAuthUrl`, `nylasOAuthCallback`, `nylasWebhook`, `nylasSendMessage`, `nylasUpdateThreadFolder`, `nylasSendSellerUpdate`.
+- Functions : `nylasGetAuthUrl`, `nylasOAuthCallback`, `nylasWebhook`, `nylasSendMessage`, `nylasFetchMessageBody`, `nylasHydrateThread`, `nylasUpdateThreadFolder`, `nylasSendSellerUpdate`.
 - Secrets : `NYLAS_API_KEY`, `NYLAS_CLIENT_ID`, `NYLAS_CLIENT_SECRET`, `NYLAS_WEBHOOK_SECRET`.
 - Profil : `users.emailAccounts[]` (`nylasGrantId`, `emailAddress`).
 
@@ -238,13 +239,35 @@ Côté client : `resolveEffectiveBillingStatus()` — règle 72 h si Firestore e
 ### Chronologie contact
 
 - `packages/core/src/intelligence/contactTimeline.ts` + `communicationTimelineService.ts` — fil courriel + résidences liées dans le drawer contact.
+- **Phase 2 (2026-05-24)** : matching par `matchedContactId` **ou** courriel ; `fetchMailboxAnalysesLinkedToContact()` ; `buildContactTimeline({ id, email, residenceIds })` ; courriels liés sans analyse serveur visibles via `linkedContactAtMillis` / `sentAtMillis`.
+- `ContactFormDrawer` : prop `initialDraft` (préremplissage depuis messagerie) ; `onSaved(contactId?)` pour enchaîner la liaison fil.
 
 ---
 
-## Hub Finance — refonte master panel (2026-05-20)
+## Hub Finance — refonte master panel (2026-05-20) · enrichissements 2026-05-24
 
 - `FinanceHubMasterPanel.tsx`, `FinanceHubLockContext`, rapports PDF (`certifiableFinancialReport`, `detailedFinancialReport`, `acmPresentationReport`).
 - Core : `financeHubGlossary.ts`, sentinelle anti-drift TP70, glossaire Québec (pas « audit » à l’écran).
+- **Revenus & Dépenses** : prévisualisation grille (`revenusDepensesPreview.ts`), suggestions normalisation (`normalizationSuggestions.ts`), benchmark marché (`marketBenchmarks.ts`, `globalFinancialBenchmark.ts`).
+- Callable **`getGlobalFinancialBenchmark`** ; hook `useGlobalFinancialBenchmark` ; service `globalFinancialBenchmarkService.ts`.
+
+---
+
+## Bibliothèque marché — Statistiques du marché (2026-05-24)
+
+- **Nav Workhub** : « Statistiques du marché » (`Layout.tsx`).
+- UI : `MarketLibraryDashboard.tsx` — upload PDF, HITL adaptatif (régions macro / grille transactions / grille ratios), spinner longue analyse (~3 min).
+- Core : `packages/core/src/documents/` (schémas extraction omnivore, normalisation) ; **`packages/core/src/market/marketDeduplication.ts`** (empreintes déterministes, logique legacy Copilote `marketComparableDedupe.js`).
+- Service : `marketDocumentsService.ts` ; type `marketDocument.ts`.
+- Functions : `marketDocumentParseIA` (**2 GiB**, **540 s** timeout), `injectMarketMacroStats` ; prebuild `sync-core-documents.cjs`, `sync-core-market.cjs`.
+- **Anti-doublons (idempotent merge)** : empreintes Firestore → `doc(fingerprint).set(data, { merge: true })` — transactions `{silo}__tx__{adresse|ville}__{date}__{prix}`, macro `macro__{region}__{annee}__{type}`, ratios `{silo}__bench__…` ; compteurs UI « X nouvelles transactions, Y doublons ignorés ».
+- Firestore (top-level, hors `organizations/`) :
+  - `market_documents/{docId}` — vault PDF courtier (`uploadedBy` + index `uploadedAtMillis`)
+  - `market_macro_stats/{fingerprint}` — stats macro validées (écriture serveur)
+  - `market_analytics_raw/{fingerprint}` — transactions comparables & ratios anonymisés
+  - `marketSnapshots/v1` — agrégat lecture (append dédupliqué par `dedupeFingerprint`)
+- Storage : `primexpert/{brokerId}/market_documents/{fileName}`.
+- **UI grille transactions** : contraste `text-slate-900` sur panneau blanc (héritage `text-white` du shell bleu corrigé).
 
 ---
 
@@ -270,7 +293,23 @@ Côté client : `resolveEffectiveBillingStatus()` — règle 72 h si Firestore e
 | **2 — Messagerie & promesse** | `1c4f3c6`, `9b8a70c` | SSOT `email_threads`/`messages`, webhook Nylas Loi 25, refactor PA `offre` (persistance complète) |
 | **3 — Fiche résidence & finance** | `0e64e83`, `b9fe455` | Courtier responsable identité, Hub Finance master, parties CRM, diffusion enrichie, chronologie Intelligence |
 
-**Push Git :** `b9fe455`, `0e64e83` → `origin/main` (https://github.com/alain-blip/primexpert-v2-core.git).
+## Session 2026-05-24 — Option A + inscriptions + marché (`6d31058`)
+
+| Chantier | Livrables clés |
+|----------|----------------|
+| **Option A — Messagerie ↔ CRM** | `MailContactLinkBar`, `matchedContactId`, liaison optimiste, chronologie contact par ID, index Firestore |
+| **Mes inscriptions Phase 2** | DnD Kanban, filtres régions QC, totaux colonnes, badge conformité mandat |
+| **Finance & marché** | Benchmark global, bibliothèque documents marché, enrichissement Revenus & Dépenses |
+
+**Push Git :** `6d31058` → `origin/main`. **Déploiement prod :** hosting + firestore (rules + indexes) + functions + storage sur `primexpert-app-v2`.
+
+### Hotfix prod — PDF massif & anti-doublons (2026-05-24, post-`6d31058`)
+
+| Incident / chantier | Correctif |
+|---------------------|-----------|
+| `deadline-exceeded` parse ~100 pages | `marketDocumentParseIA` : **2 GiB** RAM, **540 s** ; spinner UI « analyse massives (~3 min) » |
+| Encre invisible grille transactions | `MarketLibraryDashboard` : `text-slate-900` sur cellules + panneau détail |
+| Pollution doublons Big Data | `marketDeduplication.ts` + `injectMarketMacroStats` : écritures **merge** par empreinte déterministe |
 
 ---
 
@@ -292,9 +331,10 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 - **2026-05-19 (fin de journée)** : Sprints PA 5.1–5.4 + Identité Confort 66+ ; `npm run build` + `firebase deploy --only hosting` sur `primexpert-app-v2`.
 - **2026-05-20** : Phase 1 Email SSOT (`1c4f3c6`) ; webhook Nylas signature ; fix prebuild diffusion `financialCalcTypes`.
 - **2026-05-20 (soir)** : CRM contacts unifiés + vendeur/acheteur documents (`b9fe455`) ; courtier responsable identité (`0e64e83`).
+- **2026-05-24** : Option A messagerie ↔ CRM (`6d31058`) ; Kanban inscriptions DnD + régions ; bibliothèque marché + benchmark finance ; déploiement complet Firebase.
 
 **Repo :** https://github.com/alain-blip/primexpert-v2-core.git — branche `main`.
 
 ---
 
-*Journal mis à jour : 2026-05-20 — CRM `organizations/contacts`, tiers acheteur/vendeur, coacheteurs/covendeurs, Email SSOT, PA, diffusion, Hub Finance, parties résidence.*
+*Journal mis à jour : 2026-05-24 — Statistiques du marché (Big Data), anti-doublons idempotent, parse massif 2 GiB, Option A messagerie ↔ CRM, Kanban inscriptions Phase 2, benchmark finance global.*

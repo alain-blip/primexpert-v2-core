@@ -44,6 +44,9 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 9. **Promesse d'achat** — SSOT `packages/core/src/transaction/` + objet Firestore `offre` / `promesseAchat`.
 10. **Diffusion Web** — `@primexpert/core/diffusion` vendoré dans Cloud Functions (prebuild).
 11. **CRM Contacts** — SSOT `organizations/{orgId}/contacts` ; pas de `clients/` ni `vendors/` parallèles ; liaisons `coBuyerIds` / `coSellerIds` et `partiesImpliquees` en writeBatch.
+12. **Messagerie Phase 2** — Liaison explicite courriel ↔ contact (`matchedContactId`, `MailContactLinkBar`) ; chronologie omnicanale dans le drawer contact.
+13. **Mes inscriptions Phase 2** — Kanban drag-and-drop, filtres régions Québec, totaux colonnes, conformité mandat.
+14. **Bibliothèque marché** — Rapports macro uploadés, parse IA Vertex, benchmark finance global.
 
 ---
 
@@ -72,7 +75,11 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 | Intelligence (chronologie + rapport vendeur) | ✅ Livré |
 | Promesse | ✅ Livré — cockpit PA (tronc `offre`, conditions & délais RPA, clôture, délais jours→dates, commission) |
 
-**Mes inscriptions :** pipeline **4 colonnes** + inventaire virtualisé — charte **primexpert-blue** / cartes blanches bordées **primexpert-dark**.
+**Mes inscriptions :** pipeline **4 colonnes** + inventaire virtualisé — charte **primexpert-blue** / cartes blanches bordées **primexpert-dark**. **Phase 2** : drag-and-drop Kanban, filtres régions, totaux $/commissions, badge mandat incomplet.
+
+**Messagerie (Option A) :** barre « Lier au dossier client » dans `MailboxContainer` ; courriel lié → chronologie contact.
+
+**Bibliothèque marché :** onglet Workhub — upload rapports, extraction Vertex, stats macro injectées.
 
 **Tableau de bord :** priorités de suivi KISS (J+3 / J+5 / J+7) — `PriorityFollowUpList`.
 
@@ -95,4 +102,4 @@ Copie possible sur disque : `00_PRIMEXPERT_SYSTEME_APP/docs/` — maintenir alig
 
 ---
 
-*Index mis à jour : 2026-05-20 — CRM contacts, tiers acheteur/vendeur, parties résidence, Email SSOT, PA, diffusion, Hub Finance.*
+*Index mis à jour : 2026-05-24 — Option A messagerie ↔ CRM, Kanban inscriptions Phase 2, bibliothèque marché, benchmark finance (`6d31058`).*

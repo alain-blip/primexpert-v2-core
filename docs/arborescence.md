@@ -41,12 +41,14 @@
 │           ├── valuation/           # Cap rate, comparables, TGA
 │           ├── narrative/           # Narratif vendeur
 │           ├── intelligence/        # Priorités suivi KISS, rapport vendeur, contactTimeline
-│           ├── residence/             # partiesImpliquees, complianceChecklist
+│           ├── residence/             # partiesImpliquees, complianceChecklist, listingCommission, quebecRegions, pipelineDragRules
+│           ├── documents/             # extraction rapports marché, schémas Gemini (MARKET_REPORT omnivore)
+│           ├── market/                # haversine, zonePenetration, marketDeduplication (anti-doublons Big Data)
 │           ├── quality/             # Score qualité fiche
 │           ├── sources/             # Sources externes
 │           ├── export/              # Export dataset / politique
 │           ├── tenant/              # Multi-tenant (courtiersResponsables)
-│           ├── mail/                # mailParser (E-2)
+│           ├── mail/                # mailParser + contactMatch (Phase 2 CRM)
 │           ├── audio/               # Transcription
 │           └── utils/formatting.ts
 ├── functions/                       # Cloud Functions Gen2 (us-central1)
@@ -57,9 +59,14 @@
 │       ├── documents/
 │       │   ├── scanPropertyDocument.ts
 │       │   ├── parsePropertyDocument.ts
+│       │   ├── parseMarketDocument.ts       # Parse rapports marché (Vertex)
+│       │   ├── injectMarketMacroStats.ts
 │       │   ├── geminiExtract.ts     # Extraction JSON via gemini-2.0-flash-001
 │       │   ├── documentTaxonomy.ts  # Taxonomie catégories documents
-│       │   └── validateStorageDocument.ts
+│       │   ├── validateStorageDocument.ts
+│       │   └── _vendored/         # @primexpert/core/documents + market (prebuild)
+│       ├── benchmark/
+│       │   └── getGlobalFinancialBenchmark.ts
 │       ├── emails/
 │       │   └── sendDocumentSelection.ts  # Envoi sélection documents (callable)
 │       ├── lib/firestore.ts
@@ -67,6 +74,8 @@
 │       └── nylas/                   # OAuth, webhook (signature Loi 25), sync email_threads
 │           ├── _vendored/mail/      # @primexpert/core/mail (prebuild sync-core-mail.cjs)
 │           ├── syncInboundMessage.ts
+│           ├── hydrateThreadMessages.ts
+│           ├── messageDocId.ts
 │           ├── verifyWebhookSignature.ts
 │           └── mailMessageAnalysis.ts
 ├── scripts/
@@ -101,7 +110,10 @@
     │   │   └── PriorityFollowUpList.tsx
     │   ├── intelligence/
     │   │   └── IntelligenceChronologie.tsx
-    │   ├── Listings.tsx             # Mes inscriptions — pipeline Kanban 4 colonnes + inventaire
+    │   ├── Listings.tsx             # Mes inscriptions — pipeline Kanban 4 colonnes + inventaire + DnD + filtres régions
+    │   ├── listings/
+    │   │   ├── ListingsPipelineKanban.tsx   # @hello-pangea/dnd
+    │   │   └── ListingsRegionFilterPanel.tsx
     │   ├── ListingsInventoryVirtual.tsx
     │   ├── ListingRow.tsx           # Délègue à ListingInstitutionalCard
     │   ├── ListingInstitutionalCard.tsx  # Carte institutionnelle (nom commercial, prix, rétribution)
@@ -150,6 +162,12 @@
     │   │   ├── TP70Card.tsx
     │   │   └── FinancialReportsSection.tsx
     │   ├── mailbox/                 # Email Center — MailboxContainer (Nylas temps réel)
+    │   │   ├── MailboxContainer.tsx
+    │   │   ├── MailContactLinkBar.tsx   # Phase 2 — liaison dossier client
+    │   │   ├── ChatWindow.tsx
+    │   │   └── MessageComposer.tsx
+    │   ├── market/
+    │   │   └── MarketLibraryDashboard.tsx
     │   ├── ui/
     │   │   └── TernaryToggle.tsx      # Oui / Non / N/A — conditions PA
     │   ├── msss/
@@ -175,6 +193,7 @@
     │   └── ResidenceDocumentContext.tsx  # onSnapshot residences/{id}
     ├── hooks/
     │   ├── useResidences.ts
+    │   ├── useGlobalFinancialBenchmark.ts
     │   └── useListings.ts
     ├── lib/
     │   ├── auth.tsx
@@ -208,6 +227,9 @@
     │   ├── emailAccountService.ts
     │   ├── emailSyncService.ts
     │   ├── nylasClient.ts
+    │   ├── marketDocumentsService.ts
+    │   ├── globalFinancialBenchmarkService.ts
+    │   ├── financialDataService.ts
     │   ├── invoicePdfService.ts
     │   ├── nurtureEmailService.ts
     │   └── …
@@ -261,8 +283,8 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | **Hosting** | `dist/` — SPA, réécriture `**` → `index.html` |
 | **URL prod** | https://primexpert-app-v2.web.app |
 | **Firestore** | Bases `(default)` + `ai-studio-1214d671-efd2-47da-93b7-425feb92155a` (même rules/indexes) |
-| **Storage** | `primexpert/{orgId}/contacts/{id}/id_proofs|buyer_documents|seller_documents/…` ; `primexpert/{brokerId}/properties/{id}/documents/{category}/…` |
-| **Functions** | `functions/` — Nylas + Espace Documents (scan, parse Vertex, réconciliation) |
+| **Storage** | `primexpert/{orgId}/contacts/…` ; `primexpert/{brokerId}/properties/{id}/documents/…` ; **`primexpert/{brokerId}/market_documents/…`** |
+| **Functions** | `functions/` — Nylas, Espace Documents, **Statistiques du marché**, benchmark global |
 | **Compte de service Functions** | `250702494735-compute@developer.gserviceaccount.com` (`roles/aiplatform.user`) |
 | **Vertex AI** | `aiplatform.googleapis.com` — modèle `gemini-2.0-flash-001`, région `us-central1` |
 
@@ -277,7 +299,10 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Identité immeuble | `src/context/ResidenceDocumentContext.tsx`, `packages/core/src/identity/`, `IdentiteImmeubleTab` |
 | Promesse d'achat | `PromesseAchatTab.tsx`, `src/components/residence/promesse/`, `packages/core/src/transaction/` |
 | Charte UI institutionnelle | `tailwind.config.js`, `src/index.css` (`@theme` / `@config`), `src/lib/institutionalTheme.ts`, `InstitutionalUi.tsx` |
-| Inscriptions (cartes, view model) | `Listings.tsx`, `ListingInstitutionalCard.tsx`, `listingCardViewModel.ts`, `residences.ts` (`PIPELINE_ACTIVE_STATUSES`) |
+| Inscriptions (cartes, view model, Kanban DnD) | `Listings.tsx`, `listings/ListingsPipelineKanban.tsx`, `ListingInstitutionalCard.tsx`, `listingCardViewModel.ts`, `packages/core/src/residence/listingCommission.ts`, `mandateCompleteness.ts`, `quebecRegions.ts` |
+| Messagerie ↔ CRM (Phase 2) | `MailContactLinkBar.tsx`, `emailSyncService.linkEmailThreadToContact`, `packages/core/src/mail/contactMatch.ts`, `matchedContactId` |
+| Bibliothèque marché (Statistiques du marché) | `MarketLibraryDashboard.tsx`, `marketDocumentsService.ts`, `parseMarketDocument.ts`, `injectMarketMacroStats.ts`, `marketDeduplication.ts` |
+| Benchmark finance global | `getGlobalFinancialBenchmark.ts`, `useGlobalFinancialBenchmark.ts`, `globalFinancialBenchmark.ts` |
 | Billing / Chérif | `src/lib/billingAccess.ts`, `src/App.tsx`, `SuspendedAccountScreen.tsx` |
 | Rôles & essai | `src/lib/auth.tsx`, `firestore.rules` (`users`) |
 | KPIs Finance admin | `AdminSubscriptionsDashboard.tsx`, `subscriptionPricing.ts` |
@@ -303,6 +328,14 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 
 Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions:propertyDocumentParseIA,…`
 
+### Cloud Functions — Statistiques du marché (Big Data)
+
+| Fonction | Rôle |
+|----------|------|
+| `marketDocumentParseIA` | Parse Vertex rapports marché (~100 p.) — **2 GiB**, **540 s** |
+| `injectMarketMacroStats` | Injection HITL idempotente → `market_macro_stats`, `market_analytics_raw`, `marketSnapshots/v1` |
+| `getGlobalFinancialBenchmark` | Médianes régionales / portefeuille pour Hub Finance |
+
 ---
 
-*Dernière mise à jour : 2026-05-20 — CRM `organizations/contacts`, coacheteurs/covendeurs, parties résidence, Email SSOT, PA, diffusion, Hub Finance, courtier responsable identité.*
+*Dernière mise à jour : 2026-05-24 — Statistiques du marché, anti-doublons, parse massif, Option A messagerie ↔ CRM, Kanban inscriptions DnD, benchmark finance.*

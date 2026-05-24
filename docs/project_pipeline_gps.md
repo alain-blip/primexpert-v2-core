@@ -84,7 +84,7 @@ Fiche V2 (Listings → ResidenceDetail)
     └─ Promesse          [✅ PromesseAchatTab — offre SSOT + conditions & délais RPA + clôture]
 ```
 
-**Inscriptions :** vue **pipeline** en **4 colonnes** (prospect · mandat · promesse · vendu) ; statut `expired` conservé en données mais **hors** colonnes actives (`PIPELINE_ACTIVE_STATUSES`).
+**Inscriptions :** vue **pipeline** en **4 colonnes** (prospect · mandat · promesse · vendu) ; statut `expired` conservé en données mais **hors** colonnes actives (`PIPELINE_ACTIVE_STATUSES`). **Phase 2 (2026-05-24)** : totaux $ + commissions par colonne, badge conformité mandat, **drag-and-drop** (`@hello-pangea/dnd`), filtres **régions Québec** (portal), blocage DnD vers `promise` sans `prixAccepte`.
 
 ### Pipeline Espace Documents (diligence)
 
@@ -142,6 +142,8 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 | Espace Documents + parse IA Vertex | ✅ |
 | UI institutionnelle (`primexpert-*`, coquilles onglets) | ✅ |
 | Inscriptions Kanban + cartes institutionnelles | ✅ |
+| Inscriptions — DnD pipeline + filtres régions QC | ✅ Phase 2 — `6d31058` |
+| Inscriptions — totaux colonnes + conformité mandat | ✅ Phase 1 — `6d31058` |
 | Onglet Synthèse 360 + notes `residences/{id}/notes` | ✅ |
 | Déclaration, Marché, Promesse (cockpit PA + `offre` SSOT) | ✅ |
 | Webhooks Stripe → Firestore | ⏳ |
@@ -150,6 +152,9 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 | Cloud Functions Nylas | ✅ déployées (us-central1) |
 | Webhook Nylas — signature HMAC (Loi 25) | ✅ `verifyNylasWebhookSignature` — POST non signé → 401 |
 | Email Center — SSOT `email_threads` / `messages` | ✅ Phase 1 — analyse à l’ingestion, `mailbox_analyses` déprécié |
+| **Email Center — liaison message ↔ contact CRM** | ✅ **Phase 2 Option A** — `matchedContactId`, `MailContactLinkBar`, chronologie contact |
+| Bibliothèque documents marché + parse IA | ✅ `marketDocumentParseIA`, `MarketLibraryDashboard` |
+| Benchmark finance global (callable) | ✅ `getGlobalFinancialBenchmark` |
 | Diffusion Web — vendor prebuild + `tsc` | ✅ `sync-core-diffusion` + `financialCalcTypes` |
 | Promesse d'achat — persistance `offre` / DRY | ✅ `serializeOffreForFirestore`, merge objet complet |
 | CRM — répertoire contacts LCI | ✅ `organizations/{orgId}/contacts` — tiers, documents, coacheteurs/covendeurs |
@@ -157,6 +162,11 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 | Identité — courtier responsable | ✅ `ResponsibleBrokerCard` → `courtiersResponsables` |
 | Hub Finance — master panel & rapports PDF | ✅ `FinanceHubMasterPanel`, glossaire Québec |
 | Diffusion Web — enrichissements publics | ✅ `publicBuyerDisclosures`, `transactionBanner`, aperçu brouillon |
+| **Messagerie ↔ CRM (Phase 2)** | ✅ `MailContactLinkBar`, `matchedContactId`, liaison optimiste, chronologie par contact |
+| **Mes inscriptions Phase 2** | ✅ DnD Kanban, filtres régions QC, totaux colonnes, badge conformité mandat |
+| **Statistiques du marché (Big Data)** | ✅ `MarketLibraryDashboard`, parse Vertex massif (2 GiB / 540 s), injection HITL idempotente |
+| **Benchmark finance global** | ✅ `getGlobalFinancialBenchmark`, hook `useGlobalFinancialBenchmark` |
+| **Anti-doublons Big Data** | ✅ `marketDeduplication.ts` — merge par empreinte sur `market_analytics_raw` / `market_macro_stats` |
 
 ---
 
@@ -210,7 +220,7 @@ PartiesIntervenantsSection (fiche résidence)
     → linkContactToResidence → partiesImpliquees + contact.residenceIds (writeBatch)
 ```
 
-### Pipeline messagerie (SSOT — post Phase 1)
+### Pipeline messagerie (SSOT — Phase 1 + 2 Option A)
 
 ```text
 Nylas webhook (signature validée)
@@ -220,10 +230,46 @@ Nylas webhook (signature validée)
     → @primexpert/core/mail (heuristique + match inventaire residences)
     ↓
 Workhub MailboxContainer (lecture temps réel)
-Intelligence / Dashboard (lecture collectionGroup messages via mailboxAnalysis.ts)
+    ├─ MailContactLinkBar — « Lier au dossier client » / « Créer un contact »
+    ├─ Auto-liaison si courriel = un seul contact CRM
+    └─ linkEmailThreadToContact → matchedContactId (fil + messages)
     ↓
-[Phase 2 — backlog] rattachement explicite message → contact CRM LCI
+ContactFormDrawer — chronologie omnicanale (matchedContactId OU courriel)
+Intelligence / Dashboard (lecture collectionGroup messages via mailboxAnalysis.ts)
 ```
+
+### Pipeline Statistiques du marché (Big Data)
+
+```text
+Workhub → Statistiques du marché (MarketLibraryDashboard)
+    ↓
+Upload PDF → Storage primexpert/{brokerId}/market_documents/{fileName}
+    → Firestore market_documents/{docId}
+    ↓
+marketDocumentParseIA (Vertex — 2 GiB RAM, timeout 540 s)
+    → extractedData omnivore (macro / transactions / ratios)
+    ↓
+HITL courtier — coche régions, transactions, benchmarks
+    ↓
+injectMarketMacroStats
+    → empreinte déterministe (marketDeduplication.ts)
+    → set(merge: true) → market_macro_stats / market_analytics_raw
+    → marketSnapshots/v1 (append dédupliqué)
+    → UI : « X nouvelles transactions, Y doublons ignorés »
+```
+
+---
+
+## F. Session 2026-05-24 — Option A + inscriptions + marché (`6d31058`)
+
+| Jalon | Détail |
+|-------|--------|
+| **Option A livrée** | Boucle fermée courriel → contact → chronologie ; UI optimiste ; index `brokerId` + `matchedContactId` |
+| **Mes inscriptions Phase 2** | Kanban DnD, filtres régions, totaux colonnes, badge mandat incomplet |
+| **Finance & marché** | Benchmark global, bibliothèque Statistiques du marché, enrichissement Revenus & Dépenses |
+| **Anti-doublons Big Data** | Empreintes Firestore + merge idempotent ; compteur UI doublons ignorés |
+| **Parse massif PDF** | `marketDocumentParseIA` 2 GiB / 540 s ; spinner UI ~3 min |
+| **Déploiement prod** | hosting + firestore + functions + storage sur `primexpert-app-v2` |
 
 ---
 
@@ -231,9 +277,10 @@ Intelligence / Dashboard (lecture collectionGroup messages via mailboxAnalysis.t
 
 | Option | Thème |
 |--------|--------|
-| **A** | Phase 2 Email Center — rattachement explicite message → contact CRM (`organizations/…/contacts`) |
+| ~~**A**~~ | ~~Phase 2 Email Center — rattachement message → contact CRM~~ **✅ livré 2026-05-24** |
 | **B** | Module ACM prédictif — ingestion Centris/Matrix, ajustements comparables |
 | **C** | Coffre-fort WORM OACIQ — règles Firestore verrouillage 6 ans (documents « Final ») |
+| **D** | Mes inscriptions Phase 3 — actions bulk, export pipeline, alertes stagnation |
 
 ### Backlog technique (inchangé)
 
@@ -241,8 +288,8 @@ Intelligence / Dashboard (lecture collectionGroup messages via mailboxAnalysis.t
 2. **Cron** : `grace_period` → `suspended` après 72 h ; relances J30/J40.
 3. **Documents** : enrichir `extractedData` → préremplissage Hub Finance / preuves A2.
 4. **Vertex** : surveiller cycle de vie `gemini-2.0-flash-001`.
-5. **Déploiement** : `firebase deploy --only functions:nylasWebhook,firestore:indexes` après Phase 1 mail.
+5. **Déploiement** : `firebase deploy --only hosting,firestore,functions,storage` — commit `6d31058` déployé 2026-05-24.
 
 ---
 
-*Dernière mise à jour : 2026-05-20 — CRM contacts, tiers acheteur/vendeur, parties résidence, PA, Email SSOT, Hub Finance, courtier responsable, diffusion.*
+*Dernière mise à jour : 2026-05-24 — Statistiques du marché, anti-doublons idempotent, parse massif 2 GiB, Option A messagerie ↔ CRM, Kanban inscriptions Phase 2, benchmark finance.*

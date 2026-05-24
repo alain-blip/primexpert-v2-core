@@ -132,6 +132,7 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 | `mailboxFolder` | string | `INBOX`, `SENT`, `ARCHIVE`, `TRASH`, `DRAFT` |
 | `propertyId` | string \| null | Fiche résidence liée (envoi métier ou match analyse) |
 | `propertyLabel` | string \| null | Libellé affiché inscription |
+| **`matchedContactId`** | string \| null | Contact CRM lié explicitement (Phase 2 messagerie) |
 | `createdAtMillis` | number | Création fil (ms) |
 
 #### Sous-document `messages/{messageId}`
@@ -156,8 +157,10 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 | **`summaryOneLine`** | string | Résumé une ligne (diligence / Intelligence) |
 | **`mailUrgency`** | string | `low` \| `medium` \| `high` |
 | **`mailAnalysisSource`** | string | `heuristic` (enrichissement Gemini optionnel — hors webhook Phase 1) |
+| **`matchedContactId`** | string \| null | Contact CRM lié (Phase 2 — liaison manuelle ou auto par courriel) |
+| **`linkedContactAtMillis`** | number | Horodatage liaison CRM (ms) — chronologie si pas d’analyse serveur |
 
-> **Écriture analyse :** serveur uniquement (`syncNylasMessageToFirestore` + `verifyNylasWebhookSignature`). Index Firestore : `messages` collectionGroup (`brokerId` + `mailAnalysisAtMillis` ; `brokerId` + `matchedResidenceId` + `mailAnalysisAtMillis`).
+> **Écriture analyse :** serveur uniquement (`syncNylasMessageToFirestore` + `verifyNylasWebhookSignature`). **Écriture liaison CRM :** client authentifié via `linkEmailThreadToContact()` (`emailSyncService.ts`). Index Firestore : `messages` collectionGroup (`brokerId` + `mailAnalysisAtMillis` ; `brokerId` + `matchedResidenceId` + `mailAnalysisAtMillis` ; **`brokerId` + `matchedContactId`**).
 
 ---
 
@@ -178,6 +181,9 @@ Document racine — **SSOT onglet Identité** (`ResidenceDocumentContext`) + Rad
 | **`commissionRate`**, `tauxCommission`, `commissionPct` | number | Taux commission (%) — lecture UI rétribution / inscriptions |
 | **`potentialRevenue`**, `revenuPotentiel`, … | number | Revenu potentiel affiché si présent ; sinon dérivé `prix × taux` côté affichage |
 | **`status`** | string | `prospect`, `mandate`, `promise`, `expired`, `unsigned`, `sold` — **ne pas renommer** |
+| **`region`** | string | Région administrative Québec (filtre inscriptions — `QUEBEC_REGIONS`) |
+| **`prixAccepte`** | number | Prix accepté (promesse) — requis pour glisser vers colonne `promise` (DnD Kanban) |
+| **`contratCourtage`** | map | Mandat courtage — complétude OACIQ (`mandateCompleteness.ts`) |
 | `assetNiche` | string | `RPA` \| `CPE` \| `PLEX` |
 | `propertyType` | string | `rpa`, `cpe`, `plex`, `commercial` |
 | `date` | string | Date inscription / mandat (UI) |
@@ -515,6 +521,66 @@ Téléchargement client : autorisé **uniquement** si `virusScanStatus === 'clea
 | `drive_documents/{id}` | `courtiersResponsables` | Drive OACIQ — **delete interdit** |
 | `organizations/{orgId}` | `orgId` | Agence |
 | **`organizations/{orgId}/contacts`** | `ownerId` + `visibility` | Répertoire CRM LCI (SSOT parties) |
+| **`market_documents/{docId}`** | `uploadedBy` | Vault rapports marché (Statistiques du marché — Workhub) |
+| **`market_macro_stats/{fingerprint}`** | — | Stats macro validées (écriture serveur `injectMarketMacroStats`) |
+| **`market_analytics_raw/{fingerprint}`** | — | Transactions comparables & ratios anonymisés (écriture serveur) |
+| **`marketSnapshots/v1`** | — | Agrégat lecture macro + transactions + benchmarks (merge dédupliqué) |
+| **`market_financial_benchmarks/{entryId}`** | — | Médianes régionales benchmark Hub Finance (lecture client, écriture serveur) |
+
+### Document `market_documents/{docId}`
+
+Collection **top-level** (pas sous `organizations/`).
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `uploadedBy` | string | UID courtier propriétaire |
+| `uploadedAtMillis` | number | Horodatage téléversement (index composite) |
+| `fileName` | string | Nom fichier |
+| `mimeType` | string | `application/pdf` |
+| `sizeBytes` | number | Taille octets |
+| `storagePath` | string | `primexpert/{brokerId}/market_documents/{fileName}` |
+| `documentCategory` | string | `MARKET_REPORT` |
+| `virusScanStatus` | string | `pending` \| `clean` |
+| `parsingStatus` | string | `pending` \| `completed` \| `failed` \| `verified` |
+| `parsingError` | string \| null | Message d'échec parse |
+| `extractedData` | map | Extraction omnivore Vertex — `macroTrends`, `comparableTransactions`, `operationalBenchmarks` (@primexpert/core/documents) |
+| `isValidated` | bool | HITL complété |
+| `validatedAtMillis` | number | Horodatage validation / injection |
+
+### Document `market_macro_stats/{fingerprint}`
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| **`dedupeFingerprint`** | string | ID document = empreinte `macro__{region}__{annee}__{type}` |
+| `regionAdministrative` | string | Région QC |
+| `documentType` | string | Type rapport (ex. Guide Altus) |
+| `anneeDonnees` | number | Année de référence |
+| `tauxPenetration`, `coutRemplacementNeuf`, … | mixed | Données macro extraites |
+| `marketDocumentId` | string | Provenance vault |
+| `injectedAtMillis` | number | Horodatage injection |
+| `validatedBy` | string | UID courtier |
+
+### Document `market_analytics_raw/{fingerprint}`
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| **`dedupeFingerprint`** | string | ID document = empreinte transaction ou benchmark |
+| `siloType` | string | ex. `rpa_ri_chsld` |
+| `regionAdministrative` | string | Région |
+| `anneeDonnees` | number | Année |
+| `provenance` | string | `market_report` (injection serveur) \| `etats_financiers` \| `rapport_evaluation` (résidence) |
+| `comparableSnapshot` | map | `{ city, units, salePrice, capRatePct, netIncomePerUnit }` — **sans adresse civique** |
+| `marketTransactionMeta` | map | Métadonnées transaction (date, type immeuble, `marketDocumentId`) |
+| `operationalBenchmarkMeta` | map | Ratios opérationnels (label, catégorie) |
+| `validatedAmounts` | array | Montants validés (ratios / dépenses) |
+| `injectedAtMillis` | number | Horodatage |
+| `validatedBy` | string | UID courtier |
+
+> **Anti-doublons :** réinjection du même PDF ou rapports chevauchants → `set(..., { merge: true })` sur l'ID empreinte ; pas de `add()` aveugle. Legacy : `packages/core/src/market/marketDeduplication.ts` (adresse normalisée + prix + date ±3 jours pour détection UI).
+
+### ~~Document `organizations/…/market_documents`~~
+
+**Obsolète** — utiliser la collection top-level **`market_documents`**.
 
 ---
 
@@ -551,6 +617,10 @@ Téléchargement client : autorisé **uniquement** si `virusScanStatus === 'clea
 | Liaisons coacheteurs/covendeurs | `coBuyers.ts`, `coSellers.ts`, `linkCoBuyer`, `linkCoSeller` |
 | Import contacts legacy | `scripts/migrate-legacy-contacts-to-v2.mjs` |
 | Courtier responsable inscription | `ResponsibleBrokerCard.tsx`, `courtiersResponsables` |
+| Liaison messagerie ↔ CRM | `matchedContactId`, `linkEmailThreadToContact`, `contactMatch.ts`, `MailContactLinkBar.tsx` |
+| Inscriptions Kanban DnD | `ListingsPipelineKanban.tsx`, `pipelineDragRules.ts`, `updateResidencePipelineStatus` |
+| Bibliothèque marché | `marketDocumentsService.ts`, `parseMarketDocument.ts`, `injectMarketMacroStats.ts`, `MarketLibraryDashboard.tsx`, `marketDeduplication.ts` |
+| Anti-doublons Big Data | `marketTransactionFingerprint`, `marketMacroRegionFingerprint`, empreintes Firestore merge |
 
 ---
 
@@ -633,4 +703,4 @@ Lors de l’ajout d’une note : mise à jour document racine `lastCommunication
 
 ---
 
-*Dernière mise à jour : 2026-05-20 — Collection `organizations/…/contacts`, chemins Storage CRM, tiers acheteur, critères vendeur, coacheteurs/covendeurs ; objets `offre` / `promesseAchat` inchangés.*
+*Dernière mise à jour : 2026-05-24 — Collections Big Data (`market_documents`, `market_analytics_raw`, empreintes anti-doublons), Phase 2 messagerie ↔ CRM, inscriptions Kanban DnD.*
