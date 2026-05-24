@@ -254,14 +254,16 @@ export function MarketDataGrid({
         </div>
       </div>
 
+      <GpsViewTabs viewTab={viewTab} setViewTab={setViewTab} t={t} />
+
       {!loading && !error ? (
         <>
           <MarketGpsKpiCards metrics={dashboardMetrics} locale={locale} t={t} />
-          <MarketCharts metrics={dashboardMetrics} locale={locale} t={t} />
+          {viewTab === 'comparables' ? (
+            <MarketCharts metrics={dashboardMetrics} locale={locale} t={t} />
+          ) : null}
         </>
       ) : null}
-
-      <motionlessTabs viewTab={viewTab} setViewTab={setViewTab} t={t} />
 
       {error ? (
         <div
@@ -326,7 +328,7 @@ export function MarketDataGrid({
   );
 }
 
-function motionlessTabs({
+function GpsViewTabs({
   viewTab,
   setViewTab,
   t,
@@ -337,10 +339,11 @@ function motionlessTabs({
 }) {
   return (
     <div
-      className="flex flex-wrap gap-2 border-b border-slate-200 pb-1"
+      className="sticky top-0 z-20 -mx-4 sm:-mx-5 px-4 sm:px-5 py-2 bg-white/95 backdrop-blur-sm border-y border-slate-200 shadow-sm"
       role="tablist"
       aria-label={t('Vues GPS', 'GPS views')}
     >
+      <div className="flex flex-wrap gap-2">
       {(
         [
           {
@@ -383,6 +386,7 @@ function motionlessTabs({
           </button>
         );
       })}
+      </div>
     </div>
   );
 }
