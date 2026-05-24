@@ -13,7 +13,6 @@ import {
   Loader2,
   MapPin,
   Table2,
-  TrendingUp,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useMarketData } from '../../hooks/useMarketData';
@@ -29,15 +28,11 @@ import {
   passesTemporalFilter,
   TRANSACTIONS_PAGE_SIZE,
   coerceToGpsFilterRegion,
-  type MarketGpsPlLine,
-  type MarketGpsRegionalPl,
-  type MarketGpsRegionalSummary,
   type MarketGpsTransaction,
   type MarketTemporalWindow,
-  type ValueRange,
 } from '@primexpert/core/market';
 
-type GpsViewTab = 'comparables' | 'ratios' | 'detailed-pl';
+type GpsViewTab = 'comparables' | 'financial-stats';
 
 function fmtMoney(n: number | undefined, locale: 'fr' | 'en'): string {
   if (n == null || !Number.isFinite(n)) return '—';
@@ -48,32 +43,6 @@ function fmtPctNum(n: number | undefined, locale: 'fr' | 'en'): string {
   if (n == null || !Number.isFinite(n)) return '—';
   const s = n.toFixed(1);
   return locale === 'fr' ? `${s.replace('.', ',')} %` : `${s} %`;
-}
-
-function formatUnitRange(r: ValueRange | undefined, locale: 'fr' | 'en'): string {
-  if (!r || r.count === 0 || r.min == null || r.median == null) return '—';
-  const lo = fmtMoney(r.min, locale);
-  const hi = fmtMoney(r.max ?? r.min, locale);
-  const med = fmtMoney(r.median, locale);
-  if (r.min === r.max) {
-    return locale === 'fr' ? `(Médiane : ${med} $)` : `(Median: ${med} $)`;
-  }
-  return locale === 'fr'
-    ? `[ ${lo} $ - ${hi} $ ] (Médiane : ${med} $)`
-    : `[ ${lo} $ - ${hi} $ ] (Median: ${med} $)`;
-}
-
-function formatPctRange(r: ValueRange | undefined, locale: 'fr' | 'en'): string {
-  if (!r || r.count === 0 || r.min == null || r.median == null) return '—';
-  const lo = fmtPctNum(r.min, locale);
-  const hi = fmtPctNum(r.max ?? r.min, locale);
-  const med = fmtPctNum(r.median, locale);
-  if (r.min === r.max) {
-    return locale === 'fr' ? `(Médiane : ${med})` : `(Median: ${med})`;
-  }
-  return locale === 'fr'
-    ? `[ ${lo} - ${hi} ] (Médiane : ${med})`
-    : `[ ${lo} - ${hi} ] (Median: ${med})`;
 }
 
 const TEMPORAL_OPTIONS: { value: MarketTemporalWindow; fr: string; en: string }[] = [
@@ -95,7 +64,6 @@ export function MarketDataGrid({
     transactions,
     regionalPlStatements,
     ratioSamples,
-    ratioSampleCount,
     loading,
     error,
     regions,
@@ -187,12 +155,7 @@ export function MarketDataGrid({
                     `${filteredTransactions.length} comparables (fenêtre ${windowLabel}) · ${totalTransactionCount} en base`,
                     `${filteredTransactions.length} comparables (${windowLabelEn} window) · ${totalTransactionCount} in database`
                   )
-                : viewTab === 'ratios'
-                  ? t(
-                      `${filteredRatioSamples.length} échantillons (fenêtre ${windowLabel}) · ${ratioSampleCount} en base · ${filteredPl.length} région(s)`,
-                      `${filteredRatioSamples.length} samples (${windowLabelEn} window) · ${ratioSampleCount} in database · ${filteredPl.length} region(s)`
-                    )
-                  : t(
+                : t(
                       `${filteredRatioSamples.length} postes dans la fenêtre · historique complet pour tendances`,
                       `${filteredRatioSamples.length} line items in window · full history for trends`
                     )}
@@ -296,8 +259,6 @@ export function MarketDataGrid({
             />
           ) : null}
         </>
-      ) : viewTab === 'ratios' ? (
-        <RegionalPlView statements={filteredPl} loading={loading} locale={locale} t={t} />
       ) : (
         <div className="space-y-6">
           <MarketTrendCharts
@@ -349,20 +310,14 @@ function GpsViewTabs({
           {
             id: 'comparables' as const,
             icon: MapPin,
-            labelFr: 'Comparables de ventes',
-            labelEn: 'Sale comparables',
+            labelFr: '1. Comparables de ventes',
+            labelEn: '1. Sale comparables',
           },
           {
-            id: 'ratios' as const,
-            icon: TrendingUp,
-            labelFr: 'Analyses et ratios',
-            labelEn: 'Analysis and ratios',
-          },
-          {
-            id: 'detailed-pl' as const,
+            id: 'financial-stats' as const,
             icon: FileSpreadsheet,
-            labelFr: '3. État des résultats détaillé',
-            labelEn: '3. Detailed P&L statement',
+            labelFr: '2. Statistiques Financières',
+            labelEn: '2. Financial Statistics',
           },
         ] as const
       ).map((tab) => {
@@ -514,159 +469,6 @@ function ComparablesTable({
   );
 }
 
-function RegionalPlView({
-  statements,
-  loading,
-  locale,
-  t,
-}: {
-  statements: MarketGpsRegionalPl[];
-  loading: boolean;
-  locale: 'fr' | 'en';
-  t: (fr: string, en: string) => string;
-}) {
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16 text-slate-500 gap-2">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        {t('Construction des états des résultats…', 'Building P&L statements…')}
-      </div>
-    );
-  }
-
-  if (!statements.length) {
-    return (
-      <p className="py-16 text-center text-slate-500 text-sm">
-        {t(
-          'Aucun ratio régional pour cette fenêtre. Téléversez un rapport marché dans l’onglet Ingestion.',
-          'No regional ratios for this window. Upload a market report in the Ingestion tab.'
-        )}
-      </p>
-    );
-  }
-
-  return (
-    <div className="space-y-6 max-h-[min(70vh,720px)] overflow-y-auto pr-1">
-      {statements.map((pl) => (
-        <RegionalPlCard key={pl.id} pl={pl} locale={locale} t={t} />
-      ))}
-    </div>
-  );
-}
-
-function RegionalPlCard({
-  pl,
-  locale,
-  t,
-}: {
-  pl: MarketGpsRegionalPl;
-  locale: 'fr' | 'en';
-  t: (fr: string, en: string) => string;
-}) {
-  return (
-    <section className="rounded-xl border-2 border-slate-200 overflow-hidden shadow-sm">
-      <header className="bg-[#142c6a] px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-white/70">
-            {t('État des résultats régional', 'Regional P&L statement')}
-          </p>
-          <h3 className="text-sm font-black text-white">{pl.region}</h3>
-        </div>
-        <p className="text-[10px] text-white/80 tabular-nums">
-          {pl.sampleCount} {t('échantillons', 'samples')}
-        </p>
-      </header>
-
-      {pl.macroHint ? (
-        <p className="text-[10px] text-slate-600 px-4 py-2 bg-slate-50 border-b border-slate-100">
-          {pl.macroHint}
-        </p>
-      ) : null}
-
-      <div className="overflow-x-auto">
-        <table className="min-w-[720px] w-full text-[11px] text-slate-900">
-          <thead className="bg-slate-100 text-[9px] font-black uppercase tracking-wider text-slate-600">
-            <tr>
-              <th className="px-4 py-2 text-left">{t('Poste', 'Line item')}</th>
-              <th className="px-4 py-2 text-right">{t('$/unité', '$/unit')}</th>
-              <th className="px-4 py-2 text-right">{t('% du revenu brut effectif (RBE)', '% of effective gross income (EGI)')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pl.lines.map((line) => (
-              <PlRow key={line.id} line={line} locale={locale} />
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <footer className="grid grid-cols-1 sm:grid-cols-3 gap-2 px-4 py-3 bg-slate-50 border-t border-slate-200 text-[10px]">
-        <SummaryChip
-          label={t('Zone RBE / unité', 'EGI / unit range')}
-          value={formatUnitRange(pl.rbePerUnit, locale)}
-        />
-        <SummaryChip
-          label={t('Zone RDE', 'OER range')}
-          value={formatPctRange(pl.rdePct, locale)}
-        />
-        <SummaryChip
-          label={t('Zone RNE / unité', 'NOI / unit range')}
-          value={formatUnitRange(pl.rnePerUnit, locale)}
-        />
-      </footer>
-    </section>
-  );
-}
-
-function PlRow({ line, locale }: { line: MarketGpsPlLine; locale: 'fr' | 'en' }) {
-  const isHeader = line.section === 'group-header';
-  const label = locale === 'fr' ? line.labelFr : line.labelEn;
-
-  if (isHeader) {
-    return (
-      <tr className={cn('bg-slate-50', line.indent && 'bg-white')}>
-        <td
-          colSpan={3}
-          className={cn(
-            'px-4 py-2 font-black uppercase tracking-wide text-[#142c6a]',
-            line.indent ? 'text-[10px] pl-8' : 'text-[11px]'
-          )}
-        >
-          {label}
-        </td>
-      </tr>
-    );
-  }
-
-  return (
-    <tr
-      className={cn(
-        'border-t border-slate-100',
-        line.isSubtotal && 'bg-amber-50/60 font-bold',
-        line.indent && !line.isSubtotal && 'text-slate-800'
-      )}
-    >
-      <td className={cn('px-4 py-2', line.indent && 'pl-8')}>{label}</td>
-      <td className="px-4 py-2 text-right tabular-nums whitespace-nowrap">
-        {line.section === 'depense' && line.id === 'rde-total'
-          ? '—'
-          : formatUnitRange(line.perUnit, locale)}
-      </td>
-      <td className="px-4 py-2 text-right tabular-nums whitespace-nowrap text-[10px] leading-snug">
-        {formatPctRange(line.pctRbe, locale)}
-      </td>
-    </tr>
-  );
-}
-
-function SummaryChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="font-black uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="font-semibold text-slate-900 mt-0.5 leading-snug">{value}</p>
-    </div>
-  );
-}
 
 function PaginationBar({
   page,
