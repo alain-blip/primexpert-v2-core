@@ -14,8 +14,8 @@ import { listResidences } from '../services/residences';
 import { fetchRecentCallAnalyses } from '../services/transcriptionService';
 import {
   InstitutionalDetailLine,
-  InstitutionalWhitePanel,
 } from './residence/institutional/InstitutionalUi';
+import { PageGuideShell } from './institutional/PageGuideHeader';
 import {
   institutionalInkTextClass,
   institutionalStatusBannerClass,
@@ -140,11 +140,11 @@ export function SuiviDossiersTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-      <InstitutionalWhitePanel
-        title={t('Suivi des dossiers — Progression active', 'File follow-up — Active progress')}
-        subtitle={t(
-          'Dossiers chauds : mandat actif, documents partagés ou promesse d’achat acceptée — avec visites, comptes-rendus et suggestions IA.',
-          'Active files: live listing, shared documents, or accepted purchase promise — with visits, call notes, and AI suggestions.'
+      <PageGuideShell
+        title={t('Suivi des dossiers', 'File follow-up')}
+        guide={t(
+          "Mode d'emploi : [Instructions à venir]",
+          'How to use: [Instructions coming soon]'
         )}
       >
         {loading ? (
@@ -170,7 +170,7 @@ export function SuiviDossiersTab() {
             ))}
           </ul>
         )}
-      </InstitutionalWhitePanel>
+      </PageGuideShell>
     </motion.div>
   );
 }

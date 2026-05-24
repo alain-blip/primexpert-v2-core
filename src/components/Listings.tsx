@@ -17,10 +17,7 @@ import {
 import { fetchRecentCallAnalyses, type CallAnalysisRow } from '../services/transcriptionService';
 import { fetchRecentMailboxAnalyses, type SavedMailboxAnalysis } from '../services/mailboxAnalysis';
 import { ListingsInventoryVirtual } from './ListingsInventoryVirtual';
-import {
-  institutionalPanelSubtitleClass,
-  institutionalPanelTitleClass,
-} from '../lib/institutionalTheme';
+import { PageGuideHeader } from './institutional/PageGuideHeader';
 import { useListingsPipeline, useListingsInventory } from '../hooks/useListings';
 import { useSilo } from '../context/SiloContext';
 import { residenceMatchesNiche, type AssetNiche } from '../types/residence';
@@ -409,15 +406,13 @@ export function Listings() {
 
   return (
     <section className="rounded-2xl bg-primexpert-blue p-6 space-y-6">
-      <header className="px-1">
-        <h1 className={institutionalPanelTitleClass}>{t('Mes inscriptions', 'My listings')}</h1>
-        <p className={institutionalPanelSubtitleClass}>
-          {t(
-            'Pipeline actif et inventaire — cartes coupe-feu institutionnelles.',
-            'Active pipeline and inventory — institutional firebreak cards.'
-          )}
-        </p>
-      </header>
+      <PageGuideHeader
+        title={t('Mes inscriptions', 'My listings')}
+        guide={t(
+          "Mode d'emploi : [Instructions à venir]",
+          'How to use: [Instructions coming soon]'
+        )}
+      />
 
       {listingsLoadError ? (
         <div

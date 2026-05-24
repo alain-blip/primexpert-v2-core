@@ -20,6 +20,7 @@ import {
   type DashboardPriorityFollowUpItem,
 } from '../services/dashboardPriorityFollowUp';
 import { PriorityFollowUpList } from './dashboard/PriorityFollowUpList';
+import { PageGuideHeader } from './institutional/PageGuideHeader';
 import { InstitutionalWhitePanel } from './residence/institutional/InstitutionalUi';
 import { useSilo } from '../context/SiloContext';
 import { shouldShowJ7Survey } from '../lib/trialTimeline';
@@ -140,7 +141,7 @@ export function Dashboard() {
   }, [residences, dashboardDataLoading, activeSilo, t]);
 
   return (
-    <div className="space-y-8">
+    <motion.div className="space-y-8">
       <J7SurveyModal
         open={j7Open}
         onClose={() => {
@@ -149,6 +150,16 @@ export function Dashboard() {
         }}
         onSubmitted={() => setJ7Dismissed(true)}
       />
+
+      <section className="rounded-2xl bg-primexpert-blue p-6">
+        <PageGuideHeader
+          title={t('Tableau de bord', 'Dashboard')}
+          guide={t(
+            "Mode d'emploi : [Instructions à venir]",
+            'How to use: [Instructions coming soon]'
+          )}
+        />
+      </section>
 
       {/* Executive Command Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-5">
@@ -334,6 +345,6 @@ export function Dashboard() {
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

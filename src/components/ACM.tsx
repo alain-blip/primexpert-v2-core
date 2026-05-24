@@ -18,6 +18,7 @@ import { Calculator, AlertCircle, CheckCircle2, ShieldCheck, TrendingDown, Trend
 import { motion } from 'motion/react';
 import { useLanguage } from '../lib/i18n';
 import { formatCurrency } from '../lib/utils';
+import { PageGuideShell } from './institutional/PageGuideHeader';
 import {
   calculateValuation,
   createDefaultValuationInputs,
@@ -156,7 +157,15 @@ export function ACM() {
   }, [result, t]);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <motion.div className="max-w-5xl mx-auto space-y-8">
+      <PageGuideShell
+        title={t('Analyse comparative de marché (ACM)', 'Comparative market analysis (CMA)')}
+        guide={t(
+          "Mode d'emploi : [Instructions à venir]",
+          'How to use: [Instructions coming soon]'
+        )}
+      />
+
       {/* Header — halo inline supprimé (doublon avec bg-vault::after),
           padding et rayon réduits pour éliminer le vide haut. */}
       <div className="bg-vault text-white p-6 rounded-[28px] shadow-[0_24px_70px_rgba(0,0,0,0.55)] relative overflow-hidden border border-white/10">
@@ -364,6 +373,6 @@ export function ACM() {
           </div>
         </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }

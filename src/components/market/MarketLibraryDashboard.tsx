@@ -14,10 +14,7 @@ import {
 import { cn } from '../../lib/utils';
 import { useLanguage } from '../../lib/i18n';
 import { useAuth } from '../../lib/auth';
-import {
-  institutionalPanelSubtitleClass,
-  institutionalPanelTitleClass,
-} from '../../lib/institutionalTheme';
+import { PageGuideHeader } from '../institutional/PageGuideHeader';
 import {
   injectMarketMacroStatsViaCallable,
   parseMarketDocumentNow,
@@ -378,12 +375,10 @@ export function MarketLibraryDashboard() {
 
   return (
     <section className="rounded-2xl bg-primexpert-blue p-6 space-y-6">
-      <header className="px-1">
-        <h1 className={institutionalPanelTitleClass}>
-          {t('Statistiques du marché', 'Market statistics')}
-        </h1>
-        <p className={institutionalPanelSubtitleClass}>
-          {innerTab === 'dashboard'
+      <PageGuideHeader
+        title={t('Statistiques du marché', 'Market statistics')}
+        guide={
+          innerTab === 'dashboard'
             ? t(
                 "Mode d'emploi : Utilisez les filtres au-dessus des tableaux pour choisir la région et la fenêtre temporelle (12 ou 24 mois). Les cartes et graphiques résument les comparables filtrés. L'onglet « État des résultats détaillé » affiche la grille comptable complète et l'évolution historique des coûts.",
                 'How to use: Use the filters above the tables to pick region and time window (12 or 24 months). Cards and charts summarize filtered comparables. The “Detailed P&L statement” tab shows the full accounting grid and historical cost trends.'
@@ -391,9 +386,9 @@ export function MarketLibraryDashboard() {
             : t(
                 "Mode d'emploi : Glissez-déposez ici des rapports d'évaluation agréés ou des états financiers (PDF). L'analyse prépare les données pour validation humaine avant injection dans la base GPS. Un dépôt dans la fiche d'une résidence alimente aussi cette file automatiquement.",
                 'How to use: Drag and drop appraisal reports or financial statements (PDF). Analysis prepares data for human validation before GPS database injection. Uploading to a residence file also feeds this queue automatically.'
-              )}
-        </p>
-      </header>
+              )
+        }
+      />
 
       <div
         className="flex flex-wrap gap-2 border-b border-white/25 pb-1"
