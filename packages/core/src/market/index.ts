@@ -11,5 +11,6 @@ export * from './marketGpsDetailedPnL';
 export * from './marketGpsTrendSeries';
 export * from './marketPlExpenseDictionary';
 export * from './marketDataNormalize';
+export * from './gpsComparablesImport';
 export * from './marketSourceTag';
 export * from './marketRegionNormalize';

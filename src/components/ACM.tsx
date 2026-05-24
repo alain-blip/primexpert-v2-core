@@ -23,8 +23,17 @@ import {
   calculateValuation,
   createDefaultValuationInputs,
   DEFAULT_MARKET_BENCHMARKS,
+  computeTgaAdjustment,
+  capRateRangeFromMedian,
+  runStressTests,
+  selectBaselineStressTest,
+  classifyAssetSize,
+  inferMarketType,
+  calculatePriceRecommendation,
   type ValuationInputs,
   type ValuationOutputs,
+  type TgaAdjustmentResult,
+  type PriceRecommendation,
 } from '@primexpert/core/valuation';
 import {
   selectSellerNarrative,
@@ -40,6 +49,8 @@ interface SimpleForm {
   vacancyRate: number;       // entré en % (5 → 0.05)
   operatingExpensesTotal: number;
   targetCapRate: number;     // entré en % (8 → 0.08)
+  /** Taux pénétration RPA 75+ (ex. 3.5 = 3,5 %) — ajuste le TGA cible. */
+  penetrationRatePct: number;
 }
 
 const INITIAL_FORM: SimpleForm = {
@@ -50,9 +61,10 @@ const INITIAL_FORM: SimpleForm = {
   vacancyRate: 5,
   operatingExpensesTotal: 620_000,
   targetCapRate: 8,
+  penetrationRatePct: 0,
 };
 
-function buildInputs(form: SimpleForm): ValuationInputs {
+function buildInputs(form: SimpleForm, targetCapRateOverride?: number): ValuationInputs {
   return createDefaultValuationInputs({
     askingPrice: form.askingPrice,
     units: form.units,
@@ -61,7 +73,7 @@ function buildInputs(form: SimpleForm): ValuationInputs {
     vacancyRate: form.vacancyRate / 100,
     operatingExpenses: { total: form.operatingExpensesTotal },
     customExpenses: [],
-    targetCapRate: form.targetCapRate / 100,
+    targetCapRate: targetCapRateOverride ?? form.targetCapRate / 100,
   });
 }
 
@@ -84,6 +96,13 @@ export function ACM() {
   const { t } = useLanguage();
   const [form, setForm] = useState<SimpleForm>(INITIAL_FORM);
   const [result, setResult] = useState<ValuationOutputs | null>(null);
+  const [tgaAdjustment, setTgaAdjustment] = useState<TgaAdjustmentResult | null>(null);
+  const [priceRecommendation, setPriceRecommendation] = useState<PriceRecommendation | null>(null);
+  const [stressSummary, setStressSummary] = useState<{
+    occ85: number;
+    occ90: number;
+    occ100: number;
+  } | null>(null);
   const [narrative, setNarrative] = useState<SellerNarrativeDecision | null>(null);
   const [narrativeLoading, setNarrativeLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,10 +115,41 @@ export function ACM() {
   const handleCompute = () => {
     setError(null);
     setNarrative(null);
+    setTgaAdjustment(null);
+    setPriceRecommendation(null);
+    setStressSummary(null);
     try {
-      const inputs = buildInputs(form);
+      let adjustedCap = form.targetCapRate / 100;
+      if (form.penetrationRatePct > 0) {
+        const adj = computeTgaAdjustment({
+          baseTga: adjustedCap,
+          tauxPenetrationRPA: form.penetrationRatePct / 100,
+          nombreUnites: form.units,
+        });
+        adjustedCap = adj.finalTga;
+        setTgaAdjustment(adj);
+      }
+      const inputs = buildInputs(form, adjustedCap);
       const out = calculateValuation(inputs);
       setResult(out);
+
+      const occupancy = Math.max(0.01, 1 - form.vacancyRate / 100);
+      const capRange = capRateRangeFromMedian(adjustedCap);
+      const stress = runStressTests(out.noiAccounting, occupancy, capRange);
+      const baseline = selectBaselineStressTest(occupancy, stress);
+      setStressSummary({
+        occ85: stress.occ85.valueRange.min,
+        occ90: stress.occ90.valueRange.min,
+        occ100: stress.occ100.valueRange.min,
+      });
+      setPriceRecommendation(
+        calculatePriceRecommendation(
+          baseline,
+          inferMarketType(''),
+          classifyAssetSize(form.units),
+          occupancy
+        )
+      );
     } catch (e) {
       console.error(e);
       setError(e instanceof Error ? e.message : String(e));
@@ -198,6 +248,7 @@ export function ACM() {
               { key: 'vacancyRate', label: t('Taux de vacance (%)', 'Vacancy rate (%)'), step: 0.5 },
               { key: 'operatingExpensesTotal', label: t('Dépenses d\'exploitation ($)', 'Operating expenses ($)'), step: 10000 },
               { key: 'targetCapRate', label: t('Taux de capitalisation cible (TGA) (%)', 'Target capitalization rate (cap rate) (%)'), step: 0.1 },
+              { key: 'penetrationRatePct', label: t('Pénétration RPA 75+ (%) — ajustement TGA', 'RPA 75+ penetration (%) — cap rate adj.'), step: 0.1 },
             ].map(({ key, label, step }) => (
               <label key={key} className="space-y-2">
                 <span className="block text-[10px] font-black uppercase tracking-widest text-blue-300/60">{label}</span>
@@ -284,6 +335,38 @@ export function ACM() {
               </div>
             ))}
           </div>
+
+          {tgaAdjustment ? (
+            <div className="rounded-2xl border border-blue-400/30 bg-blue-500/10 p-5 space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">
+                {t('Ajustement TGA — pénétration & taille', 'Cap rate adjustment — penetration & size')}
+              </p>
+              <p className="text-sm font-bold text-white">
+                {(tgaAdjustment.baseTga * 100).toFixed(2)} % → {(tgaAdjustment.finalTga * 100).toFixed(2)} %
+              </p>
+              <ul className="text-[11px] text-blue-100 space-y-1">
+                {tgaAdjustment.rationale.slice(0, 3).map((line) => (
+                  <li key={line}>— {line}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {stressSummary && priceRecommendation ? (
+            <div className="rounded-2xl border border-white/10 bg-vault-bright p-5 space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                {t('Scénarios d’occupation & prix recommandé', 'Occupancy scenarios & recommended price')}
+              </p>
+              <p className="text-xs text-slate-300">
+                85 % : {formatCurrency(stressSummary.occ85)} · 90 % : {formatCurrency(stressSummary.occ90)} · 100 % :{' '}
+                {formatCurrency(stressSummary.occ100)}
+              </p>
+              <p className="text-lg font-black text-emerald-300">
+                {t('Prix recommandé', 'Recommended price')} :{' '}
+                {formatCurrency(priceRecommendation.recommendedListPrice)}
+              </p>
+            </div>
+          ) : null}
 
           {/* Warnings */}
           {result.warnings.length > 0 && (

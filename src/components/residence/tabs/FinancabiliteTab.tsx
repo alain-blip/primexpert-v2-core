@@ -17,6 +17,7 @@ import { useLanguage } from '../../../lib/i18n';
 import { useFinancialData } from '../../../context/FinancialDataContext';
 import { useFinanceHubLock } from '../../../context/FinanceHubLockContext';
 import { ProvenanceStrip } from '../../financial/ProvenanceStrip';
+import { FinancialAuditEeePanel } from '../../financial/FinancialAuditEeePanel';
 import {
   inst,
   InstitutionalPageHeader,
@@ -663,6 +664,12 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
         labelFr={model.dscrVerdict.labelFr}
         labelEn={model.dscrVerdict.labelEn}
         language={language}
+      />
+
+      <FinancialAuditEeePanel
+        residence={residence}
+        prixDemande={model.prixDemande ?? residence.price}
+        paiementAnnuelDette={model.paiementAnnuel ?? 0}
       />
 
       {model.aphSelectEligibility && (

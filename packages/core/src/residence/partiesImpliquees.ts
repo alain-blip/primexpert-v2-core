@@ -71,6 +71,14 @@ export function parsePartiesImpliquees(doc: Record<string, unknown> | null | und
   return out;
 }
 
+/** Contact vendeur (VENDEUR) lié à la fiche — pour Accès Vendeur. */
+export function resolveSellerContactId(
+  doc: Record<string, unknown> | null | undefined
+): string | null {
+  const seller = parsePartiesImpliquees(doc).find((p) => p.role === 'VENDEUR');
+  return seller?.contactId ?? null;
+}
+
 /** Patch Firestore complet (diff-based : remplace le tableau en une écriture cohérente). */
 export function buildPartiesImpliqueesPatch(
   parties: PartieImpliquee[]

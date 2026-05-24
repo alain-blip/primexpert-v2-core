@@ -55,11 +55,17 @@ const DocumentsDashboard = lazy(() =>
 );
 const Softphone  = lazy(() => import('./components/Softphone/Softphone').then(m => ({ default: m.Softphone })));
 const Settings   = lazy(() => import('./components/Settings').then(m => ({ default: m.Settings })));
+const AdminSubscriptionsDashboard = lazy(() =>
+  import('./components/AdminSubscriptionsDashboard').then((m) => ({
+    default: m.AdminSubscriptionsDashboard,
+  }))
+);
 const MarketLibraryDashboard = lazy(() =>
   import('./components/market/MarketLibraryDashboard').then((m) => ({
     default: m.MarketLibraryDashboard,
   }))
 );
+const AccesVendeurPage = lazy(() => import('./components/vendor/AccesVendeurPage'));
 
 function LoadingScreen() {
   return (
@@ -337,11 +343,23 @@ function ProtectedWorkhub() {
   );
 }
 
+function ProtectedAccesVendeur() {
+  const { user, loading } = useAuth();
+  if (loading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/" replace />;
+  return (
+    <Suspense fallback={<RouteSuspense />}>
+      <AccesVendeurPage />
+    </Suspense>
+  );
+}
+
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/workhub" element={<ProtectedWorkhub />} />
+      <Route path="/acces-vendeur" element={<ProtectedAccesVendeur />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

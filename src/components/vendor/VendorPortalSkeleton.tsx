@@ -29,7 +29,7 @@ export function VendorPortalSkeleton() {
             transition={{ duration: 1.4, repeat: Infinity, delay: 0.15 + i * 0.08 }}
           />
         ))}
-      </motion.div>
+      </div>
       <motion.div
         className="h-32 rounded-2xl bg-white/10"
         animate={{ opacity: [0.4, 0.8, 0.4] }}

@@ -82,5 +82,42 @@ export {
   compareSellerVsBankValue,
 } from './lenderCapRate';
 
+// Ajustement TGA — pénétration RPA + taille
+export {
+  type MarketPenetration,
+  type TgaAdjustmentInput,
+  type TgaAdjustmentResult,
+  computeTgaAdjustment,
+  createMarketPenetration,
+  calculatePenetrationDelta,
+  calculateSizeDelta,
+} from './penetrationTgaAdjustment';
+
+// Stress tests & stratégie de prix (ACM Sprint 0)
+export {
+  type Range,
+  type RangeWithMedian,
+  type MarketType,
+  type AssetSize,
+  type PricingStrategy,
+  type StressTestResult,
+  type StressTests,
+  type PriceRecommendation,
+} from './valuationStressTypes';
+export { projectNOIAtOccupancy } from './projectNoiAtOccupancy';
+export {
+  runStressTests,
+  selectBaselineStressTest,
+  calculateMedianValue,
+  requiresConservativeBaseline,
+  capRateRangeFromMedian,
+} from './stressTest';
+export {
+  classifyAssetSize,
+  inferMarketType,
+  calculatePriceRecommendation,
+  generateSellerRationale,
+} from './priceStrategy';
+
 // Hook React (à importer séparément si besoin)
 export { useValuation } from './useValuation';

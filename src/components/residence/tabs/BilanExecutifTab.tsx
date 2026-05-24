@@ -493,7 +493,7 @@ export function BilanExecutifTab({ residence }: BilanExecutifTabProps) {
       </section>
 
       <TP70Card residenceHints={residenceHints} />
-      <FinancialReportsSection />
+      <FinancialReportsSection residence={residence} />
 
       {!cfo.hasFinancials && (
         <p className="text-xs text-slate-600 italic text-center">

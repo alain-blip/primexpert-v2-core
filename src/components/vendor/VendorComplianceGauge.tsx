@@ -55,7 +55,7 @@ export function VendorComplianceGauge({
         >
           <span className="text-4xl font-black tabular-nums">{clamped}%</span>
         </motion.div>
-      </motion.div>
+      </div>
       <p className="mt-4 text-center text-sm font-black uppercase tracking-widest text-white">
         {label}
       </p>

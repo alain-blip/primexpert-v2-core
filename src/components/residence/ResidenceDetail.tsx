@@ -35,6 +35,7 @@ import { PromesseAchatTab } from './tabs/PromesseAchatTab';
 import { Synthese360Tab } from './tabs/Synthese360Tab';
 import { DiffusionWebTab } from './diffusion/DiffusionWebTab';
 import { ResidenceTransactionBanner } from './ResidenceTransactionBanner';
+import { ResidenceAccesVendeurButton } from './ResidenceAccesVendeurButton';
 
 export type ResidenceDetailTab =
   | 'synthese'
@@ -281,7 +282,8 @@ function ResidenceDetailContent({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <ResidenceAccesVendeurButton residenceId={residence.id} />
             <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-emerald-800">
               <ScrollText className="h-3.5 w-3.5" />
               {t('Vue institutionnelle', 'Institutional view')}

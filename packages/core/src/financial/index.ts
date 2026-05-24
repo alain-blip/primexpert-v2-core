@@ -19,3 +19,5 @@ export * from './marketBenchmarks';
 export * from './globalFinancialBenchmark';
 export * from './normalizationSuggestions';
 export * from './revenusDepensesPreview';
+export * from './financialAuditEee';
+export * from './sellerListingAnalysisReport';

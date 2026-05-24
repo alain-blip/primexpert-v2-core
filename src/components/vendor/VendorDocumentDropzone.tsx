@@ -127,6 +127,6 @@ export function VendorDocumentDropzone({
           </motion.div>
         ) : null}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }

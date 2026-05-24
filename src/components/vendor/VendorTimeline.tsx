@@ -68,6 +68,6 @@ export function VendorTimeline({
           );
         })}
       </ol>
-    </motion.div>
+    </div>
   );
 }

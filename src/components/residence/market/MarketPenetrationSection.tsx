@@ -13,6 +13,7 @@ import {
   sumSectorRpaUnits,
   getSubjectUnitCount,
 } from '@primexpert/core/market';
+import { computeTgaAdjustment } from '@primexpert/core/valuation';
 import { useLanguage } from '../../../lib/i18n';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { InstitutionalKpi, InstitutionalSection } from '../institutional/InstitutionalUi';
@@ -40,6 +41,16 @@ export function MarketPenetrationSection() {
       population75 != null ? computePenetrationRate75(sectorUnits, population75) : null,
     [sectorUnits, population75]
   );
+
+  const tgaRisk = useMemo(() => {
+    if (rate == null || subjectUnits <= 0) return null;
+    const baseTga = 0.085;
+    return computeTgaAdjustment({
+      baseTga,
+      tauxPenetrationRPA: rate,
+      nombreUnites: subjectUnits,
+    });
+  }, [rate, subjectUnits]);
 
   const radiusKm =
     residenceDoc?.marketScope &&
@@ -113,6 +124,24 @@ export function MarketPenetrationSection() {
               {t('Périmètre sectoriel', 'Sector perimeter')}: {radiusKm} km · Haversine
             </p>
           )}
+
+          {tgaRisk ? (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-3">
+              <p className="text-[10px] font-black uppercase tracking-wide text-[#142c6a]">
+                {t(
+                  'Ajustement taux de capitalisation (TGA) — risque pénétration',
+                  'Capitalization rate (cap rate) adjustment — penetration risk'
+                )}
+              </p>
+              <p className="mt-1 text-sm font-black text-[#142c6a] tabular-nums">
+                {(tgaRisk.baseTga * 100).toFixed(2)} % → {(tgaRisk.finalTga * 100).toFixed(2)} %
+                <span className="text-xs font-semibold text-slate-600 ml-2">
+                  (+{tgaRisk.penetrationDeltaBps + tgaRisk.sizeDeltaBps + tgaRisk.marketDeltaBps} bps)
+                </span>
+              </p>
+              <p className="mt-1 text-[11px] text-slate-700">{tgaRisk.rationale[0]}</p>
+            </div>
+          ) : null}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

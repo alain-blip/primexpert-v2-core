@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useMarketData } from '../../hooks/useMarketData';
+import { MarketComparablesCsvToolbar } from './MarketComparablesCsvToolbar';
 import { MarketTransactionDrawer } from './MarketTransactionDrawer';
 import { MarketGpsKpiCards } from './MarketGpsKpiCards';
 import { MarketCharts } from './MarketCharts';
@@ -240,6 +241,13 @@ export function MarketDataGrid({
 
       {viewTab === 'comparables' ? (
         <>
+          <MarketComparablesCsvToolbar
+            locale={locale}
+            brokerId={brokerId}
+            transactions={transactions}
+            filteredTransactions={filteredTransactions}
+            t={t}
+          />
           <ComparablesTable
             rows={pageRows}
             loading={loading}
