@@ -165,3 +165,21 @@ export function mandateMissingFieldLabels(
 ): string[] {
   return result.missingFields.map((f) => (lang === 'fr' ? f.labelFr : f.labelEn));
 }
+
+const MANDATE_CRITICAL_FIELD_COUNT = 4;
+
+/**
+ * Pourcentage de complétude des champs critiques mandat (0–100).
+ * Utilisé par l'Accès Vendeur — jauge « preuves de conformité ».
+ */
+export function mandateCompletenessPercent(
+  residence: MandateCompletenessSource | null | undefined
+): number {
+  if (!residence) return 0;
+  let filled = 0;
+  if (getAskingPrice(residence) !== null) filled += 1;
+  if (getUnitsRpa(residence) !== null) filled += 1;
+  if (getRegion(residence) !== null) filled += 1;
+  if (getResidenceType(residence) !== null) filled += 1;
+  return Math.round((filled / MANDATE_CRITICAL_FIELD_COUNT) * 100);
+}

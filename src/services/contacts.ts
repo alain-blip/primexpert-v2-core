@@ -10,12 +10,14 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   query,
   setDoc,
   updateDoc,
   where,
   writeBatch,
   type DocumentData,
+  type Unsubscribe,
 } from 'firebase/firestore';
 import {
   buildAddPartiePatch,
@@ -117,6 +119,42 @@ function canWriteOrganizationContact(
   contact: OrganizationContact
 ): boolean {
   return isContactAdmin(ctx) || contact.ownerId === ctx.uid;
+}
+
+/** Lecture contact CRM (Accès Vendeur, fiche détail). */
+export async function getOrganizationContact(
+  ctx: ContactServiceContext,
+  contactId: string
+): Promise<OrganizationContact | null> {
+  return getOrganizationContactDoc(ctx, contactId);
+}
+
+/** Écoute temps réel d'un contact CRM (Accès Vendeur). */
+export function subscribeOrganizationContact(
+  ctx: ContactServiceContext,
+  contactId: string,
+  onUpdate: (contact: OrganizationContact | null) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  if (!ctx.orgId || !contactId) {
+    onUpdate(null);
+    return () => {};
+  }
+  return onSnapshot(
+    doc(db, 'organizations', ctx.orgId, 'contacts', contactId),
+    (snap) => {
+      if (!snap.exists()) {
+        onUpdate(null);
+        return;
+      }
+      onUpdate(mapContactDoc(ctx.orgId, snap.id, snap.data()));
+    },
+    (err) => {
+      console.error('[contacts.subscribeOrganizationContact] failed', err);
+      onError?.(err as Error);
+      onUpdate(null);
+    }
+  );
 }
 
 async function getOrganizationContactDoc(
