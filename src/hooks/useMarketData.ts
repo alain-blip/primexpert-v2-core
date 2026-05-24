@@ -1,17 +1,23 @@
 /**
  * Lecture seule — market_analytics_raw + marketSnapshots/v1.
- * Paradigme Archiviste (fenêtre temporelle) + Statisticien (médianes régionales).
+ * Paradigme Archiviste + Statisticien (médianes, P&L régional, nettoyage régions).
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import {
+  cleanseMarketRegion,
+  cleanseTransactionRow,
+  computeRegionalPlStatements,
   computeRegionalSummaries,
   normalizeRatioLabelKey,
   parseMarketDateToMillis,
   sortTransactionsDesc,
+  buildGpsRegionFilterOptions,
+  type MarketGpsPlLine,
   type MarketGpsRatioSample,
+  type MarketGpsRegionalPl,
   type MarketGpsRegionalSummary,
   type MarketGpsTransaction,
 } from '@primexpert/core/market';
@@ -26,6 +32,30 @@ function resolveDocLabel(docId: unknown, names: Map<string, string>): string {
   return names.get(docId) ?? `${docId.slice(0, 10)}…`;
 }
 
+function coerceYear(v: unknown): number | undefined {
+  if (typeof v === 'number' && v > 1800 && v < 2100) return Math.round(v);
+  if (typeof v === 'string' && /^\d{4}$/.test(v.trim())) return Number(v.trim());
+  return undefined;
+}
+
+function coerceMarketDateString(v: unknown): string | null {
+  if (v == null) return null;
+  if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
+    return new Date(v).toISOString().slice(0, 10);
+  }
+  if (typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    if (typeof o.toMillis === 'function') {
+      return new Date((o.toMillis as () => number)()).toISOString().slice(0, 10);
+    }
+    if (typeof o.seconds === 'number') {
+      return new Date(o.seconds * 1000).toISOString().slice(0, 10);
+    }
+  }
+  const s = String(v).trim();
+  return s || null;
+}
+
 function mapAnalyticsTransaction(
   id: string,
   data: Record<string, unknown>,
@@ -35,18 +65,15 @@ function mapAnalyticsTransaction(
 
   const snap = data.comparableSnapshot as Record<string, unknown>;
   const txMeta = (data.marketTransactionMeta ?? {}) as Record<string, unknown>;
-  const region = String(data.regionAdministrative ?? '').trim() || '—';
+  const rawRegion = String(data.regionAdministrative ?? '').trim() || '—';
+  const city = String(snap.city ?? data.regionDisplayName ?? rawRegion).trim();
+  const region = cleanseMarketRegion(rawRegion, city);
   const anneeDonnees =
     typeof data.anneeDonnees === 'number' ? data.anneeDonnees : undefined;
-  const injectedAtMillis =
-    typeof data.injectedAtMillis === 'number' ? data.injectedAtMillis : undefined;
   const date =
-    txMeta.dateTransaction != null
-      ? String(txMeta.dateTransaction)
-      : anneeDonnees != null
-        ? String(anneeDonnees)
-        : null;
-  const sortMillis = parseMarketDateToMillis(date, anneeDonnees, injectedAtMillis);
+    coerceMarketDateString(txMeta.dateTransaction) ??
+    (anneeDonnees != null ? String(anneeDonnees) : null);
+  const sortMillis = parseMarketDateToMillis(date, anneeDonnees);
   const docId = txMeta.marketDocumentId;
   const adresse = txMeta.adresse != null ? String(txMeta.adresse).trim() : '';
 
@@ -57,10 +84,21 @@ function mapAnalyticsTransaction(
         ? txMeta.nbPortes
         : undefined;
 
-  return {
+  const anneeConstruction =
+    coerceYear(txMeta.anneeConstruction) ??
+    coerceYear(snap.yearBuilt) ??
+    coerceYear(txMeta.yearBuilt);
+
+  const sourceDocumentId =
+    typeof docId === 'string' && docId.trim() ? docId.trim() : undefined;
+  const sourceDocumentName = sourceDocumentId
+    ? resolveDocLabel(sourceDocumentId, docNames)
+    : undefined;
+
+  return cleanseTransactionRow({
     id,
     region,
-    city: String(snap.city ?? data.regionDisplayName ?? region).trim(),
+    city,
     address: adresse,
     date,
     sortMillis,
@@ -71,12 +109,18 @@ function mapAnalyticsTransaction(
     tgaPct: typeof snap.capRatePct === 'number' ? snap.capRatePct : undefined,
     prixParPi2:
       typeof txMeta.prixParPi2 === 'number' ? txMeta.prixParPi2 : undefined,
-    source: adresse || resolveDocLabel(docId, docNames),
-  };
+    anneeConstruction,
+    vendeur: txMeta.vendeur != null ? String(txMeta.vendeur).trim() : undefined,
+    acheteur: txMeta.acheteur != null ? String(txMeta.acheteur).trim() : undefined,
+    typeImmeuble:
+      txMeta.typeImmeuble != null ? String(txMeta.typeImmeuble).trim() : undefined,
+    source: adresse || sourceDocumentName || '—',
+    sourceDocumentId,
+    sourceDocumentName,
+  });
 }
 
 function extractRatioSamplesFromAnalytics(
-  id: string,
   data: Record<string, unknown>
 ): MarketGpsRatioSample[] {
   const benchMeta = (data.operationalBenchmarkMeta ?? {}) as Record<string, unknown>;
@@ -84,17 +128,16 @@ function extractRatioSamplesFromAnalytics(
     return [];
   }
 
-  const region = String(data.regionAdministrative ?? '').trim();
+  const rawRegion = String(data.regionAdministrative ?? '').trim();
+  const city = String(data.regionDisplayName ?? '').trim();
+  const region = cleanseMarketRegion(rawRegion, city);
   if (!region || region === '—') return [];
 
   const anneeDonnees =
     typeof data.anneeDonnees === 'number' ? data.anneeDonnees : undefined;
-  const injectedAtMillis =
-    typeof data.injectedAtMillis === 'number' ? data.injectedAtMillis : undefined;
   const sortMillis = parseMarketDateToMillis(
     anneeDonnees != null ? String(anneeDonnees) : null,
-    anneeDonnees,
-    injectedAtMillis
+    anneeDonnees
   );
 
   const amounts = Array.isArray(data.validatedAmounts)
@@ -118,7 +161,8 @@ function extractRatioSamplesFromAnalytics(
         sortMillis,
       });
     }
-    if (/porte|unit[eé]|\/\s*unit/i.test(a.label) && Number.isFinite(a.value)) {
+    if (/porte|unit[eé]|\/\s*unit|annuel/i.test(a.label) && Number.isFinite(a.value)) {
+      if (/ratio/i.test(a.label)) continue;
       samples.push({
         region,
         labelKey,
@@ -152,18 +196,26 @@ function mapSnapshotTransaction(
   index: number,
   docNames: Map<string, string>
 ): MarketGpsTransaction {
-  const region = String(row.regionAdministrative ?? '—').trim();
-  const date = row.dateTransaction != null ? String(row.dateTransaction) : null;
-  const injectedAtMillis =
-    typeof row.validatedAtMillis === 'number' ? row.validatedAtMillis : undefined;
-  const sortMillis = parseMarketDateToMillis(date, undefined, injectedAtMillis);
+  const rawRegion = String(row.regionAdministrative ?? '—').trim();
+  const city = String(row.ville ?? row.adresse ?? rawRegion).trim();
+  const region = cleanseMarketRegion(rawRegion, city);
+  const date = coerceMarketDateString(row.dateTransaction);
+  const anneeDonnees =
+    typeof row.anneeDonnees === 'number' ? row.anneeDonnees : coerceYear(row.anneeDonnees);
+  const sortMillis = parseMarketDateToMillis(
+    date ?? (anneeDonnees != null ? String(anneeDonnees) : null),
+    anneeDonnees
+  );
   const fp =
     typeof row.dedupeFingerprint === 'string' ? row.dedupeFingerprint : `snap-tx-${index}`;
 
-  return {
+  const sourceDocumentId =
+    typeof row.marketDocumentId === 'string' ? row.marketDocumentId : undefined;
+
+  return cleanseTransactionRow({
     id: fp,
     region,
-    city: String(row.ville ?? row.adresse ?? region).trim(),
+    city,
     address: row.adresse != null ? String(row.adresse).trim() : '',
     date,
     sortMillis,
@@ -172,24 +224,34 @@ function mapSnapshotTransaction(
     prixParPorte: typeof row.prixParPorte === 'number' ? row.prixParPorte : undefined,
     tgaPct: typeof row.tgaPct === 'number' ? row.tgaPct : undefined,
     prixParPi2: typeof row.prixParPi2 === 'number' ? row.prixParPi2 : undefined,
+    anneeConstruction: coerceYear(row.anneeConstruction),
+    vendeur: row.vendeur != null ? String(row.vendeur).trim() : undefined,
+    acheteur: row.acheteur != null ? String(row.acheteur).trim() : undefined,
+    typeImmeuble: row.typeImmeuble != null ? String(row.typeImmeuble).trim() : undefined,
     source: row.adresse
       ? String(row.adresse)
       : resolveDocLabel(row.marketDocumentId, docNames),
-  };
+    sourceDocumentId,
+    sourceDocumentName: sourceDocumentId
+      ? resolveDocLabel(sourceDocumentId, docNames)
+      : undefined,
+  });
 }
 
 function extractRatioSamplesFromSnapshotBench(
   row: Record<string, unknown>
 ): MarketGpsRatioSample[] {
-  const region = String(row.regionAdministrative ?? '').trim();
+  const rawRegion = String(row.regionAdministrative ?? '').trim();
+  const region = cleanseMarketRegion(rawRegion);
   if (!region || region === '—') return [];
 
   const label = String(row.label ?? 'Ratio').trim();
   const labelKey = normalizeRatioLabelKey(label);
+  const anneeDonnees =
+    typeof row.anneeDonnees === 'number' ? row.anneeDonnees : coerceYear(row.anneeDonnees);
   const sortMillis = parseMarketDateToMillis(
-    null,
-    undefined,
-    typeof row.validatedAtMillis === 'number' ? row.validatedAtMillis : undefined
+    anneeDonnees != null ? String(anneeDonnees) : null,
+    anneeDonnees
   );
   const samples: MarketGpsRatioSample[] = [];
 
@@ -216,6 +278,8 @@ function extractRatioSamplesFromSnapshotBench(
 
 function formatMacroHint(row: Record<string, unknown>, locale: 'fr' | 'en'): string {
   const parts: string[] = [];
+  const rawRegion = String(row.regionAdministrative ?? '').trim();
+  const region = rawRegion ? cleanseMarketRegion(rawRegion) : '';
   const cout = row.coutRemplacementNeuf as { montant?: number; unite?: string } | undefined;
   if (cout && typeof cout.montant === 'number') {
     const u = cout.unite === 'pi2' ? 'pi²' : cout.unite ?? 'unité';
@@ -235,9 +299,15 @@ function formatMacroHint(row: Record<string, unknown>, locale: 'fr' | 'en'): str
   return parts.join(' · ');
 }
 
+function cleanseRatioSample(s: MarketGpsRatioSample): MarketGpsRatioSample {
+  return { ...s, region: cleanseMarketRegion(s.region) };
+}
+
 export interface UseMarketDataResult {
   transactions: MarketGpsTransaction[];
   regionalSummaries: MarketGpsRegionalSummary[];
+  regionalPlStatements: MarketGpsRegionalPl[];
+  ratioSamples: MarketGpsRatioSample[];
   ratioSampleCount: number;
   loading: boolean;
   error: string | null;
@@ -245,6 +315,8 @@ export interface UseMarketDataResult {
   totalTransactionCount: number;
   totalRegionCount: number;
 }
+
+export type { MarketGpsPlLine, MarketGpsRegionalPl, MarketGpsTransaction };
 
 export function useMarketData(locale: 'fr' | 'en', brokerId?: string | null): UseMarketDataResult {
   const [analyticsTransactions, setAnalyticsTransactions] = useState<MarketGpsTransaction[]>(
@@ -274,7 +346,7 @@ export function useMarketData(locale: 'fr' | 'en', brokerId?: string | null): Us
           const data = d.data() as Record<string, unknown>;
           const tx = mapAnalyticsTransaction(d.id, data, docNames);
           if (tx) txs.push(tx);
-          ratios.push(...extractRatioSamplesFromAnalytics(d.id, data));
+          ratios.push(...extractRatioSamplesFromAnalytics(data));
         });
         setAnalyticsTransactions(txs);
         setAnalyticsRatioSamples(ratios);
@@ -311,7 +383,7 @@ export function useMarketData(locale: 'fr' | 'en', brokerId?: string | null): Us
         const macroMap = new Map<string, string>();
         for (const r of regions) {
           const row = r as Record<string, unknown>;
-          const region = String(row.regionAdministrative ?? '').trim();
+          const region = cleanseMarketRegion(String(row.regionAdministrative ?? '').trim());
           if (region) macroMap.set(region, formatMacroHint(row, locale));
         }
         setMacroByRegion(macroMap);
@@ -368,10 +440,11 @@ export function useMarketData(locale: 'fr' | 'en', brokerId?: string | null): Us
     const seen = new Set<string>();
     const merged: MarketGpsRatioSample[] = [];
     const add = (s: MarketGpsRatioSample, keyPrefix: string) => {
-      const key = `${keyPrefix}|${s.region}|${s.labelKey}|${s.ratioPct ?? ''}|${s.montantParPorte ?? ''}|${s.sortMillis}`;
+      const cleaned = cleanseRatioSample(s);
+      const key = `${keyPrefix}|${cleaned.region}|${cleaned.labelKey}|${cleaned.ratioPct ?? ''}|${cleaned.montantParPorte ?? ''}|${cleaned.sortMillis}`;
       if (seen.has(key)) return;
       seen.add(key);
-      merged.push(s);
+      merged.push(cleaned);
     };
     for (const s of analyticsRatioSamples) add(s, 'a');
     for (const s of snapshotRatioSamples) add(s, 's');
@@ -383,25 +456,35 @@ export function useMarketData(locale: 'fr' | 'en', brokerId?: string | null): Us
     [ratioSamples, macroByRegion]
   );
 
+  const regionalPlStatements = useMemo(
+    () => computeRegionalPlStatements(ratioSamples, macroByRegion),
+    [ratioSamples, macroByRegion]
+  );
+
   const regions = useMemo(() => {
-    const set = new Set<string>();
+    const labels: string[] = [];
     for (const t of transactions) {
-      if (t.region && t.region !== '—') set.add(t.region);
+      if (t.region && t.region !== '—') labels.push(t.region);
     }
-    for (const s of regionalSummaries) {
-      if (s.region && s.region !== '—') set.add(s.region);
+    for (const s of regionalPlStatements) {
+      if (s.region && s.region !== '—') labels.push(s.region);
     }
-    return [...set].sort((a, b) => a.localeCompare(b, locale === 'fr' ? 'fr-CA' : 'en-CA'));
-  }, [transactions, regionalSummaries, locale]);
+    for (const s of ratioSamples) {
+      if (s.region && s.region !== '—') labels.push(s.region);
+    }
+    return buildGpsRegionFilterOptions(labels);
+  }, [transactions, regionalPlStatements, ratioSamples]);
 
   return {
     transactions,
     regionalSummaries,
+    regionalPlStatements,
+    ratioSamples,
     ratioSampleCount: ratioSamples.length,
     loading: loadingAnalytics || loadingSnapshot,
     error,
     regions,
     totalTransactionCount: transactions.length,
-    totalRegionCount: regionalSummaries.length,
+    totalRegionCount: regionalPlStatements.length,
   };
 }

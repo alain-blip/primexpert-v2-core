@@ -1,4 +1,5 @@
 import { onCall, onRequest, HttpsError } from 'firebase-functions/v2/https';
+import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { setGlobalOptions } from 'firebase-functions/v2/options';
 import type { OAuthStatePayload } from './nylas/types';
 
@@ -119,6 +120,41 @@ export const propertyDocumentsReconcileScan = onCall({ invoker: 'public' }, asyn
     throw new HttpsError('failed-precondition', msg);
   }
 });
+
+/** Pont CRM passif — résidence → file validation Big Data (après analyse IA document). */
+export const propertyDocumentMarketBridge = onDocumentUpdated(
+  {
+    document: 'residences/{propertyId}/documents/{documentId}',
+    serviceAccount: VERTEX_RUNTIME_SA,
+    memory: '1GiB',
+    timeoutSeconds: 540,
+  },
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after) return;
+
+    const wasCompleted = before.parsingStatus === 'completed';
+    const isCompleted = after.parsingStatus === 'completed';
+    if (wasCompleted || !isCompleted) return;
+    if (after.marketBridgeDocumentId) return;
+
+    const { bridgePropertyDocumentToMarketVault, isEligibleForMarketBridge } = await import(
+      './documents/bridgePropertyDocumentToMarketVault'
+    );
+    if (!isEligibleForMarketBridge(after)) return;
+
+    const propertyId = event.params.propertyId;
+    const documentId = event.params.documentId;
+
+    try {
+      const result = await bridgePropertyDocumentToMarketVault(propertyId, documentId);
+      console.info('[propertyDocumentMarketBridge]', { propertyId, documentId, result });
+    } catch (e) {
+      console.error('[propertyDocumentMarketBridge]', { propertyId, documentId, e });
+    }
+  }
+);
 
 /** Parseur IA — rapport macro marché (Vault global market_documents). */
 export const marketDocumentParseIA = onCall(

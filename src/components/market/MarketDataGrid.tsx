@@ -1,5 +1,5 @@
 /**
- * Dashboard GPS — Archiviste (péremption 24 mois) + Statisticien (médianes régionales).
+ * Dashboard GPS — outil d'évaluation financière (comparables + état des résultats régional).
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -8,6 +8,8 @@ import {
   Archive,
   ChevronLeft,
   ChevronRight,
+  ChevronRight as RowChevron,
+  FileSpreadsheet,
   Loader2,
   MapPin,
   Table2,
@@ -15,26 +17,63 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useMarketData } from '../../hooks/useMarketData';
+import { MarketTransactionDrawer } from './MarketTransactionDrawer';
+import { MarketGpsKpiCards } from './MarketGpsKpiCards';
+import { MarketCharts } from './MarketCharts';
+import { MarketSourceTag } from './MarketSourceTag';
+import { MarketDetailedPnLTable } from './MarketDetailedPnLTable';
+import { MarketTrendCharts } from './MarketTrendCharts';
 import {
+  computeMarketGpsDashboardMetrics,
   DEFAULT_TEMPORAL_WINDOW,
   passesTemporalFilter,
   TRANSACTIONS_PAGE_SIZE,
+  coerceToGpsFilterRegion,
+  type MarketGpsPlLine,
+  type MarketGpsRegionalPl,
   type MarketGpsRegionalSummary,
   type MarketGpsTransaction,
   type MarketTemporalWindow,
+  type ValueRange,
 } from '@primexpert/core/market';
 
-type GpsViewTab = 'comparables' | 'ratios';
+type GpsViewTab = 'comparables' | 'ratios' | 'detailed-pl';
 
 function fmtMoney(n: number | undefined, locale: 'fr' | 'en'): string {
   if (n == null || !Number.isFinite(n)) return '—';
   return n.toLocaleString(locale === 'fr' ? 'fr-CA' : 'en-CA', { maximumFractionDigits: 0 });
 }
 
-function fmtPct(n: number | undefined, locale: 'fr' | 'en'): string {
+function fmtPctNum(n: number | undefined, locale: 'fr' | 'en'): string {
   if (n == null || !Number.isFinite(n)) return '—';
   const s = n.toFixed(1);
   return locale === 'fr' ? `${s.replace('.', ',')} %` : `${s} %`;
+}
+
+function formatUnitRange(r: ValueRange | undefined, locale: 'fr' | 'en'): string {
+  if (!r || r.count === 0 || r.min == null || r.median == null) return '—';
+  const lo = fmtMoney(r.min, locale);
+  const hi = fmtMoney(r.max ?? r.min, locale);
+  const med = fmtMoney(r.median, locale);
+  if (r.min === r.max) {
+    return locale === 'fr' ? `(Médiane : ${med} $)` : `(Median: ${med} $)`;
+  }
+  return locale === 'fr'
+    ? `[ ${lo} $ - ${hi} $ ] (Médiane : ${med} $)`
+    : `[ ${lo} $ - ${hi} $ ] (Median: ${med} $)`;
+}
+
+function formatPctRange(r: ValueRange | undefined, locale: 'fr' | 'en'): string {
+  if (!r || r.count === 0 || r.min == null || r.median == null) return '—';
+  const lo = fmtPctNum(r.min, locale);
+  const hi = fmtPctNum(r.max ?? r.min, locale);
+  const med = fmtPctNum(r.median, locale);
+  if (r.min === r.max) {
+    return locale === 'fr' ? `(Médiane : ${med})` : `(Median: ${med})`;
+  }
+  return locale === 'fr'
+    ? `[ ${lo} - ${hi} ] (Médiane : ${med})`
+    : `[ ${lo} - ${hi} ] (Median: ${med})`;
 }
 
 const TEMPORAL_OPTIONS: { value: MarketTemporalWindow; fr: string; en: string }[] = [
@@ -54,13 +93,13 @@ export function MarketDataGrid({
 }) {
   const {
     transactions,
-    regionalSummaries,
+    regionalPlStatements,
+    ratioSamples,
     ratioSampleCount,
     loading,
     error,
     regions,
     totalTransactionCount,
-    totalRegionCount,
   } = useMarketData(locale, brokerId);
 
   const [viewTab, setViewTab] = useState<GpsViewTab>('comparables');
@@ -68,26 +107,51 @@ export function MarketDataGrid({
     useState<MarketTemporalWindow>(DEFAULT_TEMPORAL_WINDOW);
   const [regionFilter, setRegionFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
+  const [selectedTx, setSelectedTx] = useState<MarketGpsTransaction | null>(null);
 
   useEffect(() => {
     setPage(1);
   }, [temporalWindow, regionFilter, viewTab]);
 
+  const matchesRegionFilter = (region: string, city?: string) =>
+    regionFilter === 'all' || coerceToGpsFilterRegion(region, city) === regionFilter;
+
   const filteredTransactions = useMemo(() => {
     return transactions.filter((row) => {
       if (!passesTemporalFilter(row.sortMillis, temporalWindow)) return false;
-      if (regionFilter !== 'all' && row.region !== regionFilter) return false;
+      if (!matchesRegionFilter(row.region, row.city)) return false;
       return true;
     });
   }, [transactions, temporalWindow, regionFilter]);
 
-  const filteredSummaries = useMemo(() => {
-    return regionalSummaries.filter((row) => {
+  const filteredPl = useMemo(() => {
+    return regionalPlStatements.filter((row) => {
       if (!passesTemporalFilter(row.sortMillis, temporalWindow)) return false;
-      if (regionFilter !== 'all' && row.region !== regionFilter) return false;
+      if (!matchesRegionFilter(row.region)) return false;
       return true;
     });
-  }, [regionalSummaries, temporalWindow, regionFilter]);
+  }, [regionalPlStatements, temporalWindow, regionFilter]);
+
+  const filteredRatioSamples = useMemo(() => {
+    return ratioSamples.filter((row) => {
+      if (!passesTemporalFilter(row.sortMillis, temporalWindow)) return false;
+      if (!matchesRegionFilter(row.region)) return false;
+      return true;
+    });
+  }, [ratioSamples, temporalWindow, regionFilter]);
+
+  const regionOnlyRatioSamples = useMemo(() => {
+    return ratioSamples.filter((row) => matchesRegionFilter(row.region));
+  }, [ratioSamples, regionFilter]);
+
+  const regionOnlyTransactions = useMemo(() => {
+    return transactions.filter((row) => matchesRegionFilter(row.region, row.city));
+  }, [transactions, regionFilter]);
+
+  const dashboardMetrics = useMemo(
+    () => computeMarketGpsDashboardMetrics(filteredTransactions, filteredPl),
+    [filteredTransactions, filteredPl]
+  );
 
   const pageCount = Math.max(1, Math.ceil(filteredTransactions.length / TRANSACTIONS_PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -100,6 +164,10 @@ export function MarketDataGrid({
     'rounded-lg border-2 border-[#142c6a]/30 bg-white px-3 py-2 text-[11px] font-bold text-slate-900 shadow-sm focus:border-[#142c6a] focus:outline-none';
 
   const inArchiveMode = temporalWindow === 'all';
+  const windowLabel =
+    TEMPORAL_OPTIONS.find((o) => o.value === temporalWindow)?.fr ?? '24 mois';
+  const windowLabelEn =
+    TEMPORAL_OPTIONS.find((o) => o.value === temporalWindow)?.en ?? '24 months';
 
   return (
     <div className="rounded-xl border-2 border-white/20 bg-white p-4 sm:p-5 space-y-4 text-slate-900">
@@ -108,7 +176,7 @@ export function MarketDataGrid({
           <div className="flex items-center gap-2">
             <Table2 className="h-5 w-5 text-[#142c6a]" aria-hidden />
             <h2 className="text-base font-black text-[#142c6a]">
-              {t('Consultation GPS — Big Data', 'GPS consultation — Big Data')}
+              {t('Statistiques du marché', 'Market statistics')}
             </h2>
           </div>
           <p className="text-[11px] text-slate-600 mt-1">
@@ -116,13 +184,18 @@ export function MarketDataGrid({
               ? t('Chargement des données compilées…', 'Loading compiled data…')
               : viewTab === 'comparables'
                 ? t(
-                    `${filteredTransactions.length} comparable(s) · fenêtre : ${TEMPORAL_OPTIONS.find((o) => o.value === temporalWindow)?.fr ?? '24 mois'} · ${totalTransactionCount} en base.`,
-                    `${filteredTransactions.length} comparable(s) · window: ${TEMPORAL_OPTIONS.find((o) => o.value === temporalWindow)?.en ?? '24 months'} · ${totalTransactionCount} in database.`
+                    `${filteredTransactions.length} comparables (fenêtre ${windowLabel}) · ${totalTransactionCount} en base`,
+                    `${filteredTransactions.length} comparables (${windowLabelEn} window) · ${totalTransactionCount} in database`
                   )
-                : t(
-                    `${filteredSummaries.length} résumé(s) régional(aux) · ${ratioSampleCount} échantillons agrégés · ${totalRegionCount} régions.`,
-                    `${filteredSummaries.length} regional summary(ies) · ${ratioSampleCount} aggregated samples · ${totalRegionCount} regions.`
-                  )}
+                : viewTab === 'ratios'
+                  ? t(
+                      `${filteredRatioSamples.length} échantillons (fenêtre ${windowLabel}) · ${ratioSampleCount} en base · ${filteredPl.length} région(s)`,
+                      `${filteredRatioSamples.length} samples (${windowLabelEn} window) · ${ratioSampleCount} in database · ${filteredPl.length} region(s)`
+                    )
+                  : t(
+                      `${filteredRatioSamples.length} postes dans la fenêtre · historique complet pour tendances`,
+                      `${filteredRatioSamples.length} line items in window · full history for trends`
+                    )}
           </p>
         </div>
 
@@ -181,48 +254,14 @@ export function MarketDataGrid({
         </div>
       </div>
 
-      <div
-        className="flex flex-wrap gap-2 border-b border-slate-200 pb-1"
-        role="tablist"
-        aria-label={t('Vues GPS', 'GPS views')}
-      >
-        {(
-          [
-            {
-              id: 'comparables' as const,
-              icon: MapPin,
-              labelFr: 'Comparables de ventes',
-              labelEn: 'Sale comparables',
-            },
-            {
-              id: 'ratios' as const,
-              icon: TrendingUp,
-              labelFr: 'Analyses et ratios',
-              labelEn: 'Analysis and ratios',
-            },
-          ] as const
-        ).map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={viewTab === tab.id}
-              onClick={() => setViewTab(tab.id)}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-t-lg px-4 py-2 text-[10px] font-black uppercase tracking-widest transition',
-                viewTab === tab.id
-                  ? 'bg-[#142c6a] text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-100'
-              )}
-            >
-              <Icon className="h-3.5 w-3.5" aria-hidden />
-              {t(tab.labelFr, tab.labelEn)}
-            </button>
-          );
-        })}
-      </div>
+      {!loading && !error ? (
+        <>
+          <MarketGpsKpiCards metrics={dashboardMetrics} locale={locale} t={t} />
+          <MarketCharts metrics={dashboardMetrics} locale={locale} t={t} />
+        </>
+      ) : null}
+
+      <motionlessTabs viewTab={viewTab} setViewTab={setViewTab} t={t} />
 
       {error ? (
         <div
@@ -235,34 +274,115 @@ export function MarketDataGrid({
       ) : null}
 
       {viewTab === 'comparables' ? (
-        <ComparablesTable
-          rows={pageRows}
-          loading={loading}
-          locale={locale}
-          t={t}
-          empty={!loading && filteredTransactions.length === 0}
-        />
+        <>
+          <ComparablesTable
+            rows={pageRows}
+            loading={loading}
+            locale={locale}
+            t={t}
+            empty={!loading && filteredTransactions.length === 0}
+            onRowClick={setSelectedTx}
+          />
+          {!loading && filteredTransactions.length > 0 ? (
+            <PaginationBar
+              page={safePage}
+              pageCount={pageCount}
+              total={filteredTransactions.length}
+              pageSize={TRANSACTIONS_PAGE_SIZE}
+              onPage={setPage}
+              t={t}
+            />
+          ) : null}
+        </>
+      ) : viewTab === 'ratios' ? (
+        <RegionalPlView statements={filteredPl} loading={loading} locale={locale} t={t} />
       ) : (
-        <RegionalRatiosTable
-          rows={filteredSummaries}
-          loading={loading}
-          locale={locale}
-          t={t}
-          empty={!loading && filteredSummaries.length === 0}
-        />
+        <div className="space-y-6">
+          <MarketTrendCharts
+            ratioSamples={regionOnlyRatioSamples}
+            transactions={regionOnlyTransactions}
+            regionFilter={regionFilter}
+            locale={locale}
+            t={t}
+          />
+          <MarketDetailedPnLTable
+            ratioSamples={filteredRatioSamples}
+            regionFilter={regionFilter}
+            temporalWindow={temporalWindow}
+            locale={locale}
+            loading={loading}
+            t={t}
+          />
+        </div>
       )}
 
-      {viewTab === 'comparables' && !loading && filteredTransactions.length > 0 ? (
-        <PaginationBar
-          page={safePage}
-          pageCount={pageCount}
-          total={filteredTransactions.length}
-          pageSize={TRANSACTIONS_PAGE_SIZE}
-          onPage={setPage}
-          locale={locale}
-          t={t}
-        />
-      ) : null}
+      <MarketTransactionDrawer
+        transaction={selectedTx}
+        locale={locale}
+        t={t}
+        onClose={() => setSelectedTx(null)}
+      />
+    </div>
+  );
+}
+
+function motionlessTabs({
+  viewTab,
+  setViewTab,
+  t,
+}: {
+  viewTab: GpsViewTab;
+  setViewTab: (v: GpsViewTab) => void;
+  t: (fr: string, en: string) => string;
+}) {
+  return (
+    <div
+      className="flex flex-wrap gap-2 border-b border-slate-200 pb-1"
+      role="tablist"
+      aria-label={t('Vues GPS', 'GPS views')}
+    >
+      {(
+        [
+          {
+            id: 'comparables' as const,
+            icon: MapPin,
+            labelFr: 'Comparables de ventes',
+            labelEn: 'Sale comparables',
+          },
+          {
+            id: 'ratios' as const,
+            icon: TrendingUp,
+            labelFr: 'Analyses et ratios',
+            labelEn: 'Analysis and ratios',
+          },
+          {
+            id: 'detailed-pl' as const,
+            icon: FileSpreadsheet,
+            labelFr: '3. État des résultats détaillé',
+            labelEn: '3. Detailed P&L statement',
+          },
+        ] as const
+      ).map((tab) => {
+        const Icon = tab.icon;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={viewTab === tab.id}
+            onClick={() => setViewTab(tab.id)}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-t-lg px-4 py-2 text-[10px] font-black uppercase tracking-widest transition',
+              viewTab === tab.id
+                ? 'bg-[#142c6a] text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-100'
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" aria-hidden />
+            {t(tab.labelFr, tab.labelEn)}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -273,34 +393,38 @@ function ComparablesTable({
   locale,
   t,
   empty,
+  onRowClick,
 }: {
   rows: MarketGpsTransaction[];
   loading: boolean;
   locale: 'fr' | 'en';
   t: (fr: string, en: string) => string;
   empty: boolean;
+  onRowClick: (row: MarketGpsTransaction) => void;
 }) {
   return (
     <div className="relative overflow-auto rounded-xl border border-slate-200 shadow-inner max-h-[min(65vh,640px)]">
-      <table className="min-w-[900px] w-full border-collapse text-[11px] text-slate-900">
+      <table className="min-w-[980px] w-full border-collapse text-[11px] text-slate-900">
         <thead className="sticky top-0 z-10 bg-[#142c6a] text-left text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
           <tr>
-            <th className="px-3 py-3 min-w-[200px]">{t('Adresse / Ville', 'Address / City')}</th>
+            <th className="px-2 py-3 w-6" aria-hidden />
+            <th className="px-3 py-3 whitespace-nowrap">{t('Source', 'Source')}</th>
+            <th className="px-3 py-3 min-w-[180px]">{t('Adresse / Ville', 'Address / City')}</th>
             <th className="px-3 py-3">{t('Région', 'Region')}</th>
             <th className="px-3 py-3 whitespace-nowrap">{t('Date', 'Date')}</th>
+            <th className="px-3 py-3 whitespace-nowrap">{t('Année constr.', 'Year built')}</th>
             <th className="px-3 py-3 text-right">{t('Prix de vente', 'Sale price')}</th>
             <th className="px-3 py-3 text-right">{t('Unités', 'Units')}</th>
             <th className="px-3 py-3 text-right">{t('Prix / unité', 'Price / unit')}</th>
             <th className="px-3 py-3 text-right">
               {t('Taux de capitalisation (TGA)', 'Capitalization rate (cap rate)')}
             </th>
-            <th className="px-3 py-3 min-w-[120px]">{t('Source', 'Source')}</th>
           </tr>
         </thead>
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={8} className="px-4 py-16 text-center text-slate-500">
+              <td colSpan={10} className="px-4 py-16 text-center text-slate-500">
                 <span className="inline-flex items-center gap-2">
                   <Loader2 className="h-5 w-5 animate-spin" />
                   {t('Chargement…', 'Loading…')}
@@ -309,7 +433,7 @@ function ComparablesTable({
             </tr>
           ) : empty ? (
             <tr>
-              <td colSpan={8} className="px-4 py-16 text-center text-slate-500">
+              <td colSpan={10} className="px-4 py-16 text-center text-slate-500">
                 {t(
                   'Aucun comparable pour cette fenêtre. Élargissez la période ou téléversez un rapport dans l’onglet Ingestion.',
                   'No comparables for this window. Widen the period or upload a report in the Ingestion tab.'
@@ -320,22 +444,40 @@ function ComparablesTable({
             rows.map((row, idx) => (
               <tr
                 key={row.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => onRowClick(row)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onRowClick(row);
+                  }
+                }}
                 className={cn(
-                  'border-t border-slate-100 hover:bg-slate-100/80 transition-colors',
+                  'border-t border-slate-100 hover:bg-[#142c6a]/5 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#142c6a]/40',
                   idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/90'
                 )}
               >
+                <td className="px-2 py-2.5 text-slate-400">
+                  <RowChevron className="h-3.5 w-3.5" aria-hidden />
+                </td>
                 <td className="px-3 py-2.5 align-top">
-                  <p className="font-semibold text-[#142c6a]">
-                    {row.address || row.city}
-                  </p>
-                  {row.address ? (
-                    <p className="text-slate-500 text-[10px]">{row.city}</p>
-                  ) : null}
+                  <MarketSourceTag
+                    sourceDocumentName={row.sourceDocumentName}
+                    source={row.source}
+                    sourceDocumentId={row.sourceDocumentId}
+                  />
+                </td>
+                <td className="px-3 py-2.5 align-top">
+                  <p className="font-semibold text-[#142c6a]">{row.address || row.city}</p>
+                  {row.address ? <p className="text-slate-500 text-[10px]">{row.city}</p> : null}
                 </td>
                 <td className="px-3 py-2.5 align-top text-slate-700">{row.region}</td>
                 <td className="px-3 py-2.5 align-top tabular-nums whitespace-nowrap">
                   {row.date ?? '—'}
+                </td>
+                <td className="px-3 py-2.5 align-top tabular-nums text-center font-medium">
+                  {row.anneeConstruction ?? '—'}
                 </td>
                 <td className="px-3 py-2.5 align-top text-right tabular-nums font-medium">
                   {fmtMoney(row.prixVente, locale)} $
@@ -353,116 +495,171 @@ function ComparablesTable({
                       : `${row.tgaPct.toFixed(2)} %`
                     : '—'}
                 </td>
-                <td
-                  className="px-3 py-2.5 align-top text-slate-700 max-w-[200px] truncate"
-                  title={row.source}
-                >
-                  {row.source}
-                </td>
               </tr>
             ))
           )}
         </tbody>
       </table>
+      <p className="px-3 py-2 text-[10px] text-slate-500 border-t border-slate-100 bg-slate-50">
+        {t(
+          'Cliquez une ligne pour ouvrir la fiche complète (vendeur, acheteur, document source).',
+          'Click a row to open the full sheet (seller, buyer, source document).'
+        )}
+      </p>
     </div>
   );
 }
 
-function RegionalRatiosTable({
-  rows,
+function RegionalPlView({
+  statements,
   loading,
   locale,
   t,
-  empty,
 }: {
-  rows: MarketGpsRegionalSummary[];
+  statements: MarketGpsRegionalPl[];
   loading: boolean;
   locale: 'fr' | 'en';
   t: (fr: string, en: string) => string;
-  empty: boolean;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16 text-slate-500 gap-2">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        {t('Construction des états des résultats…', 'Building P&L statements…')}
+      </div>
+    );
+  }
+
+  if (!statements.length) {
+    return (
+      <p className="py-16 text-center text-slate-500 text-sm">
+        {t(
+          'Aucun ratio régional pour cette fenêtre. Téléversez un rapport marché dans l’onglet Ingestion.',
+          'No regional ratios for this window. Upload a market report in the Ingestion tab.'
+        )}
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-6 max-h-[min(70vh,720px)] overflow-y-auto pr-1">
+      {statements.map((pl) => (
+        <RegionalPlCard key={pl.id} pl={pl} locale={locale} t={t} />
+      ))}
+    </div>
+  );
+}
+
+function RegionalPlCard({
+  pl,
+  locale,
+  t,
+}: {
+  pl: MarketGpsRegionalPl;
+  locale: 'fr' | 'en';
+  t: (fr: string, en: string) => string;
 }) {
   return (
-    <div className="relative overflow-auto rounded-xl border border-slate-200 shadow-inner max-h-[min(65vh,640px)]">
-      <table className="min-w-[880px] w-full border-collapse text-[11px] text-slate-900">
-        <thead className="sticky top-0 z-10 bg-[#142c6a] text-left text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
-          <tr>
-            <th className="px-3 py-3">{t('Région', 'Region')}</th>
-            <th className="px-3 py-3 text-right">
-              {t("Ratio des dépenses d'exploitation (RDE) — médiane", 'Operating expense ratio — median')}
-            </th>
-            <th className="px-3 py-3 text-right">
-              {t('Énergie — médiane ($/unité)', 'Energy — median ($/unit)')}
-            </th>
-            <th className="px-3 py-3 text-right">
-              {t('Salaires — médiane ($/unité)', 'Salaries — median ($/unit)')}
-            </th>
-            <th className="px-3 py-3 text-right">
-              {t('Entretien — médiane ($/unité)', 'Maintenance — median ($/unit)')}
-            </th>
-            <th className="px-3 py-3 text-center">{t('Échantillons', 'Samples')}</th>
-            <th className="px-3 py-3 min-w-[160px]">{t('Indicateurs macro', 'Macro indicators')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {loading ? (
+    <section className="rounded-xl border-2 border-slate-200 overflow-hidden shadow-sm">
+      <header className="bg-[#142c6a] px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-white/70">
+            {t('État des résultats régional', 'Regional P&L statement')}
+          </p>
+          <h3 className="text-sm font-black text-white">{pl.region}</h3>
+        </div>
+        <p className="text-[10px] text-white/80 tabular-nums">
+          {pl.sampleCount} {t('échantillons', 'samples')}
+        </p>
+      </header>
+
+      {pl.macroHint ? (
+        <p className="text-[10px] text-slate-600 px-4 py-2 bg-slate-50 border-b border-slate-100">
+          {pl.macroHint}
+        </p>
+      ) : null}
+
+      <div className="overflow-x-auto">
+        <table className="min-w-[720px] w-full text-[11px] text-slate-900">
+          <thead className="bg-slate-100 text-[9px] font-black uppercase tracking-wider text-slate-600">
             <tr>
-              <td colSpan={7} className="px-4 py-16 text-center text-slate-500">
-                <span className="inline-flex items-center gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  {t('Calcul des médianes régionales…', 'Computing regional medians…')}
-                </span>
-              </td>
+              <th className="px-4 py-2 text-left">{t('Poste', 'Line item')}</th>
+              <th className="px-4 py-2 text-right">{t('$/unité', '$/unit')}</th>
+              <th className="px-4 py-2 text-right">{t('% du revenu brut effectif (RBE)', '% of effective gross income (EGI)')}</th>
             </tr>
-          ) : empty ? (
-            <tr>
-              <td colSpan={7} className="px-4 py-16 text-center text-slate-500">
-                {t(
-                  'Aucun résumé régional pour cette fenêtre. Les ratios sont regroupés par région — pas de lignes individuelles.',
-                  'No regional summary for this window. Ratios are grouped by region — no individual rows.'
-                )}
-              </td>
-            </tr>
-          ) : (
-            rows.map((row, idx) => (
-              <tr
-                key={row.id}
-                className={cn(
-                  'border-t border-slate-100 hover:bg-slate-100/80 transition-colors',
-                  idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/90'
-                )}
-              >
-                <td className="px-3 py-2.5 align-top font-semibold text-[#142c6a]">
-                  {row.region}
-                </td>
-                <td className="px-3 py-2.5 align-top text-right tabular-nums font-bold">
-                  {fmtPct(row.rdeMedianPct, locale)}
-                </td>
-                <td className="px-3 py-2.5 align-top text-right tabular-nums font-medium">
-                  {row.energieMedianPerDoor != null
-                    ? `${fmtMoney(row.energieMedianPerDoor, locale)} $`
-                    : '—'}
-                </td>
-                <td className="px-3 py-2.5 align-top text-right tabular-nums font-medium">
-                  {row.salairesMedianPerDoor != null
-                    ? `${fmtMoney(row.salairesMedianPerDoor, locale)} $`
-                    : '—'}
-                </td>
-                <td className="px-3 py-2.5 align-top text-right tabular-nums">
-                  {row.entretienMedianPerDoor != null
-                    ? `${fmtMoney(row.entretienMedianPerDoor, locale)} $`
-                    : '—'}
-                </td>
-                <td className="px-3 py-2.5 align-top text-center tabular-nums text-slate-600">
-                  {row.sampleCount}
-                </td>
-                <td className="px-3 py-2.5 align-top text-[10px] text-slate-600 leading-snug">
-                  {row.macroHint ?? '—'}
-                </td>
-              </tr>
-            ))
+          </thead>
+          <tbody>
+            {pl.lines.map((line) => (
+              <PlRow key={line.id} line={line} locale={locale} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <footer className="grid grid-cols-1 sm:grid-cols-3 gap-2 px-4 py-3 bg-slate-50 border-t border-slate-200 text-[10px]">
+        <SummaryChip
+          label={t('Zone RBE / unité', 'EGI / unit range')}
+          value={formatUnitRange(pl.rbePerUnit, locale)}
+        />
+        <SummaryChip
+          label={t('Zone RDE', 'OER range')}
+          value={formatPctRange(pl.rdePct, locale)}
+        />
+        <SummaryChip
+          label={t('Zone RNE / unité', 'NOI / unit range')}
+          value={formatUnitRange(pl.rnePerUnit, locale)}
+        />
+      </footer>
+    </section>
+  );
+}
+
+function PlRow({ line, locale }: { line: MarketGpsPlLine; locale: 'fr' | 'en' }) {
+  const isHeader = line.section === 'group-header';
+  const label = locale === 'fr' ? line.labelFr : line.labelEn;
+
+  if (isHeader) {
+    return (
+      <tr className={cn('bg-slate-50', line.indent && 'bg-white')}>
+        <td
+          colSpan={3}
+          className={cn(
+            'px-4 py-2 font-black uppercase tracking-wide text-[#142c6a]',
+            line.indent ? 'text-[10px] pl-8' : 'text-[11px]'
           )}
-        </tbody>
-      </table>
+        >
+          {label}
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr
+      className={cn(
+        'border-t border-slate-100',
+        line.isSubtotal && 'bg-amber-50/60 font-bold',
+        line.indent && !line.isSubtotal && 'text-slate-800'
+      )}
+    >
+      <td className={cn('px-4 py-2', line.indent && 'pl-8')}>{label}</td>
+      <td className="px-4 py-2 text-right tabular-nums whitespace-nowrap">
+        {line.section === 'depense' && line.id === 'rde-total'
+          ? '—'
+          : formatUnitRange(line.perUnit, locale)}
+      </td>
+      <td className="px-4 py-2 text-right tabular-nums whitespace-nowrap text-[10px] leading-snug">
+        {formatPctRange(line.pctRbe, locale)}
+      </td>
+    </tr>
+  );
+}
+
+function SummaryChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="font-black uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="font-semibold text-slate-900 mt-0.5 leading-snug">{value}</p>
     </div>
   );
 }
@@ -473,7 +670,6 @@ function PaginationBar({
   total,
   pageSize,
   onPage,
-  locale,
   t,
 }: {
   page: number;
@@ -481,7 +677,6 @@ function PaginationBar({
   total: number;
   pageSize: number;
   onPage: (p: number) => void;
-  locale: 'fr' | 'en';
   t: (fr: string, en: string) => string;
 }) {
   const from = (page - 1) * pageSize + 1;

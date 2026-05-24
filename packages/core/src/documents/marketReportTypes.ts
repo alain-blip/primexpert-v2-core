@@ -52,6 +52,7 @@ export interface ComparableTransactionRow {
   tgaPct?: number | null;
   superficiePi2?: number | null;
   prixParPi2?: number | null;
+  anneeConstruction?: number | null;
   vendeur?: string;
   acheteur?: string;
   typeImmeuble?: string;

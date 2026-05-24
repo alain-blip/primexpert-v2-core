@@ -89,6 +89,16 @@ function mapDoc(id: string, data: Record<string, unknown>): MarketDocumentRecord
       data.extractedData && typeof data.extractedData === 'object'
         ? (data.extractedData as MarketDocumentRecord['extractedData'])
         : undefined,
+    bridgeOrigin:
+      data.bridgeOrigin === 'residence_passive' ? 'residence_passive' : undefined,
+    sourcePropertyId:
+      typeof data.sourcePropertyId === 'string' ? data.sourcePropertyId : undefined,
+    sourcePropertyDocumentId:
+      typeof data.sourcePropertyDocumentId === 'string'
+        ? data.sourcePropertyDocumentId
+        : undefined,
+    sourcePropertyLabel:
+      typeof data.sourcePropertyLabel === 'string' ? data.sourcePropertyLabel : undefined,
   };
 }
 

@@ -76,6 +76,7 @@ export const ComparableTransactionRowSchema = z.object({
   vendeur: z.string().optional(),
   acheteur: z.string().optional(),
   typeImmeuble: z.string().optional(),
+  anneeConstruction: z.number().nullable().optional(),
 });
 
 export const OperationalBenchmarkRowSchema = z.object({

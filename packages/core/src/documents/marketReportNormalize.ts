@@ -158,6 +158,10 @@ function normalizeTransactionRow(raw: unknown, index: number): ComparableTransac
     vendeur: String(row.vendeur ?? row.seller ?? row.vendeurNom ?? '').trim() || undefined,
     acheteur: String(row.acheteur ?? row.buyer ?? row.acheteurNom ?? '').trim() || undefined,
     typeImmeuble: String(row.typeImmeuble ?? row.type ?? row.assetType ?? '').trim() || undefined,
+    anneeConstruction:
+      coerceNum(row.anneeConstruction ?? row.yearBuilt) != null
+        ? Math.round(coerceNum(row.anneeConstruction ?? row.yearBuilt)!)
+        : null,
   };
 }
 

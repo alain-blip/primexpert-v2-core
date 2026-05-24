@@ -135,8 +135,10 @@ function normalizeTransactionRow(raw: unknown, index: number): ComparableTransac
   if (!ville && !adresse) return null;
 
   const prixVente = coerceNum(row.prixVente ?? row.prix ?? row.salePrice ?? row.montant);
-  const nbPortes = coerceNum(row.nbPortes ?? row.portes ?? row.units ?? row.unites);
-  const prixParPorte = coerceNum(row.prixParPorte ?? row.prixPorte ?? row.pricePerDoor);
+  const nbPortes = coerceNum(row.nbPortes ?? row.nbUnites ?? row.portes ?? row.units ?? row.unites);
+  const prixParPorte = coerceNum(
+    row.prixParPorte ?? row.prixParUnite ?? row.prixPorte ?? row.pricePerDoor ?? row.pricePerUnit
+  );
   const tgaPct = coerceNum(row.tgaPct ?? row.tga ?? row.capRatePct ?? row.capRate);
   const superficiePi2 = coerceNum(row.superficiePi2 ?? row.pi2 ?? row.superficie);
   const prixParPi2 = coerceNum(row.prixParPi2 ?? row.prixPi2 ?? row.pricePerSqft);
@@ -153,13 +155,19 @@ function normalizeTransactionRow(raw: unknown, index: number): ComparableTransac
     dateTransaction: String(row.dateTransaction ?? row.date ?? row.dateVente ?? '').trim() || undefined,
     prixVente,
     nbPortes: nbPortes != null ? Math.round(nbPortes) : null,
+    nbUnites: nbPortes != null ? Math.round(nbPortes) : null,
     prixParPorte,
+    prixParUnite: prixParPorte,
     tgaPct,
     superficiePi2,
     prixParPi2,
     vendeur: String(row.vendeur ?? row.seller ?? row.vendeurNom ?? '').trim() || undefined,
     acheteur: String(row.acheteur ?? row.buyer ?? row.acheteurNom ?? '').trim() || undefined,
     typeImmeuble: String(row.typeImmeuble ?? row.type ?? row.assetType ?? '').trim() || undefined,
+    anneeConstruction:
+      coerceNum(row.anneeConstruction ?? row.yearBuilt) != null
+        ? Math.round(coerceNum(row.anneeConstruction ?? row.yearBuilt)!)
+        : null,
   };
 }
 
@@ -176,7 +184,12 @@ function normalizeOperationalRow(raw: unknown, index: number): OperationalBenchm
     label,
     regionAdministrative: String(row.regionAdministrative ?? row.region ?? '').trim() || undefined,
     ratioPct: coerceNum(row.ratioPct ?? row.ratio ?? row.pct),
-    montantParPorte: coerceNum(row.montantParPorte ?? row.montantParUnite ?? row.perDoor),
+    montantParPorte: coerceNum(
+      row.montantParPorte ?? row.montantParUnite ?? row.perDoor ?? row.perUnit
+    ),
+    montantParUnite: coerceNum(
+      row.montantParUnite ?? row.montantParPorte ?? row.perDoor ?? row.perUnit
+    ),
     montantAnnuel: coerceNum(row.montantAnnuel ?? row.montant ?? row.amount),
     categorie: String(row.categorie ?? row.category ?? '').trim() || undefined,
   };

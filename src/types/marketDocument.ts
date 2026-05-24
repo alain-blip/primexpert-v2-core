@@ -29,6 +29,11 @@ export interface MarketDocumentRecord {
   isValidated?: boolean;
   validatedAtMillis?: number;
   extractedData?: MasterMarketExtraction | Record<string, unknown>;
+  /** Pont CRM passif — document issu d'une fiche résidence. */
+  bridgeOrigin?: 'residence_passive';
+  sourcePropertyId?: string;
+  sourcePropertyDocumentId?: string;
+  sourcePropertyLabel?: string;
 }
 
 export interface MarketMacroStatsEntry {
