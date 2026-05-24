@@ -37,7 +37,7 @@ export function MarketTrendCharts({
   locale: 'fr' | 'en';
   t: (fr: string, en: string) => string;
 }) {
-  const [metricKey, setMetricKey] = useState<TrendMetricKey>('salaires');
+  const [metricKey, setMetricKey] = useState<TrendMetricKey>('salairesAvantages');
   const [granularity, setGranularity] = useState<TrendGranularity>('year');
 
   const series = useMemo(

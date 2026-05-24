@@ -3,6 +3,15 @@
  */
 
 import { normalizeAdministrativeRegion } from './marketRegionNormalize';
+import {
+  classifyExpenseGroup,
+  compareExpenseLineKeys,
+  normalizeRatioLabelKey,
+  resolveExpenseLineMeta,
+  canonicalExpenseKey,
+} from './marketPlExpenseDictionary';
+
+export { normalizeRatioLabelKey, classifyExpenseGroup } from './marketPlExpenseDictionary';
 
 export type MarketTemporalWindow = '12m' | '24m' | 'all';
 
@@ -162,52 +171,6 @@ export function computeValueRange(values: number[]): ValueRange {
   };
 }
 
-/** Clé de regroupement ratio (RDE, énergie, salaires…). */
-export function normalizeRatioLabelKey(label: string): string {
-  const l = label.toLowerCase();
-  if (/rde|ratio des d[eé]penses|operating expense/.test(l)) return 'rde';
-  if (/^rbe|revenu brut|effective gross|egi/.test(l)) return 'rbe';
-  if (/^rne|revenu net|net operating|noi/.test(l)) return 'rne';
-  if (/[eé]nergie|energy/.test(l)) return 'energie';
-  if (/salaire|salary|main d'[oœ]uvre/.test(l)) return 'salaires';
-  if (/entretien|maintenance/.test(l)) return 'entretien';
-  if (/nourriture|food|alimentation/.test(l)) return 'nourriture';
-  if (/taxe|taxes|municipal/.test(l)) return 'taxes';
-  if (/assurance|insurance/.test(l)) return 'assurance';
-  if (/administration|admin/.test(l)) return 'administration';
-  if (/gestion|management/.test(l)) return 'gestion';
-  return 'autre';
-}
-
-export function classifyExpenseGroup(labelKey: string): PlExpenseGroup {
-  switch (labelKey) {
-    case 'energie':
-    case 'taxes':
-    case 'assurance':
-      return 'fixes';
-    case 'administration':
-    case 'gestion':
-      return 'gestion';
-    default:
-      return 'operationnelles';
-  }
-}
-
-const EXPENSE_LINE_META: Record<
-  string,
-  { labelFr: string; labelEn: string; group: PlExpenseGroup }
-> = {
-  energie: { labelFr: 'Énergie', labelEn: 'Energy', group: 'fixes' },
-  taxes: { labelFr: 'Taxes et permis', labelEn: 'Taxes and permits', group: 'fixes' },
-  assurance: { labelFr: 'Assurances', labelEn: 'Insurance', group: 'fixes' },
-  salaires: { labelFr: 'Salaires et main-d\'œuvre', labelEn: 'Salaries and labour', group: 'operationnelles' },
-  nourriture: { labelFr: 'Nourriture', labelEn: 'Food', group: 'operationnelles' },
-  entretien: { labelFr: 'Entretien et réparations', labelEn: 'Maintenance and repairs', group: 'operationnelles' },
-  autre: { labelFr: 'Autres dépenses d\'exploitation', labelEn: 'Other operating expenses', group: 'operationnelles' },
-  administration: { labelFr: 'Administration', labelEn: 'Administration', group: 'gestion' },
-  gestion: { labelFr: 'Frais de gestion', labelEn: 'Management fees', group: 'gestion' },
-};
-
 function pctOfRbeRange(amountRange: ValueRange, rbePerUnit?: number): ValueRange | undefined {
   if (!rbePerUnit || rbePerUnit <= 0 || amountRange.count === 0) return undefined;
   const toPct = (v?: number) =>
@@ -319,12 +282,8 @@ function buildPlLinesForRegion(
       indent: true,
     });
 
-    for (const key of keysInGroup.sort()) {
-      const meta = EXPENSE_LINE_META[key] ?? {
-        labelFr: key,
-        labelEn: key,
-        group,
-      };
+    for (const key of keysInGroup.sort(compareExpenseLineKeys)) {
+      const meta = resolveExpenseLineMeta(key);
       const perUnit = expenseRanges.get(key)!;
       lines.push({
         id: `exp-${key}`,
@@ -398,17 +357,23 @@ export function computeRegionalSummaries(
     );
     const energieRange = computeValueRange(
       rows
-        .filter((r) => r.labelKey === 'energie' && r.montantParPorte != null)
+        .filter((r) => canonicalExpenseKey(r.labelKey) === 'energie' && r.montantParPorte != null)
         .map((r) => r.montantParPorte!)
     );
     const salairesRange = computeValueRange(
       rows
-        .filter((r) => r.labelKey === 'salaires' && r.montantParPorte != null)
+        .filter(
+          (r) =>
+            canonicalExpenseKey(r.labelKey) === 'salairesAvantages' && r.montantParPorte != null
+        )
         .map((r) => r.montantParPorte!)
     );
     const entretienRange = computeValueRange(
       rows
-        .filter((r) => r.labelKey === 'entretien' && r.montantParPorte != null)
+        .filter(
+          (r) =>
+            canonicalExpenseKey(r.labelKey) === 'entretienReparation' && r.montantParPorte != null
+        )
         .map((r) => r.montantParPorte!)
     );
     const sortMillis = Math.max(...rows.map((r) => r.sortMillis), 0);

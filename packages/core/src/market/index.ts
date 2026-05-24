@@ -9,5 +9,6 @@ export * from './marketGpsViewModel';
 export * from './marketGpsDashboardMetrics';
 export * from './marketGpsDetailedPnL';
 export * from './marketGpsTrendSeries';
+export * from './marketPlExpenseDictionary';
 export * from './marketSourceTag';
 export * from './marketRegionNormalize';

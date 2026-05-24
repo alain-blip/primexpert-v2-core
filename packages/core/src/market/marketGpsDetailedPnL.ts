@@ -4,28 +4,19 @@
 
 import {
   classifyExpenseGroup,
+  compareExpenseLineKeys,
+  dominantLabelDisplay,
+  isResidualExpenseKey,
+  resolveExpenseLineMeta,
+  type PlExpenseGroup,
+} from './marketPlExpenseDictionary';
+import {
   cleanseMarketRegion,
   computeValueRange,
   passesTemporalFilter,
   type MarketGpsRatioSample,
   type MarketTemporalWindow,
-  type PlExpenseGroup,
 } from './marketGpsViewModel';
-
-const EXPENSE_LINE_META: Record<
-  string,
-  { labelFr: string; labelEn: string; group: PlExpenseGroup }
-> = {
-  energie: { labelFr: 'Énergie', labelEn: 'Energy', group: 'fixes' },
-  taxes: { labelFr: 'Taxes et permis', labelEn: 'Taxes and permits', group: 'fixes' },
-  assurance: { labelFr: 'Assurances', labelEn: 'Insurance', group: 'fixes' },
-  salaires: { labelFr: 'Salaires et main-d\'œuvre', labelEn: 'Salaries and labour', group: 'operationnelles' },
-  nourriture: { labelFr: 'Nourriture', labelEn: 'Food', group: 'operationnelles' },
-  entretien: { labelFr: 'Entretien et réparations', labelEn: 'Maintenance and repairs', group: 'operationnelles' },
-  autre: { labelFr: 'Autres dépenses d\'exploitation', labelEn: 'Other operating expenses', group: 'operationnelles' },
-  administration: { labelFr: 'Administration', labelEn: 'Administration', group: 'gestion' },
-  gestion: { labelFr: 'Frais de gestion', labelEn: 'Management fees', group: 'gestion' },
-};
 
 export type DetailedPnLRowKind = 'section-header' | 'group-header' | 'line' | 'subtotal';
 
@@ -81,7 +72,10 @@ function estimateRbePerUnit(
 ): number | undefined {
   if (rdeMedian == null || rdeMedian <= 0 || rdeMedian >= 100) return undefined;
   let total = 0;
-  for (const [, v] of expenseMeans) total += v;
+  for (const [key, v] of expenseMeans) {
+    if (isResidualExpenseKey(key)) continue;
+    total += v;
+  }
   if (total <= 0) return undefined;
   return total / (rdeMedian / 100);
 }
@@ -93,6 +87,8 @@ function sectionHeader(id: string, labelFr: string, labelEn: string): DetailedPn
 function groupHeader(id: string, labelFr: string, labelEn: string): DetailedPnLRow {
   return { id, kind: 'group-header', labelFr, labelEn, sampleCount: 0, indent: true };
 }
+
+const REVENUE_KEYS = new Set(['rbe', 'rne', 'rde']);
 
 export function computeDetailedPnLRows(samples: MarketGpsRatioSample[]): DetailedPnLRow[] {
   if (!samples.length) return [];
@@ -110,10 +106,9 @@ export function computeDetailedPnLRows(samples: MarketGpsRatioSample[]): Detaile
   const expenseKeys = new Set<string>();
   for (const s of samples) {
     if (
-      s.labelKey !== 'rde' &&
-      s.labelKey !== 'rbe' &&
-      s.labelKey !== 'rne' &&
-      s.montantParPorte != null
+      !REVENUE_KEYS.has(s.labelKey) &&
+      s.montantParPorte != null &&
+      Number.isFinite(s.montantParPorte)
     ) {
       expenseKeys.add(s.labelKey);
     }
@@ -127,7 +122,9 @@ export function computeDetailedPnLRows(samples: MarketGpsRatioSample[]): Detaile
       .map((s) => s.montantParPorte!);
     const st = statsFromValues(vals);
     expenseStats.set(key, st);
-    if (st.meanPerUnit != null) expenseMeans.set(key, st.meanPerUnit);
+    if (st.meanPerUnit != null && !isResidualExpenseKey(key)) {
+      expenseMeans.set(key, st.meanPerUnit);
+    }
   }
 
   const rbeStats = statsFromValues(rbeValues);
@@ -140,7 +137,9 @@ export function computeDetailedPnLRows(samples: MarketGpsRatioSample[]): Detaile
   if (rbeMedian == null && rdeStats.medianPerUnit != null) {
     const expenseMedians = new Map<string, number>();
     for (const [k, st] of expenseStats) {
-      if (st.medianPerUnit != null) expenseMedians.set(k, st.medianPerUnit);
+      if (st.medianPerUnit != null && !isResidualExpenseKey(k)) {
+        expenseMedians.set(k, st.medianPerUnit);
+      }
     }
     let total = 0;
     for (const [, v] of expenseMedians) total += v;
@@ -183,24 +182,23 @@ export function computeDetailedPnLRows(samples: MarketGpsRatioSample[]): Detaile
     gestion: { fr: 'Frais de gestion', en: 'Management expenses' },
   };
 
+  const sortedExpenseKeys = [...expenseKeys].sort(compareExpenseLineKeys);
+
   for (const group of groups) {
-    const keysInGroup = [...expenseKeys].filter((k) => classifyExpenseGroup(k) === group);
+    const keysInGroup = sortedExpenseKeys.filter((k) => classifyExpenseGroup(k) === group);
     if (!keysInGroup.length) continue;
 
     rows.push(groupHeader(`grp-${group}`, groupLabels[group].fr, groupLabels[group].en));
 
-    for (const key of keysInGroup.sort()) {
-      const meta = EXPENSE_LINE_META[key] ?? {
-        labelFr: key,
-        labelEn: key,
-        group,
-      };
+    for (const key of keysInGroup) {
+      const displayOverride = dominantLabelDisplay(key, samples);
+      const meta = resolveExpenseLineMeta(key, displayOverride);
       const st = expenseStats.get(key)!;
       rows.push({
         id: `exp-${key}`,
         kind: 'line',
-        labelFr: meta.labelFr,
-        labelEn: meta.labelEn,
+        labelFr: displayOverride ?? meta.labelFr,
+        labelEn: displayOverride ?? meta.labelEn,
         indent: true,
         sampleCount: st.sampleCount,
         meanPerUnit: st.meanPerUnit,
@@ -274,7 +272,7 @@ export function computeDetailedPnLForFilter(
     temporalWindow?: MarketTemporalWindow;
     temporalCutoffMillis?: number | null;
   }
-): { rows: DetailedPnLRow[]; sampleCount: number; regionLabel: string } {
+): { rows: DetailedPnLRow[]; sampleCount: number; regionLabel: string; lineCount: number } {
   const filtered = filterRatioSamples(samples, options);
   const regions = new Set(filtered.map((s) => cleanseMarketRegion(s.region)).filter((r) => r && r !== '—'));
   const regionLabel =
@@ -284,9 +282,13 @@ export function computeDetailedPnLForFilter(
         ? [...regions][0]
         : 'all';
 
+  const rows = computeDetailedPnLRows(filtered);
+  const lineCount = rows.filter((r) => r.kind === 'line').length;
+
   return {
-    rows: computeDetailedPnLRows(filtered),
+    rows,
     sampleCount: filtered.length,
     regionLabel,
+    lineCount,
   };
 }

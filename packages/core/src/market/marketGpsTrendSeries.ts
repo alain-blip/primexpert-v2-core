@@ -3,13 +3,14 @@
  */
 
 import { cleanseMarketRegion, median, type MarketGpsRatioSample, type MarketGpsTransaction } from './marketGpsViewModel';
+import { canonicalExpenseKey } from './marketPlExpenseDictionary';
 
 export type TrendGranularity = 'year' | 'quarter';
 
 export type TrendMetricKey =
-  | 'salaires'
+  | 'salairesAvantages'
   | 'energie'
-  | 'assurance'
+  | 'assurances'
   | 'prix_unite'
   | 'tga';
 
@@ -21,9 +22,9 @@ export interface TrendMetricOption {
 }
 
 export const TREND_METRIC_OPTIONS: TrendMetricOption[] = [
-  { key: 'salaires', labelFr: 'Salaires et main-d\'œuvre ($ / unité)', labelEn: 'Salaries and labour ($ / unit)', unit: 'currency' },
+  { key: 'salairesAvantages', labelFr: 'Salaires et charges sociales ($ / unité)', labelEn: 'Salaries & benefits ($ / unit)', unit: 'currency' },
   { key: 'energie', labelFr: 'Énergie ($ / unité)', labelEn: 'Energy ($ / unit)', unit: 'currency' },
-  { key: 'assurance', labelFr: 'Assurances ($ / unité)', labelEn: 'Insurance ($ / unit)', unit: 'currency' },
+  { key: 'assurances', labelFr: 'Assurances ($ / unité)', labelEn: 'Insurance ($ / unit)', unit: 'currency' },
   { key: 'prix_unite', labelFr: 'Prix / unité (ventes)', labelEn: 'Price / unit (sales)', unit: 'currency' },
   { key: 'tga', labelFr: 'Taux de capitalisation (TGA)', labelEn: 'Capitalization rate (cap rate)', unit: 'percent' },
 ];
@@ -99,7 +100,7 @@ export function computeMarketTrendSeries(input: {
   } else {
     for (const s of input.ratioSamples) {
       if (!regionOk(s.region)) continue;
-      if (s.labelKey !== metric.key || s.montantParPorte == null) continue;
+      if (canonicalExpenseKey(s.labelKey) !== metric.key || s.montantParPorte == null) continue;
       const key = periodKeyFromMillis(s.sortMillis, input.granularity);
       if (!key) continue;
       const list = buckets.get(key) ?? [];

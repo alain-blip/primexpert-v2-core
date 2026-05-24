@@ -110,7 +110,7 @@ export function MarketDetailedPnLTable({
   loading: boolean;
   t: (fr: string, en: string) => string;
 }) {
-  const { rows, sampleCount, regionLabel } = computeDetailedPnLForFilter(ratioSamples, {
+  const { rows, sampleCount, regionLabel, lineCount } = computeDetailedPnLForFilter(ratioSamples, {
     region: regionFilter,
     temporalWindow,
   });
@@ -151,7 +151,8 @@ export function MarketDetailedPnLTable({
           <h3 className="text-sm font-black text-[#142c6a]">{regionTitle}</h3>
         </div>
         <p className="text-[10px] font-bold tabular-nums text-slate-600">
-          {sampleCount} {t('échantillons bruts', 'raw samples')}
+          {lineCount} {t('postes affichés', 'line items shown')} · {sampleCount}{' '}
+          {t('échantillons bruts', 'raw samples')}
         </p>
       </header>
 
