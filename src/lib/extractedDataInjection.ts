@@ -5,7 +5,7 @@
 
 import { findRegion } from '@primexpert/core/financial';
 import type { ExpenseKey } from '@primexpert/core/financial';
-import { EXPENSE_KEYS } from '@primexpert/core/financial';
+import { EXPENSE_KEYS, isNonOpexExpenseLabel } from '@primexpert/core/financial';
 import type { AssetNiche } from '../types/residence';
 import type {
   MarketDataProvenance,
@@ -71,6 +71,7 @@ function normalizeLabel(s: string): string {
 
 /** Heuristique libellé → clé dépense Copilote / dataV2. */
 export function mapLabelToExpenseKey(label: string): ExpenseKey | null {
+  if (isNonOpexExpenseLabel(label)) return null;
   const n = normalizeLabel(label);
   if (!n) return null;
 

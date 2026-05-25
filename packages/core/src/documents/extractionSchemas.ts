@@ -3,6 +3,15 @@
  * SSOT ratios d'exploitation par unité ; aucune donnée identifiante.
  */
 
+import {
+  extractNonOpexExcludedFromLabeledAmounts,
+  isNetIncomeBottomLineLabel,
+  isNonOpexExpenseLabel,
+  isRevenueTotalPriorityLabel,
+  normalizeFinancialLabel,
+  type NonOpexExcludedTotals,
+} from '../financial/nonOpexFinancialLines';
+
 /** Clés dépenses alignées sur `expenseKeys` (SSOT financier). */
 export type BenchmarkExpenseKey =
   | 'mainDOeuvreDirecte'
@@ -53,6 +62,10 @@ export interface OperatingBenchmarkMetrics {
   revenuTotal: number | null;
   /** Total des dépenses d'exploitation (hors bilan / amortissement / impôts). */
   depensesExploitation: number | null;
+  /** RNE = revenuTotal − depensesExploitation (jamais le bénéfice net). */
+  revenuNetExploitation: number | null;
+  /** Montants vus mais exclus du RNE (transparence courtier). */
+  nonOpexExcluded?: NonOpexExcludedTotals;
   nbPortes: number | null;
   revenuBrutParUnite: number | null;
   depensesExploitationParUnite: number | null;
@@ -91,11 +104,7 @@ export interface MarketFinancialBenchmarkDoc {
 }
 
 function normalizeLabel(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .replace(/[^a-z0-9]+/g, ' ');
+  return normalizeFinancialLabel(s);
 }
 
 function coerceNum(value: unknown): number | null {
@@ -142,8 +151,17 @@ function matchExpenseKeyFromLabel(label: string): BenchmarkExpenseKey | null {
 
 function findTotalLine(
   amounts: FinancialAmountRow[],
-  pattern: RegExp
+  pattern: RegExp,
+  options?: { revenuePriority?: boolean }
 ): number | null {
+  if (options?.revenuePriority) {
+    for (const row of amounts) {
+      if (isExcludedLine(row.label)) continue;
+      if (!isRevenueTotalPriorityLabel(row.label)) continue;
+      const v = coerceNum(row.value);
+      if (v != null && v > 0) return v;
+    }
+  }
   for (const row of amounts) {
     if (isExcludedLine(row.label)) continue;
     if (pattern.test(normalizeLabel(row.label))) {
@@ -155,6 +173,12 @@ function findTotalLine(
 }
 
 function sumRevenueLines(amounts: FinancialAmountRow[]): number {
+  const priority = findTotalLine(amounts, REVENUE_TOTAL_PATTERNS, { revenuePriority: true });
+  if (priority != null) return priority;
+
+  const totalLine = findTotalLine(amounts, REVENUE_TOTAL_PATTERNS);
+  if (totalLine != null) return totalLine;
+
   let sum = 0;
   let has = false;
   for (const row of amounts) {
@@ -169,10 +193,6 @@ function sumRevenueLines(amounts: FinancialAmountRow[]): number {
         sum += v;
         has = true;
       }
-    }
-    if (REVENUE_TOTAL_PATTERNS.test(n)) {
-      const v = coerceNum(row.value);
-      if (v != null && v > 0) return v;
     }
   }
   return has ? sum : 0;
@@ -239,15 +259,25 @@ export function computeOperatingBenchmarkFromAmounts(
     annee?: number;
   } = {}
 ): OperatingBenchmarkMetrics {
-  const revenuLine = findTotalLine(amounts, REVENUE_TOTAL_PATTERNS);
-  const revenuTotal = revenuLine != null && revenuLine > 0 ? revenuLine : sumRevenueLines(amounts) || null;
+  const revenuTotalRaw = sumRevenueLines(amounts);
+  const revenuTotal = revenuTotalRaw > 0 ? revenuTotalRaw : null;
 
   const depenseLine = findTotalLine(amounts, EXPENSE_TOTAL_PATTERNS);
   const depensesExploitation =
     depenseLine != null && depenseLine > 0 ? depenseLine : sumExpenseLines(amounts) || null;
 
+  const nonOpexExcluded = extractNonOpexExcludedFromLabeledAmounts(
+    amounts.map((r) => ({ label: r.label, value: r.value }))
+  );
+
+  const revenuNetExploitation =
+    revenuTotal != null && depensesExploitation != null
+      ? Math.round(revenuTotal - depensesExploitation)
+      : null;
+
   const depensesParCle: Partial<Record<BenchmarkExpenseKey, number>> = {};
   for (const row of amounts) {
+    if (isExcludedLine(row.label)) continue;
     const key = row.expenseKey ?? matchExpenseKeyFromLabel(row.label);
     if (!key || !CANONICAL_EXPENSE_KEYS.includes(key)) continue;
     depensesParCle[key] = (depensesParCle[key] ?? 0) + row.value;
@@ -278,6 +308,8 @@ export function computeOperatingBenchmarkFromAmounts(
   return {
     revenuTotal,
     depensesExploitation,
+    revenuNetExploitation,
+    nonOpexExcluded,
     nbPortes,
     revenuBrutParUnite,
     depensesExploitationParUnite,

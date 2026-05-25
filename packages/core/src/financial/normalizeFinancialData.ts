@@ -4,6 +4,7 @@
  */
 
 import { EXPENSE_KEYS } from './expenseKeys';
+import { isNonOpexExpenseKey } from './nonOpexFinancialLines';
 import { deriveRevenusAnnuelsFromTarification } from '../identity/rentPricingGrid';
 
 const LEGACY_TAX_KEY = 'taxesMunicipalesScolaire';
@@ -76,6 +77,13 @@ export interface FinancialBaseData {
   /** Stationnement payant — barème mensuel × nb places × 12. */
   tarifStationnement?: number | string | null;
   nbStationnementsPayants?: number | string | null;
+  /** Montants extraits mais exclus du RNE (amortissement, intérêts, impôts). */
+  nonOpexExcluded?: {
+    amortissement?: number | null;
+    fraisFinanciers?: number | null;
+    impotsSurLeRevenu?: number | null;
+    beneficeNetExtrait?: number | null;
+  } | null;
   [key: string]: unknown;
 }
 
@@ -198,7 +206,7 @@ export function sumDeclaredOperatingExpensesGrid(depenses: DepensesGrid | null |
   let total = 0;
   let hasAny = false;
   for (const k of EXPENSE_KEYS) {
-    if (k === LEGACY_TAX_KEY) continue;
+    if (k === LEGACY_TAX_KEY || isNonOpexExpenseKey(k)) continue;
     const brut = declaredOperatingLineAmount(k, depenses);
     total += brut;
     if (brut !== 0) hasAny = true;
@@ -219,7 +227,7 @@ export function sumExpenseAdjustmentsAlgebraic(
   let total = 0;
   let hasAny = false;
   for (const k of EXPENSE_KEYS) {
-    if (k === LEGACY_TAX_KEY) continue;
+    if (k === LEGACY_TAX_KEY || isNonOpexExpenseKey(k)) continue;
     let adj = safeNumExpense(expenseAdjustments[k]) ?? 0;
     if (k === 'energie') {
       const hasExplicit =
@@ -400,6 +408,7 @@ function sumDepenses(depenses: DepensesGrid | null | undefined): number | null {
   let total = 0;
   let hasAny = false;
   for (const [key, val] of Object.entries(depenses)) {
+    if (isNonOpexExpenseKey(key)) continue;
     if (key === 'autresDepenses' && Array.isArray(val)) {
       for (const dep of val) {
         const n = safeNum(dep?.montant);
@@ -435,11 +444,20 @@ export function normalizeFinancialData(
   const baseData = financialData.baseData ?? null;
 
   if (financialData.calculatedResults) {
-    const enrichedCalc = enrichCalcWithRpaAncillary(
+    let enrichedCalc = enrichCalcWithRpaAncillary(
       financialData.calculatedResults,
       baseData,
       residence
     );
+    const reconciledNoi = getAuditNormalizedNoi(enrichedCalc, baseData);
+    if (reconciledNoi != null) {
+      enrichedCalc = { ...enrichedCalc, revenuNetExploitation: reconciledNoi };
+    }
+    const reconciledRbe =
+      finiteNum(enrichedCalc.revenuBrutEffectif) ?? finiteNum(enrichedCalc.revenusAnnuels);
+    if (reconciledRbe != null && finiteNum(enrichedCalc.revenuBrutEffectif) == null) {
+      enrichedCalc = { ...enrichedCalc, revenuBrutEffectif: reconciledRbe };
+    }
     return {
       calc: enrichedCalc,
       baseData,

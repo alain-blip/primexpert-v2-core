@@ -4,6 +4,8 @@ export * from './financialRules';
 export * from './schlMultilogementRules';
 export * from './safeNumbers';
 export * from './normalizeFinancialData';
+export * from './nonOpexFinancialLines';
+export { buildFinancialDataV2PatchFromExtraction } from './applyExtractedFinancials';
 export * from './revenusDepensesGrid';
 export * from './computeFinancabilite';
 export * from './bilanCfoView';

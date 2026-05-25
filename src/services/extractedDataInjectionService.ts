@@ -10,7 +10,10 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import type { FinancialDataV2Doc } from '@primexpert/core/financial';
+import {
+  buildFinancialDataV2PatchFromExtraction,
+  type FinancialDataV2Doc,
+} from '@primexpert/core/financial';
 import type { ExtractedAmountRow, ExtractedComparableRow } from '../lib/extractedDataInjection';
 import {
   buildResidenceCadastrePatch,
@@ -107,12 +110,26 @@ export async function injectExtractedDataToResidence(
   const batch = writeBatch(db);
 
   if (selectedRows.length) {
+    const extractionPatch = buildFinancialDataV2PatchFromExtraction(
+      (document.extractedData ?? {}) as Record<string, unknown>
+    );
+    const patchBase = extractionPatch?.baseData ?? {};
+    const patchCalc = extractionPatch?.calculatedResults ?? {};
+
     batch.set(
       financialRef,
       stripUndefinedDeep({
         baseData: {
           ...(existing.baseData ?? {}),
-          depenses: mergedDepenses,
+          ...patchBase,
+          depenses: {
+            ...((patchBase.depenses as Record<string, number> | undefined) ?? {}),
+            ...mergedDepenses,
+          },
+        },
+        calculatedResults: {
+          ...(existing.calculatedResults ?? {}),
+          ...patchCalc,
         },
         lastUpdated: serverTimestamp(),
         lastInjection: {

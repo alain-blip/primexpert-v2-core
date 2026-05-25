@@ -292,6 +292,38 @@ export function RevenusDepensesTab({ residence }: RevenusDepensesTabProps) {
         </section>
       ) : null}
 
+      {grid.nonOpexExcludedRows.length > 0 ? (
+        <section className={cn(inst.section, 'p-4 space-y-3 border-amber-200/60 bg-amber-50/40')}>
+          <p className="text-[9px] font-black uppercase tracking-widest text-amber-900">
+            {t(
+              'Dépenses exclues (non-OPEX) — vues mais non comptées dans le RNE',
+              'Excluded expenses (non-OPEX) — seen but not counted in NOI'
+            )}
+          </p>
+          <p className="text-[11px] text-slate-700 leading-relaxed">
+            {t(
+              'Ces postes proviennent des états financiers extraits. Ils sont affichés pour transparence CPA : le revenu net d’exploitation (RNE) = revenu brut effectif (RBE) moins les dépenses d’exploitation admissibles seulement.',
+              'These lines come from extracted financial statements. Shown for CPA transparency: net operating income (NOI) = effective gross income (EGI) minus admissible operating expenses only.'
+            )}
+          </p>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {grid.nonOpexExcludedRows.map((row) => (
+              <li
+                key={row.key}
+                className="flex items-center justify-between rounded-lg border border-amber-200/80 bg-white/90 px-3 py-2"
+              >
+                <span className="text-xs font-semibold text-[#142c6a]">
+                  {locale === 'fr' ? row.labelFr : row.labelEn}
+                </span>
+                <span className="font-mono text-xs font-bold tabular-nums text-amber-900">
+                  {fmt(row.amount)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section className={inst.section}>
         <div className={inst.tableWrap}>
           <table className={cn(inst.table, 'min-w-[880px]')}>

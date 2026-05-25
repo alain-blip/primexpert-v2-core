@@ -3,8 +3,11 @@
  */
 
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { EXPENSE_KEYS } from '@primexpert/core/financial';
-import type { FinancialDataV2Doc } from '@primexpert/core/financial';
+import {
+  EXPENSE_KEYS,
+  sumNormalizedOperatingExpenses,
+  type FinancialDataV2Doc,
+} from '@primexpert/core/financial';
 import { db } from '../lib/firebase';
 import { stripUndefinedDeep } from '../lib/firestoreSanitize';
 
@@ -65,30 +68,22 @@ export async function saveExpenseAdjustmentsToFinancial(
 
   const adjFirestore = buildExpenseAdjustmentsForFirestore(draft, existingVerified);
 
-  let depBrut = 0;
-  for (const k of EXPENSE_KEYS) {
-    depBrut += parseNum((dep as Record<string, unknown>)[k]);
-  }
-  const autres = (dep as { autresDepenses?: Array<{ montant?: unknown }> }).autresDepenses ?? [];
-  for (const row of autres) depBrut += parseNum(row?.montant);
-
-  let sumAdj = 0;
-  for (const k of EXPENSE_KEYS) sumAdj += parseNum(adjFirestore[k]);
-  for (const v of (adjFirestore.autresDepenses as number[]) ?? []) sumAdj += parseNum(v);
-
-  const depensesTotalesNormalisees = depBrut + sumAdj;
-  const rbe = parseNum(financialData.calculatedResults?.revenuBrutEffectif);
-  const revenuNetExploitationNormalise =
-    rbe > 0 ? rbe - depensesTotalesNormalisees : null;
+  const depensesTotalesNormalisees =
+    sumNormalizedOperatingExpenses(dep, adjFirestore) ?? 0;
+  const rbe =
+    parseNum(financialData.calculatedResults?.revenuBrutEffectif) ||
+    parseNum(financialData.baseData?.revenusAnnuels);
+  const revenuNetExploitation =
+    rbe > 0 ? Math.round(rbe - depensesTotalesNormalisees) : null;
 
   const prixDemande = parseNum(
     (financialData.calculatedResults as Record<string, unknown> | undefined)?.prixDemande
   );
   const tauxCapitalisation =
-    revenuNetExploitationNormalise != null &&
-    revenuNetExploitationNormalise > 0 &&
+    revenuNetExploitation != null &&
+    revenuNetExploitation > 0 &&
     prixDemande > 0
-      ? revenuNetExploitationNormalise / prixDemande
+      ? revenuNetExploitation / prixDemande
       : undefined;
 
   const docRef = doc(db, 'residences', residenceId, 'financial', 'dataV2');
@@ -103,7 +98,7 @@ export async function saveExpenseAdjustmentsToFinancial(
       calculatedResults: {
         ...(financialData.calculatedResults ?? {}),
         depensesTotalesNormalisees,
-        revenuNetExploitationNormalise,
+        revenuNetExploitation,
         ...(tauxCapitalisation != null ? { tauxCapitalisation } : {}),
       },
     }),

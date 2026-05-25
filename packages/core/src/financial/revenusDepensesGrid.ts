@@ -49,6 +49,13 @@ export interface RevenusDepensesExpenseRow {
   isPrimary: boolean;
 }
 
+export interface NonOpexExcludedDisplayRow {
+  key: string;
+  labelFr: string;
+  labelEn: string;
+  amount: number;
+}
+
 export interface RevenusDepensesGridModel {
   hasFinancials: boolean;
   source: string;
@@ -58,6 +65,7 @@ export interface RevenusDepensesGridModel {
   depensesNormaliseesTotal: number | null;
   noiDeclare: number | null;
   noiNormalise: number | null;
+  nonOpexExcludedRows: NonOpexExcludedDisplayRow[];
   rows: RevenusDepensesExpenseRow[];
   provenance: {
     lastUpdated: unknown;
@@ -235,6 +243,47 @@ export function buildRevenusDepensesGrid(
   const noiNormalise =
     rbe > 0 && depensesNormaliseesTotal != null ? rbe - depensesNormaliseesTotal : null;
 
+  const nonOpexRaw = baseData?.nonOpexExcluded as
+    | {
+        amortissement?: number | null;
+        fraisFinanciers?: number | null;
+        impotsSurLeRevenu?: number | null;
+        beneficeNetExtrait?: number | null;
+      }
+    | null
+    | undefined;
+  const nonOpexExcludedRows: NonOpexExcludedDisplayRow[] = [];
+  const pushNonOpex = (
+    key: string,
+    labelFr: string,
+    labelEn: string,
+    amount: number | null | undefined
+  ) => {
+    if (amount == null || !Number.isFinite(amount) || amount <= 0) return;
+    nonOpexExcludedRows.push({ key, labelFr, labelEn, amount });
+  };
+  if (nonOpexRaw) {
+    pushNonOpex('amortissement', 'Amortissement', 'Depreciation', nonOpexRaw.amortissement);
+    pushNonOpex(
+      'fraisFinanciers',
+      'Frais financiers et intérêts',
+      'Financial charges and interest',
+      nonOpexRaw.fraisFinanciers
+    );
+    pushNonOpex(
+      'impotsSurLeRevenu',
+      'Impôts sur le revenu',
+      'Income taxes',
+      nonOpexRaw.impotsSurLeRevenu
+    );
+    pushNonOpex(
+      'beneficeNetExtrait',
+      'Bénéfice net (référence comptable — exclu du RNE)',
+      'Net income (accounting reference — excluded from NOI)',
+      nonOpexRaw.beneficeNetExtrait
+    );
+  }
+
   const fd = financialData as Record<string, unknown> | null;
   const lastUpdated = fd?.lastUpdated ?? fd?.updatedAt ?? null;
   const confidenceTier = inferConfidence(source, rows.length);
@@ -252,6 +301,7 @@ export function buildRevenusDepensesGrid(
     depensesNormaliseesTotal,
     noiDeclare,
     noiNormalise,
+    nonOpexExcludedRows,
     rows,
     provenance: {
       lastUpdated,

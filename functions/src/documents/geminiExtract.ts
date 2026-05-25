@@ -49,16 +49,17 @@ const PNL_BLOCK = `
 {
   "amounts": [{ "label": "Revenus totaux", "value": 0, "currency": "CAD" }],
   "annee": 2024,
-  "nbPortes": 42,
-  "revenuTotal": 0,
-  "depensesExploitation": 0
+  "nbPortes": 42
 }
 - UNIQUEMENT état des résultats d'EXPLOITATION (revenus et dépenses détaillés)
-- IGNORER bilan, amortissements, impôts sur les sociétés, notes comptables
-- revenuTotal : revenu brut effectif (RBE) ou revenus d'exploitation totaux
-- depensesExploitation : total des frais / dépenses d'exploitation (hors financement)
+- revenuTotal / RBE : ligne « Revenus totaux » ou « Chiffre d'affaires total » — JAMAIS le bénéfice net
+- Extraire chaque poste de dépense d'exploitation en ligne distincte dans amounts
+- EXCLURE des dépenses d'exploitation (mais les lister quand même dans amounts) :
+  amortissement, frais financiers / intérêts / frais bancaires, impôts sur le revenu, bénéfice net
+- NE PAS utiliser le bénéfice net comme revenu net d'exploitation (RNE)
+- RNE = revenus totaux MOINS dépenses d'exploitation admissibles seulement
+- IGNORER bilan, actif, passif, notes comptables
 - nbPortes : nombre de portes, lits ou unités locatives si indiqué
-- Inclure postes RPA si présents : soins, alimentation, énergie (libellés distincts)
 - Libellés clairs en français québécois`;
 
 const EVAL_BLOCK = `
