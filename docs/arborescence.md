@@ -42,6 +42,8 @@
 │           ├── narrative/           # Narratif vendeur
 │           ├── intelligence/        # Priorités suivi KISS, rapport vendeur, contactTimeline
 │           ├── residence/             # partiesImpliquees, complianceChecklist, listingCommission, quebecRegions, pipelineDragRules
+│           │   ├── vendorPortalTimeline.ts   # Accès Vendeur — étapes timeline (Règle #0)
+│           │   └── mandateCompleteness.ts    # Jauge preuves de conformité mandat (portail vendeur)
 │           ├── documents/             # extraction rapports marché, schémas Gemini (MARKET_REPORT omnivore)
 │           ├── market/                # haversine, zonePenetration, marketDeduplication (anti-doublons Big Data)
 │           ├── quality/             # Score qualité fiche
@@ -79,9 +81,9 @@
 │           ├── verifyWebhookSignature.ts
 │           └── mailMessageAnalysis.ts
 ├── scripts/
-│   ├── migrate-legacy-contacts-to-v2.mjs
+│   ├── migrate-legacy-contacts-to-v2.mjs   # Maillon 1 — contacts Copilote → organizations/…/contacts (dry-run défaut)
 │   ├── deploy-diffusion-jour-4-5.sh
-│   └── output/                      # Rapports dry-run (non versionné)
+│   └── output/                      # Rapports dry-run migration (gitignored)
 ├── audit_tenant_uids.js             # Ops — audit tenant Firestore
 ├── backfill_tenant.js
 ├── hydrate_pipeline.js
@@ -119,8 +121,15 @@
     │   ├── ListingInstitutionalCard.tsx  # Carte institutionnelle (nom commercial, prix, rétribution)
     │   ├── BrokerToolsDocuments.tsx # Outils courtier — documents
     │   ├── ResidenceIntelligencePanel.tsx  # Chronologie appels / courriels (onglet Intelligence)
+    │   ├── vendor/                    # Accès Vendeur — portail client mobile-first
+    │   │   ├── AccesVendeurPage.tsx
+    │   │   ├── VendorTimeline.tsx
+    │   │   ├── VendorComplianceGauge.tsx
+    │   │   ├── VendorDocumentDropzone.tsx
+    │   │   └── VendorOfferPanel.tsx
     │   ├── residence/
     │   │   ├── ResidenceDetail.tsx  # Coquille fiche — 8 onglets + InstitutionalResidenceTabShell
+    │   │   ├── ResidenceAccesVendeurButton.tsx  # Lien portail vendeur (parties VENDEUR)
     │   │   ├── institutional/
     │   │   │   └── InstitutionalUi.tsx   # Kit UI institutionnel (coquilles, KPI, sections)
     │   │   ├── identity/            # Sections Identité — édition inline Confort 66+
@@ -311,6 +320,8 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Parse IA financier | `geminiExtract.ts` + `vertexClient.ts` (ADC, pas de clé JSON en prod) |
 | Priorités tableau de bord | `dashboardPriorityFollowUp.ts`, `PriorityFollowUpList.tsx` |
 | CRM contacts | `packages/core/src/crm/`, `src/services/contacts.ts`, `src/components/contacts/` |
+| Accès Vendeur | `src/components/vendor/`, `ResidenceAccesVendeurButton.tsx`, `vendorPortalService.ts`, `vendorPortalTimeline.ts` |
+| Import contacts Maillon 1 | `legacyContactImport.ts`, `migrate-legacy-contacts-to-v2.mjs` |
 | Parties ↔ contacts | `packages/core/src/residence/partiesImpliquees.ts`, `PartiesIntervenantsSection.tsx` |
 | Chronologie omnicanale | `contactTimeline.ts`, `CommunicationTimelineFeed.tsx`, `communicationTimelineService.ts` |
 | Identité — courtier responsable | `ResponsibleBrokerCard.tsx`, champ `courtiersResponsables` |
@@ -338,4 +349,4 @@ Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only func
 
 ---
 
-*Dernière mise à jour : 2026-05-24 — Statistiques du marché, anti-doublons, parse massif, Option A messagerie ↔ CRM, Kanban inscriptions DnD, benchmark finance.*
+*Dernière mise à jour : 2026-05-20 — Accès Vendeur, Maillon 1 migration contacts (`legacyContactImport`), bouton fiche résidence.*

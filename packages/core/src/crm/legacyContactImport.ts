@@ -5,14 +5,17 @@
 
 import type {
   BuyerQualificationStatus,
+  BuyerTargetResidenceType,
   ContactAddress,
   ContactAssetNiche,
   ContactBuyerCriteria,
+  ContactCommunicationPreferences,
   ContactLciFieldKey,
   ContactRelationRole,
   ContactSilo,
   ContactVisibility,
 } from './contactTypes';
+import { BUYER_TARGET_RESIDENCE_TYPES } from './contactTypes';
 
 export const LCI_IMPORT_PLACEHOLDER_DATE = '0000-00-00';
 export const LCI_IMPORT_PLACEHOLDER_OCCUPATION = 'À compléter (import legacy)';
@@ -28,12 +31,25 @@ export interface LegacyRawContactRow {
   data: Record<string, unknown>;
 }
 
+/** Entrée historique `buyerPipeline` (collection interdite en V2). */
+export interface LegacyPipelineHistoryEntry {
+  collection: 'buyerPipeline';
+  id: string;
+  stage: string | null;
+  pipelineOverride?: string | null;
+  assignedTo?: string | null;
+  capturedAt?: string;
+}
+
 export interface LegacyImportMeta {
   legacySources: Array<{ collection: LegacyContactSourceCollection; id: string }>;
   mergedCount: number;
   lciIncomplete: boolean;
   missingLciFields: ContactLciFieldKey[];
   importedAt?: string;
+  /** Journal import — pas de collection `buyerPipeline` en V2 (DATA_MAPPING §3.1). */
+  pipelineHistory?: LegacyPipelineHistoryEntry[];
+  pipelineOverride?: string | null;
 }
 
 /** Payload prêt pour `organizations/{orgId}/contacts/{contactId}` (sans id Firestore cible). */
@@ -55,6 +71,7 @@ export interface LegacyContactV2Payload {
   residenceIds?: string[];
   buyerQualificationStatus?: BuyerQualificationStatus | null;
   buyerCriteria?: ContactBuyerCriteria;
+  communicationPreferences?: ContactCommunicationPreferences;
   notes?: string;
   importMeta: LegacyImportMeta;
 }
@@ -63,6 +80,9 @@ export interface LegacyContactDedupeStats {
   legacyContactsCount: number;
   legacyVendorsCount: number;
   legacyTotalRaw: number;
+  legacyBuyerPipelineCount: number;
+  buyerPipelineLinkedCount: number;
+  buyerPipelineOrphanCount: number;
   duplicateGroups: number;
   recordsMergedAway: number;
   finalReadyCount: number;
@@ -70,6 +90,11 @@ export interface LegacyContactDedupeStats {
   withPhoneKeyOnly: number;
   withoutDedupeKey: number;
   lciIncompleteCount: number;
+}
+
+export interface LegacyBuyerPipelineRow {
+  legacyId: string;
+  data: Record<string, unknown>;
 }
 
 export function normalizeImportEmail(raw: unknown): string | null {
@@ -132,9 +157,258 @@ export function mapLegacyRelationRoles(data: Record<string, unknown>): ContactRe
   addFromToken(typeRaw);
   for (const r of roleList) addFromToken(r);
 
-  if (roles.size === 0 && data.source === 'vendors') roles.add('seller');
   if (roles.size === 0) roles.add('buyer');
   return Array.from(roles);
+}
+
+export function mapLegacyRelationRolesForSource(
+  data: Record<string, unknown>,
+  source: LegacyContactSourceCollection
+): ContactRelationRole[] {
+  const roles = mapLegacyRelationRoles(data);
+  if (roles.length === 1 && roles[0] === 'buyer' && source === 'vendors') {
+    return ['seller', ...roles.filter((r) => r !== 'buyer')];
+  }
+  if (source === 'vendors' && !roles.includes('seller')) {
+    return [...roles, 'seller'];
+  }
+  return roles;
+}
+
+function finiteNum(v: unknown): number | undefined {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+function pickStringArray(...sources: unknown[]): string[] {
+  const out: string[] = [];
+  for (const src of sources) {
+    if (Array.isArray(src)) {
+      for (const item of src) {
+        if (typeof item === 'string' && item.trim()) out.push(item.trim());
+      }
+    } else if (typeof src === 'string' && src.trim()) {
+      out.push(src.trim());
+    }
+  }
+  return [...new Set(out)];
+}
+
+function docRefFromUrl(url: unknown): ContactBuyerCriteria['ndaFile'] | undefined {
+  if (typeof url !== 'string' || !url.trim()) return undefined;
+  const u = url.trim();
+  return { url: u, storagePath: u };
+}
+
+function normalizePipelineStageKey(stageRaw: unknown): string {
+  if (stageRaw == null || stageRaw === '') return '';
+  return String(stageRaw).trim().toUpperCase().replace(/\s+/g, '_');
+}
+
+/**
+ * Stage Kanban explicitement « qualifié » (pas un simple sous-chaîne QUALIF dans SUIVI_NOUVEAUX).
+ */
+export function isExplicitLegacyQualifiedStage(stageRaw: unknown): boolean {
+  const k = normalizePipelineStageKey(stageRaw);
+  if (!k) return false;
+  const exact = new Set([
+    'QUALIFIE',
+    'QUALIFIED',
+    'ACHETEURS_QUALIFIES',
+    'ACHETEUR_QUALIFIE',
+    'ACHETEURS_QUALIFIE',
+  ]);
+  if (exact.has(k)) return true;
+  if (/^ACHETEURS?_QUALIFIE(S)?$/.test(k)) return true;
+  return false;
+}
+
+function hasNdaEvidence(
+  data: Record<string, unknown>,
+  criteria?: ContactBuyerCriteria
+): boolean {
+  if (data.ndaSigned === true || data.hasNDASigned === true || data.hasNdaSigned === true) {
+    return true;
+  }
+  return Boolean(criteria?.hasNdaSigned || criteria?.ndaFile?.url);
+}
+
+function hasFundsEvidence(
+  data: Record<string, unknown>,
+  criteria?: ContactBuyerCriteria
+): boolean {
+  if (data.proofOfFunds === true || data.hasProofOfFunds === true) return true;
+  return Boolean(
+    criteria?.hasProofOfFunds ||
+      criteria?.proofOfFundsFile?.url ||
+      criteria?.bankLetterFile?.url ||
+      criteria?.mortgagePreApprovalFile?.url ||
+      criteria?.hasBankLetter ||
+      criteria?.hasMortgagePreApproval
+  );
+}
+
+/**
+ * Indication de stage Legacy → statut V2 (sans forcer QUALIFIED sans preuves).
+ */
+export function mapBuyerPipelineStageToQualification(
+  stageRaw: unknown
+): BuyerQualificationStatus | null {
+  const k = normalizePipelineStageKey(stageRaw);
+  if (!k) return null;
+  if (isExplicitLegacyQualifiedStage(stageRaw)) return 'QUALIFIED';
+  if (k.includes('SERIEUX')) return 'FUNDS_VERIFIED';
+  if (k.includes('SUIVI') || k.includes('NOUVEAU')) return 'PENDING_NDA';
+  if (k === 'NON_CLASSE') return null;
+  return null;
+}
+
+/**
+ * Statut qualification final — règle PO : QUALIFIED seulement si NDA + fonds,
+ * ou stage Legacy explicitement QUALIFIE.
+ */
+export function resolveBuyerQualificationFromPipeline(
+  contactData: Record<string, unknown>,
+  contactPayload: LegacyContactV2Payload,
+  pipelineData: Record<string, unknown>,
+  stageRaw: unknown
+): BuyerQualificationStatus | null {
+  const mergedCriteria = mergeBuyerCriteria(
+    contactPayload.buyerCriteria,
+    mapLegacyBuyerCriteria(pipelineData)
+  );
+
+  const nda =
+    hasNdaEvidence(contactData, mergedCriteria) || hasNdaEvidence(pipelineData, mergedCriteria);
+  const funds =
+    hasFundsEvidence(contactData, mergedCriteria) ||
+    hasFundsEvidence(pipelineData, mergedCriteria);
+
+  if (isExplicitLegacyQualifiedStage(stageRaw) || (nda && funds)) {
+    return 'QUALIFIED';
+  }
+
+  const stageHint = mapBuyerPipelineStageToQualification(stageRaw);
+  if (stageHint === 'QUALIFIED') {
+    if (nda && funds) return 'QUALIFIED';
+    if (nda) return 'NDA_SIGNED';
+    if (funds) return 'FUNDS_VERIFIED';
+    return 'PENDING_NDA';
+  }
+
+  if (stageHint) {
+    return pickQualificationRank(contactPayload.buyerQualificationStatus, stageHint);
+  }
+
+  if (nda && funds) return 'QUALIFIED';
+  if (nda) return 'NDA_SIGNED';
+  if (funds) return 'FUNDS_VERIFIED';
+
+  return contactPayload.buyerQualificationStatus ?? null;
+}
+
+/** Critères acheteur depuis champs plats contact (§1.3 DATA_MAPPING). */
+export function mapLegacyBuyerCriteria(data: Record<string, unknown>): ContactBuyerCriteria | undefined {
+  const regions = pickStringArray(
+    data.regionsRecherchees,
+    data.regionPreferee,
+    data.region,
+    data.regions
+  );
+  const residenceTypes = pickStringArray(data.typesDeResidence, data.typeResidenceSouhaitee).filter(
+    (t): t is BuyerTargetResidenceType =>
+      (BUYER_TARGET_RESIDENCE_TYPES as readonly string[]).includes(t)
+  );
+  const budgetMax = finiteNum(data.budgetMax ?? data.budget);
+  const unitsMin = finiteNum(data.nombreUnitesMin ?? data.unitesMin);
+  const unitsMax = finiteNum(data.nombreUnitesMax ?? data.unitesMax);
+  const downpaymentAmount = finiteNum(data.miseDeFonds ?? data.downPayment);
+  const timeline = pickString(data.etapeDemarches, data.dureeRecherche, data.timeline);
+  const experienceDescription = [
+    pickString(data.experienceSante),
+    pickString(data.autresRpaInteressantes),
+    pickString(data.experienceDescription),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const hasBroker =
+    data.travailleAvecCourtier === true ||
+    pickString(data.travailleAvecCourtier).toLowerCase() === 'oui' ||
+    pickString(data.travailleAvecCourtier).toLowerCase() === 'yes';
+
+  const ndaFile = docRefFromUrl(data.confidentialityAgreementUrl ?? data.ndaUrl);
+  const proofOfFundsFile = docRefFromUrl(data.proofOfFundsUrl);
+  const bankLetterFile = docRefFromUrl(data.bankLetterUrl);
+  const mortgagePreApprovalFile = docRefFromUrl(data.mortgagePreApprovalUrl);
+
+  const criteria: ContactBuyerCriteria = {
+    ...(regions.length ? { regions } : {}),
+    ...(residenceTypes.length ? { residenceTypes } : {}),
+    ...(budgetMax !== undefined ? { budgetMax } : {}),
+    ...(unitsMin !== undefined ? { unitsMin } : {}),
+    ...(unitsMax !== undefined ? { unitsMax } : {}),
+    ...(downpaymentAmount !== undefined ? { downpaymentAmount } : {}),
+    ...(timeline ? { timeline } : {}),
+    ...(experienceDescription ? { experienceDescription } : {}),
+    ...(hasBroker ? { hasBroker: true } : {}),
+    ...(ndaFile ? { ndaFile, hasNdaSigned: true } : {}),
+    ...(proofOfFundsFile ? { proofOfFundsFile, hasProofOfFunds: true } : {}),
+    ...(bankLetterFile ? { bankLetterFile, hasBankLetter: true } : {}),
+    ...(mortgagePreApprovalFile
+      ? { mortgagePreApprovalFile, hasMortgagePreApproval: true }
+      : {}),
+  };
+
+  return Object.keys(criteria).length > 0 ? criteria : undefined;
+}
+
+function mergeBuyerCriteria(
+  a?: ContactBuyerCriteria,
+  b?: ContactBuyerCriteria
+): ContactBuyerCriteria | undefined {
+  if (!a && !b) return undefined;
+  const regions = [...new Set([...(a?.regions ?? []), ...(b?.regions ?? [])])];
+  const residenceTypes = [
+    ...new Set([...(a?.residenceTypes ?? []), ...(b?.residenceTypes ?? [])]),
+  ] as ContactBuyerCriteria['residenceTypes'];
+  return {
+    ...b,
+    ...a,
+    regions: regions.length ? regions : undefined,
+    residenceTypes: residenceTypes?.length ? residenceTypes : undefined,
+    budgetMax: a?.budgetMax ?? b?.budgetMax,
+    unitsMin: a?.unitsMin ?? b?.unitsMin,
+    unitsMax: a?.unitsMax ?? b?.unitsMax,
+    downpaymentAmount: a?.downpaymentAmount ?? b?.downpaymentAmount,
+    timeline: a?.timeline || b?.timeline,
+    experienceDescription: [a?.experienceDescription, b?.experienceDescription]
+      .filter(Boolean)
+      .join(' · ') || undefined,
+    hasBroker: a?.hasBroker ?? b?.hasBroker,
+    ndaFile: a?.ndaFile ?? b?.ndaFile,
+    proofOfFundsFile: a?.proofOfFundsFile ?? b?.proofOfFundsFile,
+    bankLetterFile: a?.bankLetterFile ?? b?.bankLetterFile,
+    mortgagePreApprovalFile: a?.mortgagePreApprovalFile ?? b?.mortgagePreApprovalFile,
+    hasNdaSigned: a?.hasNdaSigned || b?.hasNdaSigned,
+    hasProofOfFunds: a?.hasProofOfFunds || b?.hasProofOfFunds,
+    hasBankLetter: a?.hasBankLetter || b?.hasBankLetter,
+    hasMortgagePreApproval: a?.hasMortgagePreApproval || b?.hasMortgagePreApproval,
+  };
+}
+
+/** Cloisonnement : owner courtier depuis legacy ou défaut migration. */
+export function resolveLegacyOwnerId(
+  data: Record<string, unknown>,
+  defaultOwnerId: string
+): string {
+  const candidate = pickString(
+    data.courtierResponsable,
+    data.courtierResponsableId,
+    data.assignedTo,
+    data.brokerId,
+    data.ownerId
+  );
+  return candidate || defaultOwnerId;
 }
 
 export function mapLegacyBuyerQualification(
@@ -214,7 +488,7 @@ export function legacyRowToV2Payload(
     pickString(data.occupationProfession, data.occupation, data.profession, data.title) ||
     LCI_IMPORT_PLACEHOLDER_OCCUPATION;
 
-  const relationRoles = mapLegacyRelationRoles(data);
+  const relationRoles = mapLegacyRelationRolesForSource(data, row.source);
   const email = normalizeImportEmail(data.courriel ?? data.email) ?? undefined;
   const telephone =
     normalizeImportPhone(data.telephone ?? data.cellulaire ?? data.phone ?? data.mobile) ?? undefined;
@@ -223,14 +497,17 @@ export function legacyRowToV2Payload(
     ? [...new Set(data.residenceIds.map(String).filter(Boolean))]
     : undefined;
 
+  const buyerCriteria = mapLegacyBuyerCriteria(data);
+  const doNotEmail = data.doNotEmail === true;
+
   const notesParts = [
     pickString(data.notes, data.note),
-    row.source === 'vendors' ? `[Import legacy: vendors/${row.legacyId}]` : `[Import legacy: contacts/${row.legacyId}]`,
+    `[Import legacy: ${row.source}/${row.legacyId}]`,
   ].filter(Boolean);
 
   return {
     orgId: ctx.orgId,
-    ownerId: ctx.ownerId,
+    ownerId: resolveLegacyOwnerId(data, ctx.ownerId),
     silo: 'COMMERCIAL_SPEC',
     assetNiche: 'RPA',
     visibility: ctx.visibility,
@@ -245,6 +522,10 @@ export function legacyRowToV2Payload(
     telephone,
     residenceIds,
     buyerQualificationStatus: mapLegacyBuyerQualification(data, relationRoles),
+    ...(buyerCriteria ? { buyerCriteria } : {}),
+    ...(doNotEmail
+      ? { communicationPreferences: { unsubscribedFromEmails: false, excludedFromMassMailing: true } }
+      : {}),
     notes: notesParts.join('\n'),
     importMeta: {
       legacySources: [{ collection: row.source, id: row.legacyId }],
@@ -285,15 +566,29 @@ function mergePayloads(
   }
 
   const notes = [primary.notes, secondary.notes].filter(Boolean).join('\n---\n');
+  const buyerCriteria = mergeBuyerCriteria(primary.buyerCriteria, secondary.buyerCriteria);
+  const excludedFromMassMailing =
+    primary.communicationPreferences?.excludedFromMassMailing ||
+    secondary.communicationPreferences?.excludedFromMassMailing;
 
   return {
     ...primary,
     prenom: primary.prenom || secondary.prenom,
     email: primary.email || secondary.email,
     telephone: primary.telephone || secondary.telephone,
+    ownerId: primary.ownerId || secondary.ownerId,
     relationRoles: Array.from(roleSet),
     residenceIds: residenceSet.size ? Array.from(residenceSet) : undefined,
     buyerQualificationStatus,
+    ...(buyerCriteria ? { buyerCriteria } : {}),
+    ...(excludedFromMassMailing
+      ? {
+          communicationPreferences: {
+            unsubscribedFromEmails: false,
+            excludedFromMassMailing: true,
+          },
+        }
+      : {}),
     notes,
     importMeta: {
       legacySources: [...primary.importMeta.legacySources, ...secondary.importMeta.legacySources],
@@ -373,6 +668,9 @@ export function dedupeLegacyRows(
       legacyContactsCount: contacts.length,
       legacyVendorsCount: vendors.length,
       legacyTotalRaw: rows.length,
+      legacyBuyerPipelineCount: 0,
+      buyerPipelineLinkedCount: 0,
+      buyerPipelineOrphanCount: 0,
       duplicateGroups,
       recordsMergedAway,
       finalReadyCount: payloads.length,
@@ -398,4 +696,143 @@ export function deterministicImportContactId(payload: LegacyContactV2Payload): s
   }
   const primaryLegacy = payload.importMeta.legacySources[0]?.id?.slice(0, 12) || 'x';
   return `imp_${hash.toString(16)}_${primaryLegacy}`.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 48);
+}
+
+function pickQualificationRank(
+  a: BuyerQualificationStatus | null | undefined,
+  b: BuyerQualificationStatus | null | undefined
+): BuyerQualificationStatus | null {
+  const rank: Record<string, number> = {
+    QUALIFIED: 4,
+    FUNDS_VERIFIED: 3,
+    NDA_SIGNED: 2,
+    PENDING_NDA: 1,
+  };
+  if (!a) return b ?? null;
+  if (!b) return a;
+  return (rank[b] ?? 0) > (rank[a] ?? 0) ? b : a;
+}
+
+/**
+ * Aplatit `buyerPipeline/{id}` sur les payloads contact (pas de nouvelle collection).
+ * Jointure par `buyerId` = id legacy `contacts/{id}`.
+ */
+export function enrichPayloadsWithBuyerPipeline(
+  payloads: LegacyContactV2Payload[],
+  pipelineRows: LegacyBuyerPipelineRow[],
+  contactDataByLegacyId: Map<string, Record<string, unknown>> = new Map()
+): { payloads: LegacyContactV2Payload[]; linked: number; orphans: number } {
+  if (pipelineRows.length === 0) {
+    return { payloads, linked: 0, orphans: 0 };
+  }
+
+  const enriched = payloads.map((p) => ({ ...p }));
+  let linked = 0;
+  let orphans = 0;
+
+  for (const row of pipelineRows) {
+    const data = row.data;
+    const buyerId = pickString(data.buyerId, data.contactId, data.buyerContactId);
+    if (!buyerId) {
+      orphans += 1;
+      continue;
+    }
+
+    const indices: number[] = [];
+    enriched.forEach((p, i) => {
+      const match = p.importMeta.legacySources.some(
+        (src) => src.collection === 'contacts' && src.id === buyerId
+      );
+      if (match) indices.push(i);
+    });
+
+    if (indices.length === 0) {
+      orphans += 1;
+      continue;
+    }
+
+    const stageRaw = data.stage ?? data.pipelineStage ?? data.pipelineColumn;
+    const override = pickString(data.pipelineOverrideColumn, data.pipelineColumn);
+
+    const historyEntry: LegacyPipelineHistoryEntry = {
+      collection: 'buyerPipeline',
+      id: row.legacyId,
+      stage: stageRaw != null ? String(stageRaw) : null,
+      pipelineOverride: override || null,
+      assignedTo: pickString(data.assignedTo) || null,
+    };
+
+    for (const idx of indices) {
+      linked += 1;
+      const cur = enriched[idx];
+      const contactData = contactDataByLegacyId.get(buyerId) ?? {};
+      const buyerQualificationStatus = resolveBuyerQualificationFromPipeline(
+        contactData,
+        cur,
+        data,
+        stageRaw
+      );
+
+      const pipelineOwner = pickString(data.assignedTo, data.courtierResponsable, data.brokerId);
+      const pipelineCriteria = mapLegacyBuyerCriteria(data);
+      const leadFromPipeline = pickString(data.source, data.provenance);
+
+      const relationRoles: ContactRelationRole[] = cur.relationRoles?.includes('buyer')
+        ? cur.relationRoles
+        : [...(cur.relationRoles ?? []), 'buyer'];
+
+      enriched[idx] = {
+        ...cur,
+        relationRoles,
+        ownerId: pipelineOwner || cur.ownerId,
+        buyerQualificationStatus,
+        buyerCriteria: mergeBuyerCriteria(cur.buyerCriteria, pipelineCriteria),
+        notes: [cur.notes, leadFromPipeline ? `[Pipeline: ${leadFromPipeline}]` : null]
+          .filter(Boolean)
+          .join('\n'),
+        importMeta: {
+          ...cur.importMeta,
+          pipelineHistory: [...(cur.importMeta.pipelineHistory ?? []), historyEntry],
+          pipelineOverride: override || cur.importMeta.pipelineOverride || null,
+        },
+      };
+    }
+  }
+
+  return { payloads: enriched, linked, orphans };
+}
+
+export interface LegacyContactMigrationPlan {
+  payloads: LegacyContactV2Payload[];
+  stats: LegacyContactDedupeStats;
+}
+
+/**
+ * Plan complet : contacts + vendors fusionnés, puis overlay buyerPipeline.
+ */
+export function buildLegacyContactMigrationPlan(
+  rows: LegacyRawContactRow[],
+  pipelineRows: LegacyBuyerPipelineRow[],
+  ctx: { orgId: string; ownerId: string; visibility: ContactVisibility }
+): LegacyContactMigrationPlan {
+  const { payloads: deduped, stats: baseStats } = dedupeLegacyRows(rows, ctx);
+  const contactDataByLegacyId = new Map<string, Record<string, unknown>>();
+  for (const row of rows) {
+    if (row.source === 'contacts') contactDataByLegacyId.set(row.legacyId, row.data);
+  }
+  const { payloads, linked, orphans } = enrichPayloadsWithBuyerPipeline(
+    deduped,
+    pipelineRows,
+    contactDataByLegacyId
+  );
+
+  return {
+    payloads,
+    stats: {
+      ...baseStats,
+      legacyBuyerPipelineCount: pipelineRows.length,
+      buyerPipelineLinkedCount: linked,
+      buyerPipelineOrphanCount: orphans,
+    },
+  };
 }

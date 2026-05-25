@@ -81,7 +81,18 @@ Fiche V2 (Listings → ResidenceDetail)
     ├─ Marché            [✅ MarcheConcurrenceTab]
     ├─ Documents         [✅ Espace Documents + scan + parse IA Vertex + distribution / courriel]
     ├─ Intelligence      [✅ call_analyses + courriels email_threads/messages (ex-mailbox_analyses)]
+    ├─ Accès Vendeur     [✅ bouton fiche → /acces-vendeur — timeline + jauge mandat + docs]
     └─ Promesse          [✅ PromesseAchatTab — offre SSOT + conditions & délais RPA + clôture]
+```
+
+**Accès Vendeur (portail externe) :**
+
+```text
+ResidenceDetail — « Ouvrir l'Accès Vendeur » (ResidenceAccesVendeurButton)
+    ↓ contact VENDEUR dans partiesImpliquees
+Route /acces-vendeur (AccesVendeurPage)
+    ↓ vendorPortalService — onSnapshot contact + résidence liée
+Core vendorPortalTimeline + mandateCompleteness (preuves de conformité mandat)
 ```
 
 **Inscriptions :** vue **pipeline** en **4 colonnes** (prospect · mandat · promesse · vendu) ; statut `expired` conservé en données mais **hors** colonnes actives (`PIPELINE_ACTIVE_STATUSES`). **Phase 2 (2026-05-24)** : totaux $ + commissions par colonne, badge conformité mandat, **drag-and-drop** (`@hello-pangea/dnd`), filtres **régions Québec** (portal), blocage DnD vers `promise` sans `prixAccepte`.
@@ -158,6 +169,8 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 | Diffusion Web — vendor prebuild + `tsc` | ✅ `sync-core-diffusion` + `financialCalcTypes` |
 | Promesse d'achat — persistance `offre` / DRY | ✅ `serializeOffreForFirestore`, merge objet complet |
 | CRM — répertoire contacts LCI | ✅ `organizations/{orgId}/contacts` — tiers, documents, coacheteurs/covendeurs |
+| **Accès Vendeur** | ✅ `/acces-vendeur` + `ResidenceAccesVendeurButton` — timeline, jauge mandat, service temps réel |
+| **Migration contacts Maillon 1** | ✅ `legacyContactImport.ts` + dry-run ; qualification stricte ; **`--execute` sur approbation PO** |
 | Parties résidence ↔ CRM | ✅ `partiesImpliquees` + `linkContactToResidence` (writeBatch) |
 | Identité — courtier responsable | ✅ `ResponsibleBrokerCard` → `courtiersResponsables` |
 | Hub Finance — master panel & rapports PDF | ✅ `FinanceHubMasterPanel`, glossaire Québec |
@@ -281,6 +294,7 @@ injectMarketMacroStats
 | **B** | Module ACM prédictif — ingestion Centris/Matrix, ajustements comparables |
 | **C** | Coffre-fort WORM OACIQ — règles Firestore verrouillage 6 ans (documents « Final ») |
 | **D** | Mes inscriptions Phase 3 — actions bulk, export pipeline, alertes stagnation |
+| **E** | Migration Firebase — **`--execute` Maillon 1 contacts** (après feu vert PO) ; maillons résidences / finance / Storage |
 
 ### Backlog technique (inchangé)
 
@@ -292,4 +306,4 @@ injectMarketMacroStats
 
 ---
 
-*Dernière mise à jour : 2026-05-24 — Statistiques du marché, anti-doublons idempotent, parse massif 2 GiB, Option A messagerie ↔ CRM, Kanban inscriptions Phase 2, benchmark finance.*
+*Dernière mise à jour : 2026-05-20 — Accès Vendeur (portail + bouton fiche), Maillon 1 migration contacts (qualification stricte, dry-run validé PO).*

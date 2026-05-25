@@ -56,6 +56,7 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 |--------|-------|------|
 | **Mes inscriptions** | `Listings.tsx` | Pipeline Kanban 4 colonnes, DnD, filtres régions |
 | **CRM** | `ContactsListPage` | `organizations/{orgId}/contacts` |
+| **Accès Vendeur** | `/acces-vendeur` · bouton fiche résidence | `vendorPortalTimeline`, `vendorPortalService`, contact VENDEUR lié |
 | **Messagerie** | `MailboxContainer` | `email_threads` / `messages` + `matchedContactId` |
 | **Statistiques du marché** | `MarketLibraryDashboard` | `market_documents`, parse Vertex, injection HITL |
 | **Paramètres** | `Settings.tsx` | Profil, comptes courriel, Finance (admin_system) |
@@ -69,7 +70,7 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | **Core** | `packages/core/src/crm/` |
 | **Service** | `src/services/contacts.ts` |
 | **Fiche** | `ContactFormDrawer` — LCI, tiers acheteur/vendeur, chronologie omnicanale |
-| **Import** | `scripts/migrate-legacy-contacts-to-v2.mjs` |
+| **Import Maillon 1** | `scripts/migrate-legacy-contacts-to-v2.mjs` — dry-run par défaut ; SSOT `legacyContactImport.ts` (fusion contacts/vendors, aplatissement `buyerPipeline`, qualification stricte : `QUALIFIED` = NDA + fonds ou stage explicitement qualifié) |
 
 ---
 
@@ -96,6 +97,7 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | Marché | ✅ Marché & concurrence |
 | Documents | ✅ Scan + parse Vertex + distribution |
 | Intelligence | ✅ Chronologie appels + courriels |
+| Accès Vendeur (depuis fiche) | ✅ Portail vendeur — timeline, conformité mandat, pièces |
 | Promesse | ✅ Cockpit PA (`offre` SSOT) |
 
 **Tableau de bord :** priorités KISS (J+3 / J+5 / J+7).
@@ -110,4 +112,4 @@ Copie possible sur disque de sauvegarde (`00_PRIMEXPERT_SYSTEME_APP/docs/` ou vo
 
 ---
 
-*Index mis à jour : 2026-05-24 — Statistiques du marché, anti-doublons, Option A messagerie ↔ CRM, Kanban inscriptions Phase 2, benchmark finance.*
+*Index mis à jour : 2026-05-20 — Accès Vendeur (portail + bouton fiche résidence), Maillon 1 migration contacts (qualification stricte, dry-run validé PO).*

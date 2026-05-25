@@ -313,9 +313,51 @@ Côté client : `resolveEffectiveBillingStatus()` — règle 72 h si Firestore e
 
 ---
 
+## Accès Vendeur — portail client (2026-05-20)
+
+**Statut :** implantation validée PO — route Workhub + entrée depuis la fiche résidence.
+
+| Élément | Détail |
+|---------|--------|
+| Route | `/acces-vendeur` — `App.tsx` (`ProtectedAccesVendeur`, lazy `AccesVendeurPage`) |
+| UI portail | `src/components/vendor/` — `AccesVendeurPage`, `VendorTimeline`, `VendorComplianceGauge`, `VendorDocumentDropzone`, `VendorOfferPanel` |
+| Bouton fiche | `ResidenceAccesVendeurButton` dans `ResidenceDetail.tsx` — ouvre le portail pour le contact **VENDEUR** lié (`partiesImpliquees`) |
+| Core | `packages/core/src/residence/vendorPortalTimeline.ts`, enrichissement `mandateCompleteness.ts` (jauge preuves de conformité mandat) |
+| Service | `vendorPortalService.ts` + `contacts.ts` (lecture / écoute temps réel contact CRM) |
+| Commit amorce | `4d252d0` — timeline, jauge, service Firestore ; bouton fiche sur `main` |
+
+**Règle #0 :** aucune logique métier timeline / conformité mandat dans React — tout passe par `@primexpert/core/residence`.
+
+---
+
+## Migration contacts — Maillon 1 (2026-05-20, clôture session)
+
+**Statut :** script + SSOT mapping **implémentés** ; dry-run **validé PO** ; **`--execute` interdit** sans feu vert explicite.
+
+| Élément | Détail |
+|---------|--------|
+| SSOT | `packages/core/src/crm/legacyContactImport.ts` — fusion `contacts/` + `vendors/` (email puis téléphone), aplatissement `buyerPipeline/` |
+| Script | `scripts/migrate-legacy-contacts-to-v2.mjs` — dry-run par défaut ; `--org-id`, `--owner-id`, `--limit` |
+| Rapport | `scripts/output/legacy-contacts-dry-run-report.json` (non versionné) |
+| Référence | [`docs/DATA_MAPPING_LEGACY_V2.md`](./DATA_MAPPING_LEGACY_V2.md) § contacts / pipeline |
+
+### Règle qualification acheteur (import)
+
+- **`QUALIFIED`** uniquement si preuves **NDA + fonds** (`ndaSigned` / `ndaFile` + `proofOfFunds` / fichiers) **ou** stage legacy explicitement qualifié (`QUALIFIE`, `ACHETEURS_QUALIFIES`, …).
+- Stages type **`ACHETEURS_EN_SUIVI_NOUVEAUX`** → **`PENDING_NDA`** par défaut (ex. **Éric Pichette** — validé dry-run).
+- Même stage avec NDA + fonds documentés → **`QUALIFIED`** (ex. **Anthony Verret** — conforme critères PO).
+- Historique Kanban : `importMeta.pipelineHistory[]` — **pas** de collection `buyerPipeline/` en V2.
+- Suppression de l’ancien raccourci `accessConfirmedAt` / `includes('QUALIF')` sur le libellé de stage (faux positifs).
+
+```bash
+npx tsx scripts/migrate-legacy-contacts-to-v2.mjs --org-id=ORG_ID --owner-id=OWNER_ID --limit=50
+```
+
+---
+
 ## Plan de migration Legacy → V2 — diagnostic Data Mapping (2026-05-20)
 
-**Statut :** cartographie **validée à 100 %** par le PO (Alain) — diagnostic uniquement, **aucun script de migration final** exécuté dans cette session.
+**Statut :** cartographie **validée à 100 %** par le PO (Alain). **Maillon 1 (contacts)** : implémentation + dry-run OK ; maillons 2+ (résidences, finance, Storage) **planifiés** — voir document officiel.
 
 **Document officiel :** [`docs/DATA_MAPPING_LEGACY_V2.md`](./DATA_MAPPING_LEGACY_V2.md)
 
@@ -344,9 +386,18 @@ Côté client : `resolveEffectiveBillingStatus()` — règle 72 h si Firestore e
 3. `financial/years_*` — enrichir `dataV2` ou sous-docs
 4. Visites / comptes-rendus hétérogènes → `visitorVisitRegistry` + `call_analyses`
 
-### Prochaine phase (hors scope diagnostic)
+### Prochaine phase (hors scope Maillon 1)
 
-Ordre recommandé : users/orgId → contacts → résidences → parties → PA → finance → documents → compliance → flatten pipeline acheteur (détail dans le document lié).
+Ordre recommandé : **contacts `--execute`** (après feu vert) → résidences → parties → PA → finance → documents → compliance (détail dans le document lié).
+
+---
+
+## Session 2026-05-20 — clôture PO (Accès Vendeur + Maillon 1 contacts)
+
+| Chantier | Livrables |
+|----------|-----------|
+| **Accès Vendeur** | Portail `/acces-vendeur`, timeline core, jauge mandat, bouton **Ouvrir l'Accès Vendeur** sur `ResidenceDetail` |
+| **Migration contacts** | `legacyContactImport.ts` enrichi (fusion, pipeline, qualification stricte) ; dry-run Pichette → `PENDING_NDA`, Verret → `QUALIFIED` |
 
 ---
 
@@ -374,4 +425,4 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 ---
 
-*Journal mis à jour : 2026-05-20 — Plan de migration Legacy→V2 (Data Mapping validé PO) ; voir [`DATA_MAPPING_LEGACY_V2.md`](./DATA_MAPPING_LEGACY_V2.md).*
+*Journal mis à jour : 2026-05-20 — Accès Vendeur + Maillon 1 migration contacts (qualification stricte, dry-run validé PO) ; voir [`DATA_MAPPING_LEGACY_V2.md`](./DATA_MAPPING_LEGACY_V2.md).*

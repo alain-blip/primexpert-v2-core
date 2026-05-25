@@ -33,13 +33,32 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 | **`residenceIds`** | array | Dossiers résidence liés (cache bidirectionnel avec `partiesImpliquees`) |
 | **`coBuyerIds`** | array | Coacheteurs — liaison bidirectionnelle writeBatch |
 | **`coSellerIds`** | array | Covendeurs — liaison bidirectionnelle writeBatch |
-| `buyerQualificationStatus` | string \| null | Legacy pipeline (optionnel) |
+| **`buyerQualificationStatus`** | string \| null | État pipeline acheteur **aplati** (pas de collection `buyerPipeline/` en V2). Valeurs : `PENDING_NDA`, `NDA_SIGNED`, `FUNDS_VERIFIED`, `QUALIFIED`. Import legacy : voir règle ci-dessous. |
 | **`buyerCriteria`** | map | Critères acheteur — voir ci-dessous |
 | **`sellerCriteria`** | map | Critères vendeur — voir ci-dessous |
 | **`communicationPreferences`** | map | `unsubscribedFromEmails`, `excludedFromMassMailing` (Loi 25 / LCAP) |
 | `legalVerification` | map | OACIQ art. 30 — identité / sollicitation |
-| `importMeta` | map | Import legacy (`lciIncomplete`, sources) |
+| **`importMeta`** | map | Import legacy — voir ci-dessous |
 | `notes` | string | Notes libres |
+
+### `buyerQualificationStatus` — import Maillon 1 (`legacyContactImport.ts`)
+
+| Règle | Comportement |
+|-------|----------------|
+| Stage explicitement qualifié | `QUALIFIE`, `QUALIFIED`, `ACHETEURS_QUALIFIES`, … → `QUALIFIED` seulement si preuves cohérentes ; sinon dégradation `NDA_SIGNED` / `FUNDS_VERIFIED` / `PENDING_NDA` |
+| Stage suivi / nouveaux | `ACHETEURS_EN_SUIVI_NOUVEAUX`, … → **`PENDING_NDA`** par défaut |
+| Preuves contact + pipeline | `QUALIFIED` **uniquement** si NDA **et** fonds (`ndaFile` / `hasNdaSigned` + `proofOfFundsFile` / `hasProofOfFunds`, etc.) |
+| Exemple validé dry-run | Pichette (`ndaSigned: false`) → `PENDING_NDA` ; Verret (NDA + fonds fichiers) → `QUALIFIED` |
+
+### Objet `importMeta` (contacts importés)
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `legacySources` | array | `{ collection: contacts \| vendors, id }` |
+| `mergedCount` | number | Nombre de fiches legacy fusionnées |
+| `lciIncomplete`, `missingLciFields` | bool / array | LCI à compléter post-import |
+| **`pipelineHistory`** | array | Journal stages `buyerPipeline/` — `{ collection, id, stage, pipelineOverride?, assignedTo? }` |
+| `pipelineOverride` | string \| null | Dernière colonne Kanban override legacy |
 
 ### Objet `buyerCriteria`
 
