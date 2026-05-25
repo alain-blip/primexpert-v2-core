@@ -722,4 +722,37 @@ Lors de l’ajout d’une note : mise à jour document racine `lastCommunication
 
 ---
 
-*Dernière mise à jour : 2026-05-24 — Collections Big Data (`market_documents`, `market_analytics_raw`, empreintes anti-doublons), Phase 2 messagerie ↔ CRM, inscriptions Kanban DnD.*
+## Analyse de mise en marché (ACM) — consommation SSOT (2026-05-20)
+
+**Bootstrap :** `bootstrapResidenceAcm()` dans `residenceAcmBootstrap.ts` — **aucun champ Firestore dédié « acm »** ; lecture compose :
+
+### `residences/{id}/financial/dataV2`
+
+| Champ (`calculatedResults`) | Usage ACM |
+|-----------------------------|-----------|
+| `revenuBrutEffectif` / `revenusAnnuels` | Affichage verrouillé RBE ; ancrage `potentialRevenue` moteur |
+| `revenuNetExploitation` | Affichage verrouillé RNE ; ancrage dépenses SSOT (RBE − RNE) |
+| `prixDemande` / `tauxCapitalisation` | Prix demandé ; repli TGA si GPS insuffisant |
+| `nombreUnites` | Unités sujet (avec repli `residence` / `residenceDoc`) |
+
+### `residences/{id}` (document racine — marché territorial)
+
+| Champ | Usage ACM |
+|--------|-----------|
+| `competitorsList[]` | Unités RPA du secteur (somme + sujet) |
+| `marcheDemographie.population75_plus` | Bassin 75+ (pénétration) |
+| `marketScope.radiusKm` | Périmètre Haversine (ex. 50 km) |
+| `classeImmeuble` / `niveauSoins` / niche RPA | Classe pour médiane TGA GPS |
+| `regionAdministrative` / `region` | Filtre médiane TGA |
+
+### Collections GPS (lecture seule)
+
+| Collection | Usage |
+|------------|--------|
+| `market_analytics_raw` + `marketSnapshots/v1` | Transactions comparables ; `tgaPct`, `classeImmeuble`, région → `selectGpsCapRateMedian()` |
+
+**UI éditable (non persisté automatiquement sur le doc)** : TGA cible (%) et pénétration RPA 75+ (%) dans `AcmValuationWorkspace` — recalcul client uniquement jusqu’à action d’enregistrement explicite future.
+
+---
+
+*Dernière mise à jour : 2026-05-20 (fin de journée) — **Analyse de mise en marché (ACM)** SSOT (`e1a900c`), Big Data, messagerie ↔ CRM, inscriptions Kanban.*

@@ -273,6 +273,29 @@ injectMarketMacroStats
 
 ---
 
+## G. Session 2026-05-20 (soir) — Analyse de mise en marché (ACM) résidence (`c1b5e62` → `e1a900c`)
+
+| Jalon | Détail |
+|-------|--------|
+| **Parcours** | ACM intégré onglet **Marché** fiche résidence — plus de formulaire isolé sans SSOT |
+| **Libellé PO** | **Analyse de mise en marché (ACM)** |
+| **Finances** | `financial/dataV2.calculatedResults` → RBE, RNE, prix demandé injectés dans le moteur |
+| **TGA** | Médiane GPS `gpsCapRateByRegionClass.ts` (région + classe RPA) ; **éditable** par le courtier ; recalcul live prix/scénarios |
+| **Territoire** | Unités secteur, rayon `marketScope`, population 75+ depuis `residenceDoc` |
+| **Sprint 0** | CSV comparables, stress tests, PDF vendeur, panneau vérification EEE (`c1b5e62`) |
+| **Prod** | `primexpert-app-v2.web.app` — HEAD `e1a900c` validé PO |
+
+```text
+Fiche résidence → Onglet Marché
+    → FinancialDataProvider (dataV2)
+    → ResidenceDocumentProvider (competitors, démographie, classe)
+    → bootstrapResidenceAcm() + useMarketData (transactions GPS)
+    → AcmValuationWorkspace (TGA éditable, prix suggéré instantané)
+    → AcmTab (PDF présentation)
+```
+
+---
+
 ## F. Session 2026-05-24 — Option A + inscriptions + marché (`6d31058`)
 
 | Jalon | Détail |
@@ -291,7 +314,7 @@ injectMarketMacroStats
 | Option | Thème |
 |--------|--------|
 | ~~**A**~~ | ~~Phase 2 Email Center — rattachement message → contact CRM~~ **✅ livré 2026-05-24** |
-| **B** | Module ACM prédictif — ingestion Centris/Matrix, ajustements comparables |
+| **B** | Module ACM — **base résidence livrée** (`e1a900c`) ; suite : ingestion Centris/Matrix, comparables liés fiche |
 | **C** | Coffre-fort WORM OACIQ — règles Firestore verrouillage 6 ans (documents « Final ») |
 | **D** | Mes inscriptions Phase 3 — actions bulk, export pipeline, alertes stagnation |
 | **E** | Migration Firebase — **`--execute` Maillon 1 contacts** (après feu vert PO) ; maillons résidences / finance / Storage |
@@ -306,4 +329,4 @@ injectMarketMacroStats
 
 ---
 
-*Dernière mise à jour : 2026-05-20 — Accès Vendeur (portail + bouton fiche), Maillon 1 migration contacts (qualification stricte, dry-run validé PO).*
+*Dernière mise à jour : 2026-05-20 (fin de journée) — **Analyse de mise en marché (ACM)** SSOT (`e1a900c`), Accès Vendeur, Maillon 1 contacts.*

@@ -38,14 +38,17 @@
 │           │   ├── coBuyers.ts / coSellers.ts
 │           │   └── legacyContactImport.ts
 │           ├── diffusion/             # Syndication Web (rpaavendre.com, guardrails OACIQ)
-│           ├── valuation/           # Cap rate, comparables, TGA
+│           ├── valuation/           # Cap rate, comparables, TGA, ACM résidence
+│           │   ├── residenceAcmBootstrap.ts   # Bootstrap ACM — SSOT calculatedResults + TGA GPS
+│           │   ├── stressTest.ts / priceStrategy.ts / penetrationTgaAdjustment.ts
+│           │   └── sellerListingAnalysisReport.ts
 │           ├── narrative/           # Narratif vendeur
 │           ├── intelligence/        # Priorités suivi KISS, rapport vendeur, contactTimeline
 │           ├── residence/             # partiesImpliquees, complianceChecklist, listingCommission, quebecRegions, pipelineDragRules
 │           │   ├── vendorPortalTimeline.ts   # Accès Vendeur — étapes timeline (Règle #0)
 │           │   └── mandateCompleteness.ts    # Jauge preuves de conformité mandat (portail vendeur)
 │           ├── documents/             # extraction rapports marché, schémas Gemini (MARKET_REPORT omnivore)
-│           ├── market/                # haversine, zonePenetration, marketDeduplication (anti-doublons Big Data)
+│           ├── market/                # haversine, zonePenetration, gpsCapRateByRegionClass, marketDeduplication
 │           ├── quality/             # Score qualité fiche
 │           ├── sources/             # Sources externes
 │           ├── export/              # Export dataset / politique
@@ -265,7 +268,7 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Identité | `IdentiteImmeubleTab` + `ResidenceDocumentProvider` | ✅ Phase 4a |
 | Finances | `FinanceHubTab` + `FinancialDataProvider` | ✅ Hub + 5 sous-onglets |
 | Déclaration | `DeclarationVendeurTab` | ✅ Questionnaire OACIQ — coquille institutionnelle |
-| Marché | `MarcheConcurrenceTab` | ✅ Marché et concurrence — coquille institutionnelle |
+| Marché | `MarcheConcurrenceTab` | ✅ **Analyse de mise en marché (ACM)** en tête + pénétration / comparables / diagnostic territorial |
 | Documents | `DocumentsDiligenceTab` | ✅ Financier / Technique / Légal + scan + parse IA + onglets / distribution / courriel |
 | Intelligence | `ResidenceIntelligencePanel` + `IntelligenceChronologie` | ✅ Appels E-3 + courriels `email_threads/messages` + rapport vendeur |
 | Promesse | `PromesseAchatTab` + `residence/promesse/*` | ✅ Cockpit PA — `offre` + `promesseAchat` (core/transaction) |
@@ -349,4 +352,6 @@ Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only func
 
 ---
 
-*Dernière mise à jour : 2026-05-20 — Accès Vendeur, Maillon 1 migration contacts (`legacyContactImport`), bouton fiche résidence.*
+| Analyse de mise en marché (ACM) | `AcmValuationWorkspace`, `ResidenceAcmValuationPanel`, `residenceAcmBootstrap.ts`, `gpsCapRateByRegionClass.ts` |
+
+*Dernière mise à jour : 2026-05-20 (fin de journée) — Accès Vendeur, Maillon 1 contacts, **ACM résidence SSOT** (`e1a900c`).*

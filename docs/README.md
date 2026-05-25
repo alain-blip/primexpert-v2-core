@@ -47,6 +47,7 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 10. **Diffusion Web** — `@primexpert/core/diffusion` vendoré dans Cloud Functions (prebuild).
 11. **CRM Contacts** — SSOT `organizations/{orgId}/contacts` ; liaisons `coBuyerIds` / `coSellerIds` et `partiesImpliquees` en writeBatch.
 12. **Statistiques du marché** — Vault `market_documents` ; injection idempotente vers `market_analytics_raw` / `market_macro_stats` (`marketDeduplication.ts`).
+13. **Analyse de mise en marché (ACM)** — Fiche résidence, onglet Marché : bootstrap `residenceAcmBootstrap.ts`, workspace `AcmValuationWorkspace`, TGA médian GPS par région/classe, recalcul live (`e1a900c`).
 
 ---
 
@@ -94,7 +95,7 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | Identité | ✅ Édition inline Confort 66+ ; courtier responsable |
 | Finances (Hub 5 sous-onglets) | ✅ + benchmark global |
 | Déclaration | ✅ Questionnaire OACIQ |
-| Marché | ✅ Marché & concurrence |
+| Marché | ✅ **Analyse de mise en marché (ACM)** (SSOT finances + TGA GPS) + concurrence territoriale |
 | Documents | ✅ Scan + parse Vertex + distribution |
 | Intelligence | ✅ Chronologie appels + courriels |
 | Accès Vendeur (depuis fiche) | ✅ Portail vendeur — timeline, conformité mandat, pièces |
@@ -112,4 +113,4 @@ Copie possible sur disque de sauvegarde (`00_PRIMEXPERT_SYSTEME_APP/docs/` ou vo
 
 ---
 
-*Index mis à jour : 2026-05-20 — Accès Vendeur (portail + bouton fiche résidence), Maillon 1 migration contacts (qualification stricte, dry-run validé PO).*
+*Index mis à jour : 2026-05-20 (fin de journée) — Accès Vendeur, Maillon 1 contacts, **Analyse de mise en marché (ACM)** SSOT (`e1a900c` sur `main`).*
