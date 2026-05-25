@@ -18,11 +18,14 @@ export function buildFinancialDataV2PatchFromExtraction(
   const rbe = finitePositive(ob?.revenuTotal);
   if (rbe == null) return null;
 
-  const depensesExploitation = finitePositive(ob?.depensesExploitation) ?? 0;
+  const depensesExploitation = finitePositive(ob?.depensesExploitation);
+  if (depensesExploitation == null || depensesExploitation <= 0) return null;
+
+  const extractedRne = finitePositive(ob?.revenuNetExploitation);
+  const computedRne = Math.round(rbe - depensesExploitation);
   const rne =
-    ob?.revenuNetExploitation != null && Number.isFinite(ob.revenuNetExploitation)
-      ? Math.round(ob.revenuNetExploitation)
-      : Math.round(rbe - depensesExploitation);
+    extractedRne != null && extractedRne < rbe * 0.92 ? extractedRne : computedRne;
+  if (rne >= rbe) return null;
 
   const depenses: Record<string, number> = {};
   if (ob?.depensesParCle) {

@@ -35,6 +35,13 @@ import {
   type SellerNarrativeDecision,
   type ResidenceFinancials,
 } from '@primexpert/core/narrative';
+import {
+  collectAcmCostTrendNarratives,
+  computeAcmCostTrendPoints,
+  type MarketGpsRatioSample,
+  type MarketGpsTransaction,
+} from '@primexpert/core/market';
+import { AcmCostTrendPanel } from './AcmCostTrendPanel';
 
 const TGA_INPUT_CLASS =
   'w-full rounded-xl border-2 border-blue-300 bg-white px-4 py-3 text-base font-black text-[#142c6a] tabular-nums shadow-sm focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/40 outline-none transition';
@@ -95,12 +102,18 @@ export interface AcmValuationWorkspaceProps {
   bootstrap: ResidenceAcmBootstrap;
   onOpenComparables?: () => void;
   compact?: boolean;
+  ratioSamples?: MarketGpsRatioSample[];
+  transactions?: MarketGpsTransaction[];
+  subjectExpenses?: Partial<Record<string, number>>;
 }
 
 export function AcmValuationWorkspace({
   bootstrap,
   onOpenComparables,
   compact = false,
+  ratioSamples = [],
+  transactions = [],
+  subjectExpenses,
 }: AcmValuationWorkspaceProps) {
   const { t, language } = useLanguage();
   const suggestedCapRatePct =
@@ -154,6 +167,18 @@ export function AcmValuationWorkspace({
 
   const runValuation = useCallback(
     (capPct: number, penPct: number) => {
+      if (!bootstrap.rneIntegrityOk) {
+        setResult(null);
+        setTgaAdjustment(null);
+        setRecommendedPrice(null);
+        setStressSummary(null);
+        setError(
+          language === 'fr'
+            ? 'Valorisation bloquée : revenu net d’exploitation (RNE) incohérent avec le revenu brut effectif (RBE).'
+            : 'Valuation blocked: net operating income (NOI) is inconsistent with effective gross income (EGI).'
+        );
+        return;
+      }
       if (!Number.isFinite(capPct) || capPct <= 0) {
         setResult(null);
         setTgaAdjustment(null);
@@ -200,12 +225,25 @@ export function AcmValuationWorkspace({
         setError(e instanceof Error ? e.message : String(e));
       }
     },
-    [bootstrap]
+    [bootstrap, language]
   );
 
   useEffect(() => {
     runValuation(targetCapRatePct, penetrationRatePct);
   }, [targetCapRatePct, penetrationRatePct, runValuation]);
+
+  const costTrendNotes = useMemo(() => {
+    if (!ratioSamples.length) return [];
+    const points = computeAcmCostTrendPoints({
+      ratioSamples,
+      transactions,
+      region: bootstrap.regionLabel ?? undefined,
+      locale: language,
+      units: bootstrap.units,
+      subjectExpenses,
+    });
+    return collectAcmCostTrendNarratives(points, language);
+  }, [ratioSamples, transactions, bootstrap.regionLabel, bootstrap.units, language, subjectExpenses]);
 
   useEffect(() => {
     if (!result) {
@@ -225,7 +263,7 @@ export function AcmValuationWorkspace({
     selectSellerNarrative(
       financials,
       DEFAULT_MARKET_BENCHMARKS,
-      { capRateMedian: effectiveCapRate },
+      { capRateMedian: effectiveCapRate, costTrendNotes },
       { narrativeMode: 'RULES' }
     )
       .then((decision) => {
@@ -241,7 +279,10 @@ export function AcmValuationWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [result, bootstrap, effectiveCapRate]);
+  }, [result, bootstrap, effectiveCapRate, costTrendNotes]);
+
+  const rneIntegrityIssue =
+    language === 'fr' ? bootstrap.rneIntegrityIssueFr : bootstrap.rneIntegrityIssueEn;
 
   const capRateRationale =
     language === 'fr' ? bootstrap.capRateRationaleFr : bootstrap.capRateRationaleEn;
@@ -314,6 +355,33 @@ export function AcmValuationWorkspace({
 
   return (
     <div className={compact ? 'space-y-6' : 'max-w-5xl mx-auto space-y-8'}>
+      {!bootstrap.rneIntegrityOk && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-xl border-2 border-red-500 bg-red-50 px-5 py-4 text-red-950"
+        >
+          <BadgeAlert className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
+          <div className="space-y-1">
+            <p className="text-[11px] font-black uppercase tracking-[0.16em]">
+              {t(
+                'Erreur de cohérence financière — revenu net d’exploitation (RNE)',
+                'Financial consistency error — net operating income (NOI)'
+              )}
+            </p>
+            <p className="text-[14px] leading-relaxed">
+              {rneIntegrityIssue ??
+                t(
+                  'Le revenu net d’exploitation (RNE) ne peut pas être égal ou supérieur au revenu brut effectif (RBE). Recalculez la grille Finances ou relancez l’extraction.',
+                  'Net operating income (NOI) cannot equal or exceed effective gross income (EGI). Recalculate the Finance grid or re-run extraction.'
+                )}
+            </p>
+            <p className="text-[12px] font-semibold tabular-nums">
+              RBE {formatCurrency(bootstrap.revenuBrutEffectif, { maxDecimals: 0 })} · RNE{' '}
+              {formatCurrency(bootstrap.revenuNetExploitation, { maxDecimals: 0 })}
+            </p>
+          </div>
+        </div>
+      )}
       <div className="bg-vault text-white p-6 rounded-[28px] shadow-[0_24px_70px_rgba(0,0,0,0.55)] relative overflow-hidden border border-white/10">
         <motion.div className="relative z-10 flex flex-col gap-6">
           <div className={compact ? 'flex flex-wrap items-center justify-between gap-3' : 'flex items-center justify-between'}>
@@ -447,7 +515,19 @@ export function AcmValuationWorkspace({
         </div>
       ) : null}
 
-      {result ? (
+      {ratioSamples.length > 0 && bootstrap.rneIntegrityOk && (
+        <AcmCostTrendPanel
+          ratioSamples={ratioSamples}
+          transactions={transactions}
+          region={bootstrap.regionLabel}
+          locale={language}
+          units={bootstrap.units}
+          subjectExpenses={subjectExpenses}
+          t={t}
+        />
+      )}
+
+      {result && bootstrap.rneIntegrityOk ? (
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}

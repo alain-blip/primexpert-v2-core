@@ -11,6 +11,8 @@ export type TrendMetricKey =
   | 'salairesAvantages'
   | 'energie'
   | 'assurances'
+  | 'entretienReparation'
+  | 'nourritures'
   | 'prix_unite'
   | 'tga';
 
@@ -25,6 +27,8 @@ export const TREND_METRIC_OPTIONS: TrendMetricOption[] = [
   { key: 'salairesAvantages', labelFr: 'Salaires et charges sociales ($ / unité)', labelEn: 'Salaries & benefits ($ / unit)', unit: 'currency' },
   { key: 'energie', labelFr: 'Énergie ($ / unité)', labelEn: 'Energy ($ / unit)', unit: 'currency' },
   { key: 'assurances', labelFr: 'Assurances ($ / unité)', labelEn: 'Insurance ($ / unit)', unit: 'currency' },
+  { key: 'entretienReparation', labelFr: 'Entretien et réparations ($ / unité)', labelEn: 'Maintenance & repairs ($ / unit)', unit: 'currency' },
+  { key: 'nourritures', labelFr: 'Alimentation ($ / unité)', labelEn: 'Food ($ / unit)', unit: 'currency' },
   { key: 'prix_unite', labelFr: 'Prix / unité (ventes)', labelEn: 'Price / unit (sales)', unit: 'currency' },
   { key: 'tga', labelFr: 'Taux de capitalisation (TGA)', labelEn: 'Capitalization rate (cap rate)', unit: 'percent' },
 ];

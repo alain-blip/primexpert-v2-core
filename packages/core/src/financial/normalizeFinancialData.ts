@@ -6,6 +6,7 @@
 import { EXPENSE_KEYS } from './expenseKeys';
 import { isNonOpexExpenseKey } from './nonOpexFinancialLines';
 import { deriveRevenusAnnuelsFromTarification } from '../identity/rentPricingGrid';
+import { applyCanonicalMetricsToCalc, resolveCanonicalFinancialMetrics } from './resolveCanonicalRne';
 
 const LEGACY_TAX_KEY = 'taxesMunicipalesScolaire';
 const CANONICAL_TAX_KEY = 'taxesPermis';
@@ -265,14 +266,12 @@ export function getAuditNormalizedNoi(
   baseData: FinancialBaseData | null
 ): number | null {
   if (!calc) return null;
+  const m = resolveCanonicalFinancialMetrics(calc, baseData);
+  if (m.rne != null && m.rneIntegrityOk) return m.rne;
   const fallback = finiteNum(calc.revenuNetExploitation);
   const rbe = finiteNum(calc.revenuBrutEffectif) ?? finiteNum(calc.revenusAnnuels);
-  const depenses = baseData?.depenses;
-  if (rbe == null || !depenses || typeof depenses !== 'object') return fallback;
-  const norm = sumNormalizedOperatingExpenses(depenses, baseData?.expenseAdjustments ?? undefined);
-  if (norm == null) return fallback;
-  const lineC = rbe - norm;
-  return Number.isFinite(lineC) ? lineC : fallback;
+  if (fallback != null && rbe != null && fallback < rbe) return fallback;
+  return null;
 }
 
 export function computeReconciliationAudit(
@@ -449,10 +448,7 @@ export function normalizeFinancialData(
       baseData,
       residence
     );
-    const reconciledNoi = getAuditNormalizedNoi(enrichedCalc, baseData);
-    if (reconciledNoi != null) {
-      enrichedCalc = { ...enrichedCalc, revenuNetExploitation: reconciledNoi };
-    }
+    enrichedCalc = applyCanonicalMetricsToCalc(enrichedCalc, baseData);
     const reconciledRbe =
       finiteNum(enrichedCalc.revenuBrutEffectif) ?? finiteNum(enrichedCalc.revenusAnnuels);
     if (reconciledRbe != null && finiteNum(enrichedCalc.revenuBrutEffectif) == null) {

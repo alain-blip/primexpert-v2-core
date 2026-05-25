@@ -94,6 +94,9 @@ export interface NarrativeFeatureVector {
   /** Source des benchmarks utilisés */
   benchmarkSource: 'COMPARABLES' | 'PROFILE_DEFAULTS';
 
+  /** Notes tendances coûts régionaux (inflation GPS) pour le moteur narratif */
+  costTrendNotes?: string[];
+
   // Ratios bruts de la résidence (pour contexte IA)
   residenceRatios: {
     expenseRatio: number | null;

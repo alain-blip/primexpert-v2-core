@@ -117,10 +117,10 @@ function coerceNum(value: unknown): number | null {
 }
 
 const REVENUE_TOTAL_PATTERNS =
-  /chiffre\s+d.affaires|revenus?\s+totaux?|total\s+des\s+revenus|revenu(s)?\s*(brut(s)?\s*)?(effectif|total|exploitation)|gross\s+(rental\s+)?income|effective\s+gross/i;
+  /produits?\s+totaux?|chiffre\s+d.affaires|revenus?\s+totaux?|total\s+des\s+revenus|revenu(s)?\s*(brut(s)?\s*)?(effectif|total|exploitation)|gross\s+(rental\s+)?income|effective\s+gross/i;
 
 const EXPENSE_TOTAL_PATTERNS =
-  /total\s+(des\s+)?(frais|charges|depenses|dépenses)\s*d.exploitation|depenses\s*d.exploitation\s*total|operating\s+expenses?\s*total|total\s+operating/i;
+  /total\s+(des\s+)?(frais|charges|depenses|dépenses)|charges\s+totales|total\s+charges|frais\s+totaux|depenses\s*d.exploitation\s*total|operating\s+expenses?\s*total|total\s+operating/i;
 
 const BALANCE_SHEET_LINE_PATTERN =
   /bilan|actif|passif|immobilisations?\s+(corporel|incorporel)|fonds\s+de\s+roulement/i;
@@ -264,8 +264,20 @@ export function computeOperatingBenchmarkFromAmounts(
   const revenuTotal = revenuTotalRaw > 0 ? revenuTotalRaw : null;
 
   const depenseLine = findTotalLine(amounts, EXPENSE_TOTAL_PATTERNS);
-  const depensesExploitation =
+  let depensesExploitation =
     depenseLine != null && depenseLine > 0 ? depenseLine : sumExpenseLines(amounts) || null;
+
+  const depensesParCleDraft: Partial<Record<BenchmarkExpenseKey, number>> = {};
+  for (const row of amounts) {
+    if (isExcludedLine(row.label)) continue;
+    const key = row.expenseKey ?? matchExpenseKeyFromLabel(row.label);
+    if (!key || !CANONICAL_EXPENSE_KEYS.includes(key)) continue;
+    depensesParCleDraft[key] = (depensesParCleDraft[key] ?? 0) + row.value;
+  }
+  const opexFromCle = Object.values(depensesParCleDraft).reduce((s, v) => s + (v ?? 0), 0);
+  if ((!depensesExploitation || depensesExploitation <= 0) && opexFromCle > 0) {
+    depensesExploitation = opexFromCle;
+  }
 
   const nonOpexExcluded = extractNonOpexExcludedFromLabeledAmounts(
     amounts.map((r) => ({ label: r.label, value: r.value }))
@@ -276,13 +288,7 @@ export function computeOperatingBenchmarkFromAmounts(
       ? Math.round(revenuTotal - depensesExploitation)
       : null;
 
-  const depensesParCle: Partial<Record<BenchmarkExpenseKey, number>> = {};
-  for (const row of amounts) {
-    if (isExcludedLine(row.label)) continue;
-    const key = row.expenseKey ?? matchExpenseKeyFromLabel(row.label);
-    if (!key || !CANONICAL_EXPENSE_KEYS.includes(key)) continue;
-    depensesParCle[key] = (depensesParCle[key] ?? 0) + row.value;
-  }
+  const depensesParCle = depensesParCleDraft;
 
   const nbPortes =
     options.nbPortes != null && options.nbPortes > 0 ? Math.round(options.nbPortes) : null;

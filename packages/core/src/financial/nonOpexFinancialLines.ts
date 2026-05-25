@@ -26,7 +26,7 @@ const NON_OPEX_LABEL_PATTERN =
   /amortissement|depreciation|dotation\s+(aux\s+)?amort|frais\s+financier|charges\s+financier|interet|intérêt|interest\s+expense|interest\s+paid|financement\s+(de\s+la\s+)?dette|frais\s+bancair|impot\s+sur\s+le\s+revenu|impôts\s+sur\s+le\s+revenu|income\s+tax|taxe\s+sur\s+le\s+revenu/i;
 
 const REVENUE_TOTAL_PRIORITY_PATTERN =
-  /^(revenus?\s+totaux?|chiffre\s+d.?affaires(\s+total)?|total\s+des\s+revenus|revenu\s+brut\s+effectif|effective\s+gross\s+income|gross\s+revenue)/i;
+  /^(produits?\s+totaux?|revenus?\s+totaux?|chiffre\s+d.?affaires(\s+total)?|total\s+des\s+revenus|revenu\s+brut\s+effectif|effective\s+gross\s+income|gross\s+revenue)/i;
 
 export function normalizeFinancialLabel(s: string): string {
   return s

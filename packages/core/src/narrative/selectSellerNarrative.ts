@@ -51,6 +51,8 @@ export interface ResidenceFinancials {
 export interface MarketData {
   /** Cap rate médian du marché (si disponible via marketCapRate.ts) */
   capRateMedian?: number;
+  /** Notes tendances inflation coûts régionaux (GPS) */
+  costTrendNotes?: string[];
 }
 
 // ============================================================================
@@ -160,6 +162,7 @@ export function buildFeatureVector(
       foodRatioAvg: benchmarks.foodRatioAvg ?? null,
       capRateMedian: capRateReference,
     },
+    costTrendNotes: marketData?.costTrendNotes?.length ? marketData.costTrendNotes : undefined,
   };
 }
 

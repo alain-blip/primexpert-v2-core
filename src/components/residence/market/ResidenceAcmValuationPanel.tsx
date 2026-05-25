@@ -29,7 +29,19 @@ export function ResidenceAcmValuationPanel({
   const { profile } = useAuth();
   const { financialData, loading, error } = useFinancialData();
   const { residenceDoc } = useResidenceDocument();
-  const { transactions: marketTransactions } = useMarketData(language, profile?.uid ?? null);
+  const { transactions: marketTransactions, ratioSamples } = useMarketData(language, profile?.uid ?? null);
+
+  const subjectExpenses = useMemo(() => {
+    const depenses = (financialData as FinancialDataV2Doc | null)?.baseData?.depenses;
+    if (!depenses || typeof depenses !== 'object') return undefined;
+    const out: Record<string, number> = {};
+    for (const [key, val] of Object.entries(depenses)) {
+      if (key === 'autresDepenses' || key === 'nonOpexExcluded') continue;
+      const n = typeof val === 'number' ? val : Number(val);
+      if (Number.isFinite(n) && n > 0) out[key] = n;
+    }
+    return Object.keys(out).length ? out : undefined;
+  }, [financialData]);
 
   const bootstrap = useMemo(() => {
     if (!financialData) return null;
@@ -90,6 +102,9 @@ export function ResidenceAcmValuationPanel({
         bootstrap={bootstrap}
         onOpenComparables={onOpenComparables}
         compact
+        ratioSamples={ratioSamples}
+        transactions={marketTransactions}
+        subjectExpenses={subjectExpenses}
       />
       <AcmTab residence={residence} />
     </div>

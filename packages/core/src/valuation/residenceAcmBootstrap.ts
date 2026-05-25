@@ -8,6 +8,7 @@ import {
   type FinancialDataV2Doc,
   type ResidenceFinancialHints,
 } from '../financial/normalizeFinancialData';
+import { applyCanonicalMetricsToCalc, resolveCanonicalFinancialMetrics } from '../financial/resolveCanonicalRne';
 import type { MarketGpsTransaction } from '../market/marketGpsViewModel';
 import {
   selectGpsCapRateMedian,
@@ -58,6 +59,10 @@ export interface ResidenceAcmBootstrap {
   units: number;
   revenuBrutEffectif: number;
   revenuNetExploitation: number;
+  /** false si RNE ≥ RBE — bloque la valorisation ACM */
+  rneIntegrityOk: boolean;
+  rneIntegrityIssueFr: string | null;
+  rneIntegrityIssueEn: string | null;
   askingPrice: number;
   suggestedCapRatePct: number;
   targetCapRatePct: number;
@@ -256,8 +261,10 @@ export function bootstrapResidenceAcm(
   if (!normalized.calc || !hasValidatedFinancialData(financialData, hints)) return null;
 
   const calc = normalized.calc;
-  const rbe = finiteNum(calc.revenuBrutEffectif) ?? finiteNum(calc.revenusAnnuels) ?? 0;
-  const rne = finiteNum(calc.revenuNetExploitation) ?? 0;
+  const metrics = resolveCanonicalFinancialMetrics(calc, normalized.baseData);
+  const canonicalCalc = applyCanonicalMetricsToCalc(calc, normalized.baseData);
+  const rbe = metrics.rbe ?? 0;
+  const rne = metrics.rne ?? 0;
 
   const mergedRecord = buildMergedResidenceRecord(residence, residenceDoc);
   const partial = mapFirestoreDataToValuationInputs(
@@ -267,7 +274,7 @@ export function bootstrapResidenceAcm(
   let valuationInputs = createDefaultValuationInputs(partial);
   valuationInputs = applySsotToValuationInputs(
     valuationInputs,
-    calc,
+    canonicalCalc,
     residence,
     mergedRecord
   );
@@ -308,6 +315,9 @@ export function bootstrapResidenceAcm(
     units: valuationInputs.units,
     revenuBrutEffectif: rbe,
     revenuNetExploitation: rne,
+    rneIntegrityOk: metrics.rneIntegrityOk,
+    rneIntegrityIssueFr: metrics.rneIntegrityIssueFr,
+    rneIntegrityIssueEn: metrics.rneIntegrityIssueEn,
     askingPrice: askingPrice > 0 ? askingPrice : valuationInputs.askingPrice,
     suggestedCapRatePct,
     targetCapRatePct: suggestedCapRatePct,

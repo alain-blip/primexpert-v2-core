@@ -6,6 +6,12 @@ export * from './safeNumbers';
 export * from './normalizeFinancialData';
 export * from './nonOpexFinancialLines';
 export { buildFinancialDataV2PatchFromExtraction } from './applyExtractedFinancials';
+export {
+  resolveCanonicalFinancialMetrics,
+  resolveAdmissibleOpex,
+  applyCanonicalMetricsToCalc,
+  type CanonicalFinancialMetrics,
+} from './resolveCanonicalRne';
 export * from './revenusDepensesGrid';
 export * from './computeFinancabilite';
 export * from './bilanCfoView';

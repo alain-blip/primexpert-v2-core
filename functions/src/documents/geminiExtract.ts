@@ -52,7 +52,7 @@ const PNL_BLOCK = `
   "nbPortes": 42
 }
 - UNIQUEMENT état des résultats d'EXPLOITATION (revenus et dépenses détaillés)
-- revenuTotal / RBE : ligne « Revenus totaux » ou « Chiffre d'affaires total » — JAMAIS le bénéfice net
+- revenuTotal / RBE : ligne « Produits totaux », « Revenus totaux » ou « Chiffre d'affaires total » — JAMAIS le bénéfice net
 - Extraire chaque poste de dépense d'exploitation en ligne distincte dans amounts
 - EXCLURE des dépenses d'exploitation (mais les lister quand même dans amounts) :
   amortissement, frais financiers / intérêts / frais bancaires, impôts sur le revenu, bénéfice net

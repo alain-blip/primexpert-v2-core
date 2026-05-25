@@ -339,11 +339,15 @@ export function generateFallbackNarrative(
     if (featureVector.expenseRatioGapPct !== null) {
       reasons.push(`Expense ratio gap: ${featureVector.expenseRatioGapPct.toFixed(1)}%`);
     }
+    const trendSuffix =
+      featureVector.costTrendNotes?.length ?
+        '\n\n' + featureVector.costTrendNotes.slice(0, 2).join(' ')
+      : '';
     return {
       variant: oppTemplate.variant,
       confidence,
       readingAngle: oppTemplate.readingAngle,
-      signedReading: oppTemplate.signedReading,
+      signedReading: oppTemplate.signedReading + trendSuffix,
       talkTrackBullets: oppTemplate.talkTrackBullets,
       reasons,
       source: 'RULES',
@@ -377,11 +381,16 @@ export function generateFallbackNarrative(
     reasons.push(`Cap rate gap: ${featureVector.capRateGapBps.toFixed(0)} bps`);
   }
 
+  const trendSuffix =
+    featureVector.costTrendNotes?.length ?
+      '\n\n' + featureVector.costTrendNotes.slice(0, 2).join(' ')
+    : '';
+
   return {
     variant,
     confidence,
     readingAngle: template.readingAngle,
-    signedReading: template.signedReading,
+    signedReading: template.signedReading + trendSuffix,
     talkTrackBullets: template.talkTrackBullets,
     reasons,
     source: 'RULES',
