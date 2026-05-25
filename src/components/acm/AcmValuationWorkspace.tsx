@@ -17,6 +17,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { formatPopulationCount } from '@primexpert/core/market';
 import { useLanguage } from '../../lib/i18n';
 import { formatCurrency } from '../../lib/utils';
 import {
@@ -86,6 +87,16 @@ function parseCapRateInput(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function fmtMoneyField(value: number): string {
+  if (!Number.isFinite(value)) return '—';
+  return formatCurrency(value, { maxDecimals: 0 });
+}
+
+function fmtCountField(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value) || value <= 0) return '—';
+  return formatPopulationCount(Math.round(value));
+}
+
 export interface AcmValuationWorkspaceProps {
   bootstrap: ResidenceAcmBootstrap;
   onOpenComparables?: () => void;
@@ -98,9 +109,12 @@ export function AcmValuationWorkspace({
   compact = false,
 }: AcmValuationWorkspaceProps) {
   const { t, language } = useLanguage();
-  const suggestedCapRatePct = bootstrap.suggestedCapRatePct ?? bootstrap.targetCapRatePct;
+  const suggestedCapRatePct =
+    Number.isFinite(bootstrap.suggestedCapRatePct) && bootstrap.suggestedCapRatePct > 0
+      ? bootstrap.suggestedCapRatePct
+      : bootstrap.targetCapRatePct;
 
-  const [tgaInput, setTgaInput] = useState(String(suggestedCapRatePct));
+  const [tgaInput, setTgaInput] = useState(() => String(suggestedCapRatePct));
   const [targetCapRatePct, setTargetCapRatePct] = useState(suggestedCapRatePct);
   const [penetrationRatePct, setPenetrationRatePct] = useState(bootstrap.penetrationRatePct);
   const [tgaManuallyAdjusted, setTgaManuallyAdjusted] = useState(false);
@@ -116,19 +130,31 @@ export function AcmValuationWorkspace({
   const [narrativeLoading, setNarrativeLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const bootstrapKeyRef = useRef(
-    `${bootstrap.residenceLabel}|${bootstrap.suggestedCapRatePct}|${bootstrap.units}`
+  const bootstrapSyncKey = useMemo(
+    () =>
+      [
+        bootstrap.residenceLabel,
+        bootstrap.suggestedCapRatePct,
+        bootstrap.revenuBrutEffectif,
+        bootstrap.revenuNetExploitation,
+        bootstrap.askingPrice,
+        bootstrap.units,
+        bootstrap.penetrationRatePct,
+        bootstrap.marketContext.sectorUnits,
+      ].join('|'),
+    [bootstrap]
   );
 
+  const lastBootstrapSyncRef = useRef('');
+
   useEffect(() => {
-    const key = `${bootstrap.residenceLabel}|${bootstrap.suggestedCapRatePct}|${bootstrap.units}`;
-    if (bootstrapKeyRef.current === key) return;
-    bootstrapKeyRef.current = key;
+    if (lastBootstrapSyncRef.current === bootstrapSyncKey) return;
+    lastBootstrapSyncRef.current = bootstrapSyncKey;
     setTgaInput(String(suggestedCapRatePct));
     setTargetCapRatePct(suggestedCapRatePct);
     setPenetrationRatePct(bootstrap.penetrationRatePct);
     setTgaManuallyAdjusted(false);
-  }, [bootstrap, suggestedCapRatePct]);
+  }, [bootstrapSyncKey, suggestedCapRatePct, bootstrap.penetrationRatePct]);
 
   const runValuation = useCallback(
     (capPct: number, penPct: number) => {
@@ -299,25 +325,29 @@ export function AcmValuationWorkspace({
     <div className={compact ? 'space-y-6' : 'max-w-5xl mx-auto space-y-8'}>
       <div className="bg-vault text-white p-6 rounded-[28px] shadow-[0_24px_70px_rgba(0,0,0,0.55)] relative overflow-hidden border border-white/10">
         <motion.div className="relative z-10 flex flex-col gap-6">
-          {!compact ? (
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
-                  {t('Moteur Core · @primexpert/core/valuation', 'Core Engine · @primexpert/core/valuation')}
-                </p>
-                <h2 className="text-4xl font-black italic tracking-tighter uppercase">
-                  {t('Analyse comparative de marché (ACM)', 'Comparative market analysis (CMA)')}
-                  <span className="text-blue-500">{t('_OACIQ', '_OACIQ')}</span>
-                </h2>
-              </div>
-              <div className="flex items-center gap-2 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 px-3 py-1.5">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-100">
-                  {t('Données CRM · SSOT', 'CRM data · SSOT')}
-                </span>
-              </div>
+          <div className={compact ? 'flex flex-wrap items-center justify-between gap-3' : 'flex items-center justify-between'}>
+            <div>
+              <p className="text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
+                {t('Moteur Core · @primexpert/core/valuation', 'Core Engine · @primexpert/core/valuation')}
+              </p>
+              <h2
+                className={
+                  compact
+                    ? 'text-2xl font-black italic tracking-tighter uppercase'
+                    : 'text-4xl font-black italic tracking-tighter uppercase'
+                }
+              >
+                {t('Analyse de mise en marché (ACM)', 'Market launch analysis (CMA)')}
+                <span className="text-blue-500">{t('_OACIQ', '_OACIQ')}</span>
+              </h2>
             </div>
-          ) : null}
+            <div className="flex items-center gap-2 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 px-3 py-1.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-emerald-100">
+                {t('Données CRM · SSOT', 'CRM data · SSOT')}
+              </span>
+            </div>
+          </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 space-y-4">
             <div className="flex items-center gap-2">

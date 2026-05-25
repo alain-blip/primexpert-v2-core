@@ -35,24 +35,6 @@ export function MarcheConcurrenceTab({ residence }: MarcheConcurrenceTabProps) {
     );
   }
 
-  if (loading) {
-    return (
-      <div className={inst.loading}>
-        <p className={inst.loadingText}>
-          {t('Chargement du marché…', 'Loading market data…')}
-        </p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-xl border border-red-300 bg-red-50 px-5 py-4 text-sm text-red-900">
-        {t('Erreur Firestore', 'Firestore error')}: {error.message}
-      </div>
-    );
-  }
-
   return (
     <div className={inst.page}>
       {saveError && (
@@ -64,11 +46,28 @@ export function MarcheConcurrenceTab({ residence }: MarcheConcurrenceTabProps) {
       <FinancialDataProvider residenceId={residence.id}>
         <ResidenceAcmValuationPanel residence={residence} />
       </FinancialDataProvider>
-      <MarketPenetrationSection />
-      <CompetitorZoneSection />
-      <WorkforceBasinSection />
-      <TerritorialDiagnosticSection />
-      <VisitorRegistrySection />
+
+      {error ? (
+        <div className="rounded-xl border border-red-300 bg-red-50 px-5 py-4 text-sm text-red-900">
+          {t('Erreur Firestore', 'Firestore error')}: {error.message}
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className={inst.loading}>
+          <p className={inst.loadingText}>
+            {t('Chargement du diagnostic territorial…', 'Loading territorial diagnostic…')}
+          </p>
+        </div>
+      ) : (
+        <>
+          <MarketPenetrationSection />
+          <CompetitorZoneSection />
+          <WorkforceBasinSection />
+          <TerritorialDiagnosticSection />
+          <VisitorRegistrySection />
+        </>
+      )}
     </div>
   );
 }

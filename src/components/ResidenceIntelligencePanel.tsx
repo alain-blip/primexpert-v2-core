@@ -47,9 +47,19 @@ export function ResidenceIntelligencePanel({
   embedded = false,
 }: ResidenceIntelligencePanelProps) {
   const { t } = useLanguage();
+  const { profile } = useAuth();
   const [calls, setCalls] = useState<CallAnalysisRow[]>([]);
   const [mails, setMails] = useState<SavedMailboxAnalysis[]>([]);
   const [subError, setSubError] = useState<string | null>(null);
+  const [residenceDoc, setResidenceDoc] = useState<Record<string, unknown> | null>(null);
+  const [partiesTimelineEvents, setPartiesTimelineEvents] = useState<UnifiedTimelineEvent[]>(
+    []
+  );
+
+  const contactCtx: ContactServiceContext | null = useMemo(() => {
+    if (!profile?.uid || !profile.orgId) return null;
+    return { uid: profile.uid, orgId: profile.orgId, role: profile.role };
+  }, [profile?.uid, profile?.orgId, profile?.role]);
 
   useEffect(() => {
     if (!brokerId || !residence.id) return;
@@ -72,21 +82,64 @@ export function ResidenceIntelligencePanel({
     };
   }, [brokerId, residence.id]);
 
-  const timeline = useMemo(() => {
-    const items: IntelTimelineItem[] = [
-      ...calls.map((c) => ({
-        kind: 'call' as const,
-        sortMs: c.updatedAtMillis,
-        call: c,
-      })),
-      ...mails.map((m) => ({
-        kind: 'mail' as const,
-        sortMs: m.analyzedAtMillis,
-        mail: m,
-      })),
-    ];
-    return items.sort((a, b) => b.sortMs - a.sortMs);
-  }, [calls, mails]);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchResidenceDoc(residence.id).then((doc) => {
+      if (!cancelled) setResidenceDoc(doc);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [residence.id]);
+
+  useEffect(() => {
+    if (!brokerId || !residence.id) {
+      setPartiesTimelineEvents([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      const doc = residenceDoc ?? (await fetchResidenceDoc(residence.id));
+      const parties = parsePartiesImpliquees(doc);
+      const partyEmails: string[] = [];
+
+      if (contactCtx) {
+        for (const partie of parties) {
+          try {
+            const contact = await getOrganizationContactById(contactCtx, partie.contactId);
+            const email = contact?.email?.trim();
+            if (email) partyEmails.push(email);
+          } catch {
+            /* contact introuvable — ignorer */
+          }
+        }
+      }
+
+      const excludeMessageIds = new Set(mails.map((m) => m.messageId));
+      const supplementMails =
+        partyEmails.length > 0
+          ? await fetchPartySupplementMails(brokerId, partyEmails, excludeMessageIds)
+          : [];
+
+      if (cancelled) return;
+
+      setPartiesTimelineEvents(
+        buildResidencePartiesTimeline(
+          residence.id,
+          partyEmails,
+          mails,
+          supplementMails,
+          calls
+        )
+      );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [brokerId, residence.id, residenceDoc, calls, mails, contactCtx]);
 
   const addrTitle = residence.city ? `${residence.address}, ${residence.city}` : residence.address;
 

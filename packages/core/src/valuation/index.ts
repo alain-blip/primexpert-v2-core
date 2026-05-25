@@ -126,6 +126,7 @@ export { useValuation } from './useValuation';
 export {
   type ResidenceAcmIdentity,
   type ResidenceAcmBootstrap,
+  type AcmMarketContext,
   hasValidatedFinancialData,
   bootstrapResidenceAcm,
   buildValuationInputsFromAcmBootstrap,

@@ -5,6 +5,7 @@
 import React, { useMemo } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { bootstrapResidenceAcm } from '@primexpert/core/valuation';
+import type { FinancialDataV2Doc } from '@primexpert/core/financial';
 import { useLanguage } from '../../../lib/i18n';
 import { useAuth } from '../../../lib/auth';
 import { useFinancialData } from '../../../context/FinancialDataContext';
@@ -35,7 +36,7 @@ export function ResidenceAcmValuationPanel({
     return bootstrapResidenceAcm(
       residence,
       residenceDoc ?? undefined,
-      financialData as Record<string, unknown>,
+      financialData as FinancialDataV2Doc,
       { marketTransactions }
     );
   }, [residence, residenceDoc, financialData, marketTransactions]);
@@ -68,14 +69,14 @@ export function ResidenceAcmValuationPanel({
         <div className="space-y-2">
           <p className="text-[11px] font-black uppercase tracking-[0.16em]">
             {t(
-              'États financiers requis pour l’analyse comparative (ACM)',
-              'Financial statements required for comparative analysis (CMA)'
+              'États financiers requis pour l’analyse de mise en marché (ACM)',
+              'Financial statements required for market launch analysis (CMA)'
             )}
           </p>
           <p className="text-[14px] leading-relaxed">
             {t(
-              'Complétez et validez la grille financière V2 (onglet Finances) avant de lancer une analyse comparative de marché (ACM). Les revenus brut effectif (RBE) et net d’exploitation (RNE) proviennent exclusivement de financial/dataV2.calculatedResults.',
-              'Complete and validate the V2 financial grid (Finance tab) before launching a comparative market analysis (CMA). Effective gross income (EGI) and net operating income (NOI) come exclusively from financial/dataV2.calculatedResults.'
+              'Complétez et validez la grille financière V2 (onglet Finances) avant de lancer l’analyse de mise en marché (ACM). Les revenus brut effectif (RBE) et net d’exploitation (RNE) proviennent exclusivement de financial/dataV2.calculatedResults.',
+              'Complete and validate the V2 financial grid (Finance tab) before launching the market launch analysis (CMA). Effective gross income (EGI) and net operating income (NOI) come exclusively from financial/dataV2.calculatedResults.'
             )}
           </p>
         </div>

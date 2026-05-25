@@ -1,14 +1,20 @@
 /**
- * Bootstrap ACM résidence — SSOT financial/dataV2 + TGA médian GPS.
+ * Bootstrap ACM résidence — SSOT financial/dataV2 + TGA médian GPS + marché territorial.
  */
 
-import type { FinancialCalc } from '../financial/normalizeFinancialData';
+import {
+  normalizeFinancialData,
+  type FinancialCalc,
+  type FinancialDataV2Doc,
+  type ResidenceFinancialHints,
+} from '../financial/normalizeFinancialData';
 import type { MarketGpsTransaction } from '../market/marketGpsViewModel';
 import {
   selectGpsCapRateMedian,
   resolveResidenceRpaBuildingClass,
   type GpsCapRateSource,
 } from '../market/gpsCapRateByRegionClass';
+import { parseMarketScope } from '../market/competitorSearch';
 import {
   computePenetrationRate75,
   parseCompetitorsList,
@@ -34,7 +40,15 @@ export interface ResidenceAcmIdentity {
   nombreUnites?: number | null;
   unitsCount?: number | null;
   unitesRPA?: number | null;
-  nicheMetadata?: { rpaFields?: { careLevel?: string }; nombreUnites?: number };
+  nicheMetadata?: { nombreUnites?: number; rpaFields?: { careLevel?: string } };
+}
+
+export interface AcmMarketContext {
+  sectorUnits: number;
+  subjectUnits: number;
+  competitorCount: number;
+  population75Plus: number | null;
+  radiusKm: number | null;
 }
 
 export interface ResidenceAcmBootstrap {
@@ -52,11 +66,42 @@ export interface ResidenceAcmBootstrap {
   capRateRationaleFr: string;
   capRateRationaleEn: string;
   penetrationRatePct: number;
+  marketContext: AcmMarketContext;
   valuationInputs: ValuationInputs;
 }
 
 function finiteNum(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function buildMergedResidenceRecord(
+  residence: ResidenceAcmIdentity,
+  residenceDoc?: Record<string, unknown> | null
+): Record<string, unknown> {
+  return {
+    ...(residenceDoc ?? {}),
+    prixAnnonce: residence.price,
+    askingPrice: residence.price,
+    prixDemande: residence.price,
+    nombreUnites:
+      residence.nombreUnites ??
+      residence.unitsCount ??
+      residence.unitesRPA ??
+      residence.nicheMetadata?.nombreUnites,
+    nombreUnitesTotal: residence.nicheMetadata?.nombreUnites,
+  };
+}
+
+function residenceFinancialHints(residence: ResidenceAcmIdentity): ResidenceFinancialHints {
+  return {
+    prixDemande: residence.price,
+    askingPrice: residence.price,
+    nombreUnites:
+      residence.nombreUnites ??
+      residence.unitsCount ??
+      residence.nicheMetadata?.nombreUnites,
+    nombreUnitesTotal: residence.nicheMetadata?.nombreUnites,
+  };
 }
 
 function resolveResidenceLabel(
@@ -93,64 +138,143 @@ function resolveRegionLabel(
   return null;
 }
 
-function resolvePenetrationPct(
+function resolveMarketContext(
   residence: ResidenceAcmIdentity,
   residenceDoc?: Record<string, unknown> | null
+): AcmMarketContext {
+  const merged = buildMergedResidenceRecord(residence, residenceDoc);
+  const competitors = parseCompetitorsList(merged);
+  const demographics = resolveMarcheDemographics(merged);
+  const subjectUnits = getSubjectUnitCount(merged);
+  const sectorUnits = sumSectorRpaUnits(competitors, subjectUnits);
+  const population75Plus = demographics.population75_plus;
+  const scope = parseMarketScope(residenceDoc ?? null);
+  const radiusKm =
+    scope?.radiusKm != null && Number.isFinite(Number(scope.radiusKm))
+      ? Number(scope.radiusKm)
+      : null;
+
+  return {
+    sectorUnits,
+    subjectUnits,
+    competitorCount: competitors.length,
+    population75Plus,
+    radiusKm,
+  };
+}
+
+function resolvePenetrationPct(
+  residence: ResidenceAcmIdentity,
+  residenceDoc?: Record<string, unknown> | null,
+  marketContext?: AcmMarketContext
 ): number {
   const docPct =
     finiteNum(residenceDoc?.tauxPenetrationRPA) ?? finiteNum(residenceDoc?.penetrationRpa75);
   if (docPct != null) return docPct > 1 ? docPct : docPct * 100;
 
-  const merged = { ...residence, ...(residenceDoc ?? {}) } as Record<string, unknown>;
-  try {
-    const competitors = parseCompetitorsList(merged);
-    const demographics = resolveMarcheDemographics(merged);
-    const subjectUnits = getSubjectUnitCount(merged);
-    const sectorUnits = sumSectorRpaUnits(competitors, subjectUnits);
-    const pop75 = demographics.population75_plus;
-    if (pop75 == null) return 0;
-    const rate = computePenetrationRate75(sectorUnits, pop75);
-    return rate != null ? rate * 100 : 0;
-  } catch {
-    return 0;
+  const ctx = marketContext ?? resolveMarketContext(residence, residenceDoc);
+  const pop75 = ctx.population75Plus;
+  if (pop75 == null || ctx.sectorUnits <= 0) return 0;
+  const rate = computePenetrationRate75(ctx.sectorUnits, pop75);
+  return rate != null ? rate * 100 : 0;
+}
+
+/** Ancre le moteur de valorisation sur calculatedResults (RBE / RNE immuables). */
+function applySsotToValuationInputs(
+  inputs: ValuationInputs,
+  calc: FinancialCalc,
+  residence: ResidenceAcmIdentity,
+  mergedRecord: Record<string, unknown>
+): ValuationInputs {
+  const rbe = finiteNum(calc.revenuBrutEffectif) ?? finiteNum(calc.revenusAnnuels) ?? 0;
+  const rne = finiteNum(calc.revenuNetExploitation) ?? 0;
+  const autresRevenus = finiteNum(calc.autresRevenus) ?? inputs.otherIncome ?? 0;
+
+  const asking =
+    finiteNum(calc.prixDemande) ??
+    finiteNum(residence.price) ??
+    finiteNum(mergedRecord.prixDemande) ??
+    inputs.askingPrice;
+
+  const units =
+    finiteNum(calc.nombreUnites) ??
+    getSubjectUnitCount(mergedRecord) ??
+    inputs.units;
+
+  const next: ValuationInputs = {
+    ...inputs,
+    askingPrice: asking > 0 ? asking : inputs.askingPrice,
+    units: units > 0 ? units : Math.max(1, inputs.units || 1),
+    otherIncome: autresRevenus,
+  };
+
+  if (rbe > 0) {
+    next.potentialRevenue = Math.max(0, rbe - autresRevenus);
+    next.vacancyRate = 0;
   }
+
+  if (rbe > 0 && rne >= 0) {
+    const opex = Math.max(0, rbe - rne);
+    next.operatingExpenses = {};
+    next.customExpenses = [
+      {
+        label: 'Dépenses d’exploitation (SSOT — revenu net d’exploitation)',
+        amount: opex,
+      },
+    ];
+  }
+
+  return next;
 }
 
 export function hasValidatedFinancialData(
-  financialData: Record<string, unknown> | null | undefined
+  financialData: FinancialDataV2Doc | Record<string, unknown> | null | undefined,
+  residence: ResidenceFinancialHints = {}
 ): boolean {
-  const calc = financialData?.calculatedResults as FinancialCalc | null | undefined;
-  if (!calc || typeof calc !== 'object') return false;
+  const normalized = normalizeFinancialData(
+    financialData as FinancialDataV2Doc | null | undefined,
+    residence
+  );
+  if (!normalized.hasFinancials || !normalized.calc) return false;
+  const calc = normalized.calc;
   const rne = finiteNum(calc.revenuNetExploitation);
   const rbe = finiteNum(calc.revenuBrutEffectif) ?? finiteNum(calc.revenusAnnuels);
-  return (rne !== null && rne !== 0) || (rbe !== null && rbe !== 0);
+  return (rne != null && rne !== 0) || (rbe != null && rbe !== 0);
 }
 
 export function bootstrapResidenceAcm(
   residence: ResidenceAcmIdentity,
   residenceDoc: Record<string, unknown> | null | undefined,
-  financialData: Record<string, unknown> | null | undefined,
+  financialData: FinancialDataV2Doc | Record<string, unknown> | null | undefined,
   options?: { marketTransactions?: MarketGpsTransaction[] }
 ): ResidenceAcmBootstrap | null {
-  if (!hasValidatedFinancialData(financialData)) return null;
+  const hints = residenceFinancialHints(residence);
+  const normalized = normalizeFinancialData(
+    financialData as FinancialDataV2Doc | null | undefined,
+    hints
+  );
+  if (!normalized.calc || !hasValidatedFinancialData(financialData, hints)) return null;
 
-  const calc = financialData!.calculatedResults as FinancialCalc;
+  const calc = normalized.calc;
   const rbe = finiteNum(calc.revenuBrutEffectif) ?? finiteNum(calc.revenusAnnuels) ?? 0;
   const rne = finiteNum(calc.revenuNetExploitation) ?? 0;
 
-  const residenceRecord: Record<string, unknown> = {
-    ...(residenceDoc ?? {}),
-    prixAnnonce: residence.price,
-    askingPrice: residence.price,
-    nombreUnites:
-      residence.nombreUnites ?? residence.unitsCount ?? residence.unitesRPA,
-  };
-
-  const partial = mapFirestoreDataToValuationInputs(residenceRecord, financialData!);
-  const valuationInputs = createDefaultValuationInputs(partial);
+  const mergedRecord = buildMergedResidenceRecord(residence, residenceDoc);
+  const partial = mapFirestoreDataToValuationInputs(
+    mergedRecord,
+    (financialData ?? {}) as Record<string, unknown>
+  );
+  let valuationInputs = createDefaultValuationInputs(partial);
+  valuationInputs = applySsotToValuationInputs(
+    valuationInputs,
+    calc,
+    residence,
+    mergedRecord
+  );
 
   const regionLabel = resolveRegionLabel(residence, residenceDoc);
   const assetClassLabel = resolveResidenceRpaBuildingClass(residenceDoc, residence);
+  const marketContext = resolveMarketContext(residence, residenceDoc);
 
   const calcTgaPct =
     finiteNum(calc.tauxCapitalisation) != null
@@ -172,6 +296,11 @@ export function bootstrapResidenceAcm(
   const suggestedCapRatePct = gpsSelection.capRatePct;
   valuationInputs.targetCapRate = suggestedCapRatePct / 100;
 
+  const askingPrice =
+    finiteNum(calc.prixDemande) ??
+    finiteNum(residence.price) ??
+    valuationInputs.askingPrice;
+
   return {
     residenceLabel: resolveResidenceLabel(residence, residenceDoc),
     regionLabel,
@@ -179,14 +308,15 @@ export function bootstrapResidenceAcm(
     units: valuationInputs.units,
     revenuBrutEffectif: rbe,
     revenuNetExploitation: rne,
-    askingPrice: valuationInputs.askingPrice,
+    askingPrice: askingPrice > 0 ? askingPrice : valuationInputs.askingPrice,
     suggestedCapRatePct,
     targetCapRatePct: suggestedCapRatePct,
     capRateSource: gpsSelection.source,
     capRateSampleCount: gpsSelection.sampleCount,
     capRateRationaleFr: gpsSelection.rationaleFr,
     capRateRationaleEn: gpsSelection.rationaleEn,
-    penetrationRatePct: resolvePenetrationPct(residence, residenceDoc),
+    penetrationRatePct: resolvePenetrationPct(residence, residenceDoc, marketContext),
+    marketContext,
     valuationInputs,
   };
 }
