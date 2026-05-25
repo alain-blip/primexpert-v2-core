@@ -19,6 +19,12 @@ export type SellerNarrativeVariant =
   | 'EQUILIBRE'                // Performance avec quelques écarts notables
   | 'POTENTIEL_NON_REFLETE';   // Performance actuelle < potentiel théorique
 
+/** Tag interne — boussole TGA implicite vs TGA cible (jamais affiché tel quel au client). */
+export type PricingOpportunityTag =
+  | 'OPPORTUNITÉ_SOUS_ÉVALUÉE'
+  | 'SURÉVALUÉ_RISQUE'
+  | 'PRIX_JUSTE';
+
 /**
  * Niveau de confiance de la décision narrative
  */
@@ -74,6 +80,9 @@ export interface NarrativeFeatureVector {
 
   /** Écart cap rate en points de base (bps) - positif = rendement supérieur */
   capRateGapBps: number | null;
+
+  /** Boussole prix demandé vs TGA cible (prioritaire pour la rédaction) */
+  pricingOpportunityTag: PricingOpportunityTag | null;
 
   // Métadonnées sur la qualité des données
   /** Nombre de comparables utilisés pour les benchmarks */

@@ -16,6 +16,7 @@ import type {
   SellerNarrativeVariant,
   NarrativeConfidence,
   NarrativeFeatureVector,
+  PricingOpportunityTag,
 } from './types';
 import { GAP_THRESHOLDS } from './types';
 
@@ -160,6 +161,72 @@ const LOW_CONFIDENCE_TEMPLATES: Record<
 };
 
 // ============================================================================
+// TEMPLATES — BOUSSOLE TGA IMPLICITE VS TGA CIBLE (ACM)
+// ============================================================================
+
+const PRICING_OPPORTUNITY_TEMPLATES: Record<
+  PricingOpportunityTag,
+  {
+    readingAngle: string;
+    signedReading: string;
+    talkTrackBullets: [string, string, string];
+    variant: SellerNarrativeVariant;
+  }
+> = {
+  OPPORTUNITÉ_SOUS_ÉVALUÉE: {
+    variant: 'STABLE_LISIBLE',
+    readingAngle:
+      'Lecture — rendement au prix demandé supérieur au taux de capitalisation cible du marché',
+    signedReading:
+      'Au prix demandé actuel, le taux de capitalisation implicite dépasse le taux de capitalisation ' +
+      'cible retenu pour le marché régional. En d’autres termes, l’offre présente un rendement ' +
+      'exceptionnel par rapport aux attentes des investisseurs pour ce segment. Cette configuration ' +
+      'constitue une opportunité de création de valeur pour un acheteur expérimenté : le prix ' +
+      'demandé traduit une aubaine financière plutôt qu’une sous-performance de l’exploitation. ' +
+      'La mise en marché peut s’appuyer sur cette lecture pour positionner le dossier avec ' +
+      'transparence et crédibilité auprès du marché.',
+    talkTrackBullets: [
+      'Le rendement implicite au prix demandé dépasse le taux cible du marché',
+      'Le prix offre une marge de création de valeur pour l’acheteur',
+      'Positionner le dossier sur l’opportunité financière, pas sur la critique opérationnelle',
+    ],
+  },
+  SURÉVALUÉ_RISQUE: {
+    variant: 'EQUILIBRE',
+    readingAngle:
+      'Lecture — rendement au prix demandé inférieur au taux de capitalisation cible du marché',
+    signedReading:
+      'Au prix demandé actuel, le taux de capitalisation implicite se situe en deçà du taux de ' +
+      'capitalisation cible retenu pour le marché régional. Les acheteurs expérimentés ' +
+      'interpréteront cette lecture comme un prix qui ne génère pas suffisamment de rendement ' +
+      'pour justifier l’investissement au regard des repères du segment. Une discussion structurée ' +
+      'sur le positionnement tarifaire permettra d’aligner les attentes et de faciliter un ' +
+      'processus de transaction réaliste.',
+    talkTrackBullets: [
+      'Le rendement implicite est inférieur au taux cible du marché',
+      'Le prix demandé peut limiter l’intérêt des investisseurs institutionnels',
+      'Préparer une justification ou un ajustement de prix en cohérence avec le marché',
+    ],
+  },
+  PRIX_JUSTE: {
+    variant: 'STABLE_LISIBLE',
+    readingAngle:
+      'Lecture — prix demandé aligné avec le taux de capitalisation cible du marché',
+    signedReading:
+      'Au prix demandé actuel, le taux de capitalisation implicite s’aligne avec le taux de ' +
+      'capitalisation cible retenu pour le marché régional. La propriété se positionne de façon ' +
+      'cohérente avec les attentes des investisseurs pour des configurations comparables. Cette ' +
+      'lecture soutient une mise en marché structurée, fondée sur des repères financiers ' +
+      'reconnus et une transparence adaptée aux échanges avec les acheteurs potentiels.',
+    talkTrackBullets: [
+      'Le rendement implicite correspond au taux cible du marché',
+      'Le positionnement tarifaire est cohérent avec les repères régionaux',
+      'Faciliter des discussions factuelles avec les acheteurs',
+    ],
+  },
+};
+
+// ============================================================================
 // FONCTION DE SÉLECTION DÉTERMINISTE
 // ============================================================================
 
@@ -197,12 +264,8 @@ export function selectVariantByRules(
     gaps.push(Math.abs(featureVector.noiMarginGapPct));
   }
 
-  // Cap rate gap en bps -> convertir en % équivalent pour comparaison
-  if (featureVector.capRateGapBps !== null) {
-    // 100 bps = ~12% d'écart relatif typiquement
-    const capRateGapEquivalent = Math.abs(featureVector.capRateGapBps) / 8;
-    gaps.push(capRateGapEquivalent);
-  }
+  // Ne pas mélanger l'écart TGA (boussole prix) avec les ratios d'exploitation :
+  // un TGA implicite élevé = opportunité, pas une « sous-performance ».
 
   // Si aucun écart disponible, défaut STABLE_LISIBLE
   if (gaps.length === 0) {
@@ -263,8 +326,31 @@ export function determineConfidence(
 export function generateFallbackNarrative(
   featureVector: NarrativeFeatureVector
 ): SellerNarrativeDecision {
-  const variant = selectVariantByRules(featureVector);
   const confidence = determineConfidence(featureVector);
+
+  const opportunityTag = featureVector.pricingOpportunityTag;
+  if (opportunityTag) {
+    const oppTemplate = PRICING_OPPORTUNITY_TEMPLATES[opportunityTag];
+    const reasons: string[] = [
+      `Pricing tag: ${opportunityTag}`,
+      `Confidence: ${confidence}`,
+      `Cap rate gap: ${featureVector.capRateGapBps ?? 'n/a'} bps`,
+    ];
+    if (featureVector.expenseRatioGapPct !== null) {
+      reasons.push(`Expense ratio gap: ${featureVector.expenseRatioGapPct.toFixed(1)}%`);
+    }
+    return {
+      variant: oppTemplate.variant,
+      confidence,
+      readingAngle: oppTemplate.readingAngle,
+      signedReading: oppTemplate.signedReading,
+      talkTrackBullets: oppTemplate.talkTrackBullets,
+      reasons,
+      source: 'RULES',
+    };
+  }
+
+  const variant = selectVariantByRules(featureVector);
 
   // Sélectionner le template approprié selon la confiance
   const templates = confidence === 'LOW'

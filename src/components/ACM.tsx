@@ -24,16 +24,10 @@ import {
   createDefaultValuationInputs,
   DEFAULT_MARKET_BENCHMARKS,
   computeTgaAdjustment,
-  capRateRangeFromMedian,
   runStressTests,
-  selectBaselineStressTest,
-  classifyAssetSize,
-  inferMarketType,
-  calculatePriceRecommendation,
   type ValuationInputs,
   type ValuationOutputs,
   type TgaAdjustmentResult,
-  type PriceRecommendation,
 } from '@primexpert/core/valuation';
 import {
   selectSellerNarrative,
@@ -74,6 +68,8 @@ function buildInputs(form: SimpleForm, targetCapRateOverride?: number): Valuatio
     operatingExpenses: { total: form.operatingExpensesTotal },
     customExpenses: [],
     targetCapRate: targetCapRateOverride ?? form.targetCapRate / 100,
+    valuationMode: 'acm_unified_cap',
+    weights: { capRate: 1, mrb: 0, mrn: 0, pricePerUnit: 0 },
   });
 }
 
@@ -97,7 +93,7 @@ export function ACM() {
   const [form, setForm] = useState<SimpleForm>(INITIAL_FORM);
   const [result, setResult] = useState<ValuationOutputs | null>(null);
   const [tgaAdjustment, setTgaAdjustment] = useState<TgaAdjustmentResult | null>(null);
-  const [priceRecommendation, setPriceRecommendation] = useState<PriceRecommendation | null>(null);
+  const [recommendedPrice, setRecommendedPrice] = useState<number | null>(null);
   const [stressSummary, setStressSummary] = useState<{
     occ85: number;
     occ90: number;
@@ -116,7 +112,7 @@ export function ACM() {
     setError(null);
     setNarrative(null);
     setTgaAdjustment(null);
-    setPriceRecommendation(null);
+    setRecommendedPrice(null);
     setStressSummary(null);
     try {
       let adjustedCap = form.targetCapRate / 100;
@@ -177,7 +173,7 @@ export function ACM() {
     selectSellerNarrative(
       financials,
       DEFAULT_MARKET_BENCHMARKS,
-      { capRateMedian: result.capRateMarketSelected },
+      { capRateMedian: form.targetCapRate / 100 },
       { narrativeMode: 'RULES' }
     )
       .then((decision) => {
@@ -352,7 +348,7 @@ export function ACM() {
             </div>
           ) : null}
 
-          {stressSummary && priceRecommendation ? (
+          {stressSummary && recommendedPrice != null ? (
             <div className="rounded-2xl border border-white/10 bg-vault-bright p-5 space-y-3">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                 {t('Scénarios d’occupation & prix recommandé', 'Occupancy scenarios & recommended price')}
@@ -362,8 +358,8 @@ export function ACM() {
                 {formatCurrency(stressSummary.occ100)}
               </p>
               <p className="text-lg font-black text-emerald-300">
-                {t('Prix recommandé', 'Recommended price')} :{' '}
-                {formatCurrency(priceRecommendation.recommendedListPrice)}
+                {t('Prix recommandé (RNE ÷ TGA cible)', 'Recommended price (NOI ÷ target cap rate)')} :{' '}
+                {formatCurrency(recommendedPrice)}
               </p>
             </div>
           ) : null}

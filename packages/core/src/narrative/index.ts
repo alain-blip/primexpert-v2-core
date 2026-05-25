@@ -13,7 +13,10 @@ export type {
   SellerNarrativeDecision,
   NarrativeFeatureVector,
   NarrativeOptions,
+  PricingOpportunityTag,
 } from './types';
+
+export { classifyPricingOpportunityTag } from './pricingOpportunity';
 
 export {
   DEFAULT_NARRATIVE_OPTIONS,

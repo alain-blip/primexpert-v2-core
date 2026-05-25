@@ -1,9 +1,9 @@
 /**
  * Scénarios de sensibilité à l'occupation (85 % / 90 % / 100 %).
- * Si occupation < 85 %, la base conservatrice est occ85 — pas le RNE optimiste.
+ * Mode RBP (ACM) : RNE scénario = RBP × occ − dépenses, valeur = RNE / TGA unique.
  */
 
-import { projectNOIAtOccupancy } from './projectNoiAtOccupancy';
+import { projectNOIAtOccupancy, projectNoiFromRbpAtOccupancy } from './projectNoiAtOccupancy';
 import type { RangeWithMedian, StressTestResult, StressTests } from './valuationStressTypes';
 
 const STRESS_OCCUPANCY_LEVELS = {
@@ -32,12 +32,57 @@ function buildStressTestResult(
   };
 }
 
+function buildStressTestFromRbp(
+  rbp: number,
+  operatingExpenses: number,
+  targetOccupancy: number,
+  capRate: number
+): StressTestResult {
+  const projectedNoi = projectNoiFromRbpAtOccupancy(rbp, operatingExpenses, targetOccupancy);
+  const cap = Math.max(capRate, 0.0001);
+  const value = Math.round(projectedNoi / cap);
+
+  return {
+    occupancyRate: targetOccupancy,
+    noi: projectedNoi,
+    valueRange: { min: value, max: value },
+  };
+}
+
+export interface RunStressTestsRbpContext {
+  rbp: number;
+  operatingExpenses: number;
+}
+
 export function runStressTests(
   baseNoi: number,
   currentOccupancy: number,
-  capRateRange: RangeWithMedian
+  capRateOrRange: RangeWithMedian | number,
+  rbpContext?: RunStressTestsRbpContext
 ): StressTests {
   const occ = currentOccupancy > 0 ? currentOccupancy : 0.95;
+
+  if (rbpContext && typeof capRateOrRange === 'number') {
+    const cap = capRateOrRange;
+    const { rbp, operatingExpenses } = rbpContext;
+    return {
+      occ85: buildStressTestFromRbp(
+        rbp,
+        operatingExpenses,
+        STRESS_OCCUPANCY_LEVELS.CONSERVATIVE,
+        cap
+      ),
+      occ90: buildStressTestFromRbp(rbp, operatingExpenses, STRESS_OCCUPANCY_LEVELS.BASE, cap),
+      occ100: buildStressTestFromRbp(
+        rbp,
+        operatingExpenses,
+        STRESS_OCCUPANCY_LEVELS.OPTIMISTIC,
+        cap
+      ),
+    };
+  }
+
+  const capRateRange = capRateOrRange as RangeWithMedian;
   return {
     occ85: buildStressTestResult(baseNoi, occ, STRESS_OCCUPANCY_LEVELS.CONSERVATIVE, capRateRange),
     occ90: buildStressTestResult(baseNoi, occ, STRESS_OCCUPANCY_LEVELS.BASE, capRateRange),

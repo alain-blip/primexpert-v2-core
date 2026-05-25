@@ -21,6 +21,7 @@ import { generateFallbackNarrative } from './sellerNarrativeTemplates';
 import { generateAINarrative } from '@primexpert/core/services/aiNarrativeService';
 import { lintNarrativeText, sanitizeNarrativeText } from './narrativeLint';
 import type { ComparableBenchmarks } from '../valuation/comparableBenchmarks';
+import { classifyPricingOpportunityTag } from './pricingOpportunity';
 
 // ============================================================================
 // INTERFACES POUR LES DONNÉES D'ENTRÉE
@@ -124,6 +125,11 @@ export function buildFeatureVector(
     capRateGapBps = Math.round((capRateImplied - capRateReference) * 10000);
   }
 
+  const pricingOpportunityTag = classifyPricingOpportunityTag(
+    capRateImplied,
+    capRateReference
+  );
+
   return {
     // Écarts calculés
     expenseRatioGapPct,
@@ -131,6 +137,7 @@ export function buildFeatureVector(
     foodRatioGapPct,
     noiMarginGapPct,
     capRateGapBps,
+    pricingOpportunityTag,
 
     // Métadonnées
     sampleCount: benchmarks.sampleCount,

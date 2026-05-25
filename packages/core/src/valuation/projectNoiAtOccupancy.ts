@@ -13,3 +13,18 @@ export function projectNOIAtOccupancy(
   const ratio = targetOccupancy / currentOccupancy;
   return Math.round(baseNoi * ratio);
 }
+
+/**
+ * RNE à l'occupation cible : revenu brut potentiel (RBP) × occ − dépenses (fixes).
+ * Formule ACM pour scénarios 85 % / 90 % / 100 %.
+ */
+export function projectNoiFromRbpAtOccupancy(
+  rbp: number,
+  operatingExpenses: number,
+  targetOccupancy: number
+): number {
+  if (!Number.isFinite(rbp) || rbp <= 0) return 0;
+  const occ = Math.min(1, Math.max(0, targetOccupancy));
+  const expenses = Number.isFinite(operatingExpenses) ? operatingExpenses : 0;
+  return Math.max(0, Math.round(rbp * occ - expenses));
+}

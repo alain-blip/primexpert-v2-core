@@ -104,13 +104,14 @@ export {
   type StressTests,
   type PriceRecommendation,
 } from './valuationStressTypes';
-export { projectNOIAtOccupancy } from './projectNoiAtOccupancy';
+export { projectNOIAtOccupancy, projectNoiFromRbpAtOccupancy } from './projectNoiAtOccupancy';
 export {
   runStressTests,
   selectBaselineStressTest,
   calculateMedianValue,
   requiresConservativeBaseline,
   capRateRangeFromMedian,
+  type RunStressTestsRbpContext,
 } from './stressTest';
 export {
   classifyAssetSize,

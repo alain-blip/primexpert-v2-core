@@ -332,5 +332,7 @@ export function buildValuationInputsFromAcmBootstrap(
   return {
     ...bootstrap.valuationInputs,
     targetCapRate,
+    valuationMode: 'acm_unified_cap',
+    weights: { capRate: 1, mrb: 0, mrn: 0, pricePerUnit: 0 },
   };
 }

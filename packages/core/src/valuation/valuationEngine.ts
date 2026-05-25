@@ -140,6 +140,12 @@ export interface ValuationInputs {
   comparables?: ComparableFinancialData[];
   /** Ajustement risque en points de base (ex: 25 = +0.25%) */
   riskAdjBps?: number;
+
+  /**
+   * Mode ACM : prix suggéré, banquable et fourchette = RNE / TGA cible (source unique).
+   * Évite les formules concurrentes (pondération MRB, plafond prêteur, etc.).
+   */
+  valuationMode?: 'standard' | 'acm_unified_cap';
 }
 
 /**
@@ -668,22 +674,39 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
     ? Math.max(...valuationCandidates)
     : 0;
 
-  // Prix suggéré = minimum entre la valeur pondérée et la valeur banquable
-  // Ceci assure que le prix recommandé est finançable
-  const suggestedPrice = bankableValue > 0
-    ? roundToThousand(Math.min(weightedMarketValue, bankableValue))
-    : roundToThousand(weightedMarketValue);
+  const canonicalValueByCap =
+    inputs.targetCapRate > 0 ? noiAccounting / inputs.targetCapRate : 0;
 
-  // Fourchette de prix:
-  // - Low: valeur prudente (minimum des méthodes), plafonnée à la valeur banquable
-  // - High: borne supérieure, TOUJOURS plafonnée à la valeur banquable
-  const suggestedLow = bankableValue > 0
-    ? roundToThousand(Math.min(rawLow, bankableValue))
-    : roundToThousand(rawLow);
+  let suggestedPrice: number;
+  let suggestedLow: number;
+  let suggestedHigh: number;
+  let bankableValueOut = bankableValue;
+  let weightedMarketValueOut = weightedMarketValue;
 
-  const suggestedHigh = bankableValue > 0
-    ? roundToThousand(Math.min(rawHigh, bankableValue))
-    : roundToThousand(rawHigh);
+  if (inputs.valuationMode === 'acm_unified_cap') {
+    const canonical = roundToThousand(canonicalValueByCap);
+    suggestedPrice = canonical;
+    bankableValueOut = canonical;
+    weightedMarketValueOut = canonical;
+    suggestedLow = roundToThousand(canonical * 0.9);
+    suggestedHigh = roundToThousand(canonical * 1.1);
+  } else {
+    // Prix suggéré = minimum entre la valeur pondérée et la valeur banquable
+    suggestedPrice =
+      bankableValue > 0
+        ? roundToThousand(Math.min(weightedMarketValue, bankableValue))
+        : roundToThousand(weightedMarketValue);
+
+    suggestedLow =
+      bankableValue > 0
+        ? roundToThousand(Math.min(rawLow, bankableValue))
+        : roundToThousand(rawLow);
+
+    suggestedHigh =
+      bankableValue > 0
+        ? roundToThousand(Math.min(rawHigh, bankableValue))
+        : roundToThousand(rawHigh);
+  }
 
   // =========================================================================
   // 7. RATIOS AU PRIX DEMANDÉ
@@ -835,12 +858,20 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
     capRateImpliedAtAsking !== undefined &&
     capRateImpliedAtAsking < capRateMarketSelected - 0.005
   ) {
-    // Fallback si pas de comparables: comparer au TGA marché retenu
     warningLowCapRate = true;
     const impliedPct = (capRateImpliedAtAsking * 100).toFixed(2);
     const marketPct = (capRateMarketSelected * 100).toFixed(2);
     warnings.push(
       `Rendement sous le marché: TGA implicite (${impliedPct}%) inférieur au TGA de marché (${marketPct}%)`
+    );
+  } else if (
+    capRateImpliedAtAsking !== undefined &&
+    capRateImpliedAtAsking > capRateMarketSelected + 0.0025
+  ) {
+    const impliedPct = (capRateImpliedAtAsking * 100).toFixed(2);
+    const marketPct = (capRateMarketSelected * 100).toFixed(2);
+    warnings.push(
+      `Opportunité au prix demandé: TGA implicite (${impliedPct}%) supérieur au TGA cible (${marketPct}%)`
     );
   }
 
@@ -877,7 +908,7 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
     valueByMRB: roundToThousand(valueByMRB),
     valueByMRN: roundToThousand(valueByMRN),
     valueByPricePerUnit: roundToThousand(valueByPricePerUnit),
-    weightedMarketValue: roundToThousand(weightedMarketValue),
+    weightedMarketValue: roundToThousand(weightedMarketValueOut),
 
     // Banque / financement
     bankCapValue: roundToThousand(bankCapValue),
@@ -885,7 +916,7 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
     debtConstant: Math.round(debtConstant * 10000) / 10000,
     maxLoanByDscr: roundToThousand(maxLoanByDscr),
     maxPriceByDscrLtv: roundToThousand(maxPriceByDscrLtv),
-    bankableValue: roundToThousand(bankableValue),
+    bankableValue: roundToThousand(bankableValueOut),
 
     // Fourchette prix
     suggestedLow,

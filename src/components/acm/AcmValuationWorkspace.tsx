@@ -24,17 +24,11 @@ import {
   calculateValuation,
   DEFAULT_MARKET_BENCHMARKS,
   computeTgaAdjustment,
-  capRateRangeFromMedian,
   runStressTests,
-  selectBaselineStressTest,
-  classifyAssetSize,
-  inferMarketType,
-  calculatePriceRecommendation,
   buildValuationInputsFromAcmBootstrap,
   type ResidenceAcmBootstrap,
   type ValuationOutputs,
   type TgaAdjustmentResult,
-  type PriceRecommendation,
 } from '@primexpert/core/valuation';
 import {
   selectSellerNarrative,
@@ -116,11 +110,13 @@ export function AcmValuationWorkspace({
 
   const [tgaInput, setTgaInput] = useState(() => String(suggestedCapRatePct));
   const [targetCapRatePct, setTargetCapRatePct] = useState(suggestedCapRatePct);
+  /** TGA réellement appliqué au moteur (après ajustement pénétration). */
+  const [effectiveCapRate, setEffectiveCapRate] = useState(suggestedCapRatePct / 100);
   const [penetrationRatePct, setPenetrationRatePct] = useState(bootstrap.penetrationRatePct);
   const [tgaManuallyAdjusted, setTgaManuallyAdjusted] = useState(false);
   const [result, setResult] = useState<ValuationOutputs | null>(null);
   const [tgaAdjustment, setTgaAdjustment] = useState<TgaAdjustmentResult | null>(null);
-  const [priceRecommendation, setPriceRecommendation] = useState<PriceRecommendation | null>(null);
+  const [recommendedPrice, setRecommendedPrice] = useState<number | null>(null);
   const [stressSummary, setStressSummary] = useState<{
     occ85: number;
     occ90: number;
@@ -161,7 +157,7 @@ export function AcmValuationWorkspace({
       if (!Number.isFinite(capPct) || capPct <= 0) {
         setResult(null);
         setTgaAdjustment(null);
-        setPriceRecommendation(null);
+        setRecommendedPrice(null);
         setStressSummary(null);
         return;
       }
@@ -178,6 +174,7 @@ export function AcmValuationWorkspace({
           adjustedCap = adj.finalTga;
         }
         setTgaAdjustment(adj);
+        setEffectiveCapRate(adjustedCap);
 
         const inputs = buildValuationInputsFromAcmBootstrap(bootstrap, {
           targetCapRate: adjustedCap,
@@ -188,22 +185,16 @@ export function AcmValuationWorkspace({
 
         const vacancyRate = bootstrap.valuationInputs.vacancyRate;
         const occupancy = Math.max(0.01, 1 - vacancyRate);
-        const capRange = capRateRangeFromMedian(adjustedCap);
-        const stress = runStressTests(out.noiAccounting, occupancy, capRange);
-        const baseline = selectBaselineStressTest(occupancy, stress);
+        const stress = runStressTests(out.noiAccounting, occupancy, adjustedCap, {
+          rbp: out.grossPotentialIncome,
+          operatingExpenses: out.operatingExpensesTotal,
+        });
         setStressSummary({
           occ85: stress.occ85.valueRange.min,
           occ90: stress.occ90.valueRange.min,
           occ100: stress.occ100.valueRange.min,
         });
-        setPriceRecommendation(
-          calculatePriceRecommendation(
-            baseline,
-            inferMarketType(bootstrap.regionLabel),
-            classifyAssetSize(bootstrap.units),
-            occupancy
-          )
-        );
+        setRecommendedPrice(out.suggestedPrice);
       } catch (e) {
         console.error('[AcmValuationWorkspace]', e);
         setError(e instanceof Error ? e.message : String(e));
@@ -234,7 +225,7 @@ export function AcmValuationWorkspace({
     selectSellerNarrative(
       financials,
       DEFAULT_MARKET_BENCHMARKS,
-      { capRateMedian: result.capRateMarketSelected },
+      { capRateMedian: effectiveCapRate },
       { narrativeMode: 'RULES' }
     )
       .then((decision) => {
@@ -250,7 +241,7 @@ export function AcmValuationWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [result, bootstrap]);
+  }, [result, bootstrap, effectiveCapRate]);
 
   const capRateRationale =
     language === 'fr' ? bootstrap.capRateRationaleFr : bootstrap.capRateRationaleEn;
@@ -522,7 +513,7 @@ export function AcmValuationWorkspace({
             </div>
           ) : null}
 
-          {stressSummary && priceRecommendation ? (
+          {stressSummary && recommendedPrice != null ? (
             <div className="rounded-2xl border border-white/10 bg-vault-bright p-5 space-y-3">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                 {t('Scénarios d’occupation & prix recommandé', 'Occupancy scenarios & recommended price')}
@@ -532,8 +523,8 @@ export function AcmValuationWorkspace({
                 {formatCurrency(stressSummary.occ100)}
               </p>
               <p className="text-lg font-black text-emerald-300">
-                {t('Prix recommandé', 'Recommended price')} :{' '}
-                {formatCurrency(priceRecommendation.recommendedListPrice)}
+                {t('Prix recommandé (RNE ÷ TGA cible)', 'Recommended price (NOI ÷ target cap rate)')} :{' '}
+                {formatCurrency(recommendedPrice)}
               </p>
             </div>
           ) : null}
