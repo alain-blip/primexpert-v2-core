@@ -31,6 +31,8 @@ export interface MarketGpsTransaction {
   vendeur?: string;
   acheteur?: string;
   typeImmeuble?: string;
+  /** Classe RPA (ex. Classe 1, Classe 3) — GPS / comparables. */
+  classeImmeuble?: string;
   source: string;
   sourceDocumentId?: string;
   sourceDocumentName?: string;

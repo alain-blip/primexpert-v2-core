@@ -1,0 +1,96 @@
+/**
+ * Panneau ACM intégré à la fiche résidence — exige financial/dataV2 validé.
+ */
+
+import React, { useMemo } from 'react';
+import { AlertTriangle } from 'lucide-react';
+import { bootstrapResidenceAcm } from '@primexpert/core/valuation';
+import { useLanguage } from '../../../lib/i18n';
+import { useAuth } from '../../../lib/auth';
+import { useFinancialData } from '../../../context/FinancialDataContext';
+import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
+import { useMarketData } from '../../../hooks/useMarketData';
+import type { Residence } from '../../../services/residences';
+import { AcmValuationWorkspace } from '../../acm/AcmValuationWorkspace';
+import { AcmTab } from './AcmTab';
+import { inst } from '../institutional/InstitutionalUi';
+
+export interface ResidenceAcmValuationPanelProps {
+  residence: Residence;
+  onOpenComparables?: () => void;
+}
+
+export function ResidenceAcmValuationPanel({
+  residence,
+  onOpenComparables,
+}: ResidenceAcmValuationPanelProps) {
+  const { t, language } = useLanguage();
+  const { profile } = useAuth();
+  const { financialData, loading, error } = useFinancialData();
+  const { residenceDoc } = useResidenceDocument();
+  const { transactions: marketTransactions } = useMarketData(language, profile?.uid ?? null);
+
+  const bootstrap = useMemo(() => {
+    if (!financialData) return null;
+    return bootstrapResidenceAcm(
+      residence,
+      residenceDoc ?? undefined,
+      financialData as Record<string, unknown>,
+      { marketTransactions }
+    );
+  }, [residence, residenceDoc, financialData, marketTransactions]);
+
+  if (loading) {
+    return (
+      <div className={inst.loading}>
+        <p className={inst.loadingText}>
+          {t('Chargement des états financiers…', 'Loading financial statements…')}
+        </p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-300 bg-red-50 px-5 py-4 text-sm text-red-900">
+        {t('Erreur Firestore', 'Firestore error')}: {error.message}
+      </div>
+    );
+  }
+
+  if (!bootstrap) {
+    return (
+      <div
+        role="alert"
+        className="flex items-start gap-3 rounded-xl border-2 border-amber-400 bg-amber-50 px-5 py-4 text-amber-950"
+      >
+        <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
+        <div className="space-y-2">
+          <p className="text-[11px] font-black uppercase tracking-[0.16em]">
+            {t(
+              'États financiers requis pour l’analyse comparative (ACM)',
+              'Financial statements required for comparative analysis (CMA)'
+            )}
+          </p>
+          <p className="text-[14px] leading-relaxed">
+            {t(
+              'Complétez et validez la grille financière V2 (onglet Finances) avant de lancer une analyse comparative de marché (ACM). Les revenus brut effectif (RBE) et net d’exploitation (RNE) proviennent exclusivement de financial/dataV2.calculatedResults.',
+              'Complete and validate the V2 financial grid (Finance tab) before launching a comparative market analysis (CMA). Effective gross income (EGI) and net operating income (NOI) come exclusively from financial/dataV2.calculatedResults.'
+            )}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <AcmValuationWorkspace
+        bootstrap={bootstrap}
+        onOpenComparables={onOpenComparables}
+        compact
+      />
+      <AcmTab residence={residence} />
+    </div>
+  );
+}

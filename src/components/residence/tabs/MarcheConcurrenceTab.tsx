@@ -13,7 +13,8 @@ import { MarketPenetrationSection } from '../market/MarketPenetrationSection';
 import { TerritorialDiagnosticSection } from '../market/TerritorialDiagnosticSection';
 import { VisitorRegistrySection } from '../market/VisitorRegistrySection';
 import { WorkforceBasinSection } from '../market/WorkforceBasinSection';
-import { AcmTab } from '../market/AcmTab';
+import { ResidenceAcmValuationPanel } from '../market/ResidenceAcmValuationPanel';
+import { FinancialDataProvider } from '../../../context/FinancialDataContext';
 
 export interface MarcheConcurrenceTabProps {
   residence: Residence;
@@ -60,7 +61,9 @@ export function MarcheConcurrenceTab({ residence }: MarcheConcurrenceTabProps) {
         </p>
       )}
 
-      <AcmTab residence={residence} />
+      <FinancialDataProvider residenceId={residence.id}>
+        <ResidenceAcmValuationPanel residence={residence} />
+      </FinancialDataProvider>
       <MarketPenetrationSection />
       <CompetitorZoneSection />
       <WorkforceBasinSection />

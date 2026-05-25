@@ -116,6 +116,12 @@ function mapAnalyticsTransaction(
     acheteur: txMeta.acheteur != null ? String(txMeta.acheteur).trim() : undefined,
     typeImmeuble:
       txMeta.typeImmeuble != null ? String(txMeta.typeImmeuble).trim() : undefined,
+    classeImmeuble:
+      txMeta.classeImmeuble != null
+        ? String(txMeta.classeImmeuble).trim()
+        : txMeta.classe_immeuble != null
+          ? String(txMeta.classe_immeuble).trim()
+          : undefined,
     source: adresse || sourceDocumentName || '—',
     sourceDocumentId,
     sourceDocumentName,

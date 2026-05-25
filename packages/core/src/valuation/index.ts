@@ -121,3 +121,12 @@ export {
 
 // Hook React (à importer séparément si besoin)
 export { useValuation } from './useValuation';
+
+// Bootstrap ACM résidence (SSOT + TGA GPS)
+export {
+  type ResidenceAcmIdentity,
+  type ResidenceAcmBootstrap,
+  hasValidatedFinancialData,
+  bootstrapResidenceAcm,
+  buildValuationInputsFromAcmBootstrap,
+} from './residenceAcmBootstrap';

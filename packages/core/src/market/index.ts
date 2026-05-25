@@ -14,3 +14,4 @@ export * from './marketDataNormalize';
 export * from './gpsComparablesImport';
 export * from './marketSourceTag';
 export * from './marketRegionNormalize';
+export * from './gpsCapRateByRegionClass';

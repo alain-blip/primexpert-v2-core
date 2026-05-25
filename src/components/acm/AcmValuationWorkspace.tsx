@@ -1,0 +1,552 @@
+/**
+ * Espace de travail ACM — valorisation ancrée sur une résidence (SSOT).
+ * TGA entièrement éditable avec recalcul instantané à la saisie.
+ */
+
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ShieldCheck,
+  TrendingDown,
+  TrendingUp,
+  BadgeAlert,
+  BookOpen,
+  Sparkles,
+  Lock,
+  RotateCcw,
+} from 'lucide-react';
+import { motion } from 'motion/react';
+import { useLanguage } from '../../lib/i18n';
+import { formatCurrency } from '../../lib/utils';
+import {
+  calculateValuation,
+  DEFAULT_MARKET_BENCHMARKS,
+  computeTgaAdjustment,
+  capRateRangeFromMedian,
+  runStressTests,
+  selectBaselineStressTest,
+  classifyAssetSize,
+  inferMarketType,
+  calculatePriceRecommendation,
+  buildValuationInputsFromAcmBootstrap,
+  type ResidenceAcmBootstrap,
+  type ValuationOutputs,
+  type TgaAdjustmentResult,
+  type PriceRecommendation,
+} from '@primexpert/core/valuation';
+import {
+  selectSellerNarrative,
+  type SellerNarrativeDecision,
+  type ResidenceFinancials,
+} from '@primexpert/core/narrative';
+
+const TGA_INPUT_CLASS =
+  'w-full rounded-xl border-2 border-blue-300 bg-white px-4 py-3 text-base font-black text-[#142c6a] tabular-nums shadow-sm focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/40 outline-none transition';
+
+function PositioningBadge({
+  positioning,
+  t,
+}: {
+  positioning: ValuationOutputs['pricePositioning'];
+  t: ReturnType<typeof useLanguage>['t'];
+}) {
+  const meta = {
+    'sous-évalué': {
+      Icon: TrendingDown,
+      label: t('Sous-évalué', 'Underpriced'),
+      color: 'bg-emerald-500/[0.08] text-emerald-300 border-emerald-400/30',
+    },
+    'bien-positionné': {
+      Icon: CheckCircle2,
+      label: t('Bien positionné', 'Well priced'),
+      color: 'bg-blue-500/10 text-blue-300 border-blue-400/30',
+    },
+    surévalué: {
+      Icon: TrendingUp,
+      label: t('Surévalué', 'Overpriced'),
+      color: 'bg-red-500/[0.08] text-red-300 border-red-400/30',
+    },
+  }[positioning];
+  const Icon = meta.Icon;
+  return (
+    <motion.div
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-widest ${meta.color}`}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {meta.label}
+    </motion.div>
+  );
+}
+
+function parseCapRateInput(raw: string): number | null {
+  const trimmed = raw.trim().replace(',', '.');
+  if (!trimmed) return null;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : null;
+}
+
+export interface AcmValuationWorkspaceProps {
+  bootstrap: ResidenceAcmBootstrap;
+  onOpenComparables?: () => void;
+  compact?: boolean;
+}
+
+export function AcmValuationWorkspace({
+  bootstrap,
+  onOpenComparables,
+  compact = false,
+}: AcmValuationWorkspaceProps) {
+  const { t, language } = useLanguage();
+  const suggestedCapRatePct = bootstrap.suggestedCapRatePct ?? bootstrap.targetCapRatePct;
+
+  const [tgaInput, setTgaInput] = useState(String(suggestedCapRatePct));
+  const [targetCapRatePct, setTargetCapRatePct] = useState(suggestedCapRatePct);
+  const [penetrationRatePct, setPenetrationRatePct] = useState(bootstrap.penetrationRatePct);
+  const [tgaManuallyAdjusted, setTgaManuallyAdjusted] = useState(false);
+  const [result, setResult] = useState<ValuationOutputs | null>(null);
+  const [tgaAdjustment, setTgaAdjustment] = useState<TgaAdjustmentResult | null>(null);
+  const [priceRecommendation, setPriceRecommendation] = useState<PriceRecommendation | null>(null);
+  const [stressSummary, setStressSummary] = useState<{
+    occ85: number;
+    occ90: number;
+    occ100: number;
+  } | null>(null);
+  const [narrative, setNarrative] = useState<SellerNarrativeDecision | null>(null);
+  const [narrativeLoading, setNarrativeLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const bootstrapKeyRef = useRef(
+    `${bootstrap.residenceLabel}|${bootstrap.suggestedCapRatePct}|${bootstrap.units}`
+  );
+
+  useEffect(() => {
+    const key = `${bootstrap.residenceLabel}|${bootstrap.suggestedCapRatePct}|${bootstrap.units}`;
+    if (bootstrapKeyRef.current === key) return;
+    bootstrapKeyRef.current = key;
+    setTgaInput(String(suggestedCapRatePct));
+    setTargetCapRatePct(suggestedCapRatePct);
+    setPenetrationRatePct(bootstrap.penetrationRatePct);
+    setTgaManuallyAdjusted(false);
+  }, [bootstrap, suggestedCapRatePct]);
+
+  const runValuation = useCallback(
+    (capPct: number, penPct: number) => {
+      if (!Number.isFinite(capPct) || capPct <= 0) {
+        setResult(null);
+        setTgaAdjustment(null);
+        setPriceRecommendation(null);
+        setStressSummary(null);
+        return;
+      }
+      setError(null);
+      try {
+        let adjustedCap = capPct / 100;
+        let adj: TgaAdjustmentResult | null = null;
+        if (penPct > 0) {
+          adj = computeTgaAdjustment({
+            baseTga: adjustedCap,
+            tauxPenetrationRPA: penPct / 100,
+            nombreUnites: bootstrap.units,
+          });
+          adjustedCap = adj.finalTga;
+        }
+        setTgaAdjustment(adj);
+
+        const inputs = buildValuationInputsFromAcmBootstrap(bootstrap, {
+          targetCapRate: adjustedCap,
+          penetrationRatePct: penPct,
+        });
+        const out = calculateValuation(inputs);
+        setResult(out);
+
+        const vacancyRate = bootstrap.valuationInputs.vacancyRate;
+        const occupancy = Math.max(0.01, 1 - vacancyRate);
+        const capRange = capRateRangeFromMedian(adjustedCap);
+        const stress = runStressTests(out.noiAccounting, occupancy, capRange);
+        const baseline = selectBaselineStressTest(occupancy, stress);
+        setStressSummary({
+          occ85: stress.occ85.valueRange.min,
+          occ90: stress.occ90.valueRange.min,
+          occ100: stress.occ100.valueRange.min,
+        });
+        setPriceRecommendation(
+          calculatePriceRecommendation(
+            baseline,
+            inferMarketType(bootstrap.regionLabel),
+            classifyAssetSize(bootstrap.units),
+            occupancy
+          )
+        );
+      } catch (e) {
+        console.error('[AcmValuationWorkspace]', e);
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [bootstrap]
+  );
+
+  useEffect(() => {
+    runValuation(targetCapRatePct, penetrationRatePct);
+  }, [targetCapRatePct, penetrationRatePct, runValuation]);
+
+  useEffect(() => {
+    if (!result) {
+      setNarrative(null);
+      return;
+    }
+    let cancelled = false;
+    setNarrativeLoading(true);
+
+    const financials: ResidenceFinancials = {
+      rbe: bootstrap.revenuBrutEffectif,
+      noi: bootstrap.revenuNetExploitation,
+      totalExpenses: result.operatingExpensesTotal,
+      prixDemande: bootstrap.askingPrice,
+    };
+
+    selectSellerNarrative(
+      financials,
+      DEFAULT_MARKET_BENCHMARKS,
+      { capRateMedian: result.capRateMarketSelected },
+      { narrativeMode: 'RULES' }
+    )
+      .then((decision) => {
+        if (!cancelled) setNarrative(decision);
+      })
+      .catch(() => {
+        if (!cancelled) setNarrative(null);
+      })
+      .finally(() => {
+        if (!cancelled) setNarrativeLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [result, bootstrap]);
+
+  const capRateRationale =
+    language === 'fr' ? bootstrap.capRateRationaleFr : bootstrap.capRateRationaleEn;
+
+  const handleTgaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setTgaInput(raw);
+    const parsed = parseCapRateInput(raw);
+    if (parsed == null) {
+      setTgaManuallyAdjusted(true);
+      setTargetCapRatePct(0);
+      return;
+    }
+    setTargetCapRatePct(parsed);
+    setTgaManuallyAdjusted(Math.abs(parsed - suggestedCapRatePct) > 0.04);
+  };
+
+  const resetTgaToMarket = () => {
+    setTgaInput(String(suggestedCapRatePct));
+    setTargetCapRatePct(suggestedCapRatePct);
+    setTgaManuallyAdjusted(false);
+  };
+
+  const ratios = useMemo(() => {
+    if (!result) return null;
+    return [
+      {
+        label: t('Taux de capitalisation implicite (TGA)', 'Implied capitalization rate (cap rate)'),
+        value:
+          result.capRateImpliedAtAsking !== undefined
+            ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%`
+            : '—',
+      },
+      {
+        label: t('Multiple du revenu brut réel (MRB)', 'Actual gross rent multiplier (GRM)'),
+        value: result.actualMrbAtAsking.toFixed(2),
+      },
+      {
+        label: t('Ratio de couverture du service de la dette (DSCR)', 'Debt service coverage ratio (DSCR)'),
+        value: result.dscrAtAsking.toFixed(2),
+      },
+      {
+        label: t('Revenu net d’exploitation comptable (RNE)', 'Accounting net operating income (NOI)'),
+        value: formatCurrency(result.noiAccounting, { maxDecimals: 2 }),
+      },
+    ];
+  }, [result, t]);
+
+  const lockedFields = [
+    { label: t('Propriété sujet', 'Subject property'), value: bootstrap.residenceLabel },
+    { label: t('Région administrative', 'Administrative region'), value: bootstrap.regionLabel ?? '—' },
+    {
+      label: t('Classe RPA', 'RPA class'),
+      value: bootstrap.assetClassLabel ?? '—',
+    },
+    { label: t('Nombre d’unités', 'Unit count'), value: String(bootstrap.units) },
+    {
+      label: t('Revenu brut effectif (RBE)', 'Effective gross income (EGI)'),
+      value: formatCurrency(bootstrap.revenuBrutEffectif, { maxDecimals: 0 }),
+    },
+    {
+      label: t('Revenu net d’exploitation (RNE)', 'Net operating income (NOI)'),
+      value: formatCurrency(bootstrap.revenuNetExploitation, { maxDecimals: 0 }),
+    },
+    {
+      label: t('Prix demandé ($)', 'Asking price ($)'),
+      value: formatCurrency(bootstrap.askingPrice, { maxDecimals: 0 }),
+    },
+  ];
+
+  return (
+    <div className={compact ? 'space-y-6' : 'max-w-5xl mx-auto space-y-8'}>
+      <div className="bg-vault text-white p-6 rounded-[28px] shadow-[0_24px_70px_rgba(0,0,0,0.55)] relative overflow-hidden border border-white/10">
+        <motion.div className="relative z-10 flex flex-col gap-6">
+          {!compact ? (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
+                  {t('Moteur Core · @primexpert/core/valuation', 'Core Engine · @primexpert/core/valuation')}
+                </p>
+                <h2 className="text-4xl font-black italic tracking-tighter uppercase">
+                  {t('Analyse comparative de marché (ACM)', 'Comparative market analysis (CMA)')}
+                  <span className="text-blue-500">{t('_OACIQ', '_OACIQ')}</span>
+                </h2>
+              </div>
+              <div className="flex items-center gap-2 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 px-3 py-1.5">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-100">
+                  {t('Données CRM · SSOT', 'CRM data · SSOT')}
+                </span>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Lock className="h-4 w-4 text-blue-300" aria-hidden />
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-300/80">
+                {t('Données sujet verrouillées (financial/dataV2)', 'Locked subject data (financial/dataV2)')}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {lockedFields.map((f) => (
+                <div key={f.label} className="space-y-1">
+                  <span className="block text-[9px] font-black uppercase tracking-widest text-blue-300/50">
+                    {f.label}
+                  </span>
+                  <p className="text-sm font-bold text-white truncate" title={f.value}>
+                    {f.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <label
+                  htmlFor="acm-target-cap-rate"
+                  className="block text-[10px] font-black uppercase tracking-widest text-blue-300/60"
+                >
+                  {t('Taux de capitalisation cible (TGA) (%)', 'Target capitalization rate (cap rate) (%)')}
+                </label>
+                {tgaManuallyAdjusted ? (
+                  <span className="rounded-full border border-amber-400/50 bg-amber-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-200">
+                    {t('Taux personnalisé par l’utilisateur', 'User-customized rate')}
+                  </span>
+                ) : null}
+              </div>
+              <input
+                id="acm-target-cap-rate"
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                value={tgaInput}
+                onChange={handleTgaChange}
+                className={TGA_INPUT_CLASS}
+                aria-describedby="acm-tga-rationale"
+              />
+              {!tgaManuallyAdjusted && capRateRationale ? (
+                <p id="acm-tga-rationale" className="text-[11px] leading-relaxed text-blue-200/90">
+                  {capRateRationale}
+                  {bootstrap.capRateSampleCount > 0 ? (
+                    <span className="text-blue-300/60">
+                      {' '}
+                      · n={bootstrap.capRateSampleCount}
+                    </span>
+                  ) : null}
+                </p>
+              ) : null}
+              {tgaManuallyAdjusted ? (
+                <button
+                  type="button"
+                  onClick={resetTgaToMarket}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-300 hover:text-blue-100 underline underline-offset-2"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  {t('Réinitialiser au TGA marché GPS', 'Reset to GPS market cap rate')}
+                </button>
+              ) : null}
+            </div>
+            <label className="space-y-2">
+              <span className="block text-[10px] font-black uppercase tracking-widest text-blue-300/60">
+                {t('Pénétration RPA 75+ (%) — ajustement TGA', 'RPA 75+ penetration (%) — cap rate adj.')}
+              </span>
+              <input
+                type="number"
+                step={0.1}
+                value={penetrationRatePct}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  setPenetrationRatePct(Number.isFinite(next) ? next : 0);
+                }}
+                className={TGA_INPUT_CLASS}
+              />
+            </label>
+          </div>
+
+          {onOpenComparables ? (
+            <button
+              type="button"
+              onClick={onOpenComparables}
+              className="text-left text-[11px] font-bold text-blue-300 hover:text-blue-200 underline underline-offset-2"
+            >
+              {t(
+                'Sélectionner les comparables régionaux (onglet Marché)',
+                'Select regional comparables (Market tab)'
+              )}
+            </button>
+          ) : null}
+        </motion.div>
+      </div>
+
+      {error ? (
+        <div className="flex items-center gap-3 rounded-2xl border border-red-400/30 bg-red-500/[0.08] px-5 py-3 text-[11px] font-semibold text-red-300">
+          <AlertCircle className="h-4 w-4" />
+          {error}
+        </div>
+      ) : null}
+
+      {result ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="space-y-6"
+        >
+          <motion.div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2 bg-vault-bright p-10 rounded-[32px] border border-white/10 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-blue-400" />
+                  {t('Prix suggéré (Core OACIQ)', 'Suggested price (OACIQ Core)')}
+                </h3>
+                <PositioningBadge positioning={result.pricePositioning} t={t} />
+              </div>
+              <p className="text-6xl font-black italic tracking-tighter text-slate-300 leading-none">
+                {formatCurrency(result.suggestedPrice)}
+              </p>
+              <div className="mt-8 grid grid-cols-2 gap-4">
+                <div className="p-5 bg-white/[0.03] rounded-xl border border-white/10">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                    {t('Plancher', 'Floor')}
+                  </span>
+                  <p className="font-mono text-sm font-black text-slate-300 mt-1">
+                    {formatCurrency(result.suggestedLow)}
+                  </p>
+                </div>
+                <div className="p-5 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-blue-400">
+                    {t('Plafond', 'Ceiling')}
+                  </span>
+                  <p className="font-mono text-sm font-black text-blue-300 mt-1">
+                    {formatCurrency(result.suggestedHigh)}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-blue-500 text-white p-8 rounded-[32px] shadow-lg flex flex-col gap-5 relative overflow-hidden">
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-200">
+                {t('Valeur banquable', 'Bankable value')}
+              </p>
+              <p className="text-3xl font-black italic">{formatCurrency(result.bankableValue)}</p>
+              <p className="text-[10px] font-mono text-blue-100/80">DSCR · {result.dscrAtAsking.toFixed(2)}</p>
+            </div>
+          </motion.div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {ratios?.map((r) => (
+              <div key={r.label} className="rounded-2xl border border-white/10 bg-vault-bright p-5">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{r.label}</p>
+                <p className="mt-2 text-xl font-black italic text-slate-300">{r.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {tgaAdjustment ? (
+            <div className="rounded-2xl border border-blue-400/30 bg-blue-500/10 p-5 space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">
+                {t('Ajustement TGA — pénétration & taille', 'Cap rate adjustment — penetration & size')}
+              </p>
+              <p className="text-sm font-bold text-white">
+                {(tgaAdjustment.baseTga * 100).toFixed(2)} % → {(tgaAdjustment.finalTga * 100).toFixed(2)} %
+              </p>
+            </div>
+          ) : null}
+
+          {stressSummary && priceRecommendation ? (
+            <div className="rounded-2xl border border-white/10 bg-vault-bright p-5 space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                {t('Scénarios d’occupation & prix recommandé', 'Occupancy scenarios & recommended price')}
+              </p>
+              <p className="text-xs text-slate-300">
+                85 % : {formatCurrency(stressSummary.occ85)} · 90 % : {formatCurrency(stressSummary.occ90)} · 100 % :{' '}
+                {formatCurrency(stressSummary.occ100)}
+              </p>
+              <p className="text-lg font-black text-emerald-300">
+                {t('Prix recommandé', 'Recommended price')} :{' '}
+                {formatCurrency(priceRecommendation.recommendedListPrice)}
+              </p>
+            </div>
+          ) : null}
+
+          {result.warnings.length > 0 ? (
+            <div className="rounded-[24px] border border-amber-500/20 bg-amber-500/[0.08] p-6 space-y-3">
+              <motion.div className="flex items-center gap-2">
+                <BadgeAlert className="h-4 w-4 text-amber-400" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-300">
+                  {t('Avertissements moteur', 'Engine warnings')}
+                </p>
+              </motion.div>
+              <ul className="space-y-1.5">
+                {result.warnings.map((w, i) => (
+                  <li key={i} className="text-[12px] text-amber-300">
+                    — {w}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <motion.div className="rounded-[28px] border border-white/10 bg-vault p-8">
+            <div className="flex items-center gap-3 mb-4">
+              <BookOpen className="h-4 w-4 text-blue-300" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-300/70">
+                {t('Lecture Vendeur', 'Seller reading')}
+              </p>
+              {narrative ? (
+                <span className="ml-auto flex items-center gap-1 text-[9px] font-black uppercase text-blue-300">
+                  <Sparkles className="h-3 w-3" />
+                  {narrative.source}
+                </span>
+              ) : null}
+            </div>
+            {narrativeLoading ? (
+              <p className="text-[11px] text-blue-300/70">{t('Génération…', 'Generating…')}</p>
+            ) : narrative ? (
+              <p className="text-[13px] leading-relaxed text-slate-200 whitespace-pre-wrap">{narrative.signedReading}</p>
+            ) : null}
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </div>
+  );
+}
