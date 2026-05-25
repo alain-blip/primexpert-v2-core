@@ -117,17 +117,18 @@ function coerceNum(value: unknown): number | null {
 }
 
 const REVENUE_TOTAL_PATTERNS =
-  /revenu(s)?\s*(brut(s)?\s*)?(effectif|total|exploitation)|total\s+des\s+revenus|gross\s+(rental\s+)?income|effective\s+gross/i;
+  /chiffre\s+d.affaires|revenus?\s+totaux?|total\s+des\s+revenus|revenu(s)?\s*(brut(s)?\s*)?(effectif|total|exploitation)|gross\s+(rental\s+)?income|effective\s+gross/i;
 
 const EXPENSE_TOTAL_PATTERNS =
   /total\s+(des\s+)?(frais|charges|depenses|dépenses)\s*d.exploitation|depenses\s*d.exploitation\s*total|operating\s+expenses?\s*total|total\s+operating/i;
 
-const EXCLUDE_LINE_PATTERNS =
-  /amortissement|depreciation|bilan|actif|passif|impot\s+sur|profit\s+net|benefice\s+net|marge\s+nette|interest|interet\s+sur\s+emprunt|financement/i;
+const BALANCE_SHEET_LINE_PATTERN =
+  /bilan|actif|passif|immobilisations?\s+(corporel|incorporel)|fonds\s+de\s+roulement/i;
 
 function isExcludedLine(label: string): boolean {
   const n = normalizeLabel(label);
-  return EXCLUDE_LINE_PATTERNS.test(n);
+  if (BALANCE_SHEET_LINE_PATTERN.test(n)) return true;
+  return isNonOpexExpenseLabel(label) || isNetIncomeBottomLineLabel(label);
 }
 
 function matchExpenseKeyFromLabel(label: string): BenchmarkExpenseKey | null {
