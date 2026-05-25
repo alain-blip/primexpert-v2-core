@@ -52,12 +52,13 @@ const PNL_BLOCK = `
   "nbPortes": 42
 }
 - UNIQUEMENT état des résultats d'EXPLOITATION (revenus et dépenses détaillés)
-- revenuTotal / RBE : ligne « Produits totaux », « Revenus totaux » ou « Chiffre d'affaires total » — JAMAIS le bénéfice net
+- revenuTotal / RBE : ligne « Produits totaux » (prioritaire), « Revenus totaux » ou « Chiffre d'affaires total » — JAMAIS le bénéfice net ni un sous-total de revenus
 - Extraire chaque poste de dépense d'exploitation en ligne distincte dans amounts
 - EXCLURE des dépenses d'exploitation (mais les lister quand même dans amounts) :
   amortissement, frais financiers / intérêts / frais bancaires, impôts sur le revenu, bénéfice net
+- total OPEX : ligne « Total des charges » / « Total des dépenses d'exploitation » — somme de tous les postes admissibles
 - NE PAS utiliser le bénéfice net comme revenu net d'exploitation (RNE)
-- RNE = revenus totaux MOINS dépenses d'exploitation admissibles seulement
+- RNE = Produits totaux (RBE) MOINS total des dépenses d'exploitation admissibles UNIQUEMENT
 - IGNORER bilan, actif, passif, notes comptables
 - nbPortes : nombre de portes, lits ou unités locatives si indiqué
 - Libellés clairs en français québécois`;

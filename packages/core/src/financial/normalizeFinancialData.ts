@@ -395,11 +395,19 @@ function enrichCalcWithRpaAncillary(
   if (rbeRpa <= currentRbe + 1) return calc;
 
   const currentAutres = finiteNum(calc.autresRevenus) ?? 0;
-  return {
+  const opex =
+    finiteNum(calc.depensesTotalesNormalisees) ??
+    finiteNum(calc.depensesTotales) ??
+    sumDepenses(baseData?.depenses ?? undefined);
+  const next: FinancialCalc = {
     ...calc,
     revenuBrutEffectif: rbeRpa,
     autresRevenus: Math.max(currentAutres, ancillaryRpa),
   };
+  if (opex != null && opex > 0) {
+    next.revenuNetExploitation = Math.max(0, Math.round(rbeRpa - opex));
+  }
+  return next;
 }
 
 function sumDepenses(depenses: DepensesGrid | null | undefined): number | null {

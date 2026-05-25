@@ -12,6 +12,7 @@ import {
 import { db } from '../lib/firebase';
 import {
   buildFinancialDataV2PatchFromExtraction,
+  recomputeFinancialCalculatedResults,
   type FinancialDataV2Doc,
 } from '@primexpert/core/financial';
 import type { ExtractedAmountRow, ExtractedComparableRow } from '../lib/extractedDataInjection';
@@ -116,18 +117,31 @@ export async function injectExtractedDataToResidence(
     const patchBase = extractionPatch?.baseData ?? {};
     const patchCalc = extractionPatch?.calculatedResults ?? {};
 
+    const mergedBaseData = {
+      ...(existing.baseData ?? {}),
+      ...patchBase,
+      revenusAnnuels:
+        (patchBase.revenusAnnuels as number | undefined) ??
+        existing.baseData?.revenusAnnuels,
+      depenses: {
+        ...((patchBase.depenses as Record<string, number> | undefined) ?? {}),
+        ...mergedDepenses,
+      },
+    };
+
+    const recalculated = recomputeFinancialCalculatedResults(
+      mergedBaseData,
+      {
+        ...(existing.calculatedResults ?? {}),
+        ...patchCalc,
+      }
+    );
+
     batch.set(
       financialRef,
       stripUndefinedDeep({
-        baseData: {
-          ...(existing.baseData ?? {}),
-          ...patchBase,
-          depenses: {
-            ...((patchBase.depenses as Record<string, number> | undefined) ?? {}),
-            ...mergedDepenses,
-          },
-        },
-        calculatedResults: {
+        baseData: mergedBaseData,
+        calculatedResults: recalculated ?? {
           ...(existing.calculatedResults ?? {}),
           ...patchCalc,
         },

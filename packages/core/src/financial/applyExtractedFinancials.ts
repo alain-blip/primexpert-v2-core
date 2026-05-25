@@ -6,6 +6,7 @@
 import type { OperatingBenchmarkMetrics } from '../documents/extractionSchemas';
 import type { FinancialBaseData, FinancialCalc, FinancialDataV2Doc } from './normalizeFinancialData';
 import { isNonOpexExpenseKey } from './nonOpexFinancialLines';
+import { applyCanonicalMetricsToCalc, resolveCanonicalFinancialMetrics } from './resolveCanonicalRne';
 
 function finitePositive(v: unknown): number | null {
   return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
@@ -21,11 +22,9 @@ export function buildFinancialDataV2PatchFromExtraction(
   const depensesExploitation = finitePositive(ob?.depensesExploitation);
   if (depensesExploitation == null || depensesExploitation <= 0) return null;
 
-  const extractedRne = finitePositive(ob?.revenuNetExploitation);
   const computedRne = Math.round(rbe - depensesExploitation);
-  const rne =
-    extractedRne != null && extractedRne < rbe * 0.92 ? extractedRne : computedRne;
-  if (rne >= rbe) return null;
+  const rne = computedRne;
+  if (rne >= rbe || rne <= 0) return null;
 
   const depenses: Record<string, number> = {};
   if (ob?.depensesParCle) {
@@ -54,4 +53,27 @@ export function buildFinancialDataV2PatchFromExtraction(
   };
 
   return { baseData, calculatedResults };
+}
+
+/** Recalcule calculatedResults depuis baseData (SSOT injection / merge Firestore). */
+export function recomputeFinancialCalculatedResults(
+  baseData: FinancialBaseData | null | undefined,
+  existingCalc?: FinancialCalc | null
+): FinancialCalc | null {
+  if (!baseData) return null;
+  const seed: FinancialCalc = {
+    ...(existingCalc ?? {}),
+    revenusAnnuels:
+      finitePositive(baseData.revenusAnnuels) ??
+      finitePositive(existingCalc?.revenuBrutEffectif) ??
+      finitePositive(existingCalc?.revenusAnnuels) ??
+      null,
+    revenuBrutEffectif:
+      finitePositive(baseData.revenusAnnuels) ??
+      finitePositive(existingCalc?.revenuBrutEffectif) ??
+      null,
+  };
+  const metrics = resolveCanonicalFinancialMetrics(seed, baseData);
+  if (metrics.rbe == null) return null;
+  return applyCanonicalMetricsToCalc(seed, baseData);
 }

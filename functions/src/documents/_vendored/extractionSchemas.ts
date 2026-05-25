@@ -123,10 +123,10 @@ function coerceNum(value: unknown): number | null {
 }
 
 const REVENUE_TOTAL_PATTERNS =
-  /produits?\s+totaux?|chiffre\s+d.affaires|revenus?\s+totaux?|total\s+des\s+revenus|revenu(s)?\s*(brut(s)?\s*)?(effectif|total|exploitation)|gross\s+(rental\s+)?income|effective\s+gross/i;
+  /produits?\s+totaux?|total\s+des\s+produits|produits?\s+d.?exploitation|chiffre\s+d.affaires|revenus?\s+totaux?|total\s+des\s+revenus|revenu(s)?\s*(brut(s)?\s*)?(effectif|total|exploitation)|gross\s+(rental\s+)?income|effective\s+gross/i;
 
 const EXPENSE_TOTAL_PATTERNS =
-  /total\s+(des\s+)?(frais|charges|depenses|dépenses)|charges\s+totales|total\s+charges|frais\s+totaux|depenses\s*d.exploitation\s*total|operating\s+expenses?\s*total|total\s+operating/i;
+  /total\s+(des\s+)?(frais|charges|depenses|dépenses|cout|coût)|charges\s+totales|total\s+charges|frais\s+totaux|charges\s+d.?exploitation|depenses\s*d.exploitation\s*total|operating\s+expenses?\s*total|total\s+operating|total\s+des\s+charges\s+d.?exploitation/i;
 
 const BALANCE_SHEET_LINE_PATTERN =
   /bilan|actif|passif|immobilisations?\s+(corporel|incorporel)|fonds\s+de\s+roulement/i;
@@ -179,7 +179,24 @@ function findTotalLine(
   return null;
 }
 
+function findMaxRevenueTotal(amounts: FinancialAmountRow[]): number | null {
+  let best: number | null = null;
+  for (const row of amounts) {
+    if (isExcludedLine(row.label)) continue;
+    const n = normalizeLabel(row.label);
+    const isTotal =
+      isRevenueTotalPriorityLabel(row.label) || REVENUE_TOTAL_PATTERNS.test(n);
+    if (!isTotal) continue;
+    const v = coerceNum(row.value);
+    if (v != null && v > 0 && (best == null || v > best)) best = v;
+  }
+  return best;
+}
+
 function sumRevenueLines(amounts: FinancialAmountRow[]): number {
+  const maxPriority = findMaxRevenueTotal(amounts);
+  if (maxPriority != null) return maxPriority;
+
   const priority = findTotalLine(amounts, REVENUE_TOTAL_PATTERNS, { revenuePriority: true });
   if (priority != null) return priority;
 
@@ -290,8 +307,8 @@ export function computeOperatingBenchmarkFromAmounts(
   );
 
   const revenuNetExploitation =
-    revenuTotal != null && depensesExploitation != null
-      ? Math.round(revenuTotal - depensesExploitation)
+    revenuTotal != null && depensesExploitation != null && depensesExploitation > 0
+      ? Math.max(0, Math.round(revenuTotal - depensesExploitation))
       : null;
 
   const depensesParCle = depensesParCleDraft;
