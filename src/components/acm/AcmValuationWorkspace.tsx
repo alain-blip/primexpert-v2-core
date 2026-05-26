@@ -681,7 +681,77 @@ export function AcmValuationWorkspace({
             ) : null}
           </motion.div>
         </motion.div>
-      ) : null}
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="space-y-6"
+        >
+          <div className="rounded-2xl border-2 border-amber-400 bg-amber-50 px-5 py-4 text-amber-950">
+            <p className="text-[11px] font-black uppercase tracking-[0.16em] mb-1">
+              {t('Données financières incomplètes', 'Incomplete financial data')}
+            </p>
+            <p className="text-[14px] leading-relaxed">
+              {t(
+                "⚠️ Les données financières sont incomplètes. Veuillez extraire et injecter les dépenses d'exploitation (OPEX) depuis l'onglet Finances pour générer la valorisation.",
+                '⚠️ Financial data is incomplete. Please extract and inject operating expenses (OPEX) from the Finance tab to generate valuation.'
+              )}
+            </p>
+          </div>
+
+          <motion.div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2 bg-vault-bright p-10 rounded-[32px] border border-white/10 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-blue-400" />
+                  {t('Prix suggéré (Core OACIQ)', 'Suggested price (OACIQ Core)')}
+                </h3>
+                <span className="inline-flex items-center gap-2 rounded-full border border-slate-500/40 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-300">
+                  {t('En attente', 'Pending')}
+                </span>
+              </div>
+              <p className="text-6xl font-black italic tracking-tighter text-slate-400 leading-none">--- $</p>
+              <div className="mt-8 grid grid-cols-2 gap-4">
+                <div className="p-5 bg-white/[0.03] rounded-xl border border-white/10">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                    {t('Plancher', 'Floor')}
+                  </span>
+                  <p className="font-mono text-sm font-black text-slate-300 mt-1">--- $</p>
+                </div>
+                <div className="p-5 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-blue-400">
+                    {t('Plafond', 'Ceiling')}
+                  </span>
+                  <p className="font-mono text-sm font-black text-blue-300 mt-1">--- $</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-blue-500 text-white p-8 rounded-[32px] shadow-lg flex flex-col gap-5 relative overflow-hidden">
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-200">
+                {t('Valeur banquable', 'Bankable value')}
+              </p>
+              <p className="text-3xl font-black italic">--- $</p>
+              <p className="text-[10px] font-mono text-blue-100/80">DSCR · —</p>
+            </div>
+          </motion.div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              t('Taux de capitalisation implicite (TGA)', 'Implied capitalization rate (cap rate)'),
+              t('Multiple du revenu brut réel (MRB)', 'Actual gross rent multiplier (GRM)'),
+              t('Ratio de couverture du service de la dette (DSCR)', 'Debt service coverage ratio (DSCR)'),
+              t('Revenu net d’exploitation comptable (RNE)', 'Accounting net operating income (NOI)'),
+            ].map((label) => (
+              <div key={label} className="rounded-2xl border border-white/10 bg-vault-bright p-5">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+                <p className="mt-2 text-xl font-black italic text-slate-300">
+                  {t('En attente', 'Pending')}
+                </p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }
