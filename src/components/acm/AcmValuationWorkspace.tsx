@@ -15,6 +15,7 @@ import {
   Sparkles,
   Lock,
   RotateCcw,
+  FileText,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { formatPopulationCount } from '@primexpert/core/market';
@@ -43,6 +44,8 @@ import {
   type MarketGpsTransaction,
 } from '@primexpert/core/market';
 import { AcmHistoricalTrendsSection } from './AcmHistoricalTrendsSection';
+import type { CertifiableReportBrokerFooter } from '@primexpert/core/financial';
+import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
 
 const TGA_INPUT_CLASS =
   'w-full rounded-xl border-2 border-blue-300 bg-white px-4 py-3 text-base font-black text-[#142c6a] tabular-nums shadow-sm focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/40 outline-none transition';
@@ -99,6 +102,13 @@ function fmtCountField(value: number | null | undefined): string {
   return formatPopulationCount(Math.round(value));
 }
 
+export interface AcmValuationPdfExportContext {
+  residenceId?: string;
+  residenceAddress?: string;
+  broker: CertifiableReportBrokerFooter;
+  locale: 'fr' | 'en';
+}
+
 export interface AcmValuationWorkspaceProps {
   bootstrap: ResidenceAcmBootstrap;
   onOpenComparables?: () => void;
@@ -106,6 +116,8 @@ export interface AcmValuationWorkspaceProps {
   ratioSamples?: MarketGpsRatioSample[];
   transactions?: MarketGpsTransaction[];
   subjectExpenses?: Partial<Record<string, number>>;
+  /** Contexte export CraftMyPDF — rapport vendeur (ACM). */
+  pdfExport?: AcmValuationPdfExportContext;
 }
 
 export function AcmValuationWorkspace({
@@ -115,6 +127,7 @@ export function AcmValuationWorkspace({
   ratioSamples = [],
   transactions = [],
   subjectExpenses,
+  pdfExport,
 }: AcmValuationWorkspaceProps) {
   const { t, language } = useLanguage();
   const suggestedCapRatePct =
@@ -139,6 +152,8 @@ export function AcmValuationWorkspace({
   const [narrative, setNarrative] = useState<SellerNarrativeDecision | null>(null);
   const [narrativeLoading, setNarrativeLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [vendorPdfPending, setVendorPdfPending] = useState(false);
+  const [vendorPdfError, setVendorPdfError] = useState<string | null>(null);
 
   const bootstrapSyncKey = useMemo(
     () =>
@@ -318,6 +333,61 @@ export function AcmValuationWorkspace({
     setTargetCapRatePct(suggestedCapRatePct);
     setTgaManuallyAdjusted(false);
   };
+
+  const handleVendorReportPdf = useCallback(async () => {
+    setVendorPdfError(null);
+    if (!pdfExport) {
+      setVendorPdfError(
+        t(
+          'Profil courtier requis pour générer le rapport.',
+          'Broker profile required to generate the report.'
+        )
+      );
+      return;
+    }
+    if (!result || bootstrap.rneBlocksValuation) {
+      setVendorPdfError(
+        t(
+          'Valorisation complète requise (revenu net d’exploitation (RNE) valide).',
+          'Complete valuation required (valid net operating income (NOI)).'
+        )
+      );
+      return;
+    }
+    setVendorPdfPending(true);
+    try {
+      await downloadAcmVendorReportPdf({
+        bootstrap,
+        valuation: result,
+        broker: pdfExport.broker,
+        locale: pdfExport.locale,
+        residenceId: pdfExport.residenceId,
+        residenceAddress: pdfExport.residenceAddress,
+        effectiveCapRate,
+        recommendedPrice,
+        sellerNarrative: narrative?.signedReading ?? null,
+      });
+    } catch (e) {
+      console.error('[AcmValuationWorkspace] vendor PDF failed', e);
+      const detail = e instanceof Error ? e.message : String(e);
+      setVendorPdfError(
+        t(
+          `Échec de génération du rapport vendeur. (${detail})`,
+          `Seller report generation failed. (${detail})`
+        )
+      );
+    } finally {
+      setVendorPdfPending(false);
+    }
+  }, [
+    pdfExport,
+    result,
+    bootstrap,
+    effectiveCapRate,
+    recommendedPrice,
+    narrative,
+    t,
+  ]);
 
   const ratios = useMemo(() => {
     if (!result) return null;
@@ -546,6 +616,33 @@ export function AcmValuationWorkspace({
         <div className="flex items-center gap-3 rounded-2xl border border-red-400/30 bg-red-500/[0.08] px-5 py-3 text-[11px] font-semibold text-red-300">
           <AlertCircle className="h-4 w-4" />
           {error}
+        </div>
+      ) : null}
+
+      {vendorPdfError ? (
+        <p className="text-[13px] font-bold text-red-300" role="alert">
+          {vendorPdfError}
+        </p>
+      ) : null}
+
+      {pdfExport ? (
+        <div className="flex flex-wrap justify-end">
+          <button
+            type="button"
+            disabled={
+              vendorPdfPending ||
+              !result ||
+              bootstrap.rneBlocksValuation ||
+              bootstrap.revenuNetExploitation <= 0
+            }
+            onClick={handleVendorReportPdf}
+            className="inline-flex items-center justify-center gap-2 min-h-[48px] rounded-lg border-2 border-[#D4AF37] bg-[#D4AF37] px-5 py-2.5 text-[13px] font-black text-black hover:bg-[#c9a432] transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <FileText className="h-4 w-4 shrink-0" aria-hidden />
+            {vendorPdfPending
+              ? t('Génération…', 'Generating…')
+              : t('Générer le Rapport', 'Generate report')}
+          </button>
         </div>
       ) : null}
 

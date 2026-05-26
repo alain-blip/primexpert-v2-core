@@ -42,6 +42,8 @@ interface ImportMetaEnv {
   readonly VITE_CRAFTMYPDF_TEMPLATE_ID?: string;
   /** CraftMyPDF — rapport financier acheteur. */
   readonly VITE_CRAFTMYPDF_BUYER_TEMPLATE_ID?: string;
+  /** CraftMyPDF — rapport vendeur (analyse de mise en marché — ACM). */
+  readonly VITE_CRAFTMYPDF_ACM_VENDOR_TEMPLATE_ID?: string;
   /** `true` = DOMPurify actif dans iframe courriel ; absent/false = HTML brut (défaut). */
   readonly VITE_EMAIL_PURIFY_IFRAME?: string;
 }

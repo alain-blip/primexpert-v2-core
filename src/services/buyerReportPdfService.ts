@@ -74,8 +74,11 @@ const cadFormatter = new Intl.NumberFormat('fr-CA', {
 });
 
 function readBuyerTemplateId(): string {
-  // Rapport Vendeur (ACM) — gabarit CraftMyPDF officiel configuré côté PO.
-  return 'acd77b235dc3edba';
+  const buyerId = import.meta.env.VITE_CRAFTMYPDF_BUYER_TEMPLATE_ID?.trim();
+  const fallbackId = import.meta.env.VITE_CRAFTMYPDF_TEMPLATE_ID?.trim();
+  const templateId = buyerId || fallbackId;
+  if (!templateId) throw new Error('CRAFTMYPDF_BUYER_TEMPLATE_MISSING');
+  return templateId;
 }
 
 function finiteNum(value: unknown): number | null {

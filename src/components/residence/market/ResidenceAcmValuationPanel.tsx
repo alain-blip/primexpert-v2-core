@@ -3,6 +3,7 @@
  */
 
 import React, { useMemo } from 'react';
+import { buildBrokerFooterFromProfile } from '../../../services/certifiableReportPdfService';
 import { AlertTriangle } from 'lucide-react';
 import { bootstrapResidenceAcm } from '@primexpert/core/valuation';
 import type { FinancialDataV2Doc } from '@primexpert/core/financial';
@@ -52,6 +53,16 @@ export function ResidenceAcmValuationPanel({
       { marketTransactions }
     );
   }, [residence, residenceDoc, financialData, marketTransactions]);
+
+  const pdfExport = useMemo(() => {
+    const addressParts = [residence.address, residence.city].filter(Boolean);
+    return {
+      residenceId: residence.id,
+      residenceAddress: addressParts.length ? addressParts.join(', ') : undefined,
+      broker: buildBrokerFooterFromProfile(profile),
+      locale: (language === 'fr' ? 'fr' : 'en') as const,
+    };
+  }, [residence.id, residence.address, residence.city, profile, language]);
 
   if (loading) {
     return (
@@ -105,6 +116,7 @@ export function ResidenceAcmValuationPanel({
         ratioSamples={ratioSamples}
         transactions={marketTransactions}
         subjectExpenses={subjectExpenses}
+        pdfExport={pdfExport}
       />
       <AcmTab residence={residence} />
     </div>
