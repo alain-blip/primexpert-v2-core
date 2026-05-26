@@ -28,7 +28,6 @@ import { DocumentUploadPanel } from './DocumentUploadPanel';
 import { DocumentMetadataPanel } from './DocumentMetadataPanel';
 import { DocumentDistributionBar } from './DocumentDistributionPanel';
 import { DocumentEmailPanel } from './DocumentEmailPanel';
-import { RpaComplianceChecklistPanel } from './RpaComplianceChecklistPanel';
 
 export interface DocumentsDiligenceTabProps {
   propertyId: string;
@@ -384,12 +383,8 @@ export function DocumentsDiligenceTab({
     [locale]
   );
 
-  const showRpaChecklist =
-    assetNiche === 'RPA' || (propertyType?.trim().toLowerCase() ?? '') === 'rpa';
-
   return (
     <div className="p-4">
-      {showRpaChecklist ? <RpaComplianceChecklistPanel /> : null}
       {activeTabDef ? (
         <p className="mb-4 px-1 text-[11px] font-medium text-[#142c6a] leading-relaxed">
           {locale === 'fr' ? activeTabDef.descriptionFr : activeTabDef.descriptionEn}

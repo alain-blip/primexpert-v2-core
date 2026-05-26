@@ -12,6 +12,14 @@ export {
   applyCanonicalMetricsToCalc,
   type CanonicalFinancialMetrics,
 } from './resolveCanonicalRne';
+export {
+  assessFinancialDataOverwrite,
+  residenceHasExistingFinancialSsot,
+  inferExistingFinancialYear,
+  compareFinancialYears,
+  type FinancialOverwriteAssessment,
+  type FinancialYearRelation,
+} from './financialOverwriteAssessment';
 export * from './revenusDepensesGrid';
 export * from './computeFinancabilite';
 export * from './bilanCfoView';

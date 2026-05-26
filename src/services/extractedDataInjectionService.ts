@@ -11,9 +11,11 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import {
+  assessFinancialDataOverwrite,
   buildFinancialDataV2PatchFromExtraction,
   recomputeFinancialCalculatedResults,
   type FinancialDataV2Doc,
+  type FinancialOverwriteAssessment,
 } from '@primexpert/core/financial';
 import type { ExtractedAmountRow, ExtractedComparableRow } from '../lib/extractedDataInjection';
 import {
@@ -34,6 +36,16 @@ import type { MarketAnalyticsValidatedAmount } from '../types/marketAnalytics';
 const MARKET_ANALYTICS_RAW = 'market_analytics_raw';
 const RESIDENCES = 'residences';
 
+export class FinancialOverwriteConfirmationRequired extends Error {
+  readonly assessment: FinancialOverwriteAssessment;
+
+  constructor(assessment: FinancialOverwriteAssessment) {
+    super('FINANCIAL_OVERWRITE_CONFIRMATION_REQUIRED');
+    this.name = 'FinancialOverwriteConfirmationRequired';
+    this.assessment = assessment;
+  }
+}
+
 export interface InjectExtractedDataInput {
   propertyId: string;
   document: PropertyDocumentRecord;
@@ -43,6 +55,22 @@ export interface InjectExtractedDataInput {
   brokerId: string;
   residenceCity?: string;
   residenceRegionHint?: string;
+  /** Courtier a confirmé l'écrasement du SSOT financier existant. */
+  confirmFinancialOverwrite?: boolean;
+}
+
+/** Détection conflit avant injection — états financiers vs fiche existante. */
+export async function loadFinancialOverwriteAssessment(
+  propertyId: string,
+  document: PropertyDocumentRecord
+): Promise<FinancialOverwriteAssessment | null> {
+  const financialRef = doc(db, RESIDENCES, propertyId, 'financial', 'dataV2');
+  const financialSnap = await getDoc(financialRef);
+  const existing = financialSnap.exists()
+    ? (financialSnap.data() as FinancialDataV2Doc)
+    : null;
+  const incomingYear = inferAnneeDonnees(document.extractedData, document.fileName);
+  return assessFinancialDataOverwrite(existing, incomingYear);
 }
 
 export interface InjectExtractedDataResult {
@@ -76,7 +104,15 @@ export async function injectExtractedDataToResidence(
     brokerId,
     residenceCity,
     residenceRegionHint,
+    confirmFinancialOverwrite = false,
   } = input;
+
+  if (selectedRows.length > 0 && !confirmFinancialOverwrite) {
+    const assessment = await loadFinancialOverwriteAssessment(propertyId, document);
+    if (assessment) {
+      throw new FinancialOverwriteConfirmationRequired(assessment);
+    }
+  }
 
   const subjectPatch = buildResidenceEvaluationSubjectPatch(document.extractedData);
   const hasSelection =
