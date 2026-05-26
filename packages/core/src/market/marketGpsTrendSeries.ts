@@ -4,6 +4,7 @@
 
 import { cleanseMarketRegion, median, type MarketGpsRatioSample, type MarketGpsTransaction } from './marketGpsViewModel';
 import { canonicalExpenseKey } from './marketPlExpenseDictionary';
+import { expenseTrendLabel } from './acmExpenseTrendCatalog';
 
 export type TrendGranularity = 'year' | 'quarter';
 
@@ -13,8 +14,37 @@ export type TrendMetricKey =
   | 'assurances'
   | 'entretienReparation'
   | 'nourritures'
+  | 'taxesPermis'
+  | 'taxesMunicipalesScolaire'
+  | 'mainDOeuvreDirecte'
+  | 'telecommunications'
+  | 'fournituresBureau'
+  | 'fraisDeplacements'
+  | 'honorairesProfessionnels'
+  | 'fraisRepresentation'
+  | 'fraisGestion'
+  | 'publicite'
+  | 'divers'
   | 'prix_unite'
-  | 'tga';
+  | 'tga'
+  | (string & {});
+
+export function isMarketOnlyTrendKey(key: string): key is 'prix_unite' | 'tga' {
+  return key === 'prix_unite' || key === 'tga';
+}
+
+export function resolveExpenseTrendMetricOption(key: string): TrendMetricOption {
+  const found = TREND_METRIC_OPTIONS.find((m) => m.key === key);
+  if (found) return found;
+  const labelFr = expenseTrendLabel(key, 'fr');
+  const labelEn = expenseTrendLabel(key, 'en');
+  return {
+    key: key as TrendMetricKey,
+    labelFr: `${labelFr} ($ / unité)`,
+    labelEn: `${labelEn} ($ / unit)`,
+    unit: 'currency',
+  };
+}
 
 export interface TrendMetricOption {
   key: TrendMetricKey;
@@ -29,6 +59,8 @@ export const TREND_METRIC_OPTIONS: TrendMetricOption[] = [
   { key: 'assurances', labelFr: 'Assurances ($ / unité)', labelEn: 'Insurance ($ / unit)', unit: 'currency' },
   { key: 'entretienReparation', labelFr: 'Entretien et réparations ($ / unité)', labelEn: 'Maintenance & repairs ($ / unit)', unit: 'currency' },
   { key: 'nourritures', labelFr: 'Alimentation ($ / unité)', labelEn: 'Food ($ / unit)', unit: 'currency' },
+  { key: 'taxesPermis', labelFr: 'Taxes et permis ($ / unité)', labelEn: 'Taxes & permits ($ / unit)', unit: 'currency' },
+  { key: 'mainDOeuvreDirecte', labelFr: "Main-d'œuvre directe ($ / unité)", labelEn: 'Direct labour ($ / unit)', unit: 'currency' },
   { key: 'prix_unite', labelFr: 'Prix / unité (ventes)', labelEn: 'Price / unit (sales)', unit: 'currency' },
   { key: 'tga', labelFr: 'Taux de capitalisation (TGA)', labelEn: 'Capitalization rate (cap rate)', unit: 'percent' },
 ];
@@ -73,7 +105,9 @@ export function computeMarketTrendSeries(input: {
   region?: string;
   locale: 'fr' | 'en';
 }): MarketTrendSeries {
-  const metric = TREND_METRIC_OPTIONS.find((m) => m.key === input.metricKey) ?? TREND_METRIC_OPTIONS[0];
+  const metric = isMarketOnlyTrendKey(input.metricKey)
+    ? TREND_METRIC_OPTIONS.find((m) => m.key === input.metricKey)!
+    : resolveExpenseTrendMetricOption(input.metricKey);
   const buckets = new Map<string, number[]>();
 
   const regionOk = (region: string) => {
@@ -82,7 +116,7 @@ export function computeMarketTrendSeries(input: {
     return r === input.region;
   };
 
-  if (metric.key === 'prix_unite' || metric.key === 'tga') {
+  if (isMarketOnlyTrendKey(metric.key)) {
     for (const tx of input.transactions) {
       if (!regionOk(tx.region)) continue;
       const key = periodKeyFromMillis(tx.sortMillis, input.granularity);

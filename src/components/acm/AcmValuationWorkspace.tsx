@@ -36,12 +36,12 @@ import {
   type ResidenceFinancials,
 } from '@primexpert/core/narrative';
 import {
-  collectAcmCostTrendNarratives,
+  buildAcmCostTrendNarrativeBundle,
   computeAcmCostTrendPoints,
   type MarketGpsRatioSample,
   type MarketGpsTransaction,
 } from '@primexpert/core/market';
-import { AcmCostTrendPanel } from './AcmCostTrendPanel';
+import { AcmHistoricalTrendsSection } from './AcmHistoricalTrendsSection';
 
 const TGA_INPUT_CLASS =
   'w-full rounded-xl border-2 border-blue-300 bg-white px-4 py-3 text-base font-black text-[#142c6a] tabular-nums shadow-sm focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/40 outline-none transition';
@@ -242,8 +242,19 @@ export function AcmValuationWorkspace({
       units: bootstrap.units,
       subjectExpenses,
     });
-    return collectAcmCostTrendNarratives(points, language);
-  }, [ratioSamples, transactions, bootstrap.regionLabel, bootstrap.units, language, subjectExpenses]);
+    const bundle = buildAcmCostTrendNarrativeBundle(points, language);
+    const global =
+      language === 'fr' ? bundle.globalSummaryFr : bundle.globalSummaryEn;
+    const bullets = language === 'fr' ? bundle.bulletsFr : bundle.bulletsEn;
+    return global ? [global, ...bullets.slice(0, 3)] : bullets;
+  }, [
+    ratioSamples,
+    transactions,
+    bootstrap.regionLabel,
+    bootstrap.units,
+    language,
+    subjectExpenses,
+  ]);
 
   useEffect(() => {
     if (!result) {
@@ -516,7 +527,7 @@ export function AcmValuationWorkspace({
       ) : null}
 
       {ratioSamples.length > 0 && bootstrap.rneIntegrityOk && (
-        <AcmCostTrendPanel
+        <AcmHistoricalTrendsSection
           ratioSamples={ratioSamples}
           transactions={transactions}
           region={bootstrap.regionLabel}

@@ -341,7 +341,7 @@ export function generateFallbackNarrative(
     }
     const trendSuffix =
       featureVector.costTrendNotes?.length ?
-        '\n\n' + featureVector.costTrendNotes.slice(0, 2).join(' ')
+        '\n\n' + (featureVector.costTrendNotes[0] ?? featureVector.costTrendNotes.join(' '))
       : '';
     return {
       variant: oppTemplate.variant,
