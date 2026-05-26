@@ -8,7 +8,7 @@ import { useInventoryResidences, usePipelineResidences } from './useResidences';
 export function useListingsPipeline(enabled = true) {
   const { profile } = useAuth();
   const { activeSilo } = useSilo();
-  return usePipelineResidences(profile?.uid, Boolean(profile?.uid) && enabled, activeSilo);
+  return usePipelineResidences(profile, Boolean(profile?.uid) && enabled, activeSilo);
 }
 
 /**
@@ -17,5 +17,5 @@ export function useListingsPipeline(enabled = true) {
 export function useListingsInventory(opts: { enabled: boolean; searchPrefix: string }) {
   const { profile } = useAuth();
   const { activeSilo } = useSilo();
-  return useInventoryResidences(profile?.uid, opts, activeSilo);
+  return useInventoryResidences(profile, opts, activeSilo);
 }

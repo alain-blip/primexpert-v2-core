@@ -7,6 +7,7 @@
 
 import {
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -26,6 +27,7 @@ import {
   syncRemoveResidenceIdFromContact,
   type ResidencePartyRole,
 } from '@primexpert/core/residence';
+import { stripUndefinedDeep } from '../lib/firestoreSanitize';
 import {
   parseContactBuyerFields,
   parseContactBrokerFields,
@@ -46,6 +48,8 @@ import {
   canAdminReassignContactOwner,
   defaultContactVisibility,
   normalizeContactLegalVerification,
+  getContactLciSecondaryGaps,
+  normalizeContactAddressForWrite,
   validateContactLciFields,
   parseContactImportMeta,
   type ContactCriteriaDocumentRef,
@@ -93,9 +97,9 @@ export interface CreateOrganizationContactInput {
   leadSource?: ContactLeadSource;
   nom: string;
   prenom?: string;
-  adresse: OrganizationContact['adresse'];
-  dateNaissance: string;
-  occupationProfession: string;
+  adresse?: Partial<OrganizationContact['adresse']>;
+  dateNaissance?: string;
+  occupationProfession?: string;
   relationRoles?: ContactRelationRole[];
   email?: string;
   telephone?: string;
@@ -186,9 +190,13 @@ function mapContactDoc(orgId: string, id: string, data: DocumentData): Organizat
     leadSource: (data.leadSource as ContactLeadSource) ?? 'BROKER_GENERATED',
     nom: String(data.nom ?? ''),
     prenom: data.prenom ? String(data.prenom) : undefined,
-    adresse: data.adresse as OrganizationContact['adresse'],
-    dateNaissance: String(data.dateNaissance ?? ''),
-    occupationProfession: String(data.occupationProfession ?? ''),
+    ...(data.adresse ? { adresse: data.adresse as OrganizationContact['adresse'] } : {}),
+    ...(data.dateNaissance != null && String(data.dateNaissance).trim()
+      ? { dateNaissance: String(data.dateNaissance).trim() }
+      : {}),
+    ...(data.occupationProfession != null && String(data.occupationProfession).trim()
+      ? { occupationProfession: String(data.occupationProfession).trim() }
+      : {}),
     relationRoles: Array.isArray(data.relationRoles)
       ? (data.relationRoles as ContactRelationRole[])
       : undefined,
@@ -286,6 +294,10 @@ export async function createOrganizationContact(
     isContactAdmin(ctx) && input.ownerId?.trim() ? input.ownerId.trim() : ctx.uid;
   const silo = defaultContactSiloForRoles(input.relationRoles, input.silo);
 
+  const adresse = normalizeContactAddressForWrite(input.adresse);
+  const dateNaissance = input.dateNaissance?.trim();
+  const occupationProfession = input.occupationProfession?.trim();
+
   const payload: Omit<OrganizationContact, 'id'> & { id?: string } = {
     orgId: ctx.orgId,
     ownerId,
@@ -295,9 +307,9 @@ export async function createOrganizationContact(
     leadSource: input.leadSource ?? 'BROKER_GENERATED',
     nom: input.nom.trim(),
     prenom: input.prenom?.trim(),
-    adresse: input.adresse,
-    dateNaissance: input.dateNaissance.trim(),
-    occupationProfession: input.occupationProfession.trim(),
+    ...(adresse ? { adresse } : {}),
+    ...(dateNaissance ? { dateNaissance } : {}),
+    ...(occupationProfession ? { occupationProfession } : {}),
     relationRoles: input.relationRoles,
     email: input.email?.trim(),
     telephone: input.telephone?.trim(),
@@ -312,12 +324,15 @@ export async function createOrganizationContact(
     ...(input.brokerCriteria ? { brokerCriteria: input.brokerCriteria } : {}),
     ...(input.professionalType ? { professionalType: input.professionalType } : {}),
     notes: input.notes?.trim(),
-    legalVerification: input.legalVerification,
+    ...(input.legalVerification ? { legalVerification: input.legalVerification } : {}),
     createdAt: now,
     updatedAt: now,
   };
 
-  await setDoc(doc(db, 'organizations', ctx.orgId, 'contacts', id), payload);
+  await setDoc(
+    doc(db, 'organizations', ctx.orgId, 'contacts', id),
+    stripUndefinedDeep(payload)
+  );
   return { ok: true, id };
 }
 
@@ -338,27 +353,66 @@ export async function updateOrganizationContact(
     return { ok: false, error: 'forbidden' };
   }
 
-  const merged = { ...existing, ...patch };
+  const normalizedAdresse =
+    patch.adresse !== undefined ? normalizeContactAddressForWrite(patch.adresse) : undefined;
+  const merged: Partial<OrganizationContact> = {
+    ...existing,
+    ...patch,
+    ...(patch.adresse !== undefined ? { adresse: normalizedAdresse } : {}),
+    ...(patch.dateNaissance !== undefined
+      ? { dateNaissance: patch.dateNaissance?.trim() || undefined }
+      : {}),
+    ...(patch.occupationProfession !== undefined
+      ? { occupationProfession: patch.occupationProfession?.trim() || undefined }
+      : {}),
+  };
   const lci = validateContactLciFields(merged);
   if (!lci.ok) {
     return { ok: false, error: 'lci_incomplete', missing: lci.missing };
   }
 
   const updatePayload: Record<string, unknown> = {
-    ...patch,
     updatedAt: new Date().toISOString(),
   };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== undefined) {
+      updatePayload[key] = value;
+    }
+  }
+  if (patch.adresse !== undefined) {
+    updatePayload.adresse = normalizedAdresse ?? deleteField();
+  }
+  if (patch.dateNaissance !== undefined) {
+    const dob = patch.dateNaissance?.trim();
+    updatePayload.dateNaissance = dob ? dob : deleteField();
+  }
+  if (patch.occupationProfession !== undefined) {
+    const occ = patch.occupationProfession?.trim();
+    updatePayload.occupationProfession = occ ? occ : deleteField();
+  }
+  if (patch.legalVerification !== undefined) {
+    const legal = normalizeContactLegalVerification(patch.legalVerification);
+    if (legal && Object.keys(stripUndefinedDeep(legal)).length > 0) {
+      updatePayload.legalVerification = stripUndefinedDeep(legal);
+    } else {
+      delete updatePayload.legalVerification;
+    }
+  }
   if (admin && patch.ownerId?.trim()) {
     updatePayload.ownerId = patch.ownerId.trim();
   }
-  if (lci.ok && existing.importMeta?.lciIncomplete) {
+  if (lci.ok && existing.importMeta) {
+    const secondaryMissing = getContactLciSecondaryGaps(merged);
     updatePayload.importMeta = {
       ...existing.importMeta,
-      lciIncomplete: false,
-      missingLciFields: [],
+      lciIncomplete: secondaryMissing.length > 0,
+      missingLciFields: secondaryMissing,
     };
   }
-  await updateDoc(doc(db, 'organizations', ctx.orgId, 'contacts', contactId), updatePayload);
+  await updateDoc(
+    doc(db, 'organizations', ctx.orgId, 'contacts', contactId),
+    stripUndefinedDeep(updatePayload)
+  );
   return { ok: true };
 }
 
@@ -398,7 +452,7 @@ export async function uploadContactIdProof(
       idDocumentStoragePath: storagePath,
     };
     await updateDoc(doc(db, 'organizations', ctx.orgId, 'contacts', contactId), {
-      legalVerification,
+      legalVerification: stripUndefinedDeep(legalVerification),
       updatedAt: new Date().toISOString(),
     });
     return { ok: true, url, storagePath };

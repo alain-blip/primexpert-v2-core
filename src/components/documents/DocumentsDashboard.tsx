@@ -20,7 +20,7 @@ import {
   groupResidencesByDocumentsStatus,
   type DocumentsListingGroupId,
 } from '../../config/pipelineStages';
-import { listResidences, type Residence } from '../../services/residences';
+import { buildResidenceTenantContext, listResidences, type Residence } from '../../services/residences';
 import {
   listOrganizationContacts,
   type ContactServiceContext,
@@ -193,7 +193,7 @@ export function DocumentsDashboard() {
   }, [profile]);
 
   const refresh = useCallback(async () => {
-    if (!brokerId) {
+    if (!brokerId || !profile) {
       setResidences([]);
       setContacts([]);
       setLoading(false);
@@ -202,7 +202,7 @@ export function DocumentsDashboard() {
     setLoading(true);
     try {
       const [resRows, contactRows] = await Promise.all([
-        listResidences({ tenantId: brokerId, mode: 'strict' }, { silo: activeSilo }),
+        listResidences(buildResidenceTenantContext(profile), { silo: activeSilo }),
         ctx ? listOrganizationContacts(ctx) : Promise.resolve([]),
       ]);
       setResidences(resRows);
@@ -212,7 +212,7 @@ export function DocumentsDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [brokerId, activeSilo, ctx]);
+  }, [brokerId, profile, activeSilo, ctx]);
 
   useEffect(() => {
     void refresh();

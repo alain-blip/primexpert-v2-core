@@ -1,7 +1,7 @@
 /**
  * Modèle Contact CRM — organizations/{orgId}/contacts
  *
- * Silos de confidentialité (PO 2026-05) + champs LCI obligatoires.
+ * Silos de confidentialité (PO 2026-05) + LCI minimale (nom obligatoire ; reste optionnel).
  * occupationProfession ≠ taux d’occupation immeuble (résidence).
  */
 
@@ -188,14 +188,15 @@ export interface OrganizationContact {
   assetNiche?: ContactAssetNiche;
   visibility: ContactVisibility;
   leadSource: ContactLeadSource;
-  /** LCI — nom complet ou composé via prenom + nom */
+  /** LCI — nom complet ou composé via prenom + nom (seul champ obligatoire à la création) */
   nom: string;
   prenom?: string;
-  adresse: ContactAddress;
-  /** ISO 8601 date (yyyy-mm-dd) */
-  dateNaissance: string;
-  /** Métier / occupation de la partie (LCI) — pas le taux d’occupation immeuble */
-  occupationProfession: string;
+  /** Optionnel — saisie rapide prospect sans adresse complète */
+  adresse?: ContactAddress;
+  /** ISO 8601 date (yyyy-mm-dd) — optionnel */
+  dateNaissance?: string;
+  /** Métier / occupation de la partie — optionnel ; ≠ taux d’occupation immeuble */
+  occupationProfession?: string;
   relationRoles?: ContactRelationRole[];
   email?: string;
   telephone?: string;
@@ -284,20 +285,47 @@ function isPlaceholderAddress(addr: unknown): boolean {
   );
 }
 
-/** Valide les quatre champs LCI obligatoires avant persistance. */
+/** Normalise l’adresse pour persistance (omise si entièrement vide). */
+export function normalizeContactAddressForWrite(
+  adresse?: Partial<ContactAddress> | null
+): ContactAddress | undefined {
+  if (!adresse || typeof adresse !== 'object') return undefined;
+  const ligne1 = typeof adresse.ligne1 === 'string' ? adresse.ligne1.trim() : '';
+  const ville = typeof adresse.ville === 'string' ? adresse.ville.trim() : '';
+  const codePostal = typeof adresse.codePostal === 'string' ? adresse.codePostal.trim() : '';
+  const province =
+    typeof adresse.province === 'string' && adresse.province.trim()
+      ? adresse.province.trim()
+      : 'QC';
+  if (!ligne1 && !ville && !codePostal) return undefined;
+  return { ligne1, ville, codePostal, province };
+}
+
+function normalizeOptionalLciString(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const v = raw.trim();
+  return v.length > 0 ? v : undefined;
+}
+
+/**
+ * Champs LCI secondaires manquants (indicateur UI / import legacy) — ne bloque pas la persistance.
+ */
+export function getContactLciSecondaryGaps(
+  contact: Partial<OrganizationContact>
+): ContactLciFieldKey[] {
+  const missing: ContactLciFieldKey[] = [];
+  if (isPlaceholderAddress(contact.adresse)) missing.push('adresse');
+  if (isPlaceholderDateNaissance(contact.dateNaissance)) missing.push('dateNaissance');
+  if (isPlaceholderOccupation(contact.occupationProfession)) missing.push('occupationProfession');
+  return missing;
+}
+
+/** Valide le minimum LCI avant persistance — nom seul obligatoire (création rapide prospect). */
 export function validateContactLciFields(
   contact: Partial<OrganizationContact>
 ): ContactLciValidationResult {
   const missing: ContactLciFieldKey[] = [];
   if (!isNonEmptyString(contact.nom)) missing.push('nom');
-  if (isPlaceholderAddress(contact.adresse)) missing.push('adresse');
-  if (isPlaceholderDateNaissance(contact.dateNaissance)) missing.push('dateNaissance');
-  if (isPlaceholderOccupation(contact.occupationProfession)) missing.push('occupationProfession');
-  if (contact.importMeta?.lciIncomplete) {
-    for (const k of contact.importMeta.missingLciFields ?? []) {
-      if (!missing.includes(k)) missing.push(k);
-    }
-  }
   return { ok: missing.length === 0, missing };
 }
 
@@ -358,6 +386,17 @@ export function canAdminReassignContactOwner(leadSource: ContactLeadSource): boo
 function parseBuyerCriteriaBool(raw: unknown): boolean | undefined {
   if (raw === true) return true;
   if (raw === false) return false;
+  return undefined;
+}
+
+function parseBuyerCriteriaNumber(raw: unknown): number | undefined {
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+  if (typeof raw === 'string') {
+    const v = raw.trim().replace(/\s/g, '').replace(',', '.');
+    if (!v) return undefined;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : undefined;
+  }
   return undefined;
 }
 

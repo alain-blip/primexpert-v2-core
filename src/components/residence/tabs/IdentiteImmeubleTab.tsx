@@ -1176,6 +1176,9 @@ export function IdentiteImmeubleTab({ residence }: IdentiteImmeubleTabProps) {
         </div>
       ) : null}
 
+      {/* Parties CRM — liaisons contacts ↔ fiche résidence (bloc prioritaire haut de fiche) */}
+      <PartiesIntervenantsSection />
+
       {/* Bannière contextuelle d'enrichissement MSSS depuis Copilote */}
       <MsssEnrichmentBanner show={view.showMsssBanner} msss={view.msss} language={lang} />
 
@@ -1196,9 +1199,6 @@ export function IdentiteImmeubleTab({ residence }: IdentiteImmeubleTabProps) {
           }
         />
       ) : null}
-
-      {/* Parties CRM — liaisons contacts ↔ fiche résidence */}
-      <PartiesIntervenantsSection />
 
       {/* B · Structure juridique & propriétaire */}
       {legalSection && <EditableIdentitySection section={legalSection} language={lang} />}

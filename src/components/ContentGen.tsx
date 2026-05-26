@@ -31,7 +31,7 @@ import {
   validateAndFixNarrative,
   type NarrativeLintResult,
 } from '@primexpert/core/narrative';
-import { listResidences, type Residence } from '../services/residences';
+import { buildResidenceTenantContext, listResidences, type Residence } from '../services/residences';
 import { formatCurrency } from '../lib/utils';
 import { consumeContentGenPrefill } from '../lib/contentGenPrefill';
 import { useSilo } from '../context/SiloContext';
@@ -61,10 +61,10 @@ export function ContentGen() {
   });
 
   useEffect(() => {
-    if (!brokerId) return;
+    if (!profile?.uid) return;
     let cancelled = false;
     setResidencesLoading(true);
-    listResidences({ tenantId: brokerId, mode: 'strict' }, { silo: activeSilo })
+    listResidences(buildResidenceTenantContext(profile), { silo: activeSilo })
       .then((rows) => {
         if (!cancelled) setResidences(rows);
       })
@@ -77,7 +77,7 @@ export function ContentGen() {
     return () => {
       cancelled = true;
     };
-  }, [brokerId, activeSilo]);
+  }, [profile, activeSilo]);
   useEffect(() => {
     if (!brokerId || prefillConsumedRef.current) return;
     const pre = consumeContentGenPrefill();

@@ -11,7 +11,12 @@ import { motion } from 'motion/react';
 import { cn, formatCurrency } from '../lib/utils';
 import { useAuth } from '../lib/auth';
 import { useLanguage } from '../lib/i18n';
-import { listResidences, type Residence } from '../services/residences';
+import {
+  buildResidenceTenantContext,
+  excludeCatalogReferenceResidences,
+  listResidences,
+  type Residence,
+} from '../services/residences';
 import { fetchRecentCallAnalyses } from '../services/transcriptionService';
 import { fetchRecentMailboxAnalyses } from '../services/mailboxAnalysis';
 import {
@@ -38,29 +43,31 @@ export function Dashboard() {
   const [dashboardDataLoading, setDashboardDataLoading] = useState(false);
 
   useEffect(() => {
-    const uid = profile?.uid;
-    if (!uid) {
+    if (!profile?.uid) {
       setResidences([]);
       setPriorityFollowUps([]);
       setDashboardDataLoading(false);
       return;
     }
+    const uid = profile.uid;
+    const tenantCtx = buildResidenceTenantContext(profile);
     let cancelled = false;
     setDashboardDataLoading(true);
     setResidences([]);
     (async () => {
       try {
         const [resList, calls, mails] = await Promise.all([
-          listResidences({ tenantId: uid, mode: 'strict' }, { silo: activeSilo }),
+          listResidences(tenantCtx, { silo: activeSilo }),
           fetchRecentCallAnalyses(uid, 400),
           fetchRecentMailboxAnalyses(uid, 400),
         ]);
         if (cancelled) return;
-        const docs = await fetchResidenceDocsMap(resList.map((r) => r.id));
+        const hotResidences = excludeCatalogReferenceResidences(resList);
+        const docs = await fetchResidenceDocsMap(hotResidences.map((r) => r.id));
         if (cancelled) return;
-        setResidences(resList);
+        setResidences(hotResidences);
         setPriorityFollowUps(
-          loadDashboardPriorityFollowUps({ residences: resList, docs, calls, mails })
+          loadDashboardPriorityFollowUps({ residences: hotResidences, docs, calls, mails })
         );
       } finally {
         if (!cancelled) setDashboardDataLoading(false);
@@ -69,7 +76,7 @@ export function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [profile?.uid, activeSilo]);
+  }, [profile, activeSilo]);
 
   useEffect(() => {
     if (!profile?.uid || profile.role === 'admin_system') return;

@@ -34,7 +34,7 @@ import {
   type DriveDocument,
 } from '../../services/driveStorage';
 import { extractDriveDocument } from '../../services/driveExtraction';
-import { listResidences, type Residence } from '../../services/residences';
+import { buildResidenceTenantContext, listResidences, type Residence } from '../../services/residences';
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -67,12 +67,13 @@ export function Drive() {
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    if (!brokerId) return;
+    if (!brokerId || !profile) return;
     setLoading(true);
     try {
+      const residenceCtx = buildResidenceTenantContext(profile);
       const [docs, res] = await Promise.all([
         listDriveDocuments({ tenantId: brokerId, mode: 'strict' }),
-        listResidences({ tenantId: brokerId, mode: 'strict' }, { silo: activeSilo }),
+        listResidences(residenceCtx, { silo: activeSilo }),
       ]);
       setDocuments(docs.sort((a, b) => b.uploadedAtMillis - a.uploadedAtMillis));
       setResidences(res);
@@ -82,7 +83,7 @@ export function Drive() {
     } finally {
       setLoading(false);
     }
-  }, [brokerId, activeSilo]);
+  }, [brokerId, profile, activeSilo]);
 
   useEffect(() => {
     void reload();

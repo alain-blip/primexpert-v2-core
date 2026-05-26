@@ -5,6 +5,7 @@ import { useLanguage } from '../lib/i18n';
 import { useAuth } from '../lib/auth';
 import { peekListingsFocusResidenceId, consumeListingsFocusResidenceId } from '../lib/listingsFocus';
 import {
+  buildResidenceTenantContext,
   getResidenceById,
   updateResidencePipelineStatus,
   type Residence,
@@ -281,7 +282,7 @@ export function Listings() {
       setPipelineUpdating(true);
       try {
         await updateResidencePipelineStatus(
-          { tenantId: profile.uid, mode: 'strict' },
+          buildResidenceTenantContext(profile),
           residenceId,
           newStatus
         );
@@ -364,7 +365,7 @@ export function Listings() {
     }
 
     let cancelled = false;
-    getResidenceById({ tenantId: profile.uid, mode: 'strict' }, id, { silo: activeSilo }).then((r) => {
+    getResidenceById(buildResidenceTenantContext(profile), id, { silo: activeSilo }).then((r) => {
       if (cancelled) return;
       consumeListingsFocusResidenceId();
       if (r) {

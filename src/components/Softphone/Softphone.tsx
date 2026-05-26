@@ -39,7 +39,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../../lib/i18n';
 import { useAuth } from '../../lib/auth';
 import { useSilo } from '../../context/SiloContext';
-import { listResidences, type Residence } from '../../services/residences';
+import { buildResidenceTenantContext, listResidences, type Residence } from '../../services/residences';
 import { uploadDriveRecording, type DriveDocument } from '../../services/driveStorage';
 import {
   startCallAnalysisAfterUpload,
@@ -118,10 +118,10 @@ export function Softphone() {
 
   // Charger les résidences au mount
   useEffect(() => {
-    if (!brokerId) return;
+    if (!profile?.uid) return;
     let cancelled = false;
     setResidencesLoading(true);
-    listResidences({ tenantId: brokerId, mode: 'strict' }, { silo: activeSilo })
+    listResidences(buildResidenceTenantContext(profile), { silo: activeSilo })
       .then((rows) => {
         if (!cancelled) setResidences(rows);
       })
@@ -134,7 +134,7 @@ export function Softphone() {
     return () => {
       cancelled = true;
     };
-  }, [brokerId, activeSilo]);
+  }, [profile, activeSilo]);
 
   useEffect(() => {
     if (!brokerId) {

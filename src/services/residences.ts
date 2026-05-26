@@ -31,6 +31,9 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { tenantConstraints, TENANT_FIELD, type TenantContext } from '@primexpert/core/tenant';
+import { buildResidenceTenantContext, isAgencyAdminRole } from '../lib/tenantContext';
+
+export { buildResidenceTenantContext, isAgencyAdminRole };
 import type { AssetNiche, AssetNicheMetadata, AssetSyndication } from '../types/residence';
 import { parseAssetNiche, residenceMatchesNiche } from '../types/residence';
 import type { RadarPropertyType } from '../types/radarAccess';
@@ -59,6 +62,16 @@ export interface ResidenceQueryOpts {
 function applySiloFilter(rows: Residence[], silo: AssetNiche | undefined): Residence[] {
   if (!silo) return rows;
   return rows.filter((r) => residenceMatchesNiche(r.assetNiche, silo));
+}
+
+/** Fiche inventaire catalogue (migration Legacy `archive` / `sans status`). */
+export function isResidenceCatalogReference(row: Residence): boolean {
+  return row.catalogReference === true;
+}
+
+/** Exclut les fiches catalogue — pipeline chaud et tableau de bord uniquement. */
+export function excludeCatalogReferenceResidences(rows: Residence[]): Residence[] {
+  return rows.filter((r) => !isResidenceCatalogReference(r));
 }
 
 export type { ResidenceStatus } from '../config/pipelineStages';
@@ -107,6 +120,8 @@ export interface Residence {
   propertyType?: RadarPropertyType;
   nicheMetadata?: AssetNicheMetadata;
   syndication?: AssetSyndication;
+  /** Inventaire référence Copilote (ex-`archive`) — exclu du pipeline chaud et du tableau de bord. */
+  catalogReference?: boolean;
 }
 
 export { PIPELINE_ACTIVE_STATUSES };
@@ -190,11 +205,13 @@ function mapLegacyNumber(...candidates: unknown[]): number | undefined {
 
 function mapCommercialName(data: DocumentData): string | undefined {
   const candidates: unknown[] = [
+    data.nomResidence,
+    data.nom,
+    data.residenceName,
     data.commercialName,
     data.nomCommercial,
     data.nom_commercial,
     data.name,
-    data.residenceName,
   ];
   for (const candidate of candidates) {
     if (typeof candidate !== 'string') continue;
@@ -255,6 +272,12 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
       ? (contratRaw as Residence['contratCourtage'])
       : undefined;
   const prixAccepte = mapLegacyNumber(data.prixAccepte, data.prixOffreAccepte);
+  const importMetaRaw = data.importMetaResidence;
+  const catalogReference =
+    importMetaRaw &&
+    typeof importMetaRaw === 'object' &&
+    !Array.isArray(importMetaRaw) &&
+    importMetaRaw.catalogReference === true;
   return {
     id: doc.id,
     address: String(data.address ?? data.adresse ?? '—'),
@@ -283,6 +306,7 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
     propertyType: parseRadarPropertyType(data.propertyType),
     nicheMetadata: meta,
     syndication,
+    catalogReference: catalogReference || undefined,
   } satisfies Residence;
 }
 
@@ -293,7 +317,7 @@ function mapSnapshot(snapshot: QuerySnapshot<DocumentData>): Residence[] {
 /**
  * Récupère les résidences du tenant courant.
  *
- * @param ctx contexte tenant — `{ tenantId: profile.uid, mode: 'strict' }`
+ * @param ctx contexte tenant — `buildResidenceTenantContext(profile)` (`admin` = sans filtre courtier)
  * @returns liste filtrée par `courtiersResponsables == ctx.tenantId`
  */
 export async function listResidences(
@@ -340,7 +364,9 @@ export async function listResidencesPipeline(
 
   if (ctx.mode === 'admin') {
     const rows = await listResidences(ctx, opts);
-    return rows.filter((r) => isPipelineActiveStatus(r.status));
+    return excludeCatalogReferenceResidences(
+      rows.filter((r) => isPipelineActiveStatus(r.status))
+    );
   }
 
   const constraints = tenantConstraints(ctx);
@@ -355,13 +381,17 @@ export async function listResidencesPipeline(
       orderBy(documentId())
     );
     const snapshot = await getDocs(qy);
-    return applySiloFilter(mapSnapshot(snapshot), silo).filter((r) =>
-      isPipelineActiveStatus(r.status)
+    return excludeCatalogReferenceResidences(
+      applySiloFilter(mapSnapshot(snapshot), silo).filter((r) =>
+        isPipelineActiveStatus(r.status)
+      )
     );
   } catch (e) {
     console.warn('[residences.listResidencesPipeline] indexed query failed, fallback:', e);
     const rows = await listResidences(ctx, opts);
-    return rows.filter((r) => isPipelineActiveStatus(r.status));
+    return excludeCatalogReferenceResidences(
+      rows.filter((r) => isPipelineActiveStatus(r.status))
+    );
   }
 }
 

@@ -489,10 +489,13 @@ export function ContactFormDrawer({
             verificationMode,
             capaciteJuridiqueValidee,
             statutSollicitation,
-            idDocumentUrl:
-              verificationMode === 'A_DISTANCE' ? idDocumentUrl : undefined,
-            verifiedAt: editing?.legalVerification?.verifiedAt,
-            verifiedByUid: editing?.legalVerification?.verifiedByUid,
+            ...(verificationMode === 'A_DISTANCE' && idDocumentUrl ? { idDocumentUrl } : {}),
+            ...(editing?.legalVerification?.verifiedAt
+              ? { verifiedAt: editing.legalVerification.verifiedAt }
+              : {}),
+            ...(editing?.legalVerification?.verifiedByUid
+              ? { verifiedByUid: editing.legalVerification.verifiedByUid }
+              : {}),
           }
         : undefined,
     [
@@ -509,9 +512,17 @@ export function ContactFormDrawer({
     () => ({
       nom,
       prenom: prenom.trim() || undefined,
-      dateNaissance,
-      occupationProfession,
-      adresse: { ligne1, ville, province, codePostal },
+      dateNaissance: dateNaissance.trim() || undefined,
+      occupationProfession: occupationProfession.trim() || undefined,
+      adresse:
+        ligne1.trim() || ville.trim() || codePostal.trim()
+          ? {
+              ligne1: ligne1.trim(),
+              ville: ville.trim(),
+              province: province.trim() || 'QC',
+              codePostal: codePostal.trim(),
+            }
+          : undefined,
       legalVerification: legalVerificationPayload,
     }),
     [
@@ -554,13 +565,21 @@ export function ContactFormDrawer({
       visibility,
       nom,
       prenom: prenom.trim() || undefined,
-      dateNaissance,
-      occupationProfession,
-      adresse: { ligne1, ville, province, codePostal },
+      dateNaissance: dateNaissance.trim() || undefined,
+      occupationProfession: occupationProfession.trim() || undefined,
+      adresse:
+        ligne1.trim() || ville.trim() || codePostal.trim()
+          ? {
+              ligne1: ligne1.trim(),
+              ville: ville.trim(),
+              province: province.trim() || 'QC',
+              codePostal: codePostal.trim(),
+            }
+          : undefined,
       relationRoles: roleList,
       email: email.trim() || undefined,
       telephone: telephone.trim() || undefined,
-      legalVerification: legalVerificationPayload,
+      ...(legalVerificationPayload ? { legalVerification: legalVerificationPayload } : {}),
       communicationPreferences: buildCommunicationPreferences(),
     };
     if (isAdmin && ownerId.trim()) {
@@ -625,8 +644,8 @@ export function ContactFormDrawer({
       setLciErrors(lci.missing);
       setSubmitError(
         t(
-          'Identification incomplète — corrigez les champs signalés (import legacy).',
-          'Incomplete identification — fix highlighted fields (legacy import).'
+          'Indiquez au minimum le nom du contact.',
+          'Enter at least the contact’s last name.'
         )
       );
       return;
@@ -861,16 +880,22 @@ export function ContactFormDrawer({
 
           <section className="space-y-3">
             <p className={cn(labelClass, institutionalInkTextClass)}>
-              {t(
-                'Identification (obligatoire — 4 champs OACIQ)',
-                'Identification (required — 4 brokerage act fields)'
-              )}
+              {t('Identification', 'Identification')}
             </p>
             <div>
-              <label className={labelClass}>{t('Nom complet (nom de famille)', 'Full name (last name)')}</label>
-              <input className={inputClass} value={nom} onChange={(e) => setNom(e.target.value)} />
+              <label className={labelClass}>
+                {t('Nom complet (nom de famille)', 'Full name (last name)')}
+                <span className="text-red-600"> *</span>
+              </label>
+              <input
+                className={inputClass}
+                value={nom}
+                onChange={(e) => setNom(e.target.value)}
+                required
+                aria-required="true"
+              />
               <p className={fieldError('nom')}>
-                {isFr ? CONTACT_LCI_FIELD_LABEL_FR.nom : 'Name'} — {t('requis', 'required')}
+                {t('Le nom est requis pour enregistrer le contact.', 'Name is required to save the contact.')}
               </p>
             </div>
             <div>
@@ -878,33 +903,35 @@ export function ContactFormDrawer({
               <input className={inputClass} value={prenom} onChange={(e) => setPrenom(e.target.value)} />
             </div>
             <div>
-              <label className={labelClass}>{t('Date de naissance', 'Date of birth')}</label>
+              <label className={labelClass}>
+                {t('Date de naissance', 'Date of birth')}
+                <span className="ml-1 text-xs font-medium text-primexpert-dark/60">
+                  ({t('optionnel', 'optional')})
+                </span>
+              </label>
               <input
                 type="date"
                 className={inputClass}
                 value={dateNaissance}
                 onChange={(e) => setDateNaissance(e.target.value)}
               />
-              <p className={fieldError('dateNaissance')}>
-                {t('Date de naissance requise.', 'Date of birth is required.')}
-              </p>
             </div>
             <div>
               <label className={labelClass}>
                 {t('Occupation (métier de la partie)', 'Occupation (party profession)')}
+                <span className="ml-1 text-xs font-medium text-primexpert-dark/60">
+                  ({t('optionnel', 'optional')})
+                </span>
               </label>
               <input
                 className={inputClass}
                 value={occupationProfession}
                 onChange={(e) => setOccupationProfession(e.target.value)}
               />
-              <p className={fieldError('occupationProfession')}>
-                {t(
-                  'Occupation professionnelle requise (distincte du taux d’occupation immeuble).',
-                  'Professional occupation required (not building occupancy rate).'
-                )}
-              </p>
             </div>
+            <p className="text-xs font-medium text-primexpert-dark/70">
+              {t('Adresse (optionnel)', 'Address (optional)')}
+            </p>
             <div>
               <label className={labelClass}>{t('Adresse — ligne 1', 'Address line 1')}</label>
               <input className={inputClass} value={ligne1} onChange={(e) => setLigne1(e.target.value)} />
@@ -923,9 +950,6 @@ export function ContactFormDrawer({
                 />
               </div>
             </div>
-            <p className={fieldError('adresse')}>
-              {t('Adresse complète requise (rue, ville, code postal).', 'Full address required.')}
-            </p>
           </section>
 
           <section className="space-y-3 rounded-xl border-2 border-primexpert-dark bg-white p-4">

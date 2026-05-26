@@ -1,7 +1,16 @@
+function isFirestoreFieldValue(value: unknown): boolean {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    '_methodName' in (value as Record<string, unknown>)
+  );
+}
+
 /** Retire récursivement les `undefined` — Firestore les refuse dans set()/update(). */
 export function stripUndefinedDeep<T>(value: T): T {
   if (value === undefined) return value;
   if (value === null || typeof value !== 'object') return value;
+  if (isFirestoreFieldValue(value)) return value;
 
   if (Array.isArray(value)) {
     return value

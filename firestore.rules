@@ -30,6 +30,11 @@ service cloud.firestore {
       return isOrgMember(orgId) && userProfile().role in ['admin', 'admin_system'];
     }
 
+    /** Direction / admin agence — vue globale résidences (god mode, collection racine). */
+    function isAgencyAdmin() {
+      return isSignedIn() && userProfile().role in ['admin', 'admin_system'];
+    }
+
     // Users (Split PII logic)
     match /users/{userId} {
       allow read: if isSignedIn() && (isOwner(userId) || isOrgMember(existing().orgId));
@@ -194,6 +199,7 @@ service cloud.firestore {
   function canReadResidenceSubcollection(residenceId) {
     let data = residenceDoc(residenceId);
     return isSignedIn() && (
+      isAgencyAdmin() ||
       data.courtiersResponsables == request.auth.uid ||
       !('courtiersResponsables' in data) ||
       data.courtiersResponsables == null ||
@@ -202,22 +208,25 @@ service cloud.firestore {
   }
 
   function isResidenceTenantOwner(residenceId) {
-    return isSignedIn() &&
-      residenceDoc(residenceId).courtiersResponsables == request.auth.uid;
+    return isSignedIn() && (
+      isAgencyAdmin() ||
+      residenceDoc(residenceId).courtiersResponsables == request.auth.uid
+    );
   }
 
     // residences — collection multi-tenant racine (Brief Silos 2026 v4 §5)
     match /residences/{residenceId} {
-      allow read:   if isTenantOwner() || isSharedCatalogResidence();
-      allow create: if isIncomingTenantOwner();
-      allow update: if (isTenantOwner() && isIncomingTenantOwner())
+      allow read:   if isAgencyAdmin() || isTenantOwner() || isSharedCatalogResidence();
+      allow create: if isAgencyAdmin() || isIncomingTenantOwner();
+      allow update: if isAgencyAdmin()
+        || (isTenantOwner() && isIncomingTenantOwner())
         || (
           isSharedCatalogResidence() &&
           incoming().courtiersResponsables == request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['courtiersResponsables'])
         );
-      allow delete: if isTenantOwner();
+      allow delete: if isAgencyAdmin() || isTenantOwner();
 
       // Hub Finance V2 — financial/dataV2 (normalizeFinancialData, Bilan, Revenus & Dépenses)
       match /financial/{financialDocId} {

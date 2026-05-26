@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, Pencil, Search, UserPlus, UserMinus, Users } from 'lucide-react';
+import {
+  Loader2,
+  Mail,
+  Pencil,
+  Phone,
+  Search,
+  UserPlus,
+  UserMinus,
+  Users,
+} from 'lucide-react';
 import {
   parsePartiesImpliquees,
   RESIDENCE_PARTY_ROLES,
@@ -18,10 +27,24 @@ import { cn } from '../../../lib/utils';
 import {
   listOrganizationContacts,
   getOrganizationContactById,
+  linkContactToResidence,
+  unlinkContactFromResidence,
   type ContactServiceContext,
 } from '../../../services/contacts';
 import { ContactFormDrawer } from '../../contacts/ContactFormDrawer';
 import { IdentitySectionCard } from './IdentitySectionCard';
+
+const PARTY_ROLE_SORT: Record<ResidencePartyRole, number> = {
+  VENDEUR: 0,
+  ACHETEUR: 1,
+  NOTAIRE: 2,
+  COLLABORATEUR: 3,
+};
+
+const MIN_SEARCH_CHARS = 2;
+
+const LINKED_PARTY_CARD_CLASS =
+  'flex items-center gap-3 rounded-xl border-2 border-blue-200 bg-blue-50/70 px-4 py-3';
 
 export function PartiesIntervenantsSection() {
   const { t, language } = useLanguage();
@@ -44,10 +67,14 @@ export function PartiesIntervenantsSection() {
     return { uid: profile.uid, orgId: profile.orgId, role: profile.role };
   }, [profile]);
 
-  const parties = useMemo(
-    () => (residenceDoc ? parsePartiesImpliquees(residenceDoc) : []),
-    [residenceDoc]
-  );
+  const parties = useMemo(() => {
+    const list = residenceDoc ? parsePartiesImpliquees(residenceDoc) : [];
+    return [...list].sort((a, b) => {
+      const byRole = PARTY_ROLE_SORT[a.role] - PARTY_ROLE_SORT[b.role];
+      if (byRole !== 0) return byRole;
+      return a.assigneLe.localeCompare(b.assigneLe);
+    });
+  }, [residenceDoc]);
 
   const refreshContacts = useCallback(async () => {
     if (!ctx) return;
@@ -90,18 +117,24 @@ export function PartiesIntervenantsSection() {
     };
   }, [ctx, partyContactIds]);
 
+  const searchQuery = search.trim().toLowerCase();
+  const searchActive = searchQuery.length >= MIN_SEARCH_CHARS;
+
   const searchResults = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    if (!searchActive) return [];
     const linked = new Set(parties.map((p) => p.contactId));
     return contacts
       .filter((c) => !linked.has(c.id))
       .filter((c) => {
-        if (!q) return true;
         const name = buildContactDisplayName(c).toLowerCase();
-        return name.includes(q) || (c.email?.toLowerCase().includes(q) ?? false);
+        return (
+          name.includes(searchQuery) ||
+          (c.email?.toLowerCase().includes(searchQuery) ?? false) ||
+          (c.telephone?.replace(/\D/g, '').includes(searchQuery.replace(/\D/g, '')) ?? false)
+        );
       })
       .slice(0, 8);
-  }, [contacts, search, parties]);
+  }, [contacts, searchActive, searchQuery, parties]);
 
   const handleLink = async (contactId: string) => {
     if (!ctx || !residenceDoc || !residenceId) return;
@@ -186,8 +219,8 @@ export function PartiesIntervenantsSection() {
       >
         <p className="text-[11px] font-medium text-slate-600 mb-4 leading-relaxed">
           {t(
-            'Liez les contacts de votre répertoire à cette inscription. Les données sont enregistrées sur la fiche résidence.',
-            'Link contacts from your directory to this listing. Data is stored on the residence record.'
+            'Liez les contacts de votre répertoire à cette inscription. Vous pouvez associer plusieurs vendeurs (co-indivisaires, administrateurs) au même immeuble.',
+            'Link contacts from your directory to this listing. You can associate several sellers (co-owners, administrators) with the same property.'
           )}
         </p>
 
@@ -195,71 +228,10 @@ export function PartiesIntervenantsSection() {
           <p className="mb-3 text-sm font-bold text-red-600">{localError}</p>
         ) : null}
 
-        <div className="mb-4 flex flex-wrap gap-2 items-end">
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-[10px] font-black uppercase tracking-widest text-[#142c6a]">
-              {t('Rechercher un contact', 'Search contact')}
-            </label>
-            <div className="relative mt-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#142c6a]/50" />
-              <input
-                className="w-full rounded-lg border-2 border-[#142c6a]/20 bg-white py-2 pl-9 pr-3 text-sm font-medium text-[#142c6a]"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t('Nom ou courriel…', 'Name or email…')}
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-[#142c6a]">
-              {t('Rôle', 'Role')}
-            </label>
-            <select
-              className="mt-1 rounded-lg border-2 border-[#142c6a]/20 bg-white px-3 py-2 text-sm font-bold text-[#142c6a]"
-              value={rolePick}
-              onChange={(e) => setRolePick(e.target.value as ResidencePartyRole)}
-            >
-              {RESIDENCE_PARTY_ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {roleLabel(r)}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {loadingContacts ? (
-          <div className="flex items-center gap-2 text-sm text-[#142c6a] py-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {t('Chargement des contacts…', 'Loading contacts…')}
-          </div>
-        ) : searchResults.length > 0 ? (
-          <ul className="mb-4 rounded-xl border border-[#142c6a]/15 bg-slate-50 divide-y divide-slate-200">
-            {searchResults.map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-white transition"
-                  onClick={() => void handleLink(c.id)}
-                  disabled={saving || linkPending}
-                >
-                  <span className="text-sm font-bold text-[#142c6a]">{buildContactDisplayName(c)}</span>
-                  <span className="text-[10px] font-black uppercase text-primexpert-blue">
-                    {t('Lier', 'Link')}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : search.trim() ? (
-          <p className="text-xs text-slate-500 mb-4">
-            {t('Aucun contact correspondant.', 'No matching contact.')}
-          </p>
-        ) : null}
-
-        <div className="space-y-2">
+        {/* Intervenants déjà liés — en premier, carte bleue par personne */}
+        <div className="space-y-2 mb-5">
           {parties.length === 0 ? (
-            <p className="text-xs font-medium text-slate-500 py-4 text-center border border-dashed border-slate-300 rounded-xl">
+            <p className="text-xs font-medium text-slate-500 py-4 text-center border border-dashed border-slate-300 rounded-xl bg-white">
               {t('Aucun intervenant lié.', 'No linked parties yet.')}
             </p>
           ) : (
@@ -267,21 +239,30 @@ export function PartiesIntervenantsSection() {
               const contact = contactCache[p.contactId];
               const name = contact ? buildContactDisplayName(contact) : p.contactId;
               return (
-                <div
-                  key={`${p.contactId}-${p.role}`}
-                  className="flex items-center gap-3 rounded-xl border-2 border-[#142c6a]/15 bg-white px-4 py-3"
-                >
+                <div key={`${p.contactId}-${p.role}`} className={LINKED_PARTY_CARD_CLASS}>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-black text-[#142c6a] truncate">{name}</p>
                     <p className="text-[10px] font-bold uppercase text-primexpert-blue">
                       {roleLabel(p.role)}
                     </p>
+                    {contact?.telephone ? (
+                      <p className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                        <Phone className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                        <span className="truncate">{contact.telephone}</span>
+                      </p>
+                    ) : null}
+                    {contact?.email ? (
+                      <p className="mt-0.5 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                        <Mail className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                        <span className="truncate">{contact.email}</span>
+                      </p>
+                    ) : null}
                   </div>
                   <button
                     type="button"
                     title={t('Modifier le contact', 'Edit contact')}
                     onClick={() => void openEdit(p.contactId)}
-                    className="rounded-lg border border-[#142c6a]/20 p-2 text-[#142c6a] hover:bg-primexpert-light"
+                    className="rounded-lg border border-blue-200 bg-white p-2 text-[#142c6a] hover:bg-blue-50"
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
@@ -290,7 +271,7 @@ export function PartiesIntervenantsSection() {
                     title={t('Retirer du dossier', 'Remove from file')}
                     onClick={() => void handleUnlink(p.contactId)}
                     disabled={saving || linkPending}
-                    className="rounded-lg border border-red-200 p-2 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    className="rounded-lg border border-red-200 bg-white p-2 text-red-700 hover:bg-red-50 disabled:opacity-50"
                   >
                     <UserMinus className="h-4 w-4" />
                   </button>
@@ -298,6 +279,86 @@ export function PartiesIntervenantsSection() {
               );
             })
           )}
+        </div>
+
+        {/* Recherche — sous les liés, suggestions seulement si ≥ 2 caractères */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+          <p className="text-[10px] font-black uppercase tracking-widest text-[#142c6a] mb-3">
+            {t('Ajouter un intervenant', 'Add a party')}
+          </p>
+          <div className="flex flex-wrap gap-2 items-end">
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-[10px] font-black uppercase tracking-widest text-[#142c6a]">
+                {t('Rechercher un contact', 'Search contact')}
+              </label>
+              <div className="relative mt-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#142c6a]/50" />
+                <input
+                  className="w-full rounded-lg border-2 border-[#142c6a]/20 bg-white py-2 pl-9 pr-3 text-sm font-medium text-[#142c6a]"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t('Nom ou courriel (min. 2 car.)…', 'Name or email (min. 2 chars)…')}
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[#142c6a]">
+                {t('Rôle', 'Role')}
+              </label>
+              <select
+                className="mt-1 rounded-lg border-2 border-[#142c6a]/20 bg-white px-3 py-2 text-sm font-bold text-[#142c6a]"
+                value={rolePick}
+                onChange={(e) => setRolePick(e.target.value as ResidencePartyRole)}
+              >
+                {RESIDENCE_PARTY_ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {roleLabel(r)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {loadingContacts && searchActive ? (
+            <div className="mt-3 flex items-center gap-2 text-sm text-[#142c6a]">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t('Recherche…', 'Searching…')}
+            </div>
+          ) : null}
+
+          {searchActive && !loadingContacts && searchResults.length > 0 ? (
+            <ul
+              className="mt-3 rounded-xl border border-[#142c6a]/15 bg-white divide-y divide-slate-200 shadow-sm"
+              role="listbox"
+            >
+              {searchResults.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-blue-50/50 transition"
+                    onClick={() => void handleLink(c.id)}
+                    disabled={saving || linkPending}
+                  >
+                    <span className="text-sm font-bold text-[#142c6a]">
+                      {buildContactDisplayName(c)}
+                    </span>
+                    <span className="text-[10px] font-black uppercase text-primexpert-blue">
+                      {linkPending
+                        ? t('Liaison…', 'Linking…')
+                        : t('Ajouter', 'Add')}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {searchActive && !loadingContacts && searchResults.length === 0 ? (
+            <p className="mt-3 text-xs text-slate-500">
+              {t('Aucun contact correspondant.', 'No matching contact.')}
+            </p>
+          ) : null}
         </div>
 
         {ctx ? (

@@ -10,7 +10,7 @@ import { useLanguage } from '../lib/i18n';
 import { useSilo } from '../context/SiloContext';
 import { useWorkhubNav } from '../lib/workhubNav';
 import { stashListingsFocusResidenceId } from '../lib/listingsFocus';
-import { listResidences } from '../services/residences';
+import { buildResidenceTenantContext, excludeCatalogReferenceResidences, listResidences } from '../services/residences';
 import { fetchRecentCallAnalyses } from '../services/transcriptionService';
 import {
   InstitutionalDetailLine,
@@ -99,26 +99,30 @@ export function SuiviDossiersTab() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const uid = profile?.uid;
-    if (!uid) {
+    if (!profile?.uid) {
       setCards([]);
       setLoading(false);
       return;
     }
+    const uid = profile.uid;
+    const tenantCtx = buildResidenceTenantContext(profile);
     let cancelled = false;
     setLoading(true);
     (async () => {
       try {
         const [resList, calls] = await Promise.all([
-          listResidences({ tenantId: uid, mode: 'strict' }, { silo: activeSilo }),
+          listResidences(tenantCtx, { silo: activeSilo }),
           fetchRecentCallAnalyses(uid, 400),
         ]);
         if (cancelled) return;
-        const docs = await fetchResidenceDocsMap(resList.map((r) => r.id));
+        const docs = await fetchResidenceDocsMap(
+          excludeCatalogReferenceResidences(resList).map((r) => r.id)
+        );
         if (cancelled) return;
+        const hot = excludeCatalogReferenceResidences(resList);
         setCards(
           loadDossierSuiviCards({
-            residences: resList,
+            residences: hot,
             docs,
             brokerDisplayName: profile.displayName || 'Courtier responsable',
             calls,
@@ -131,7 +135,7 @@ export function SuiviDossiersTab() {
     return () => {
       cancelled = true;
     };
-  }, [profile?.uid, profile?.displayName, activeSilo]);
+  }, [profile, activeSilo]);
 
   const openResidence = (residenceId: string) => {
     stashListingsFocusResidenceId(residenceId);

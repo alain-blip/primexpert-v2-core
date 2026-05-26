@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
-import type { TenantContext } from '@primexpert/core/tenant';
+import type { UserProfile } from '../lib/auth';
+import { buildResidenceTenantContext } from '../lib/tenantContext';
 import type { AssetNiche } from '../types/residence';
 import {
   fetchResidencesPage,
@@ -10,8 +11,8 @@ import {
   type Residence,
 } from '../services/residences';
 
-function tenantCtx(uid: string): TenantContext {
-  return { tenantId: uid, mode: 'strict' };
+function tenantCtx(profile: Pick<UserProfile, 'uid' | 'role' | 'orgId'>) {
+  return buildResidenceTenantContext(profile);
 }
 
 /**
@@ -19,16 +20,17 @@ function tenantCtx(uid: string): TenantContext {
  * `silo` : filtre Firestore CPE/Plex ; RPA inclut les fiches sans `assetNiche` (post-filtre).
  */
 export function usePipelineResidences(
-  tenantId: string | undefined,
+  profile: Pick<UserProfile, 'uid' | 'role' | 'orgId'> | null | undefined,
   enabled = true,
   silo?: AssetNiche
 ) {
+  const tenantId = profile?.uid;
   const [residences, setResidences] = useState<Residence[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!tenantId || !enabled) {
+    if (!tenantId || !profile || !enabled) {
       setResidences([]);
       setLoading(false);
       return;
@@ -36,7 +38,7 @@ export function usePipelineResidences(
     let cancelled = false;
     setLoading(true);
     setError(null);
-    listResidencesPipeline(tenantCtx(tenantId), { silo })
+    listResidencesPipeline(tenantCtx(profile), { silo })
       .then((rows) => {
         if (!cancelled) setResidences(rows);
       })
@@ -49,7 +51,7 @@ export function usePipelineResidences(
     return () => {
       cancelled = true;
     };
-  }, [tenantId, enabled, silo]);
+  }, [profile, enabled, silo]);
 
   const patchResidenceStatus = useCallback((residenceId: string, status: Residence['status']) => {
     setResidences((prev) => patchResidenceStatusInList(prev, residenceId, status));
@@ -70,10 +72,11 @@ function patchResidenceStatusInList(
  * Inventaire complet avec lazy load (pages de 50) et recherche préfixe optionnelle.
  */
 export function useInventoryResidences(
-  tenantId: string | undefined,
+  profile: Pick<UserProfile, 'uid' | 'role' | 'orgId'> | null | undefined,
   opts: { enabled: boolean; searchPrefix: string },
   silo?: AssetNiche
 ) {
+  const tenantId = profile?.uid;
   const { enabled, searchPrefix } = opts;
   const [residences, setResidences] = useState<Residence[]>([]);
   const [loading, setLoading] = useState(false);
@@ -96,14 +99,14 @@ export function useInventoryResidences(
     try {
       const sp = searchPrefix.trim();
       if (sp) {
-        const rows = await searchResidencesByAddressPrefix(tenantCtx(tenantId), sp, 80, { silo });
+        const rows = await searchResidencesByAddressPrefix(tenantCtx(profile), sp, 80, { silo });
         setResidences(rows);
         setHasMore(false);
         cursorRef.current = null;
         return;
       }
       const [mine, catalog] = await Promise.all([
-        fetchResidencesPage(tenantCtx(tenantId), {
+        fetchResidencesPage(tenantCtx(profile), {
           pageSize: 50,
           startAfterDoc: null,
           silo,
@@ -125,7 +128,7 @@ export function useInventoryResidences(
     } finally {
       setLoading(false);
     }
-  }, [tenantId, enabled, searchPrefix, silo]);
+  }, [profile, enabled, searchPrefix, silo]);
 
   useEffect(() => {
     if (!enabled || !tenantId) {
@@ -133,13 +136,13 @@ export function useInventoryResidences(
       return;
     }
     void loadInitial();
-  }, [tenantId, enabled, searchPrefix, silo, loadInitial, reset]);
+  }, [profile, enabled, searchPrefix, silo, loadInitial, reset]);
 
   const loadMore = useCallback(async () => {
     if (!tenantId || !enabled || !hasMore || loadingMore || searchPrefix.trim()) return;
     setLoadingMore(true);
     try {
-      const page = await fetchResidencesPage(tenantCtx(tenantId), {
+      const page = await fetchResidencesPage(tenantCtx(profile), {
         pageSize: 50,
         startAfterDoc: cursorRef.current,
         silo,
@@ -160,7 +163,7 @@ export function useInventoryResidences(
     } finally {
       setLoadingMore(false);
     }
-  }, [tenantId, enabled, hasMore, loadingMore, searchPrefix, silo]);
+  }, [profile, enabled, hasMore, loadingMore, searchPrefix, silo]);
 
   return {
     residences,
