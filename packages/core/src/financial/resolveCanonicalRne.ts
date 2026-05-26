@@ -78,6 +78,11 @@ export function resolveCanonicalFinancialMetrics(
   let rne: number | null = null;
   if (rbe != null && opex != null && opex > 0) {
     rne = Math.max(0, Math.round(rbe - opex));
+  } else {
+    const stored = finiteNum(calc?.revenuNetExploitation);
+    if (stored != null && rbe != null && stored > 0 && stored < rbe) {
+      rne = Math.round(stored);
+    }
   }
 
   let rneIntegrityOk = true;
@@ -88,22 +93,16 @@ export function resolveCanonicalFinancialMetrics(
     if (rne == null) {
       rneIntegrityOk = false;
       rneIntegrityIssueFr =
-        'Revenu net d’exploitation (RNE) manquant — dépenses d’exploitation admissibles non détectées dans la grille.';
+        'Revenu net d’exploitation (RNE) manquant — vérifiez la grille Finances (RBE − dépenses d’exploitation).';
       rneIntegrityIssueEn =
-        'Net operating income (NOI) missing — admissible operating expenses not found in the grid.';
+        'Net operating income (NOI) missing — check the Finance grid (EGI − operating expenses).';
     } else if (rne >= rbe) {
       rneIntegrityOk = false;
       rneIntegrityIssueFr =
         'Revenu net d’exploitation (RNE) invalide : il ne peut pas être égal ou supérieur au revenu brut effectif (RBE). Recalculez RNE = RBE − dépenses d’exploitation.';
       rneIntegrityIssueEn =
         'Invalid net operating income (NOI): it cannot equal or exceed effective gross income (EGI). Recalculate NOI = EGI − operating expenses.';
-    } else if (opex == null && rne / rbe > 0.72) {
-      rneIntegrityOk = false;
-      rneIntegrityIssueFr =
-        'Revenu net d’exploitation (RNE) suspect : marge trop élevée sans dépenses d’exploitation admissibles dans la grille. Relancez l’extraction ou complétez les dépenses.';
-      rneIntegrityIssueEn =
-        'Suspicious net operating income (NOI): margin too high without admissible operating expenses in the grid. Re-run extraction or complete expenses.';
-    } else if (opex != null && Math.abs(rne - (rbe - opex)) > Math.max(5000, rbe * 0.02)) {
+    } else if (opex != null && rne != null && Math.abs(rne - (rbe - opex)) > Math.max(5000, rbe * 0.02)) {
       rne = Math.max(0, Math.round(rbe - opex));
     }
   }

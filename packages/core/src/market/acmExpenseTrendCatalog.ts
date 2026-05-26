@@ -7,6 +7,9 @@ import { isNonOpexExpenseKey } from '../financial/nonOpexFinancialLines';
 import { EXPENSE_LINE_META, canonicalExpenseKey } from './marketPlExpenseDictionary';
 import { cleanseMarketRegion, type MarketGpsRatioSample } from './marketGpsViewModel';
 
+/** Trois postes critiques — section tendances ACM (ergonomie PO). */
+export const ACM_TOP3_TREND_KEYS = ['salairesAvantages', 'nourritures', 'energie'] as const;
+
 /** Postes OPEX affichables en tendances ACM (exclut amortissement, intérêts). */
 export const ACM_TREND_EXPENSE_KEYS: string[] = EXPENSE_FIELDS.map((f) => f.key).filter(
   (key) => !isNonOpexExpenseKey(key)

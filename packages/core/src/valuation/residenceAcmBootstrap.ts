@@ -59,7 +59,9 @@ export interface ResidenceAcmBootstrap {
   units: number;
   revenuBrutEffectif: number;
   revenuNetExploitation: number;
-  /** false si RNE ≥ RBE — bloque la valorisation ACM */
+  /** true uniquement si RNE ≥ RBE — bloque la valorisation ACM */
+  rneBlocksValuation: boolean;
+  /** Avertissement affiché (RNE manquant, etc.) sans bloquer la valorisation */
   rneIntegrityOk: boolean;
   rneIntegrityIssueFr: string | null;
   rneIntegrityIssueEn: string | null;
@@ -264,7 +266,11 @@ export function bootstrapResidenceAcm(
   const metrics = resolveCanonicalFinancialMetrics(calc, normalized.baseData);
   const canonicalCalc = applyCanonicalMetricsToCalc(calc, normalized.baseData);
   const rbe = metrics.rbe ?? 0;
-  const rne = metrics.rne ?? 0;
+  const rne =
+    metrics.rne ??
+    finiteNum(canonicalCalc.revenuNetExploitation) ??
+    finiteNum(calc.revenuNetExploitation) ??
+    0;
 
   const mergedRecord = buildMergedResidenceRecord(residence, residenceDoc);
   const partial = mapFirestoreDataToValuationInputs(
@@ -315,6 +321,7 @@ export function bootstrapResidenceAcm(
     units: valuationInputs.units,
     revenuBrutEffectif: rbe,
     revenuNetExploitation: rne,
+    rneBlocksValuation: rbe > 0 && rne > 0 && rne >= rbe,
     rneIntegrityOk: metrics.rneIntegrityOk,
     rneIntegrityIssueFr: metrics.rneIntegrityIssueFr,
     rneIntegrityIssueEn: metrics.rneIntegrityIssueEn,

@@ -36,6 +36,7 @@ import {
   type ResidenceFinancials,
 } from '@primexpert/core/narrative';
 import {
+  ACM_TOP3_TREND_KEYS,
   buildAcmCostTrendNarrativeBundle,
   computeAcmCostTrendPoints,
   type MarketGpsRatioSample,
@@ -167,7 +168,7 @@ export function AcmValuationWorkspace({
 
   const runValuation = useCallback(
     (capPct: number, penPct: number) => {
-      if (!bootstrap.rneIntegrityOk) {
+      if (bootstrap.rneBlocksValuation) {
         setResult(null);
         setTgaAdjustment(null);
         setRecommendedPrice(null);
@@ -241,6 +242,7 @@ export function AcmValuationWorkspace({
       locale: language,
       units: bootstrap.units,
       subjectExpenses,
+      metricKeys: [...ACM_TOP3_TREND_KEYS],
     });
     const bundle = buildAcmCostTrendNarrativeBundle(points, language);
     const global =
@@ -366,7 +368,28 @@ export function AcmValuationWorkspace({
 
   return (
     <div className={compact ? 'space-y-6' : 'max-w-5xl mx-auto space-y-8'}>
-      {!bootstrap.rneIntegrityOk && (
+      {!bootstrap.rneBlocksValuation && !bootstrap.rneIntegrityOk && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-xl border-2 border-amber-400 bg-amber-50 px-5 py-4 text-amber-950"
+        >
+          <BadgeAlert className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
+          <div className="space-y-1">
+            <p className="text-[11px] font-black uppercase tracking-[0.16em]">
+              {t('Avertissement — revenu net d’exploitation (RNE)', 'Warning — net operating income (NOI)')}
+            </p>
+            <p className="text-[14px] leading-relaxed">
+              {rneIntegrityIssue ??
+                t(
+                  'Complétez la grille Finances ou relancez l’extraction. La valorisation utilise les derniers montants connus.',
+                  'Complete the Finance grid or re-run extraction. Valuation uses the last known amounts.'
+                )}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {bootstrap.rneBlocksValuation && (
         <div
           role="alert"
           className="flex items-start gap-3 rounded-xl border-2 border-red-500 bg-red-50 px-5 py-4 text-red-950"
@@ -526,7 +549,7 @@ export function AcmValuationWorkspace({
         </div>
       ) : null}
 
-      {ratioSamples.length > 0 && bootstrap.rneIntegrityOk && (
+      {ratioSamples.length > 0 && (
         <AcmHistoricalTrendsSection
           ratioSamples={ratioSamples}
           transactions={transactions}
@@ -538,7 +561,7 @@ export function AcmValuationWorkspace({
         />
       )}
 
-      {result && bootstrap.rneIntegrityOk ? (
+      {result && bootstrap.revenuNetExploitation > 0 && !bootstrap.rneBlocksValuation ? (
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}

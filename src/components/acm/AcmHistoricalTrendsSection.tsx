@@ -1,10 +1,12 @@
 /**
- * Section ACM — tendances historiques par catégorie de dépense (grille multi-graphiques, PDF).
+ * Section ACM — Top 3 tendances (Salaires, Alimentation, Énergie) — une ligne, PDF-ready.
+ * Totalement découplée du calcul RNE / valorisation.
  */
 
 import React, { useMemo } from 'react';
 import { TrendingUp } from 'lucide-react';
 import {
+  ACM_TOP3_TREND_KEYS,
   buildAcmCostTrendGlobalNarrative,
   computeAcmCostTrendPoints,
   type MarketGpsRatioSample,
@@ -40,6 +42,7 @@ export function AcmHistoricalTrendsSection({
         locale,
         units,
         subjectExpenses,
+        metricKeys: [...ACM_TOP3_TREND_KEYS],
       }),
     [ratioSamples, transactions, region, locale, units, subjectExpenses]
   );
@@ -49,9 +52,7 @@ export function AcmHistoricalTrendsSection({
     [points, locale]
   );
 
-  const withSubject = points.filter((p) => (subjectExpenses?.[p.metricKey] ?? 0) > 0);
-
-  if (!points.length) return null;
+  if (!ratioSamples.length) return null;
 
   return (
     <section
@@ -66,12 +67,12 @@ export function AcmHistoricalTrendsSection({
               {t('Analyse des tendances — inflation régionale', 'Trend analysis — regional inflation')}
             </p>
             <h3 className="text-lg font-black text-[#142c6a]">
-              {t('Tendances historiques par poste de dépense', 'Historical trends by expense line')}
+              {t('Tendances — postes critiques', 'Trends — critical expense lines')}
             </h3>
             <p className="text-[12px] text-slate-600 mt-1 max-w-3xl leading-relaxed">
               {t(
-                'Courbes médianes GPS (24–36 mois) et coût actuel de la propriété sujet ($ / unité) pour chaque catégorie extraite — transparence complète pour justifier le revenu net d’exploitation (RNE).',
-                'GPS regional medians (24–36 months) and current subject cost ($ / unit) for each extracted category — full transparency to support net operating income (NOI).'
+                'Salaires et charges sociales, alimentation et énergie — médiane régionale GPS (24–36 mois) vs propriété sujet. Cette section n’affecte pas le calcul du revenu net d’exploitation (RNE).',
+                'Salaries & benefits, food and energy — regional GPS median (24–36 months) vs. subject property. This section does not affect net operating income (NOI) calculation.'
               )}
             </p>
           </div>
@@ -85,20 +86,13 @@ export function AcmHistoricalTrendsSection({
       )}
 
       <div
-        className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
-        data-pdf-layout="acm-trend-grid"
+        className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4"
+        data-pdf-layout="acm-trend-top3"
       >
-        {(withSubject.length > 0 ? withSubject : points).map((point) => (
+        {points.map((point) => (
           <AcmCostTrendChartCard key={point.metricKey} point={point} locale={locale} t={t} />
         ))}
       </div>
-
-      <footer className="px-5 py-3 border-t border-slate-100 text-[10px] text-slate-500">
-        {t(
-          `${points.length} poste(s) · source Dashboard GPS · période : 12 derniers trimestres`,
-          `${points.length} line item(s) · GPS dashboard source · period: last 12 quarters`
-        )}
-      </footer>
     </section>
   );
 }
