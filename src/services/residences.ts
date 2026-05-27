@@ -31,6 +31,11 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { tenantConstraints, TENANT_FIELD, type TenantContext } from '@primexpert/core/tenant';
+import type {
+  ResidenceLegalNode,
+  ResidenceBuildingNode,
+  ResidenceOperationsNode,
+} from '@primexpert/core/residence';
 import { buildResidenceTenantContext, isAgencyAdminRole } from '../lib/tenantContext';
 
 export { buildResidenceTenantContext, isAgencyAdminRole };
@@ -122,6 +127,10 @@ export interface Residence {
   syndication?: AssetSyndication;
   /** Inventaire référence Copilote (ex-`archive`) — exclu du pipeline chaud et du tableau de bord. */
   catalogReference?: boolean;
+  /** SSOT Bilan 360 — nœuds canoniques enrichis. */
+  legal?: ResidenceLegalNode;
+  building?: ResidenceBuildingNode;
+  operations?: ResidenceOperationsNode;
 }
 
 export { PIPELINE_ACTIVE_STATUSES };
@@ -324,6 +333,18 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
     typeof importMetaRaw === 'object' &&
     !Array.isArray(importMetaRaw) &&
     importMetaRaw.catalogReference === true;
+  const legalRaw =
+    data.legal && typeof data.legal === 'object' && !Array.isArray(data.legal)
+      ? (data.legal as Residence['legal'])
+      : undefined;
+  const buildingRaw =
+    data.building && typeof data.building === 'object' && !Array.isArray(data.building)
+      ? (data.building as Residence['building'])
+      : undefined;
+  const operationsRaw =
+    data.operations && typeof data.operations === 'object' && !Array.isArray(data.operations)
+      ? (data.operations as Residence['operations'])
+      : undefined;
   return {
     id: doc.id,
     address: String(data.address ?? data.adresse ?? '—'),
@@ -353,6 +374,9 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
     nicheMetadata: meta,
     syndication,
     catalogReference: catalogReference || undefined,
+    legal: legalRaw,
+    building: buildingRaw,
+    operations: operationsRaw,
   } satisfies Residence;
 }
 
