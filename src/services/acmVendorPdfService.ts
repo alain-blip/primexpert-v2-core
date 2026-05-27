@@ -9,8 +9,35 @@ import type { ResidenceAcmBootstrap, ValuationOutputs } from '@primexpert/core/v
 import { requestCraftMyPdfBlob, triggerBrowserDownload } from './craftMyPdfClient';
 import { fmtBuyerCad, fmtBuyerDscr, fmtBuyerPercent } from './buyerReportPdfService';
 
+/** Page couverture — clés gabarit CraftMyPDF (PascalCase, racine). */
+export interface AcmVendorCoverCraftMyPdfFields {
+  Nom_Residence: string;
+  Adresse_Residence: string;
+  Nom_Courtier: string;
+  Titre_Courtier: string;
+  Agence_Courtier: string;
+}
+
+/** Page 6 — indicateurs financiers (snake_case, racine). */
+export interface AcmVendorPage6CraftMyPdfFields {
+  revenus_brut: string;
+  depenses_exploitation: string;
+  /** Clé gabarit PO (orthographe WORM — ne pas renommer). */
+  revenus_net_baiia: string;
+  capacite_emprunt_estimee: string;
+  /** Clé gabarit PO (orthographe WORM — ne pas renommer). */
+  mise_de_fonds_minimale_es: string;
+  tga: string;
+  ratio_depenses_exploitation: string;
+  rcd: string;
+  rendement_mise_fonds: string;
+}
+
 /** Variables dynamiques CraftMyPDF — rapport vendeur ACM (valeurs formatées en chaînes). */
-export interface AcmVendorCraftMyPdfPayload {
+export interface AcmVendorCraftMyPdfPayload
+  extends AcmVendorCoverCraftMyPdfFields,
+    AcmVendorPage6CraftMyPdfFields {
+  /** Alias historiques — conservés pour les pages prix / narratif. */
   nom_residence: string;
   adresse_residence: string;
   nom_courtier: string;
@@ -26,7 +53,6 @@ export interface AcmVendorCraftMyPdfPayload {
   prix_plancher: string;
   prix_plafond: string;
   valeur_banquable: string;
-  tga: string;
   dscr: string;
   prix_recommande: string;
   lecture_vendeur: string;
@@ -87,24 +113,52 @@ export function buildAcmVendorCraftMyPdfPayload(
         : input.effectiveCapRate
       : valuation.actualCapRateAtAsking;
 
+  const nomResidence = textOrDash(bootstrap.residenceLabel);
+  const adresseResidence = textOrDash(input.residenceAddress);
+  const nomCourtier = textOrDash(broker.brokerName);
+  const titreCourtier = resolveBrokerTitle(broker, locale);
+  const agenceCourtier = textOrDash(broker.agencyName);
+
+  const revenusBrut = bootstrap.revenuBrutEffectif;
+  const revenusNet = bootstrap.revenuNetExploitation;
+  const capaciteEmprunt = valuation.maxLoanByDscr;
+  const miseDeFonds = valuation.downPaymentRequired;
+  const ratioDepenses = valuation.expenseRatio;
+  const rcd = valuation.dscrAtAsking;
+  const rendementMiseFonds = valuation.cashOnCashReturn;
+  const tgaFormatted = fmtBuyerPercent(capPct);
+
   const payload: AcmVendorCraftMyPdfPayload = {
-    nom_residence: textOrDash(bootstrap.residenceLabel),
-    adresse_residence: textOrDash(input.residenceAddress),
-    nom_courtier: textOrDash(broker.brokerName),
-    titre_courtier: resolveBrokerTitle(broker, locale),
-    agence_courtier: textOrDash(broker.agencyName),
+    Nom_Residence: nomResidence,
+    Adresse_Residence: adresseResidence,
+    Nom_Courtier: nomCourtier,
+    Titre_Courtier: titreCourtier,
+    Agence_Courtier: agenceCourtier,
+    revenus_brut: fmtBuyerCad(revenusBrut),
+    depenses_exploitation: fmtBuyerCad(opexAmount),
+    revenus_net_baiia: fmtBuyerCad(revenusNet),
+    capacite_emprunt_estimee: fmtBuyerCad(capaciteEmprunt),
+    mise_de_fonds_minimale_es: fmtBuyerCad(miseDeFonds),
+    tga: tgaFormatted,
+    ratio_depenses_exploitation: fmtBuyerPercent(ratioDepenses),
+    rcd: fmtBuyerDscr(rcd),
+    rendement_mise_fonds: fmtBuyerPercent(rendementMiseFonds),
+    nom_residence: nomResidence,
+    adresse_residence: adresseResidence,
+    nom_courtier: nomCourtier,
+    titre_courtier: titreCourtier,
+    agence_courtier: agenceCourtier,
     region: textOrDash(bootstrap.regionLabel ?? undefined),
     nombre_unites: bootstrap.units > 0 ? String(bootstrap.units) : '—',
-    rbe: fmtBuyerCad(bootstrap.revenuBrutEffectif),
+    rbe: fmtBuyerCad(revenusBrut),
     opex: fmtBuyerCad(opexAmount),
-    rne: fmtBuyerCad(bootstrap.revenuNetExploitation),
+    rne: fmtBuyerCad(revenusNet),
     prix_demande: fmtBuyerCad(bootstrap.askingPrice),
     prix_suggere: fmtBuyerCad(valuation.suggestedPrice),
     prix_plancher: fmtBuyerCad(valuation.suggestedLow),
     prix_plafond: fmtBuyerCad(valuation.suggestedHigh),
     valeur_banquable: fmtBuyerCad(valuation.bankableValue),
-    tga: fmtBuyerPercent(capPct),
-    dscr: fmtBuyerDscr(valuation.dscrAtAsking),
+    dscr: fmtBuyerDscr(rcd),
     prix_recommande: fmtBuyerCad(
       input.recommendedPrice != null && Number.isFinite(input.recommendedPrice)
         ? input.recommendedPrice
@@ -114,6 +168,18 @@ export function buildAcmVendorCraftMyPdfPayload(
   };
 
   console.log('PAYLOAD ENVOYÉ À CRAFTMYPDF (ACM vendeur) :', payload);
+  console.log('Vérif. couverture CraftMyPDF :', {
+    Nom_Residence: payload.Nom_Residence,
+    Adresse_Residence: payload.Adresse_Residence,
+    Nom_Courtier: payload.Nom_Courtier,
+  });
+  console.log('Vérif. page 6 CraftMyPDF :', {
+    revenus_brut: payload.revenus_brut,
+    depenses_exploitation: payload.depenses_exploitation,
+    revenus_net_baiia: payload.revenus_net_baiia,
+    tga: payload.tga,
+    rcd: payload.rcd,
+  });
 
   return payload;
 }
