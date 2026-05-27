@@ -85,7 +85,7 @@ function collectContactCompanyNames(contact: ContactSearchFields): string[] {
 /** Index textuel pour filtrage client (nom, entreprise, courriel, téléphone). */
 export function buildContactSearchHaystack(contact: ContactSearchFields): string {
   const displayName = buildContactDisplayNameForSearch(contact);
-  const parts: string[] = [
+  const parts = [
     contact.nom,
     contact.prenom,
     pickSearchString(contact.firstName),

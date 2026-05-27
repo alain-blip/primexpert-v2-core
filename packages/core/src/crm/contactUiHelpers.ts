@@ -14,6 +14,7 @@ import {
   type OrganizationContact,
   type ProfessionalType,
 } from './contactTypes';
+import { filterContactsBySearchQuery } from './contactSearch';
 
 export { CONTACT_RELATION_ROLES };
 
@@ -177,11 +178,7 @@ export function contactInitials(contact: OrganizationContact): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export {
-  buildContactSearchHaystack,
-  contactMatchesSearchQuery,
-  filterContactsBySearchQuery,
-} from './contactSearch';
+export { buildContactSearchHaystack, contactMatchesSearchQuery, filterContactsBySearchQuery } from './contactSearch';
 
 /** Filtre par rôle relationnel (`relationRoles[]`). */
 export function filterContactsByRelationRole(
