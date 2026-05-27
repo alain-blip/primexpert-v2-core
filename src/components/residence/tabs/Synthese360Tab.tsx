@@ -1,11 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { AlertTriangle, CheckCircle2, Pencil, ShieldCheck, Target, Users } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Pencil, ShieldCheck, Target, Users, X, Check } from 'lucide-react';
 import { db } from '../../../lib/firebase';
 import { useAuth } from '../../../lib/auth';
 import { useLanguage } from '../../../lib/i18n';
 import { cn, formatCurrency } from '../../../lib/utils';
+import { getListingPrice } from '@primexpert/core/residence';
+import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import type { Residence } from '../../../services/residences';
+import { buildListingPriceFirestorePatch } from '../../../services/residences';
 import { ResidenceActivitiesPanel } from '../activities/ResidenceActivitiesPanel';
 import { ResidenceTasksPanel } from '../tasks/ResidenceTasksPanel';
 
@@ -100,7 +103,7 @@ function formatPctDisplay(value: number): string {
 
 function calculateBusinessStatus(residence: ResidenceLoose): BusinessStatus {
   const hasName = pickText(residence, ['residenceName', 'commercialName', 'nomCommercial', 'nom_commercial', 'name'], '') !== '';
-  const hasPrice = pickNumber(residence, ['askingPrice', 'prixDemande', 'price', 'prixAnnonce']) > 0;
+  const hasPrice = getListingPrice(residence) > 0;
   const hasAddress = pickText(residence, ['address', 'adresse'], '') !== '';
   if (hasName && hasPrice && hasAddress) return 'complet';
   if (hasPrice || hasName) return 'attention';
@@ -489,6 +492,124 @@ function GuardrailBanner({ status }: { status: BusinessStatus }) {
   );
 }
 
+function AskingPriceEditor({
+  value,
+  onSave,
+  saving,
+  t,
+}: {
+  value: number;
+  onSave: (amount: number) => Promise<void>;
+  saving: boolean;
+  t: (fr: string, en: string) => string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const openEdit = useCallback(() => {
+    setDraft(value > 0 ? String(Math.round(value)) : '');
+    setError(null);
+    setEditing(true);
+  }, [value]);
+
+  const cancelEdit = useCallback(() => {
+    setEditing(false);
+    setError(null);
+  }, []);
+
+  const commitSave = useCallback(async () => {
+    const parsed = parseSafeNumber(draft);
+    if (!(parsed > 0)) {
+      setError(t('Entrez un prix demandé supérieur à 0 $.', 'Enter an asking price greater than $0.'));
+      return;
+    }
+    setError(null);
+    try {
+      await onSave(parsed);
+      setEditing(false);
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : String(e);
+      setError(
+        t(`Échec de l'enregistrement (${detail}).`, `Save failed (${detail}).`)
+      );
+    }
+  }, [draft, onSave, t]);
+
+  if (editing) {
+    return (
+      <div className="mt-1 space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="number"
+            min={0}
+            step={1000}
+            inputMode="numeric"
+            autoFocus
+            disabled={saving}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void commitSave();
+              if (e.key === 'Escape') cancelEdit();
+            }}
+            className="min-w-[12rem] flex-1 rounded-lg border-2 border-[#142c6a] bg-white px-3 py-2 text-[20px] font-black tabular-nums text-black outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/30"
+            aria-label={t('Prix demandé ($)', 'Asking price ($)')}
+          />
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void commitSave()}
+            className="inline-flex items-center gap-1 rounded-lg border-2 border-emerald-700 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase tracking-wider text-emerald-900 disabled:opacity-50"
+          >
+            <Check className="h-4 w-4" />
+            {t('Enregistrer', 'Save')}
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={cancelEdit}
+            className="inline-flex items-center gap-1 rounded-lg border-2 border-slate-300 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-wider text-slate-700 disabled:opacity-50"
+          >
+            <X className="h-4 w-4" />
+            {t('Annuler', 'Cancel')}
+          </button>
+        </div>
+        {error ? <p className="text-[12px] font-bold text-red-700">{error}</p> : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={openEdit}
+        className={cn(
+          'text-left text-[24px] font-black tabular-nums transition hover:text-[#142c6a]',
+          value > 0 ? 'text-black' : 'text-amber-700'
+        )}
+        title={t('Cliquer pour modifier le prix demandé', 'Click to edit asking price')}
+      >
+        {formatCurrency(value)}
+      </button>
+      <button
+        type="button"
+        onClick={openEdit}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border-2 border-[#142c6a]/20 bg-[#f8fafc] text-[#142c6a] hover:border-[#D4AF37]/60 hover:bg-amber-50"
+        aria-label={t('Modifier le prix demandé', 'Edit asking price')}
+      >
+        <Pencil className="h-4 w-4" />
+      </button>
+      {value <= 0 ? (
+        <span className="text-[11px] font-bold uppercase tracking-wide text-amber-800">
+          {t('Prix demandé à confirmer', 'Asking price to confirm')}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function FinancialSafetyBlock({ commissionRate, potentialRevenue }: { commissionRate: number; potentialRevenue: number }) {
   return (
     <div className="my-4 flex w-full flex-col gap-2 rounded-xl border-2 border-[#142c6a] bg-[#f1f5f9] p-4 text-[15px] font-black text-[#142c6a] sm:flex-row sm:items-center sm:justify-between">
@@ -728,11 +849,16 @@ function PaperSection({
 export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) {
   const { t, language } = useLanguage();
   const { user, profile } = useAuth();
-  const loose = residence as ResidenceLoose;
+  const { residenceDoc, updateResidence, saving: savingResidence } = useResidenceDocument();
+  const mergedResidence = useMemo(
+    () => ({ ...residence, ...(residenceDoc ?? {}) }) as ResidenceLoose,
+    [residence, residenceDoc]
+  );
+  const loose = mergedResidence;
   const businessStatus = useMemo(() => calculateBusinessStatus(loose), [loose]);
   const retribution = useMemo(() => resolveRetribution(loose), [loose]);
   const residenceName = pickText(loose, ['residenceName', 'commercialName', 'nomCommercial', 'nom_commercial', 'name'], 'RPA À NOMMER');
-  const askingPrice = pickNumber(loose, ['askingPrice', 'prixDemande', 'price', 'prixAnnonce']);
+  const askingPrice = getListingPrice(loose);
   const financialPerformance = useMemo(
     () => resolveFinancialPerformance(loose, askingPrice),
     [loose, askingPrice]
@@ -769,6 +895,18 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
     'occupation',
   ]);
   const prixParPorte = totalUnits > 0 && askingPrice > 0 ? askingPrice / totalUnits : 0;
+
+  const saveAskingPrice = useCallback(
+    async (amount: number) => {
+      if (!residenceId) throw new Error('residenceId manquant');
+      await updateResidence({
+        ...buildListingPriceFirestorePatch(amount),
+        updatedAt: serverTimestamp(),
+      });
+    },
+    [residenceId, updateResidence]
+  );
+
   useEffect(() => {
     if (!residenceId) return undefined;
     const notesQuery = query(collection(db, 'residences', residenceId, 'notes'), orderBy('createdAt', 'desc'));
@@ -885,7 +1023,12 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
         <div>
           <div>
             <p className="block truncate text-[18px] font-black uppercase tracking-wide text-[#142c6a]">{residenceName}</p>
-            <p className="mt-1 block text-[24px] font-black text-black">{formatCurrency(askingPrice)}</p>
+            <AskingPriceEditor
+              value={askingPrice}
+              onSave={saveAskingPrice}
+              saving={savingResidence}
+              t={t}
+            />
             <p className="mt-1 block truncate text-[14px] font-medium text-slate-700">{address || 'Adresse à confirmer'}</p>
           </div>
           <div className="grid grid-cols-2 gap-4 my-4 text-[15px] text-slate-800 font-semibold border-b border-slate-200 pb-4">

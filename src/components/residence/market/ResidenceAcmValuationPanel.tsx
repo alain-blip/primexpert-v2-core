@@ -12,6 +12,7 @@ import { useAuth } from '../../../lib/auth';
 import { useFinancialData } from '../../../context/FinancialDataContext';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { useMarketData } from '../../../hooks/useMarketData';
+import { getListingPrice } from '@primexpert/core/residence';
 import type { Residence } from '../../../services/residences';
 import { AcmValuationWorkspace } from '../../acm/AcmValuationWorkspace';
 import { AcmTab } from './AcmTab';
@@ -32,6 +33,18 @@ export function ResidenceAcmValuationPanel({
   const { residenceDoc } = useResidenceDocument();
   const { transactions: marketTransactions, ratioSamples } = useMarketData(language, profile?.uid ?? null);
 
+  const residenceLive = useMemo((): Residence => {
+    const merged = { ...residence, ...(residenceDoc ?? {}) } as Residence & Record<string, unknown>;
+    const listingPrice = getListingPrice(merged);
+    if (listingPrice <= 0) return residence;
+    return {
+      ...residence,
+      price: listingPrice,
+      askingPrice: listingPrice,
+      prixDemande: listingPrice,
+    };
+  }, [residence, residenceDoc]);
+
   const subjectExpenses = useMemo(() => {
     const depenses = (financialData as FinancialDataV2Doc | null)?.baseData?.depenses;
     if (!depenses || typeof depenses !== 'object') return undefined;
@@ -47,25 +60,25 @@ export function ResidenceAcmValuationPanel({
   const bootstrap = useMemo(() => {
     if (!financialData) return null;
     return bootstrapResidenceAcm(
-      residence,
+      residenceLive,
       residenceDoc ?? undefined,
       financialData as FinancialDataV2Doc,
       { marketTransactions }
     );
-  }, [residence, residenceDoc, financialData, marketTransactions]);
+  }, [residenceLive, residenceDoc, financialData, marketTransactions]);
 
   const pdfExport = useMemo(() => {
     if (!financialData) return undefined;
-    const addressParts = [residence.address, residence.city].filter(Boolean);
+    const addressParts = [residenceLive.address, residenceLive.city].filter(Boolean);
     return {
-      residenceId: residence.id,
+      residenceId: residenceLive.id,
       residenceAddress: addressParts.length ? addressParts.join(', ') : undefined,
       broker: buildBrokerFooterFromProfile(profile),
       locale: (language === 'fr' ? 'fr' : 'en') as const,
       financialData: financialData as FinancialDataV2Doc,
-      residence,
+      residence: residenceLive,
     };
-  }, [residence, financialData, profile, language]);
+  }, [residenceLive, financialData, profile, language]);
 
   if (loading) {
     return (
@@ -121,7 +134,7 @@ export function ResidenceAcmValuationPanel({
         subjectExpenses={subjectExpenses}
         pdfExport={pdfExport}
       />
-      <AcmTab residence={residence} />
+      <AcmTab residence={residenceLive} />
     </div>
   );
 }

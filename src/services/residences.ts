@@ -186,6 +186,22 @@ function mapLegacyPrice(data: DocumentData): number {
   return 0;
 }
 
+/** Patch Firestore canonique — prix d'inscription (SSOT fiche résidence). */
+export function buildListingPriceFirestorePatch(amount: number): {
+  price: number;
+  prixAnnonce: number;
+  askingPrice: number;
+  prixDemande: number;
+} {
+  const n = Math.max(0, Math.round(amount));
+  return {
+    price: n,
+    prixAnnonce: n,
+    askingPrice: n,
+    prixDemande: n,
+  };
+}
+
 function mapLegacyNumber(...candidates: unknown[]): number | undefined {
   for (const c of candidates) {
     if (c === undefined || c === null || c === '') continue;

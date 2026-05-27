@@ -13,6 +13,7 @@ import {
   type ResidenceFinancialHints,
 } from '@primexpert/core/financial';
 import type { ResidenceAcmBootstrap, ValuationOutputs } from '@primexpert/core/valuation';
+import { getListingPrice } from '@primexpert/core/residence';
 import { requestCraftMyPdfBlob, triggerBrowserDownload } from './craftMyPdfClient';
 import {
   buildGrilleDepenses,
@@ -292,6 +293,8 @@ export function buildAcmVendorCraftMyPdfPayload(
   const revenusNet = bootstrap.revenuNetExploitation;
   const tgaFormatted = fmtBuyerPercent(capPct);
 
+  const prixDemandeAffiche = getListingPrice(residence) || bootstrap.askingPrice;
+
   const payload: AcmVendorCraftMyPdfPayload = {
     Nom_Residence: nomResidence,
     Adresse_Residence: adresseResidence,
@@ -319,7 +322,7 @@ export function buildAcmVendorCraftMyPdfPayload(
     rbe: fmtBuyerCad(revenusBrut),
     opex: fmtBuyerCad(opexAmount),
     rne: fmtBuyerCad(revenusNet),
-    prix_demande: fmtBuyerCad(bootstrap.askingPrice),
+    prix_demande: fmtBuyerCad(prixDemandeAffiche),
     prix_suggere: fmtBuyerCad(prixSuggere),
     prix_plancher: fmtBuyerCad(valuation.suggestedLow),
     prix_plafond: fmtBuyerCad(valuation.suggestedHigh),
@@ -341,6 +344,7 @@ export function buildAcmVendorCraftMyPdfPayload(
     liste_depenses_sample: payload.liste_depenses.slice(0, 3),
   });
   console.log('Vérif. page 6 CraftMyPDF :', {
+    prix_demande: payload.prix_demande,
     capacite_emprunt_estimee: payload.capacite_emprunt_estimee,
     mise_de_fonds_minimale_es: payload.mise_de_fonds_minimale_es,
     rcd: payload.rcd,
