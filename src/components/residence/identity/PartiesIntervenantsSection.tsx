@@ -2,8 +2,11 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Loader2,
   Mail,
+  MessageSquare,
   Pencil,
   Phone,
+  PhoneCall,
+  PhoneOff,
   Search,
   UserPlus,
   UserMinus,
@@ -33,6 +36,22 @@ import {
 } from '../../../services/contacts';
 import { ContactFormDrawer } from '../../contacts/ContactFormDrawer';
 import { IdentitySectionCard } from './IdentitySectionCard';
+import { canUseVoip } from '../../../lib/voipAccess';
+import {
+  contactsWithEmail,
+  contactsWithPhone,
+  openMailToContacts,
+  openSmsUri,
+  openTelFallback,
+  partySelectionKey,
+} from '../../../lib/partyQuickCommunications';
+import {
+  hangupBrowserCall,
+  isCallActive,
+  makeBrowserCall,
+  subscribeCallActive,
+} from '../../../services/twilioVoiceService';
+import { useInstitutionalToast } from '../../../hooks/useInstitutionalToast';
 
 const PARTY_ROLE_SORT: Record<ResidencePartyRole, number> = {
   VENDEUR: 0,
@@ -61,6 +80,13 @@ export function PartiesIntervenantsSection() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<OrganizationContact | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
+  const [callPending, setCallPending] = useState(false);
+  const [callActive, setCallActive] = useState(false);
+  const { showSuccess, showError } = useInstitutionalToast();
+  const voipEnabled = canUseVoip(profile);
+
+  useEffect(() => subscribeCallActive(setCallActive), []);
 
   const ctx: ContactServiceContext | null = useMemo(() => {
     if (!profile?.uid || !profile.orgId) return null;
@@ -210,6 +236,144 @@ export function PartiesIntervenantsSection() {
   const roleLabel = (role: ResidencePartyRole) =>
     isFr ? RESIDENCE_PARTY_ROLE_LABEL_FR[role] : RESIDENCE_PARTY_ROLE_LABEL_EN[role];
 
+  const residenceLabel =
+    residenceDoc?.adresse != null
+      ? String(residenceDoc.adresse)
+      : residenceId ?? '';
+
+  const selectedPartyRows = useMemo(() => {
+    return parties
+      .filter((p) => selectedKeys.has(partySelectionKey(p.contactId, p.role)))
+      .map((p) => {
+        const contact = contactCache[p.contactId];
+        if (!contact) return null;
+        return { party: p, contact };
+      })
+      .filter((r): r is { party: (typeof parties)[0]; contact: OrganizationContact } => r != null);
+  }, [parties, selectedKeys, contactCache]);
+
+  const hasSelection = selectedKeys.size > 0;
+
+  const toggleSelection = (contactId: string, role: ResidencePartyRole) => {
+    const key = partySelectionKey(contactId, role);
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedKeys(new Set());
+
+  const handleCall = async () => {
+    const dialRows = contactsWithPhone(
+      selectedPartyRows.map((r) => ({ contact: r.contact, role: r.party.role }))
+    );
+    if (dialRows.length === 0) {
+      showError(
+        t(
+          'Aucun téléphone sur les contacts sélectionnés.',
+          'No phone number on selected contacts.'
+        )
+      );
+      return;
+    }
+    const target = dialRows[0]!;
+    setCallPending(true);
+    try {
+      if (voipEnabled && profile?.uid) {
+        await makeBrowserCall(
+          target.phone,
+          residenceId ?? null,
+          profile.uid,
+          target.contact.id
+        );
+        const name = buildContactDisplayName(target.contact);
+        showSuccess(
+          dialRows.length > 1
+            ? t(
+                `Appel intégré vers ${name} (premier numéro — ${dialRows.length - 1} autre(s) non appelé(s))`,
+                `Integrated call to ${name} (first number — ${dialRows.length - 1} other(s) skipped)`
+              )
+            : t(`Appel intégré lancé vers ${name}`, `Integrated call started to ${name}`)
+        );
+      } else {
+        openTelFallback(target.phone);
+        const name = buildContactDisplayName(target.contact);
+        showSuccess(
+          dialRows.length > 1
+            ? t(
+                `Appel système vers ${name} (téléphonie intégrée inactive)`,
+                `System call to ${name} (integrated telephony inactive)`
+              )
+            : t(
+                'Ouverture de l’app téléphone (téléphonie intégrée non activée).',
+                'Opening phone app (integrated telephony not enabled).'
+              )
+        );
+      }
+    } catch (e) {
+      showError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCallPending(false);
+    }
+  };
+
+  const handleHangup = () => {
+    if (!isCallActive()) return;
+    hangupBrowserCall();
+    showSuccess(
+      t(
+        'Ligne fermée — vérification de fermeture de ligne de conformité enregistrée.',
+        'Line disconnected — compliance line closure verification recorded.'
+      )
+    );
+  };
+
+  const handleSms = () => {
+    const dialRows = contactsWithPhone(
+      selectedPartyRows.map((r) => ({ contact: r.contact, role: r.party.role }))
+    );
+    if (dialRows.length === 0) {
+      showError(
+        t(
+          'Aucun téléphone sur les contacts sélectionnés.',
+          'No phone number on selected contacts.'
+        )
+      );
+      return;
+    }
+    openSmsUri(dialRows[0]!.phone);
+    if (dialRows.length > 1) {
+      showError(
+        t(
+          'Un SMS à la fois — premier numéro ouvert.',
+          'One SMS at a time — first number opened.'
+        )
+      );
+    }
+  };
+
+  const handleEmail = () => {
+    const emailRows = contactsWithEmail(
+      selectedPartyRows.map((r) => ({ contact: r.contact, role: r.party.role }))
+    );
+    if (emailRows.length === 0) {
+      showError(
+        t(
+          'Aucun courriel sur les contacts sélectionnés.',
+          'No email on selected contacts.'
+        )
+      );
+      return;
+    }
+    openMailToContacts(
+      emailRows.map((r) => ({ contact: r.contact, email: r.email })),
+      residenceLabel
+    );
+  };
+
   return (
     <>
       <IdentitySectionCard
@@ -228,6 +392,69 @@ export function PartiesIntervenantsSection() {
           <p className="mb-3 text-sm font-bold text-red-600">{localError}</p>
         ) : null}
 
+        {hasSelection ? (
+          <div
+            className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border-2 border-[#D4AF37]/40 bg-amber-50/80 px-3 py-3"
+            role="toolbar"
+            aria-label={t('Actions rapides', 'Quick actions')}
+          >
+            <span className="text-[10px] font-black uppercase tracking-widest text-[#142c6a] mr-1">
+              {t(
+                `${selectedKeys.size} sélectionné(s)`,
+                `${selectedKeys.size} selected`
+              )}
+            </span>
+            {voipEnabled && callActive ? (
+              <button
+                type="button"
+                onClick={handleHangup}
+                className="inline-flex items-center gap-1.5 rounded-lg border-2 border-red-700 bg-red-600 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white hover:bg-red-700"
+                aria-label={t('Raccrocher', 'Hang up')}
+              >
+                <PhoneOff className="h-3.5 w-3.5" aria-hidden />
+                {t('Raccrocher', 'Hang up')}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={callPending || (voipEnabled && callActive)}
+                onClick={() => void handleCall()}
+                className="inline-flex items-center gap-1.5 rounded-lg border-2 border-[#142c6a] bg-[#142c6a] px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white hover:bg-[#1e3d8f] disabled:opacity-50"
+              >
+                {callPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                ) : (
+                  <PhoneCall className="h-3.5 w-3.5" aria-hidden />
+                )}
+                {t('Appeler', 'Call')}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleSms}
+              className="inline-flex items-center gap-1.5 rounded-lg border-2 border-[#142c6a]/30 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#142c6a] hover:bg-blue-50"
+            >
+              <MessageSquare className="h-3.5 w-3.5" aria-hidden />
+              {t('Envoyer un SMS', 'Send SMS')}
+            </button>
+            <button
+              type="button"
+              onClick={handleEmail}
+              className="inline-flex items-center gap-1.5 rounded-lg border-2 border-[#142c6a]/30 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#142c6a] hover:bg-blue-50"
+            >
+              <Mail className="h-3.5 w-3.5" aria-hidden />
+              {t('Envoyer un courriel', 'Send email')}
+            </button>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="ml-auto text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-[#142c6a]"
+            >
+              {t('Tout décocher', 'Clear selection')}
+            </button>
+          </div>
+        ) : null}
+
         {/* Intervenants déjà liés — en premier, carte bleue par personne */}
         <div className="space-y-2 mb-5">
           {parties.length === 0 ? (
@@ -238,8 +465,25 @@ export function PartiesIntervenantsSection() {
             parties.map((p) => {
               const contact = contactCache[p.contactId];
               const name = contact ? buildContactDisplayName(contact) : p.contactId;
+              const selKey = partySelectionKey(p.contactId, p.role);
+              const checked = selectedKeys.has(selKey);
               return (
                 <div key={`${p.contactId}-${p.role}`} className={LINKED_PARTY_CARD_CLASS}>
+                  <label
+                    className="flex shrink-0 items-center justify-center cursor-pointer"
+                    title={t('Sélectionner pour actions rapides', 'Select for quick actions')}
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-2 border-[#142c6a]/40 text-[#142c6a] focus:ring-[#D4AF37]/50"
+                      checked={checked}
+                      onChange={() => toggleSelection(p.contactId, p.role)}
+                      aria-label={t(
+                        `Sélectionner ${name}`,
+                        `Select ${name}`
+                      )}
+                    />
+                  </label>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-black text-[#142c6a] truncate">{name}</p>
                     <p className="text-[10px] font-bold uppercase text-primexpert-blue">
