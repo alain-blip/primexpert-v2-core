@@ -28,6 +28,7 @@ import { UpsellModal } from './UpsellModal';
 import {
   assessMandateCompleteness,
   calculatePipelineColumnTotals,
+  filterResidencesBySearchQuery,
   residenceMatchesRegionFilter,
 } from '@primexpert/core/residence';
 import { ListingsPipelineKanban } from './listings/ListingsPipelineKanban';
@@ -247,14 +248,8 @@ export function Listings() {
 
   const inventoryRowsLive = inventoryHook.residences;
   const inventoryRowsDemo = useMemo(() => {
-    const q = debouncedSearch.trim().toLowerCase();
-    if (!q) return DEMO_INVENTORY_ALL;
-    return DEMO_INVENTORY_ALL.filter(
-      (r) =>
-        r.address.toLowerCase().includes(q) ||
-        r.city.toLowerCase().includes(q) ||
-        r.id.toLowerCase().includes(q)
-    );
+    if (!debouncedSearch.trim()) return DEMO_INVENTORY_ALL;
+    return filterResidencesBySearchQuery(DEMO_INVENTORY_ALL, debouncedSearch);
   }, [debouncedSearch]);
 
   const inventoryRowsBase = usingDemo ? inventoryRowsDemo : inventoryRowsLive;
@@ -508,7 +503,10 @@ export function Listings() {
               type="search"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder={t('Recherche (adresse, ville, id)…', 'Search address, city, id…')}
+              placeholder={t(
+                'Rechercher par nom, adresse ou ville (ex. Deschambault)…',
+                'Search by name, address or city (e.g. Deschambault)…'
+              )}
               className="min-w-0 flex-1 bg-transparent text-[10px] font-black uppercase tracking-widest text-primexpert-dark placeholder:text-slate-500 focus:outline-none"
             />
           </div>

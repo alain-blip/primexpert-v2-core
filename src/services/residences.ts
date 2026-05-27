@@ -31,6 +31,10 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { tenantConstraints, TENANT_FIELD, type TenantContext } from '@primexpert/core/tenant';
+import {
+  extractResidenceAddressAndCities,
+  filterResidencesBySearchQuery,
+} from '@primexpert/core/residence';
 import type {
   ResidenceLegalNode,
   ResidenceBuildingNode,
@@ -89,6 +93,8 @@ export interface Residence {
   id: string;
   address: string;
   city: string;
+  ville?: string;
+  municipalite?: string;
   price: number;
   /** Nom commercial affiché sur les cartes d'inscription, si distinct de l'adresse. */
   residenceName?: string;
@@ -313,7 +319,8 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
     data.unites,
     data.capacite
   );
-  const regionRaw = data.region ?? data.ville ?? data.city;
+  const loc = extractResidenceAddressAndCities(data as Record<string, unknown>);
+  const regionRaw = data.region ?? data.regionSociosanitaire ?? loc.ville ?? loc.city;
   const region =
     typeof regionRaw === 'string' && regionRaw.trim().length > 0 ? regionRaw.trim() : undefined;
   const residenceTypeRaw = data.residenceType ?? data.type;
@@ -347,8 +354,10 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
       : undefined;
   return {
     id: doc.id,
-    address: String(data.address ?? data.adresse ?? '—'),
-    city: String(data.city ?? data.ville ?? '—'),
+    address: loc.address,
+    city: loc.city,
+    ville: loc.ville,
+    municipalite: loc.municipalite,
     price,
     residenceName: commercialName,
     nomCommercial: data.nomCommercial ? String(data.nomCommercial) : undefined,
@@ -571,35 +580,35 @@ export async function getResidenceById(
   }
 }
 
+/**
+ * Recherche inventaire — filtre client multi-champs (nom, adresse, ville, raison sociale).
+ * Charge les fiches du tenant + première page catalogue partagé, puis filtre local.
+ */
 export async function searchResidencesByAddressPrefix(
   ctx: TenantContext,
   prefixRaw: string,
   limitN = 80,
   opts: ResidenceQueryOpts = {}
 ): Promise<Residence[]> {
-  const prefix = prefixRaw.trim();
-  if (!prefix) return [];
+  const queryText = prefixRaw.trim();
+  if (!queryText) return [];
 
   const { silo } = opts;
-  const siloWhere = silo && silo !== 'RPA' ? [where('assetNiche', '==', silo)] : [];
-  const constraints = tenantConstraints(ctx);
-  const baseRef = collection(db, 'residences');
-
   try {
-    const end = prefix + '\uf8ff';
-    const qy = query(
-      baseRef,
-      ...constraints.map((c) => where(c.field, c.op, c.value)),
-      ...siloWhere,
-      where('address', '>=', prefix),
-      where('address', '<=', end),
-      orderBy('address'),
-      limit(limitN)
-    );
-    const snapshot = await getDocs(qy);
-    return applySiloFilter(mapSnapshot(snapshot), silo);
+    const [tenantRows, catalogPage] = await Promise.all([
+      listResidences(ctx, opts),
+      fetchSharedCatalogResidencesPage({ pageSize: 150, silo }),
+    ]);
+    const seen = new Set<string>();
+    const merged: Residence[] = [];
+    for (const row of [...tenantRows, ...catalogPage.rows]) {
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      merged.push(row);
+    }
+    return filterResidencesBySearchQuery(merged, queryText).slice(0, limitN);
   } catch (e) {
-    console.warn('[residences.searchResidencesByAddressPrefix] query failed, empty:', e);
+    console.warn('[residences.searchResidencesByAddressPrefix] search failed:', e);
     return [];
   }
 }

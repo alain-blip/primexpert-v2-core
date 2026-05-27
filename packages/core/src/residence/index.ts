@@ -7,3 +7,4 @@ export * from './quebecRegions';
 export * from './pipelineDragRules';
 export * from './legacyResidenceImport';
 export * from './canonicalNodes';
+export * from './residenceSearch';
