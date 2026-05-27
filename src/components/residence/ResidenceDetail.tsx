@@ -22,6 +22,7 @@ import { useLanguage } from '../../lib/i18n';
 import type { Residence, ResidenceStatus } from '../../services/residences';
 import { ResidenceIntelligencePanel } from '../ResidenceIntelligencePanel';
 import { FinancialDataProvider } from '../../context/FinancialDataContext';
+import { FinancialHubDraftProvider } from '../../context/FinancialHubDraftContext';
 import { FinanceHubTab } from './tabs/FinanceHubTab';
 import { IdentiteImmeubleTab } from './tabs/IdentiteImmeubleTab';
 import { DeclarationVendeurTab } from './tabs/DeclarationVendeurTab';
@@ -215,7 +216,11 @@ function ResidenceDetailContent({
           />
         );
       case 'synthese':
-        return <Synthese360Tab residence={residence} residenceId={residence.id} />;
+        return (
+          <FinancialDataProvider residenceId={residence.id}>
+            <Synthese360Tab residence={residence} residenceId={residence.id} />
+          </FinancialDataProvider>
+        );
       case 'identite':
         return <IdentiteImmeubleTab residence={residence} />;
       case 'finances':
@@ -255,6 +260,7 @@ function ResidenceDetailContent({
   );
 
   return (
+    <FinancialHubDraftProvider onOpenFinanceTab={() => setActiveTab('finances')}>
     <div className="space-y-6 min-h-[70vh] font-sans">
       {/* En-tête institutionnel */}
       <div className="rounded-xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
@@ -327,6 +333,7 @@ function ResidenceDetailContent({
         {panelContent}
       </div>
     </div>
+    </FinancialHubDraftProvider>
   );
 }
 

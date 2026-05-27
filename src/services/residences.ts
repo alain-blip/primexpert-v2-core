@@ -202,6 +202,36 @@ export function buildListingPriceFirestorePatch(amount: number): {
   };
 }
 
+/** Patch Firestore — rétribution courtier (taux globaux et parts). */
+export function buildCommissionFirestorePatch(input: {
+  totalePct: number;
+  inscripteurPct: number;
+  collaborateurPct: number;
+}): {
+  commissionRate: number;
+  tauxCommission: number;
+  commissionPct: number;
+  commission: {
+    totalePct: number;
+    inscripteurPct: number;
+    collaborateurPct: number;
+  };
+} {
+  const totalePct = Math.max(0, input.totalePct);
+  const inscripteurPct = Math.max(0, input.inscripteurPct);
+  const collaborateurPct = Math.max(0, input.collaborateurPct);
+  return {
+    commissionRate: totalePct,
+    tauxCommission: totalePct,
+    commissionPct: totalePct,
+    commission: {
+      totalePct,
+      inscripteurPct,
+      collaborateurPct,
+    },
+  };
+}
+
 function mapLegacyNumber(...candidates: unknown[]): number | undefined {
   for (const c of candidates) {
     if (c === undefined || c === null || c === '') continue;

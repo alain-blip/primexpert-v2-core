@@ -6,9 +6,12 @@ import { useAuth } from '../../../lib/auth';
 import { useLanguage } from '../../../lib/i18n';
 import { cn, formatCurrency } from '../../../lib/utils';
 import { getListingPrice } from '@primexpert/core/residence';
+import { readCalculatedResultsDisplayMirror, type CalculatedResultsDisplayMirror } from '@primexpert/core/financial';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
+import { useFinancialData } from '../../../context/FinancialDataContext';
 import type { Residence } from '../../../services/residences';
-import { buildListingPriceFirestorePatch } from '../../../services/residences';
+import { buildCommissionFirestorePatch, buildListingPriceFirestorePatch } from '../../../services/residences';
+import { fmtBuyerPercent } from '../../../services/buyerReportPdfService';
 import { ResidenceActivitiesPanel } from '../activities/ResidenceActivitiesPanel';
 import { ResidenceTasksPanel } from '../tasks/ResidenceTasksPanel';
 
@@ -59,12 +62,6 @@ function pickNestedNumber(source: ResidenceLoose, objectKey: string, keys: strin
   return pickNumberFromRecord(nested as Record<string, unknown>, keys);
 }
 
-function readFinancialsRecord(source: ResidenceLoose): Record<string, unknown> | null {
-  const raw = source.financials;
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-  return raw as Record<string, unknown>;
-}
-
 function pickText(source: ResidenceLoose, keys: string[], fallback = '—'): string {
   for (const key of keys) {
     const value = source[key];
@@ -96,9 +93,26 @@ function formatUnknownDate(value: unknown): string {
   return '—';
 }
 
+function formatTgaFromCalc(ratio: number | null | undefined): string {
+  if (ratio == null || !Number.isFinite(ratio) || ratio <= 0) return '—';
+  return fmtBuyerPercent(ratio);
+}
+
+function formatDscrFromCalc(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value) || value <= 0) return '—';
+  return `${new Intl.NumberFormat('fr-CA', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)}x`;
+}
+
 function formatPctDisplay(value: number): string {
   if (!Number.isFinite(value) || value <= 0) return '—';
   return `${new Intl.NumberFormat('fr-CA', { maximumFractionDigits: 2 }).format(value)} %`;
+}
+
+function formatMirrorCurrency(value: number | null | undefined): string {
+  return value != null && Number.isFinite(value) && value > 0 ? formatCurrency(value) : '—';
 }
 
 function calculateBusinessStatus(residence: ResidenceLoose): BusinessStatus {
@@ -110,162 +124,24 @@ function calculateBusinessStatus(residence: ResidenceLoose): BusinessStatus {
   return 'a_completer';
 }
 
-interface FinancialPerformance {
-  rbe: number;
-  rne: number;
-  depenses: number;
-  rcd: number;
-  mfr: number;
-  tga: number;
-}
-
-const FIN_RBE_KEYS = [
-  'revenus_bruts',
-  'revenusBruts',
-  'revenu_brut_effectif',
-  'revenuBrutEffectif',
-  'revenusBrutsEffectifs',
-  'revenusAnnuelsBruts',
-  'revenusLocatifs',
-  'revenusAnnuels',
-  'totalRevenues',
-  'revenusTotal',
-  'revenus',
-];
-const FIN_DEPENSES_KEYS = [
-  'depenses_exploitation',
-  'depensesExploitation',
-  'depenses_totales',
-  'depensesTotales',
-  'totalDepenses',
-  'depensesOperationnelles',
-  'depensesOperationnellesTotales',
-];
-const FIN_RNE_KEYS = [
-  'rne_declare_baiia',
-  'rneDeclareBaiia',
-  'revenu_net_exploitation',
-  'revenuNetExploitation',
-  'revenuNetOperationnel',
-  'noi',
-  'profitBrut',
-];
-const FIN_RCD_KEYS = ['rcd', 'dscr', 'ratioCouvertureDette'];
-const FIN_MFR_KEYS = [
-  'mfr_equity',
-  'mfrEquity',
-  'mise_de_fonds_requise',
-  'miseDeFondsRequise',
-];
-
-function resolveFinancialPerformance(
-  loose: ResidenceLoose,
-  askingPrice: number
-): FinancialPerformance {
-  const financials = readFinancialsRecord(loose);
-
-  const pickFin = (keys: string[]): number => {
-    if (financials) {
-      const fromFin = pickNumberFromRecord(financials, keys);
-      if (fromFin > 0) return fromFin;
-    }
-    return pickNumber(loose, keys);
-  };
-
-  const rbe = pickFin(FIN_RBE_KEYS);
-  const depenses = pickFin(FIN_DEPENSES_KEYS);
-  let rne = pickFin(FIN_RNE_KEYS);
-  if (rne <= 0 && rbe > 0 && depenses > 0) {
-    rne = Math.max(0, rbe - depenses);
-  }
-  const rcd = pickFin(FIN_RCD_KEYS);
-  const mfr = pickFin(FIN_MFR_KEYS);
-
-  const tga = rne > 0 && askingPrice > 0 ? (rne / askingPrice) * 100 : 0;
-
-  return { rbe, rne, depenses, rcd, mfr, tga };
-}
-
-interface CommissionBreakdown {
+interface CommissionDraft {
   totale: number;
   inscripteur: number;
   collaborateur: number;
-  source: 'mandat' | 'pa' | 'mixte' | 'fallback' | 'none';
 }
 
-function resolveCommissionBreakdown(
-  loose: ResidenceLoose,
-  fallbackTotale: number
-): CommissionBreakdown {
-  const purchaseOffer = loose.purchaseOffer;
-  const offerRecord =
-    purchaseOffer && typeof purchaseOffer === 'object' && !Array.isArray(purchaseOffer)
-      ? (purchaseOffer as Record<string, unknown>)
-      : null;
+function resolveCommissionDraft(loose: ResidenceLoose): CommissionDraft {
+  const totale =
+    pickNestedNumber(loose, 'commission', ['totalePct', 'totale']) ||
+    pickNumber(loose, ['commissionRate', 'tauxCommission', 'commissionPct', 'pourcentageCommissionTotale']);
+  const inscripteur =
+    pickNestedNumber(loose, 'commission', ['inscripteurPct', 'inscripteur']) ||
+    pickNumber(loose, ['commissionInscripteurPct', 'pourcentageCommissionInscripteur', 'tauxInscripteur']);
+  const collaborateur =
+    pickNestedNumber(loose, 'commission', ['collaborateurPct', 'collaborateur']) ||
+    pickNumber(loose, ['commissionCollaborateurPct', 'pourcentageCommissionCollaborateur', 'tauxCollaborateur']);
 
-  const paTotale = offerRecord
-    ? pickNumberFromRecord(offerRecord, [
-        'pourcentageRetribution',
-        'pourcentageCommissionTotale',
-        'commissionTotalePct',
-      ])
-    : 0;
-  const paInscripteur = offerRecord
-    ? pickNumberFromRecord(offerRecord, [
-        'pourcentageCommissionInscripteur',
-        'commissionInscripteurPct',
-      ])
-    : 0;
-  const paCollaborateur = offerRecord
-    ? pickNumberFromRecord(offerRecord, [
-        'pourcentageCommissionCollaborateur',
-        'commissionCollaborateurPct',
-      ])
-    : 0;
-
-  const mandatTotale =
-    pickNumber(loose, [
-      'commissionRate',
-      'tauxCommission',
-      'commissionPct',
-      'pourcentageCommissionTotale',
-    ]) || pickNestedNumber(loose, 'commission', ['totalePct', 'totale']);
-  const mandatInscripteur =
-    pickNumber(loose, [
-      'commissionInscripteurPct',
-      'tauxInscripteur',
-      'pourcentageCommissionInscripteur',
-    ]) || pickNestedNumber(loose, 'commission', ['inscripteurPct', 'inscripteur']);
-  const mandatCollaborateur =
-    pickNumber(loose, [
-      'commissionCollaborateurPct',
-      'tauxCollaborateur',
-      'pourcentageCommissionCollaborateur',
-    ]) || pickNestedNumber(loose, 'commission', ['collaborateurPct', 'collaborateur']);
-
-  const totale = paTotale > 0 ? paTotale : mandatTotale > 0 ? mandatTotale : fallbackTotale;
-  let inscripteur = paInscripteur > 0 ? paInscripteur : mandatInscripteur;
-  let collaborateur = paCollaborateur > 0 ? paCollaborateur : mandatCollaborateur;
-
-  if (totale > 0 && inscripteur <= 0 && collaborateur <= 0) {
-    const half = totale / 2;
-    inscripteur = half;
-    collaborateur = half;
-  } else if (totale > 0 && inscripteur > 0 && collaborateur <= 0) {
-    collaborateur = Math.max(0, totale - inscripteur);
-  } else if (totale > 0 && collaborateur > 0 && inscripteur <= 0) {
-    inscripteur = Math.max(0, totale - collaborateur);
-  }
-
-  const paHas = paTotale > 0 || paInscripteur > 0 || paCollaborateur > 0;
-  const mandatHas = mandatTotale > 0 || mandatInscripteur > 0 || mandatCollaborateur > 0;
-  let source: CommissionBreakdown['source'] = 'none';
-  if (paHas && mandatHas) source = 'mixte';
-  else if (paHas) source = 'pa';
-  else if (mandatHas) source = 'mandat';
-  else if (totale > 0) source = 'fallback';
-
-  return { totale, inscripteur, collaborateur, source };
+  return { totale, inscripteur, collaborateur };
 }
 
 interface MatchmakerCandidate {
@@ -441,16 +317,8 @@ function resolveRetribution(residence: ResidenceLoose): {
   commissionRate: number;
   potentialRevenue: number;
 } {
-  const commissionRate =
-    pickNumber(residence, [
-      'commissionRate',
-      'tauxCommission',
-      'commissionPct',
-      'commission.totalePct',
-      'commission.inscripteurPct',
-    ]) ||
-    pickNestedNumber(residence, 'commission', ['totalePct', 'inscripteurPct']);
-  const prixDemande = pickNumber(residence, ['askingPrice', 'prixDemande', 'price', 'prixAnnonce']);
+  const commission = resolveCommissionDraft(residence);
+  const prixDemande = getListingPrice(residence);
   const extractedRevenue = pickNumber(residence, [
     'potentialRevenue',
     'revenuPotentiel',
@@ -459,10 +327,10 @@ function resolveRetribution(residence: ResidenceLoose): {
     'revenusPotentiels',
   ]);
   const potentialRevenue =
-    commissionRate > 0 && prixDemande > 0
-      ? prixDemande * (commissionRate / 100)
+    commission.totale > 0 && prixDemande > 0
+      ? prixDemande * (commission.totale / 100)
       : extractedRevenue;
-  return { commissionRate, potentialRevenue };
+  return { commissionRate: commission.totale, potentialRevenue };
 }
 
 function BusinessStatusBadge({ status }: { status: BusinessStatus }) {
@@ -645,28 +513,93 @@ function KpiTile({
   );
 }
 
-function FinancialPerformancePanel({
-  perf,
-  commission,
+function CommissionPctEditor({
+  label,
+  value,
+  onSave,
+  saving,
+  t,
 }: {
-  perf: FinancialPerformance;
-  commission: CommissionBreakdown;
+  label: string;
+  value: number;
+  onSave: (pct: number) => Promise<void>;
+  saving: boolean;
+  t: (fr: string, en: string) => string;
 }) {
-  const fmtCurrency = (v: number) => (v > 0 ? formatCurrency(v) : '—');
-  const fmtMultiple = (v: number) =>
-    v > 0
-      ? `${new Intl.NumberFormat('fr-CA', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }).format(v)}x`
-      : '—';
-  const sourceLabel: Record<CommissionBreakdown['source'], string> = {
-    pa: 'Source : promesse d’achat (PA)',
-    mandat: 'Source : contrat de courtage (mandat)',
-    mixte: 'Source : promesse d’achat + mandat',
-    fallback: 'Source : taux courtier (répartition estimée 50/50)',
-    none: 'Source : à compléter',
-  };
+  const [draft, setDraft] = useState(value > 0 ? String(value) : '');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDraft(value > 0 ? String(value) : '');
+  }, [value]);
+
+  const commit = useCallback(async () => {
+    const parsed = parseSafeNumber(draft);
+    if (parsed < 0 || parsed > 100) {
+      setError(t('Entrez un pourcentage entre 0 et 100.', 'Enter a percentage between 0 and 100.'));
+      return;
+    }
+    setError(null);
+    try {
+      await onSave(parsed);
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : String(e);
+      setError(t(`Échec (${detail})`, `Failed (${detail})`));
+    }
+  }, [draft, onSave, t]);
+
+  return (
+    <div
+      className={cn(
+        'rounded-xl border-2 px-4 py-3 shadow-sm',
+        'border-amber-500 bg-amber-50'
+      )}
+    >
+      <p className="text-[11px] font-black uppercase tracking-wider text-[#142c6a]/75">{label}</p>
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          type="number"
+          min={0}
+          max={100}
+          step={0.01}
+          inputMode="decimal"
+          disabled={saving}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => void commit()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void commit();
+          }}
+          className="w-full rounded-lg border-2 border-[#142c6a]/25 bg-white px-3 py-2 text-[18px] font-black tabular-nums text-black outline-none focus:border-[#142c6a]"
+          aria-label={label}
+        />
+        <span className="text-[16px] font-black text-[#142c6a]">%</span>
+      </div>
+      {error ? <p className="mt-1 text-[11px] font-bold text-red-700">{error}</p> : null}
+    </div>
+  );
+}
+
+function FinancialPerformancePanel({
+  mirror,
+  financialLoading,
+  financialError,
+  commission,
+  onCommissionSave,
+  savingCommission,
+  t,
+}: {
+  mirror: CalculatedResultsDisplayMirror;
+  financialLoading: boolean;
+  financialError: Error | null;
+  commission: CommissionDraft;
+  onCommissionSave: (next: CommissionDraft) => Promise<void>;
+  savingCommission: boolean;
+  t: (fr: string, en: string) => string;
+}) {
+  const loadingLabel = t('Chargement…', 'Loading…');
+  const mirrorValue = (formatted: string) =>
+    financialLoading ? loadingLabel : financialError ? '—' : formatted;
 
   return (
     <section className="my-4 rounded-xl border-2 border-[#142c6a] bg-[#f1f5f9] p-5 shadow-lg">
@@ -675,37 +608,76 @@ function FinancialPerformancePanel({
           Performance financière & rétribution
         </h4>
         <span className="text-[11px] font-bold text-[#142c6a]/70">
-          {sourceLabel[commission.source]}
+          {t(
+            'Finances : financial/dataV2.calculatedResults · Rétribution : saisie courtier',
+            'Finances: financial/dataV2.calculatedResults · Retribution: broker entry'
+          )}
         </span>
       </header>
 
+      {!mirror.hasCalculatedResults && !financialLoading ? (
+        <p className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[12px] font-bold text-amber-950">
+          {t(
+            'États financiers V2 requis — complétez l’onglet Finances pour alimenter cette section.',
+            'V2 financial statements required — complete the Finance tab to populate this section.'
+          )}
+        </p>
+      ) : null}
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiTile label="REVENU BRUT EFFECTIF (RBE)" value={fmtCurrency(perf.rbe)} />
-        <KpiTile label="REVENU NET D'EXPLOITATION (RNE / NOI)" value={fmtCurrency(perf.rne)} />
-        <KpiTile label="TAUX DE CAPITALISATION (TGA)" value={formatPctDisplay(perf.tga)} />
-        <KpiTile label="MISE DE FONDS REQUISE (MFR)" value={fmtCurrency(perf.mfr)} />
+        <KpiTile label="REVENU BRUT EFFECTIF (RBE)" value={mirrorValue(formatMirrorCurrency(mirror.rbe))} />
+        <KpiTile
+          label="REVENU NET D'EXPLOITATION (RNE / NOI)"
+          value={mirrorValue(formatMirrorCurrency(mirror.rne))}
+        />
+        <KpiTile
+          label="TAUX DE CAPITALISATION (TGA)"
+          value={mirrorValue(formatTgaFromCalc(mirror.tgaRatio))}
+        />
+        <KpiTile
+          label="MISE DE FONDS REQUISE (MFR)"
+          value={mirrorValue(formatMirrorCurrency(mirror.miseDeFonds))}
+        />
       </div>
 
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <KpiTile label="DÉPENSES D'EXPLOITATION" value={fmtCurrency(perf.depenses)} />
-        <KpiTile label="RATIO COUVERTURE DETTE (RCD / DSCR)" value={fmtMultiple(perf.rcd)} />
+        <KpiTile
+          label="DÉPENSES D'EXPLOITATION"
+          value={mirrorValue(formatMirrorCurrency(mirror.depensesExploitation))}
+        />
+        <KpiTile
+          label="RATIO COUVERTURE DETTE (RCD / DSCR)"
+          value={mirrorValue(formatDscrFromCalc(mirror.ratioCouvertureDette))}
+        />
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-3 border-t-2 border-[#142c6a]/15 pt-3 sm:grid-cols-3">
-        <KpiTile
+        <CommissionPctEditor
           label="TAUX GLOBAL DE COMMISSION"
-          value={formatPctDisplay(commission.totale)}
-          accent="gold"
+          value={commission.totale}
+          saving={savingCommission}
+          t={t}
+          onSave={async (totale) =>
+            onCommissionSave({ ...commission, totale })
+          }
         />
-        <KpiTile
+        <CommissionPctEditor
           label="PART COURTIER INSCRIPTEUR"
-          value={formatPctDisplay(commission.inscripteur)}
-          accent="gold"
+          value={commission.inscripteur}
+          saving={savingCommission}
+          t={t}
+          onSave={async (inscripteur) =>
+            onCommissionSave({ ...commission, inscripteur })
+          }
         />
-        <KpiTile
+        <CommissionPctEditor
           label="PART COURTIER COLLABORATEUR"
-          value={formatPctDisplay(commission.collaborateur)}
-          accent="gold"
+          value={commission.collaborateur}
+          saving={savingCommission}
+          t={t}
+          onSave={async (collaborateur) =>
+            onCommissionSave({ ...commission, collaborateur })
+          }
         />
       </div>
     </section>
@@ -850,6 +822,7 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
   const { t, language } = useLanguage();
   const { user, profile } = useAuth();
   const { residenceDoc, updateResidence, saving: savingResidence } = useResidenceDocument();
+  const { financialData, loading: financialLoading, error: financialError } = useFinancialData();
   const mergedResidence = useMemo(
     () => ({ ...residence, ...(residenceDoc ?? {}) }) as ResidenceLoose,
     [residence, residenceDoc]
@@ -859,14 +832,11 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
   const retribution = useMemo(() => resolveRetribution(loose), [loose]);
   const residenceName = pickText(loose, ['residenceName', 'commercialName', 'nomCommercial', 'nom_commercial', 'name'], 'RPA À NOMMER');
   const askingPrice = getListingPrice(loose);
-  const financialPerformance = useMemo(
-    () => resolveFinancialPerformance(loose, askingPrice),
-    [loose, askingPrice]
+  const financialMirror = useMemo(
+    () => readCalculatedResultsDisplayMirror(financialData),
+    [financialData]
   );
-  const commissionBreakdown = useMemo(
-    () => resolveCommissionBreakdown(loose, retribution.commissionRate),
-    [loose, retribution.commissionRate]
-  );
+  const commissionDraft = useMemo(() => resolveCommissionDraft(loose), [loose]);
   const [notes, setNotes] = useState<BrokerNote[]>([]);
   const [newNote, setNewNote] = useState('');
   const [notesPage, setNotesPage] = useState(1);
@@ -901,6 +871,17 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
       if (!residenceId) throw new Error('residenceId manquant');
       await updateResidence({
         ...buildListingPriceFirestorePatch(amount),
+        updatedAt: serverTimestamp(),
+      });
+    },
+    [residenceId, updateResidence]
+  );
+
+  const saveCommission = useCallback(
+    async (next: CommissionDraft) => {
+      if (!residenceId) throw new Error('residenceId manquant');
+      await updateResidence({
+        ...buildCommissionFirestorePatch(next),
         updatedAt: serverTimestamp(),
       });
     },
@@ -975,8 +956,12 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
   }, [editingNoteId, editingNoteText, residenceId]);
 
   const residenceRegion = useMemo(() => getResidenceRegion(loose), [loose]);
-  const matchmakerMfr = financialPerformance.mfr;
-  const matchmakerTga = financialPerformance.tga;
+  const matchmakerMfr = financialMirror.miseDeFonds ?? 0;
+  const matchmakerTgaPct = (() => {
+    const ratio = financialMirror.tgaRatio;
+    if (ratio == null || !Number.isFinite(ratio) || ratio <= 0) return 0;
+    return ratio > 1 && ratio <= 100 ? ratio : ratio * 100;
+  })();
 
   useEffect(() => {
     if (!user?.uid) {
@@ -993,7 +978,7 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
           const data = contactDoc.data() as Record<string, unknown>;
           if (!isBuyerLike(data)) return;
           rows.push(
-            resolveCandidate(contactDoc.id, data, residenceRegion, matchmakerMfr, matchmakerTga)
+            resolveCandidate(contactDoc.id, data, residenceRegion, matchmakerMfr, matchmakerTgaPct)
           );
         });
         rows.sort((a, b) => b.score - a.score);
@@ -1006,7 +991,7 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
       }
     );
     return () => unsub();
-  }, [user?.uid, residenceRegion, matchmakerMfr, matchmakerTga]);
+  }, [user?.uid, residenceRegion, matchmakerMfr, matchmakerTgaPct]);
 
   const safePage = Math.max(1, parseInt(String(notesPage), 10) || 1);
   const visibleNotes = notes.slice((safePage - 1) * notesPerPage, safePage * notesPerPage);
@@ -1057,8 +1042,13 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
           </div>
           <FinancialSafetyBlock {...retribution} />
           <FinancialPerformancePanel
-            perf={financialPerformance}
-            commission={commissionBreakdown}
+            mirror={financialMirror}
+            financialLoading={financialLoading}
+            financialError={financialError}
+            commission={commissionDraft}
+            onCommissionSave={saveCommission}
+            savingCommission={savingResidence}
+            t={t}
           />
         </div>
       </PaperSection>

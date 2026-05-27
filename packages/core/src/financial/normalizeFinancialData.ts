@@ -92,6 +92,12 @@ export interface FinancialDataV2Doc {
   calculatedResults?: FinancialCalc | null;
   baseData?: FinancialBaseData | null;
   derivedData?: Record<string, unknown> | null;
+  lastUpdated?: unknown;
+  lastInjection?: {
+    source?: string;
+    documentId?: string;
+    atMillis?: number;
+  };
 }
 
 export interface ResidenceFinancialHints {
@@ -590,5 +596,48 @@ export function computeBilanExecutifKpis(
     depensesDeclarees,
     source,
     hasFinancials,
+  };
+}
+
+/** Miroir lecture seule — champs affichés depuis calculatedResults (aucun recalcul UI). */
+export interface CalculatedResultsDisplayMirror {
+  rbe: number | null;
+  rne: number | null;
+  tgaRatio: number | null;
+  miseDeFonds: number | null;
+  depensesExploitation: number | null;
+  ratioCouvertureDette: number | null;
+  hasCalculatedResults: boolean;
+}
+
+function mirrorFinite(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/** SSOT Bilan exécutif 360° — lecture directe de financial/dataV2.calculatedResults. */
+export function readCalculatedResultsDisplayMirror(
+  financialData: FinancialDataV2Doc | null | undefined
+): CalculatedResultsDisplayMirror {
+  const calc = financialData?.calculatedResults;
+  if (!calc || typeof calc !== 'object') {
+    return {
+      rbe: null,
+      rne: null,
+      tgaRatio: null,
+      miseDeFonds: null,
+      depensesExploitation: null,
+      ratioCouvertureDette: null,
+      hasCalculatedResults: false,
+    };
+  }
+
+  return {
+    rbe: mirrorFinite(calc.revenuBrutEffectif) ?? mirrorFinite(calc.revenusAnnuels),
+    rne: mirrorFinite(calc.revenuNetExploitation),
+    tgaRatio: mirrorFinite(calc.tauxCapitalisation),
+    miseDeFonds: mirrorFinite(calc.miseDeFondsRequise),
+    depensesExploitation: mirrorFinite(calc.depensesTotales),
+    ratioCouvertureDette: mirrorFinite(calc.ratioCouvertureDette),
+    hasCalculatedResults: true,
   };
 }
