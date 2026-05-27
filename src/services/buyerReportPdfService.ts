@@ -161,7 +161,8 @@ function toFormattedGridRow(description: string, declare: number, normalise: num
 /**
  * Firestore V2 peut stocker `depenses` / revenus à la racine du doc (legacy) plutôt que sous `baseData`.
  */
-function coalesceFinancialDataForGrids(
+/** Fusionne champs legacy racine → baseData (grilles PDF / financabilité). */
+export function coalesceFinancialDataForGrids(
   financialData: FinancialDataV2Doc | null | undefined
 ): FinancialDataV2Doc | null | undefined {
   if (!financialData) return financialData;

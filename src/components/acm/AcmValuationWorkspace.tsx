@@ -44,7 +44,11 @@ import {
   type MarketGpsTransaction,
 } from '@primexpert/core/market';
 import { AcmHistoricalTrendsSection } from './AcmHistoricalTrendsSection';
-import type { CertifiableReportBrokerFooter } from '@primexpert/core/financial';
+import type {
+  CertifiableReportBrokerFooter,
+  FinancialDataV2Doc,
+} from '@primexpert/core/financial';
+import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
 
 const TGA_INPUT_CLASS =
@@ -107,6 +111,8 @@ export interface AcmValuationPdfExportContext {
   residenceAddress?: string;
   broker: CertifiableReportBrokerFooter;
   locale: 'fr' | 'en';
+  financialData: FinancialDataV2Doc;
+  residence: Residence;
 }
 
 export interface AcmValuationWorkspaceProps {
@@ -363,6 +369,8 @@ export function AcmValuationWorkspace({
         locale: pdfExport.locale,
         residenceId: pdfExport.residenceId,
         residenceAddress: pdfExport.residenceAddress,
+        financialData: pdfExport.financialData,
+        residence: pdfExport.residence,
         effectiveCapRate,
         recommendedPrice,
         sellerNarrative: narrative?.signedReading ?? null,

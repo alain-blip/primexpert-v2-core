@@ -55,14 +55,17 @@ export function ResidenceAcmValuationPanel({
   }, [residence, residenceDoc, financialData, marketTransactions]);
 
   const pdfExport = useMemo(() => {
+    if (!financialData) return undefined;
     const addressParts = [residence.address, residence.city].filter(Boolean);
     return {
       residenceId: residence.id,
       residenceAddress: addressParts.length ? addressParts.join(', ') : undefined,
       broker: buildBrokerFooterFromProfile(profile),
       locale: (language === 'fr' ? 'fr' : 'en') as const,
+      financialData: financialData as FinancialDataV2Doc,
+      residence,
     };
-  }, [residence.id, residence.address, residence.city, profile, language]);
+  }, [residence, financialData, profile, language]);
 
   if (loading) {
     return (
