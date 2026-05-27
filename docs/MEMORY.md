@@ -464,4 +464,67 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 ---
 
-*Journal mis à jour : 2026-05-20 (fin de journée) — Accès Vendeur, Maillon 1 contacts, **Analyse de mise en marché (ACM)** ancrée SSOT (`e1a900c`) ; voir [`DATA_MAPPING_LEGACY_V2.md`](./DATA_MAPPING_LEGACY_V2.md).*
+## Chantier VOIP — Phase 1 (2026-05-26)
+
+**Statut produit :** UI « Parties et intervenants » validée visuellement par le PO.  
+**Règle KISS active :** ne pas démarrer `ActiveCallBar` tant que Twilio réel n'est pas configuré et testé.
+
+### Modèle Firestore requis (admin)
+
+Chemin canonique : `users/{uid}.telephony`
+
+```json
+{
+  "telephony": {
+    "twilioNumber": "+15145551234",
+    "agentCellNumber": "+15145559876"
+  }
+}
+```
+
+- `telephony.twilioNumber` (**obligatoire**) : numéro Twilio E.164 assigné par l'admin.
+- `telephony.agentCellNumber` (optionnel) : cellulaire de secours / callback.
+- Garde SSOT : `canUseVoip(user)` retourne `true` **uniquement** si `telephony.twilioNumber` est présent.
+
+### Architecture Functions VOIP (phase 1)
+
+| Fonction | Fichier | Rôle | Sécurité |
+|----------|---------|------|----------|
+| `getTwilioToken` | `functions/src/telephony/getTwilioToken.ts` | Génère le JWT Twilio Voice SDK (token navigateur). | Vérifie Firebase ID token + refuse `403 VOIP_NOT_PROVISIONED` si `telephony.twilioNumber` absent. |
+| `twilioVoiceResponse` | `functions/src/telephony/twilioVoiceResponse.ts` | Retourne le TwiML sortant (`<Dial>`). | Caller ID = `users/{brokerId}.telephony.twilioNumber`, sinon fallback secret env. |
+
+Exports : `functions/src/index.ts`  
+Vendoring core : `functions/src/telephony/_vendored/` (sync via `functions/scripts/sync-core-telephony.cjs`).
+
+### Secrets Twilio requis (Firebase Functions v2)
+
+- `TWILIO_ACCOUNT_SID` (prioritaire ; repli `TWILIO_SID` legacy)
+- `TWILIO_API_KEY`
+- `TWILIO_API_SECRET`
+- `TWILIO_TWIML_APP_SID`
+- `TWILIO_VOICE_FROM` (**ou** `TWILIO_PHONE_NUMBER` comme fallback)
+
+### Front-end VOIP (sans nouvelle barre globale)
+
+- `src/components/residence/identity/PartiesIntervenantsSection.tsx`
+  - cases à cocher par contact lié
+  - barre d'actions rapides conditionnelle (Appeler / SMS / Courriel)
+  - bouton **Appeler** -> `makeBrowserCall()` si `canUseVoip(profile)`, sinon fallback `tel:`
+- Service Twilio navigateur : `src/services/twilioVoiceService.ts` (import dynamique `@twilio/voice-sdk`)
+
+### Déploiement ciblé Functions VOIP
+
+Secrets liés via `defineSecret` (`functions/src/telephony/twilioVoipRuntime.ts`) — rechargement des dernières versions Secret Manager à chaque déploiement.
+
+```bash
+chmod +x scripts/deploy-voip-functions.sh
+./scripts/deploy-voip-functions.sh
+# ou :
+FUNCTIONS_DISCOVERY_TIMEOUT=120 firebase deploy --only functions:getTwilioToken,functions:twilioVoiceResponse
+```
+
+Journal Cloud : `verificationClesConforme: true` (vérification de conformité des clés — pas le terme « audit »). Si `false` → corriger `TWILIO_API_SECRET` (secret SK…) et `TWILIO_TWIML_APP_SID` (`AP…`), puis redéployer.
+
+---
+
+*Journal mis à jour : 2026-05-26 — Fondation VOIP phase 1 (modèle `telephony`, garde `canUseVoip`, `getTwilioToken`, `twilioVoiceResponse`, actions rapides « Parties et intervenants »).*

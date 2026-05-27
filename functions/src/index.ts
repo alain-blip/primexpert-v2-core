@@ -722,3 +722,12 @@ export const sendDocumentSelection = onCall({ invoker: 'public' }, async (reques
 
 /** Benchmark portefeuille — médianes dépense/RBE (IQR, dataV2). */
 export { getGlobalFinancialBenchmark } from './benchmark/getGlobalFinancialBenchmark';
+
+/**
+ * VOIP — JWT Twilio Voice SDK (garde `telephony.twilioNumber` obligatoire).
+ * Secrets liés via `defineSecret` : TWILIO_API_KEY, TWILIO_API_SECRET,
+ * TWILIO_TWIML_APP_SID, TWILIO_SID → `telephony/twilioVoipRuntime.ts`.
+ */
+export { getTwilioToken } from './telephony/getTwilioToken';
+/** VOIP — TwiML sortant (Caller ID = telephony du courtier). */
+export { twilioVoiceResponse } from './telephony/twilioVoiceResponse';
