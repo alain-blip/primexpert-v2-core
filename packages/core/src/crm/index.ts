@@ -1,4 +1,5 @@
 export * from './contactTypes';
+export * from './contactSearch';
 export * from './contactUiHelpers';
 export * from './coBuyers';
 export * from './coSellers';

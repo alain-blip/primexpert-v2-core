@@ -191,6 +191,8 @@ export interface OrganizationContact {
   /** LCI — nom complet ou composé via prenom + nom (seul champ obligatoire à la création) */
   nom: string;
   prenom?: string;
+  /** Raison sociale / groupe d'investissement (recherche CRM). */
+  entreprise?: string;
   /** Optionnel — saisie rapide prospect sans adresse complète */
   adresse?: ContactAddress;
   /** ISO 8601 date (yyyy-mm-dd) — optionnel */

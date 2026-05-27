@@ -236,8 +236,8 @@ export function ContactsListPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t(
-                'Rechercher nom, courriel ou téléphone…',
-                'Search name, email or phone…'
+                'Rechercher un acheteur par nom, entreprise, courriel…',
+                'Search a buyer by name, company, email…'
               )}
               className="w-full rounded-lg border-2 border-primexpert-dark/25 bg-primexpert-light py-2.5 pl-10 pr-10 text-sm font-semibold text-primexpert-dark placeholder:text-primexpert-dark/45 focus:border-primexpert-dark focus:outline-none focus:ring-2 focus:ring-primexpert-gold/30"
             />

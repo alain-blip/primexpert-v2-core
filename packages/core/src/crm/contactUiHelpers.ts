@@ -177,29 +177,11 @@ export function contactInitials(contact: OrganizationContact): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-/** Chaîne de recherche normalisée (nom, prénom, courriel, téléphone). */
-export function buildContactSearchHaystack(contact: OrganizationContact): string {
-  return [
-    contact.nom,
-    contact.prenom,
-    contact.email,
-    contact.telephone,
-    buildContactDisplayName(contact),
-  ]
-    .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
-    .join(' ')
-    .toLowerCase();
-}
-
-/** Filtre texte client — insensible à la casse, sans requête Firestore. */
-export function filterContactsBySearchQuery(
-  rows: OrganizationContact[],
-  searchQuery: string
-): OrganizationContact[] {
-  const q = searchQuery.trim().toLowerCase();
-  if (!q) return rows;
-  return rows.filter((c) => buildContactSearchHaystack(c).includes(q));
-}
+export {
+  buildContactSearchHaystack,
+  contactMatchesSearchQuery,
+  filterContactsBySearchQuery,
+} from './contactSearch';
 
 /** Filtre par rôle relationnel (`relationRoles[]`). */
 export function filterContactsByRelationRole(

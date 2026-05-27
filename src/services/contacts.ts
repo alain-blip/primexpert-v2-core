@@ -179,7 +179,29 @@ function contactsCollection(orgId: string) {
   return collection(db, 'organizations', orgId, 'contacts');
 }
 
+function pickContactString(...values: unknown[]): string | undefined {
+  for (const v of values) {
+    if (typeof v === 'string') {
+      const trimmed = v.trim();
+      if (trimmed) return trimmed;
+    }
+  }
+  return undefined;
+}
+
 function mapContactDoc(orgId: string, id: string, data: DocumentData): OrganizationContact {
+  const prenom = pickContactString(data.prenom, data.firstName);
+  const nom =
+    pickContactString(data.nom, data.lastName, data.nomComplet, data.displayName) ?? '';
+  const entreprise = pickContactString(
+    data.entreprise,
+    data.company,
+    data.organisation,
+    data.companyName,
+    data.nomCompagnie,
+    data.societe
+  );
+
   return {
     id,
     orgId,
@@ -188,8 +210,9 @@ function mapContactDoc(orgId: string, id: string, data: DocumentData): Organizat
     assetNiche: data.assetNiche as ContactAssetNiche | undefined,
     visibility: (data.visibility as ContactVisibility) ?? 'PRIVATE',
     leadSource: (data.leadSource as ContactLeadSource) ?? 'BROKER_GENERATED',
-    nom: String(data.nom ?? ''),
-    prenom: data.prenom ? String(data.prenom) : undefined,
+    nom,
+    prenom,
+    ...(entreprise ? { entreprise } : {}),
     ...(data.adresse ? { adresse: data.adresse as OrganizationContact['adresse'] } : {}),
     ...(data.dateNaissance != null && String(data.dateNaissance).trim()
       ? { dateNaissance: String(data.dateNaissance).trim() }

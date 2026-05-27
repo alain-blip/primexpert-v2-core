@@ -167,7 +167,10 @@ export function CoSellersSection({
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('Rechercher un contact…', 'Search a contact…')}
+            placeholder={t(
+              'Rechercher par nom, entreprise, courriel…',
+              'Search by name, company, email…'
+            )}
             className="w-full rounded-lg border-2 border-primexpert-dark/25 bg-white py-2 pl-10 pr-10 text-sm font-semibold text-primexpert-dark"
           />
           {pending ? (
