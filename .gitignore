@@ -30,6 +30,7 @@ out/
 !.env.example
 !.env.production
 *.env.local
+scripts/twilio-secrets.local.env
 
 # --- Firebase secrets & cache deploy ---
 .firebase/

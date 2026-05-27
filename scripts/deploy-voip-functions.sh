@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Déploiement VOIP — aligne Secret Manager (dernières versions) + getTwilioToken.
-# Usage : ./scripts/deploy-voip-functions.sh
-# Prérequis : firebase CLI connecté au projet primexpert-app-v2.
+# Déploiement VOIP — recharge les dernières versions Secret Manager + Functions.
+# Appelé par voip-mise-a-jour-infrastructure.sh (ne pas utiliser secrets:set manuel).
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -9,9 +8,11 @@ PROJECT="${FIREBASE_PROJECT:-primexpert-app-v2}"
 
 cd "$ROOT"
 
-echo "=== Projet Firebase : $PROJECT ==="
+bold() { printf '\033[1m%s\033[0m\n' "$*"; }
+
+bold "=== Projet Firebase : $PROJECT ==="
 echo ""
-echo "=== Versions actives Secret Manager (Twilio) ==="
+bold "=== Journal de conformité — versions Secret Manager (Twilio) ==="
 for NAME in TWILIO_SID TWILIO_API_KEY TWILIO_API_SECRET TWILIO_TWIML_APP_SID; do
   echo "--- $NAME ---"
   gcloud secrets versions list "$NAME" \
@@ -22,11 +23,14 @@ for NAME in TWILIO_SID TWILIO_API_KEY TWILIO_API_SECRET TWILIO_TWIML_APP_SID; do
 done
 
 echo ""
-echo "=== Déploiement Functions (recharge les secrets liés) ==="
+bold "=== Déploiement Functions (liaison defineSecret — dernières versions) ==="
 export FUNCTIONS_DISCOVERY_TIMEOUT=120
 firebase deploy --only functions:getTwilioToken,functions:twilioVoiceResponse --project "$PROJECT"
 
 echo ""
-echo "=== Vérification post-déploiement (journal de conformité Cloud Logging) ==="
-echo "Rechercher : verificationClesConforme: true"
-echo "  gcloud logging read 'resource.labels.service_name=\"gettwiliotoken\" AND textPayload=~\"verificationClesConforme\"' --project=$PROJECT --limit=3 --freshness=10m"
+bold "=== Journal de conformité — vérification post-déploiement ==="
+echo "Après un appel test, confirmer dans Cloud Logging :"
+echo "  verificationClesConforme: true"
+echo ""
+echo "Commande :"
+echo "  gcloud logging read 'resource.labels.service_name=\"gettwiliotoken\" AND textPayload=~\"verificationClesConforme\"' --project=$PROJECT --limit=3 --freshness=15m --format='value(textPayload)'"

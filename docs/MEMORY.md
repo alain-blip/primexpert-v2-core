@@ -514,16 +514,17 @@ Vendoring core : `functions/src/telephony/_vendored/` (sync via `functions/scrip
 
 ### Déploiement ciblé Functions VOIP
 
-Secrets liés via `defineSecret` (`functions/src/telephony/twilioVoipRuntime.ts`) — rechargement des dernières versions Secret Manager à chaque déploiement.
+**Directive PO (sans `secrets:set` interactif) :** [`docs/VOIP_MISE_A_JOUR_PO.md`](./VOIP_MISE_A_JOUR_PO.md)
 
 ```bash
-chmod +x scripts/deploy-voip-functions.sh
-./scripts/deploy-voip-functions.sh
-# ou :
-FUNCTIONS_DISCOVERY_TIMEOUT=120 firebase deploy --only functions:getTwilioToken,functions:twilioVoiceResponse
+cd "01_PRIMEXPERT_SYSTEME_APP_STABLE_V2"
+chmod +x scripts/voip-mise-a-jour-infrastructure.sh
+./scripts/voip-mise-a-jour-infrastructure.sh
 ```
 
-Journal Cloud : `verificationClesConforme: true` (vérification de conformité des clés — pas le terme « audit »). Si `false` → corriger `TWILIO_API_SECRET` (secret SK…) et `TWILIO_TWIML_APP_SID` (`AP…`), puis redéployer.
+Fichier local (gitignored) : `scripts/twilio-secrets.local.env` — modèle `scripts/twilio-secrets.env.example`.
+
+Secrets liés via `defineSecret` (`functions/src/telephony/twilioVoipRuntime.ts`). Journal Cloud : `verificationClesConforme: true` (**vérification de conformité des clés** — pas « audit »).
 
 ---
 
