@@ -1,6 +1,26 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, type DocumentData } from 'firebase/firestore';
-import { AlertTriangle, CheckCircle2, Pencil, ShieldCheck, Target, Users, X, Check, Sparkles, Database } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Mail,
+  Pencil,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  Users,
+  X,
+  Check,
+  Database,
+} from 'lucide-react';
+import {
+  buildRaphaelResidenceSnapshot,
+  rankRaphaelMatches,
+  type RaphaelMatchCandidate,
+} from '@primexpert/core/crm';
+import { listOrganizationContacts, type ContactServiceContext } from '../../../services/contacts';
+import { stashContentGenPrefill } from '../../../lib/contentGenPrefill';
+import { useWorkhubNav } from '../../../lib/workhubNav';
 import { db } from '../../../lib/firebase';
 import { useAuth } from '../../../lib/auth';
 import { useLanguage } from '../../../lib/i18n';
@@ -359,175 +379,6 @@ function resolveCommissionDraft(loose: ResidenceLoose): CommissionDraft {
   return { totale, inscripteur, collaborateur };
 }
 
-interface MatchmakerCandidate {
-  id: string;
-  name: string;
-  type: string;
-  region: string;
-  miseDeFondsDisponible: number;
-  tgaRecherche: number;
-  ndaSigne: boolean;
-  preuveFondsApprouvee: boolean;
-  score: number;
-  ecart: number;
-}
-
-const NDA_KEYS = ['ndaSigne', 'nda_signe', 'ententeConfidentialiteSignee', 'confidentialitySigned'];
-const POF_KEYS = [
-  'preuveFondsApprouvee',
-  'preuve_fonds_approuvee',
-  'proofOfFundsApproved',
-  'proofOfFundsValid',
-  'lettreBancaireValide',
-];
-const REGION_KEYS = [
-  'region',
-  'regionPreferee',
-  'regionAdministrative',
-  'regionSociosanitaire',
-  'preferredRegion',
-];
-const MDF_KEYS = ['miseDeFondsDisponible', 'mfrDisponible', 'budgetMax', 'budgetMaxAchat', 'capacite'];
-const TGA_KEYS = ['critereTgaMin', 'tgaMinRecherche', 'capRateMin', 'tgaCible'];
-const TYPE_KEYS = ['type', 'role', 'profil', 'buyerType'];
-
-function readBoolean(record: Record<string, unknown>, keys: string[]): boolean {
-  for (const key of keys) {
-    const value = record[key];
-    if (value === true) return true;
-    if (typeof value === 'string') {
-      const v = value.trim().toLowerCase();
-      if (v === 'true' || v === 'oui' || v === 'signe' || v === 'signé' || v === 'approuve' || v === 'approuvée' || v === 'approved') {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-function getResidenceRegion(loose: ResidenceLoose): string {
-  return pickText(
-    loose,
-    ['regionSociosanitaire', 'region', 'administrativeRegion', 'regionAdministrative'],
-    ''
-  );
-}
-
-function contactInRegion(record: Record<string, unknown>, residenceRegion: string): boolean {
-  if (!residenceRegion) return true;
-  const target = residenceRegion.toLowerCase();
-  for (const key of REGION_KEYS) {
-    const value = record[key];
-    if (typeof value === 'string') {
-      const v = value.toLowerCase();
-      if (v && (v.includes(target) || target.includes(v))) return true;
-    }
-  }
-  const zones = record.zonesRecherchees;
-  if (Array.isArray(zones)) {
-    return zones.some(
-      (z) => typeof z === 'string' && z.toLowerCase().includes(target)
-    );
-  }
-  return false;
-}
-
-function computeMatchmakerScore(params: {
-  regionMatch: boolean;
-  mdfCouvreMfr: boolean;
-  tgaCompatible: boolean;
-  ndaSigne: boolean;
-  preuveFondsApprouvee: boolean;
-}): number {
-  let score = 0;
-  if (params.regionMatch) score += 40;
-  if (params.mdfCouvreMfr) score += 25;
-  if (params.tgaCompatible) score += 15;
-  if (params.ndaSigne) score += 10;
-  if (params.preuveFondsApprouvee) score += 10;
-  return Math.max(0, Math.min(100, score));
-}
-
-function buildCandidateName(record: Record<string, unknown>): string {
-  const first = typeof record.prenom === 'string' ? record.prenom.trim() : '';
-  const last = typeof record.nom === 'string' ? record.nom.trim() : '';
-  const composed = [first, last].filter(Boolean).join(' ');
-  if (composed) return composed;
-  if (typeof record.name === 'string' && record.name.trim()) return record.name.trim();
-  if (typeof record.displayName === 'string' && record.displayName.trim()) return record.displayName.trim();
-  if (typeof record.email === 'string' && record.email.trim()) return record.email.trim();
-  return 'Acheteur inconnu';
-}
-
-function resolveCandidate(
-  id: string,
-  record: Record<string, unknown>,
-  residenceRegion: string,
-  mfr: number,
-  tgaResidence: number
-): MatchmakerCandidate {
-  const type = (() => {
-    for (const key of TYPE_KEYS) {
-      const v = record[key];
-      if (typeof v === 'string' && v.trim()) return v.trim();
-    }
-    return 'Acheteur';
-  })();
-  const region = (() => {
-    for (const key of REGION_KEYS) {
-      const v = record[key];
-      if (typeof v === 'string' && v.trim()) return v.trim();
-    }
-    return '';
-  })();
-  const mdf = pickNumberFromRecord(record, MDF_KEYS);
-  const tgaRecherche = pickNumberFromRecord(record, TGA_KEYS);
-  const nda = readBoolean(record, NDA_KEYS);
-  const pof = readBoolean(record, POF_KEYS);
-
-  const regionMatch = contactInRegion(record, residenceRegion);
-  const mdfCouvreMfr = mfr > 0 ? mdf >= mfr : mdf > 0;
-  const tgaCompatible = tgaRecherche > 0 && tgaResidence > 0 ? tgaResidence >= tgaRecherche : true;
-
-  const score = computeMatchmakerScore({
-    regionMatch,
-    mdfCouvreMfr,
-    tgaCompatible,
-    ndaSigne: nda,
-    preuveFondsApprouvee: pof,
-  });
-
-  return {
-    id,
-    name: buildCandidateName(record),
-    type,
-    region,
-    miseDeFondsDisponible: mdf,
-    tgaRecherche,
-    ndaSigne: nda,
-    preuveFondsApprouvee: pof,
-    score,
-    ecart: mdf - mfr,
-  };
-}
-
-function isBuyerLike(record: Record<string, unknown>): boolean {
-  for (const key of TYPE_KEYS) {
-    const v = record[key];
-    if (typeof v !== 'string') continue;
-    const lower = v.toLowerCase();
-    if (
-      lower.includes('acheteur') ||
-      lower.includes('buyer') ||
-      lower.includes('investisseur') ||
-      lower.includes('investor')
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
 function resolveRetribution(residence: ResidenceLoose): {
   commissionRate: number;
   potentialRevenue: number;
@@ -842,7 +693,7 @@ function FinancialPerformancePanel({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiTile label="REVENU BRUT EFFECTIF (RBE)" value={mirrorValue(formatMirrorCurrency(mirror.rbe))} />
         <KpiTile
-          label="REVENU NET D'EXPLOITATION (RNE / NOI)"
+          label="REVENU NET D'EXPLOITATION (RNE)"
           value={mirrorValue(formatMirrorCurrency(mirror.rne))}
         />
         <KpiTile
@@ -1031,94 +882,203 @@ function MatchmakerBadge({
   );
 }
 
-function MatchmakerCard({
+function RaphaelMatchmakerCard({
   candidate,
-  mfr,
+  askingPrice,
+  onPrepareEmail,
+  t,
 }: {
-  candidate: MatchmakerCandidate;
-  mfr: number;
+  candidate: RaphaelMatchCandidate;
+  askingPrice: number;
+  onPrepareEmail: () => void;
+  t: (fr: string, en: string) => string;
 }) {
   const scoreColor =
-    candidate.score >= 80
+    candidate.relevanceScore >= 80
       ? 'text-emerald-800 bg-emerald-50 border-emerald-700'
-      : candidate.score >= 50
-      ? 'text-amber-900 bg-amber-50 border-amber-500'
-      : 'text-slate-700 bg-slate-100 border-slate-400';
-  const ecartLabel =
-    mfr > 0
-      ? candidate.ecart >= 0
-        ? `Surplus de ${formatCurrency(candidate.ecart)} vs MFR`
-        : `Manque ${formatCurrency(Math.abs(candidate.ecart))} pour atteindre la MFR`
-      : 'Mise de fonds requise (MFR) non chiffrée';
+      : candidate.relevanceScore >= 50
+        ? 'text-amber-900 bg-amber-50 border-amber-500'
+        : 'text-slate-700 bg-slate-100 border-slate-400';
+
   return (
-    <li className="rounded-2xl border-2 border-[#142c6a]/25 bg-white p-5 shadow-md">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <li className="rounded-xl border-2 border-[#142c6a]/20 bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-black uppercase tracking-wider text-[#142c6a]/70">
-            {candidate.type || 'Acheteur'}
-            {candidate.region ? ` · ${candidate.region}` : ''}
-          </p>
-          <p className="mt-1 text-[22px] font-black leading-tight text-black">{candidate.name}</p>
+          <p className="text-[18px] font-black leading-tight text-black">{candidate.displayName}</p>
+          {candidate.companyName ? (
+            <p className="mt-0.5 text-[12px] font-bold text-[#142c6a]/80">{candidate.companyName}</p>
+          ) : null}
         </div>
-        <div
-          className={cn(
-            'rounded-xl border-2 px-4 py-2 text-[16px] font-black',
-            scoreColor
-          )}
-        >
-          Score : {candidate.score} %
+        <div className={cn('rounded-lg border-2 px-3 py-1.5 text-[14px] font-black', scoreColor)}>
+          {candidate.relevanceScore} %
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border-2 border-[#142c6a]/15 bg-[#f1f5f9] px-3 py-2">
-          <p className="text-[10px] font-black uppercase tracking-wider text-[#142c6a]/70">
-            Mise de fonds disponible
+      <div className="mt-3 space-y-1 text-[11px] font-semibold text-slate-700">
+        {candidate.budgetMax != null && askingPrice > 0 ? (
+          <p>
+            {t('Capacité vs prix demandé', 'Capacity vs asking price')} :{' '}
+            <span className="font-black text-black">
+              {candidate.budgetCoveragePct != null
+                ? `${candidate.budgetCoveragePct} %`
+                : '—'}
+            </span>
           </p>
-          <p className="mt-1 text-[18px] font-black text-black">
-            {candidate.miseDeFondsDisponible > 0
-              ? formatCurrency(candidate.miseDeFondsDisponible)
-              : '—'}
+        ) : null}
+        {candidate.buyerTgaMinimumPercent != null ? (
+          <p>
+            {t(
+              'Taux de capitalisation (TGA) cible acheteur',
+              'Buyer target capitalization rate (cap rate)'
+            )}{' '}
+            :{' '}
+            <span className="font-black text-black">
+              {formatPctDisplay(candidate.buyerTgaMinimumPercent)}
+            </span>
           </p>
-        </div>
-        <div className="rounded-xl border-2 border-[#142c6a]/15 bg-[#f1f5f9] px-3 py-2">
-          <p className="text-[10px] font-black uppercase tracking-wider text-[#142c6a]/70">
-            Écart vs MFR
-          </p>
-          <p
-            className={cn(
-              'mt-1 text-[14px] font-black leading-snug',
-              mfr > 0 && candidate.ecart < 0 ? 'text-red-800' : 'text-emerald-900'
-            )}
-          >
-            {ecartLabel}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <MatchmakerBadge
-          label={candidate.ndaSigne ? 'NDA : SIGNÉ' : 'NDA : À OBTENIR'}
-          tone={candidate.ndaSigne ? 'success' : 'warn'}
-        />
+        ) : null}
         <MatchmakerBadge
           label={
-            candidate.preuveFondsApprouvee
-              ? 'PREUVE DE FONDS : APPROUVÉE'
-              : 'PREUVE DE FONDS : EN ATTENTE'
+            candidate.regionMatch
+              ? t('Marché compatible', 'Compatible market')
+              : t('Marché à valider', 'Market to validate')
           }
-          tone={candidate.preuveFondsApprouvee ? 'success' : 'warn'}
+          tone={candidate.regionMatch ? 'success' : 'warn'}
         />
-        {candidate.tgaRecherche > 0 ? (
-          <MatchmakerBadge
-            label={`TGA recherché : ${new Intl.NumberFormat('fr-CA', {
-              maximumFractionDigits: 2,
-            }).format(candidate.tgaRecherche)} %`}
-            tone="mute"
-          />
-        ) : null}
       </div>
+
+      <button
+        type="button"
+        onClick={onPrepareEmail}
+        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border-2 border-[#142c6a] bg-[#f1f5f9] px-3 py-2 text-[10px] font-black uppercase tracking-wider text-[#142c6a] hover:bg-white"
+      >
+        <Mail className="h-3.5 w-3.5" />
+        {t('Préparer projet de courriel', 'Prepare draft email')}
+      </button>
     </li>
+  );
+}
+
+function RaphaelMatchmakerPanel({
+  candidates,
+  loading,
+  askingPrice,
+  residenceLabel,
+  residenceId,
+  ville,
+  rne,
+  tgaPercent,
+  t,
+}: {
+  candidates: RaphaelMatchCandidate[];
+  loading: boolean;
+  askingPrice: number;
+  residenceLabel: string;
+  residenceId: string;
+  ville: string;
+  rne: number | null;
+  tgaPercent: number | null;
+  t: (fr: string, en: string) => string;
+}) {
+  const workhubNav = useWorkhubNav();
+
+  const handlePrepareEmail = (candidate: RaphaelMatchCandidate) => {
+    const briefing = [
+      t('Projet de courriel — Matchmaker IA (brouillon courtier)', 'Draft email — AI Matchmaker (broker draft)'),
+      '',
+      `${t('Résidence', 'Listing')}: ${residenceLabel}`,
+      ville ? `${t('Ville', 'City')}: ${ville}` : '',
+      askingPrice > 0 ? `${t('Prix demandé', 'Asking price')}: ${formatCurrency(askingPrice)}` : '',
+      rne != null ? `${t('Revenu net d\'exploitation (RNE)', 'Net operating income (NOI)')}: ${formatCurrency(rne)}` : '',
+      tgaPercent != null
+        ? `${t('Taux de capitalisation (TGA)', 'Capitalization rate (cap rate)')}: ${formatPctDisplay(tgaPercent)}`
+        : '',
+      '',
+      `${t('Acheteur ciblé', 'Target buyer')}: ${candidate.displayName}`,
+      candidate.companyName ? `${t('Entreprise', 'Company')}: ${candidate.companyName}` : '',
+      candidate.email ? `${t('Courriel', 'Email')}: ${candidate.email}` : '',
+      `${t('Pertinence', 'Relevance')}: ${candidate.relevanceScore} %`,
+      '',
+      t(
+        'Opinion fondée et motivée générée par l\'IA — validation humaine obligatoire avant tout envoi (conformité OACIQ).',
+        'AI-generated reasoned opinion — human validation required before any send (regulatory compliance).'
+      ),
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    stashContentGenPrefill({
+      residenceId,
+      addressLine: residenceLabel,
+      priceHint: askingPrice > 0 ? formatCurrency(askingPrice) : undefined,
+      briefingBlock: briefing,
+    });
+    workhubNav?.setActiveTab('content');
+  };
+
+  return (
+    <aside className="rounded-xl border-2 border-[#142c6a] bg-[#f8fafc] shadow-lg xl:sticky xl:top-4 xl:self-start">
+      <header className="border-b-2 border-[#142c6a]/15 bg-white px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-[#D4AF37]" aria-hidden />
+          <h3 className="text-[11px] font-black uppercase tracking-wider text-[#142c6a]">
+            {t('Matchmaker IA — Acheteurs potentiels', 'AI Matchmaker — Prospective buyers')}
+          </h3>
+        </div>
+        <p className="mt-2 text-[10px] font-semibold leading-snug text-slate-600">
+          {t(
+            'Opinion fondée et motivée générée par l\'IA — aucun envoi automatique.',
+            'AI-generated reasoned opinion — no automated outbound send.'
+          )}
+        </p>
+      </header>
+
+      <div className="space-y-3 p-4">
+        <div className="flex items-center gap-2 text-[11px] font-bold text-[#142c6a]">
+          <Users className="h-3.5 w-3.5" />
+          <span>
+            {t(
+              `${candidates.length} acheteur(s) qualifié(s) (Tier 1)`,
+              `${candidates.length} qualified buyer(s) (Tier 1)`
+            )}
+          </span>
+        </div>
+
+        {askingPrice > 0 ? (
+          <p className="text-[11px] font-semibold text-slate-700">
+            {t(
+              `Croisement : prix demandé ${formatCurrency(askingPrice)}, revenu net d'exploitation (RNE) et taux de capitalisation (TGA) de la fiche Finances.`,
+              `Cross-check: asking price ${formatCurrency(askingPrice)}, net operating income (NOI) and capitalization rate (cap rate) from Finance tab.`
+            )}
+          </p>
+        ) : null}
+
+        {loading ? (
+          <p className="rounded-lg border border-[#142c6a]/20 bg-white p-3 text-[12px] font-semibold text-slate-700">
+            {t('Analyse des acheteurs en cours…', 'Analyzing buyer base…')}
+          </p>
+        ) : candidates.length === 0 ? (
+          <p className="rounded-lg border-2 border-amber-500 bg-amber-50 p-3 text-[12px] font-semibold text-amber-950">
+            {t(
+              'Aucun acheteur qualifié (entente de confidentialité et preuve de fonds) dans le répertoire. Enrichissez le CRM (budget, taux de capitalisation (TGA) cible, régions).',
+              'No qualified buyer (NDA and proof of funds) in the directory. Enrich CRM (budget, target cap rate, regions).'
+            )}
+          </p>
+        ) : (
+          <ul className="max-h-[min(520px,60vh)] space-y-2 overflow-y-auto pr-1">
+            {candidates.map((candidate) => (
+              <RaphaelMatchmakerCard
+                key={candidate.contactId}
+                candidate={candidate}
+                askingPrice={askingPrice}
+                t={t}
+                onPrepareEmail={() => handlePrepareEmail(candidate)}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+    </aside>
   );
 }
 
@@ -1168,8 +1128,8 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
   const [notesPage, setNotesPage] = useState(1);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteText, setEditingNoteText] = useState('');
-  const [matchmakerCandidates, setMatchmakerCandidates] = useState<MatchmakerCandidate[]>([]);
-  const [matchmakerLoading, setMatchmakerLoading] = useState(false);
+  const [raphaelMatches, setRaphaelMatches] = useState<RaphaelMatchCandidate[]>([]);
+  const [raphaelLoading, setRaphaelLoading] = useState(false);
   const [extractedDocsState, setExtractedDocsState] = useState<BilanExtractedDocsState>({
     docs: [],
     hasData: false,
@@ -1377,43 +1337,45 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
     setEditingNoteText('');
   }, [editingNoteId, editingNoteText, residenceId]);
 
-  const residenceRegion = useMemo(() => getResidenceRegion(loose), [loose]);
-  const matchmakerMfr = financialMirror.miseDeFonds ?? 0;
-  const matchmakerTgaPct = (() => {
-    const ratio = financialMirror.tgaRatio;
-    if (ratio == null || !Number.isFinite(ratio) || ratio <= 0) return 0;
-    return ratio > 1 && ratio <= 100 ? ratio : ratio * 100;
-  })();
+  const contactCtx: ContactServiceContext | null = useMemo(() => {
+    if (!profile?.uid || !profile.orgId) return null;
+    return { uid: profile.uid, orgId: profile.orgId, role: profile.role };
+  }, [profile]);
+
+  const raphaelSnapshot = useMemo(
+    () =>
+      buildRaphaelResidenceSnapshot({
+        financialMirror,
+        askingPrice,
+        residence: loose as Record<string, unknown>,
+      }),
+    [financialMirror, askingPrice, loose]
+  );
+
+  const raphaelTgaPercent = raphaelSnapshot.tgaPercent;
 
   useEffect(() => {
-    if (!user?.uid) {
-      setMatchmakerCandidates([]);
-      return undefined;
+    if (!contactCtx) {
+      setRaphaelMatches([]);
+      return;
     }
-    setMatchmakerLoading(true);
-    const ref = collection(db, 'users', user.uid, 'contacts');
-    const unsub = onSnapshot(
-      ref,
-      (snapshot) => {
-        const rows: MatchmakerCandidate[] = [];
-        snapshot.forEach((contactDoc) => {
-          const data = contactDoc.data() as Record<string, unknown>;
-          if (!isBuyerLike(data)) return;
-          rows.push(
-            resolveCandidate(contactDoc.id, data, residenceRegion, matchmakerMfr, matchmakerTgaPct)
-          );
-        });
-        rows.sort((a, b) => b.score - a.score);
-        setMatchmakerCandidates(rows);
-        setMatchmakerLoading(false);
-      },
-      () => {
-        setMatchmakerCandidates([]);
-        setMatchmakerLoading(false);
-      }
-    );
-    return () => unsub();
-  }, [user?.uid, residenceRegion, matchmakerMfr, matchmakerTgaPct]);
+    let cancelled = false;
+    setRaphaelLoading(true);
+    void listOrganizationContacts(contactCtx)
+      .then((contacts) => {
+        if (cancelled) return;
+        setRaphaelMatches(rankRaphaelMatches(raphaelSnapshot, contacts, 12));
+      })
+      .catch(() => {
+        if (!cancelled) setRaphaelMatches([]);
+      })
+      .finally(() => {
+        if (!cancelled) setRaphaelLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [contactCtx, raphaelSnapshot]);
 
   const safePage = Math.max(1, parseInt(String(notesPage), 10) || 1);
   const visibleNotes = notes.slice((safePage - 1) * notesPerPage, safePage * notesPerPage);
@@ -1427,7 +1389,8 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
       </div>
 
       <PaperSection title={t('Bilan exécutif 360°', '360° executive summary')}>
-        <div>
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start">
+        <div className="min-w-0 flex-1">
           <div>
             <p className="block truncate text-[18px] font-black uppercase tracking-wide text-[#142c6a]">{residenceName}</p>
             <AskingPriceEditor
@@ -1635,6 +1598,19 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
             </div>
           </div>
         </div>
+
+        <RaphaelMatchmakerPanel
+          candidates={raphaelMatches}
+          loading={raphaelLoading}
+          askingPrice={askingPrice}
+          residenceLabel={residenceName}
+          residenceId={residenceId}
+          ville={municipalite}
+          rne={raphaelSnapshot.rne}
+          tgaPercent={raphaelTgaPercent}
+          t={t}
+        />
+        </div>
       </PaperSection>
 
       <PaperSection title={t('Tâches & rendez-vous du courtier', 'Broker tasks & appointments')}>
@@ -1746,79 +1722,6 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
               ))}
             </div>
           ) : null}
-        </div>
-      </PaperSection>
-
-      <PaperSection title={t('Matchmaker IA — Acheteurs potentiels', 'AI Matchmaker — Prospective buyers')}>
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[#142c6a]/15 pb-3">
-            <div className="flex items-center gap-2 text-[12px] font-bold text-[#142c6a]">
-              <Target className="h-4 w-4" />
-              <span>
-                {residenceRegion
-                  ? t(
-                      `Région ciblée : ${residenceRegion}`,
-                      `Targeted region: ${residenceRegion}`
-                    )
-                  : t(
-                      'Région à confirmer sur la fiche pour cibler les acheteurs.',
-                      'Region to confirm on the file to target prospective buyers.'
-                    )}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-[12px] font-bold text-[#142c6a]">
-              <Users className="h-4 w-4" />
-              <span>
-                {t(
-                  `${matchmakerCandidates.length} acheteur(s) qualifié(s)`,
-                  `${matchmakerCandidates.length} qualified buyer(s)`
-                )}
-              </span>
-            </div>
-          </div>
-
-          {matchmakerMfr > 0 ? (
-            <p className="text-[13px] font-semibold text-slate-700">
-              {t(
-                `Mise de fonds requise (MFR) de référence : ${formatCurrency(
-                  matchmakerMfr
-                )}. Le score combine région, capacité financière, TGA recherché et conformité documentaire.`,
-                `Reference required down payment (RFR): ${formatCurrency(
-                  matchmakerMfr
-                )}. Score combines region, financial capacity, target cap rate and document compliance.`
-              )}
-            </p>
-          ) : (
-            <p className="text-[13px] font-semibold text-slate-700">
-              {t(
-                'Aucune mise de fonds requise (MFR) chiffrée. Le score privilégie la région et la conformité documentaire.',
-                'No required down payment (RFR) yet. Score relies on region and document compliance.'
-              )}
-            </p>
-          )}
-
-          {matchmakerLoading ? (
-            <p className="rounded-xl border-2 border-[#142c6a]/20 bg-[#f1f5f9] p-4 text-[13px] font-semibold text-slate-700">
-              {t('Analyse des acheteurs en cours…', 'Analyzing buyer base…')}
-            </p>
-          ) : matchmakerCandidates.length === 0 ? (
-            <p className="rounded-xl border-2 border-amber-500 bg-amber-50 p-4 text-[13px] font-semibold text-amber-950">
-              {t(
-                'Aucun acheteur qualifié dans votre CRM pour cette région. Ajoutez ou enrichissez les fiches contacts (type, région, mise de fonds disponible, conformité documentaire).',
-                'No qualified buyer in your CRM for this region. Add or enrich contact records (type, region, available down payment, document compliance).'
-              )}
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {matchmakerCandidates.map((candidate) => (
-                <MatchmakerCard
-                  key={candidate.id}
-                  candidate={candidate}
-                  mfr={matchmakerMfr}
-                />
-              ))}
-            </ul>
-          )}
         </div>
       </PaperSection>
 

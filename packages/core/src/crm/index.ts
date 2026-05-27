@@ -1,5 +1,6 @@
 export * from './contactTypes';
 export * from './contactSearch';
+export * from './raphaelEngine';
 export * from './contactUiHelpers';
 export * from './coBuyers';
 export * from './coSellers';
