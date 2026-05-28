@@ -1,0 +1,662 @@
+{
+  "catalogueVersion": "2026.2",
+  "documentCount": 82,
+  "entries": [
+    {
+      "id": "bilan_etats_financiers_annee",
+      "labelFr": "Bilan / états financiers - (Année)",
+      "labelEn": "Bilan / états financiers - (Année)",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "bilan_etats_financiers_interimaire_nombre_de_mois",
+      "labelFr": "Bilan / états financiers - Intérimaire (Nombre de mois)",
+      "labelEn": "Bilan / états financiers - Intérimaire (Nombre de mois)",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "bilan_etats_financiers_autre_description",
+      "labelFr": "Bilan / états financiers - Autre (Description)",
+      "labelEn": "Bilan / états financiers - Autre (Description)",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "etats_financiers_interimaires_annee_en_cours",
+      "labelFr": "États financiers intérimaires - année en cours",
+      "labelEn": "États financiers intérimaires - année en cours",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "rapport_d_evaluation_agree_annee",
+      "labelFr": "Rapport d'évaluation agréé (année)",
+      "labelEn": "Rapport d'évaluation agréé (année)",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "structure_salariale_detaillee_noms_postes_remuneration",
+      "labelFr": "Structure salariale détaillée (noms, postes, rémunération)",
+      "labelEn": "Structure salariale détaillée (noms, postes, rémunération)",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "lettre_de_classification_cnesst",
+      "labelFr": "Lettre de classification CNESST",
+      "labelEn": "Lettre de classification CNESST",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "fonction_et_salaire_annuel_du_proprietaire",
+      "labelFr": "Fonction et salaire annuel du propriétaire",
+      "labelEn": "Fonction et salaire annuel du propriétaire",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "convention_collective_ou_contrat_de_travail",
+      "labelFr": "Convention collective ou contrat de travail",
+      "labelEn": "Convention collective ou contrat de travail",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "certificat_de_localisation_annee",
+      "labelFr": "Certificat de localisation (année)",
+      "labelEn": "Certificat de localisation (année)",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "preuve_de_zonage",
+      "labelFr": "Preuve de zonage",
+      "labelEn": "Preuve de zonage",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "taxes_municipales_annee",
+      "labelFr": "Taxes municipales (Année)",
+      "labelEn": "Taxes municipales (Année)",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "taxes_scolaires_annee",
+      "labelFr": "Taxes scolaires (Année)",
+      "labelEn": "Taxes scolaires (Année)",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "rapport_d_inspection_en_batiment",
+      "labelFr": "Rapport d'inspection en bâtiment",
+      "labelEn": "Rapport d'inspection en bâtiment",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "factures_de_communication_internet_cable_cellulaire",
+      "labelFr": "Factures de communication (Internet, câble, cellulaire)",
+      "labelEn": "Factures de communication (Internet, câble, cellulaire)",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "facture_et_contrat_d_assurance",
+      "labelFr": "Facture et contrat d'assurance",
+      "labelEn": "Facture et contrat d'assurance",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "factures_du_systeme_de_securite",
+      "labelFr": "Factures du système de sécurité",
+      "labelEn": "Factures du système de sécurité",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "factures_d_entretien_ou_renovations_majeures",
+      "labelFr": "Factures d'entretien ou rénovations majeures",
+      "labelEn": "Factures d'entretien ou rénovations majeures",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "factures_electricite_12_derniers_mois",
+      "labelFr": "Factures : électricité (12 derniers mois)",
+      "labelEn": "Factures : électricité (12 derniers mois)",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "factures_gaz_12_derniers_mois",
+      "labelFr": "Factures : Gaz (12 derniers mois)",
+      "labelEn": "Factures : Gaz (12 derniers mois)",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "factures_huile_a_chauffage_12_derniers_mois",
+      "labelFr": "Factures : Huile à chauffage (12 derniers mois)",
+      "labelEn": "Factures : Huile à chauffage (12 derniers mois)",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "contrats_de_location_d_equipements",
+      "labelFr": "Contrats de location d'équipements",
+      "labelEn": "Contrats de location d'équipements",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "contrats_d_entretien",
+      "labelFr": "Contrats d'entretien",
+      "labelEn": "Contrats d'entretien",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "rapports_d_inspection_des_equipements_type",
+      "labelFr": "Rapports d'inspection des équipements (Type)",
+      "labelEn": "Rapports d'inspection des équipements (Type)",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "lettres_de_conformite_ascenseurs_gicleurs_alarme_incendie",
+      "labelFr": "Lettres de conformité (ascenseurs, gicleurs, alarme incendie)",
+      "labelEn": "Lettres de conformité (ascenseurs, gicleurs, alarme incendie)",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "lettres_de_conformite_et_permis_ciuss",
+      "labelFr": "Lettres de conformité et permis CIUSS",
+      "labelEn": "Lettres de conformité et permis CIUSS",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "lettres_de_conformite_et_permis_mapaq",
+      "labelFr": "Lettres de conformité et permis MAPAQ",
+      "labelEn": "Lettres de conformité et permis MAPAQ",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "lettres_de_conformite_rbq",
+      "labelFr": "Lettres de conformité RBQ",
+      "labelEn": "Lettres de conformité RBQ",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "rapport_d_etude_ou_evaluation_environnementale",
+      "labelFr": "Rapport d'étude ou évaluation environnementale",
+      "labelEn": "Rapport d'étude ou évaluation environnementale",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "plan_des_etages",
+      "labelFr": "Plan des étages",
+      "labelEn": "Plan des étages",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "contrat_de_location_d_appareils_inclus_dans_la_vente",
+      "labelFr": "Contrat de location d'appareils inclus dans la vente",
+      "labelEn": "Contrat de location d'appareils inclus dans la vente",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "document_de_garantie_appareils_inclus_dans_la_vente",
+      "labelFr": "Document de garantie appareils inclus dans la vente",
+      "labelEn": "Document de garantie appareils inclus dans la vente",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "liste_des_chambres_prix_du_loyer_et_des_services",
+      "labelFr": "Liste des chambres, prix du loyer et des services",
+      "labelEn": "Liste des chambres, prix du loyer et des services",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "bail_de_location_et_ses_annexes",
+      "labelFr": "Bail de location et ses annexes",
+      "labelEn": "Bail de location et ses annexes",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "releves_ciuss",
+      "labelFr": "Relevés CIUSS",
+      "labelEn": "Relevés CIUSS",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "registre_des_residences_pour_personnes_agees",
+      "labelFr": "Registre des résidences pour personnes âgées",
+      "labelEn": "Registre des résidences pour personnes âgées",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "declaration_du_vendeur_rpa",
+      "labelFr": "Déclaration du vendeur RPA",
+      "labelEn": "Déclaration du vendeur RPA",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "contrat_de_courtage_ccve",
+      "labelFr": "Contrat de courtage CCVE",
+      "labelEn": "Contrat de courtage CCVE",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "contrat_de_courtage_achat_cca",
+      "labelFr": "Contrat de courtage ACHAT (CCA)",
+      "labelEn": "Contrat de courtage ACHAT (CCA)",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "modification_de_mise_hors_marche",
+      "labelFr": "MODIFICATION de Mise hors marché",
+      "labelEn": "MODIFICATION de Mise hors marché",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "modification_type",
+      "labelFr": "Modification (Type)",
+      "labelEn": "Modification (Type)",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "modification_de_prix",
+      "labelFr": "Modification de prix",
+      "labelEn": "Modification de prix",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "annexe_e_exclusion_d_un_acheteur",
+      "labelFr": "Annexe E - Exclusion d'un acheteur",
+      "labelEn": "Annexe E - Exclusion d'un acheteur",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "annexe_g_confidentialite_des_coordonnees",
+      "labelFr": "Annexe G - Confidentialité des coordonnées",
+      "labelEn": "Annexe G - Confidentialité des coordonnées",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "annexe_r_reduction_membre_rqra",
+      "labelFr": "Annexe R - Réduction Membre RQRA",
+      "labelEn": "Annexe R - Réduction Membre RQRA",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "annexe_c_coordination_des_intervenants",
+      "labelFr": "Annexe C - Coordination des intervenants",
+      "labelEn": "Annexe C - Coordination des intervenants",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "annexe_r_reduction_de_commission_reference_du_vendeur",
+      "labelFr": "Annexe R - réduction de commission + référence du vendeur",
+      "labelEn": "Annexe R - réduction de commission + référence du vendeur",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "annexe_r_reduction_de_commission",
+      "labelFr": "Annexe R - Réduction de commission",
+      "labelEn": "Annexe R - Réduction de commission",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "releve_des_soldes_hypothecaires",
+      "labelFr": "Relevé des soldes hypothécaires",
+      "labelEn": "Relevé des soldes hypothécaires",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "procuration_du_conseil_d_administration",
+      "labelFr": "Procuration du conseil d'administration",
+      "labelEn": "Procuration du conseil d'administration",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "acte_de_vente_ou_d_achat_des_actions",
+      "labelFr": "Acte de vente ou d'achat des actions",
+      "labelEn": "Acte de vente ou d'achat des actions",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "actes_de_pret_hypothecaires",
+      "labelFr": "Actes de prêt hypothécaires",
+      "labelEn": "Actes de prêt hypothécaires",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "quittances_des_prets_hypothecaires",
+      "labelFr": "Quittances des prêts hypothécaires",
+      "labelEn": "Quittances des prêts hypothécaires",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "hypotheque_legale",
+      "labelFr": "Hypothèque légale",
+      "labelEn": "Hypothèque légale",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "procuration_jugement_testament_declaration_de_transmission",
+      "labelFr": "Procuration, jugement, testament, déclaration de transmission",
+      "labelEn": "Procuration, jugement, testament, déclaration de transmission",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "actes_de_servitudes_et_autres_ententes_privees",
+      "labelFr": "Actes de servitudes et autres ententes privées",
+      "labelEn": "Actes de servitudes et autres ententes privées",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "registre_des_entreprises_du_quebec_req",
+      "labelFr": "Registre des entreprises du Québec (REQ)",
+      "labelEn": "Registre des entreprises du Québec (REQ)",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "avis_de_non_conformite_d_une_autorite_competente",
+      "labelFr": "Avis de non-conformité d'une autorité compétente",
+      "labelEn": "Avis de non-conformité d'une autorité compétente",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "promesse_d_achat_d_actifs",
+      "labelFr": "Promesse d'achat d'actifs",
+      "labelEn": "Promesse d'achat d'actifs",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "promesse_d_achat_d_actifs_acceptee",
+      "labelFr": "Promesse d'achat d'actifs acceptée",
+      "labelEn": "Promesse d'achat d'actifs acceptée",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "promesse_d_achat_d_actifs_refusee",
+      "labelFr": "Promesse d'achat d'actifs refusée",
+      "labelEn": "Promesse d'achat d'actifs refusée",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "promesse_d_achat_d_actifs_annulee",
+      "labelFr": "Promesse d'achat d'actifs annulée",
+      "labelEn": "Promesse d'achat d'actifs annulée",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "confirmation_du_preteur_hypothecaire",
+      "labelFr": "Confirmation du Prêteur hypothécaire",
+      "labelEn": "Confirmation du Prêteur hypothécaire",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "contre_proposition_d_achat_d_actifs_du_vendeur",
+      "labelFr": "Contre-proposition d'achat d'actifs du vendeur",
+      "labelEn": "Contre-proposition d'achat d'actifs du vendeur",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "contre_proposition_d_achat_d_actifs_acceptee",
+      "labelFr": "Contre-proposition d'achat d'actifs acceptée",
+      "labelEn": "Contre-proposition d'achat d'actifs acceptée",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "contre_proposition_d_achat_d_actifs_refusee",
+      "labelFr": "Contre-proposition d'achat d'actifs refusée",
+      "labelEn": "Contre-proposition d'achat d'actifs refusée",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "contre_proposition_de_l_acheteur",
+      "labelFr": "Contre-proposition de l'acheteur",
+      "labelEn": "Contre-proposition de l'acheteur",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "modification_a_la_promesse_d_achat",
+      "labelFr": "Modification à la promesse d'achat",
+      "labelEn": "Modification à la promesse d'achat",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "verification_de_l_identite_de_l_acheteur",
+      "labelFr": "Vérification de l'identité de l'acheteur",
+      "labelEn": "Vérification de l'identité de l'acheteur",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "avis_et_suivi_de_realisation_de_conditions",
+      "labelFr": "Avis et suivi de réalisation de conditions",
+      "labelEn": "Avis et suivi de réalisation de conditions",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "divulgation_d_entente_ou_partage_de_retribution",
+      "labelFr": "Divulgation d'entente ou partage de rétribution",
+      "labelEn": "Divulgation d'entente ou partage de rétribution",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "rapport_d_inspection_sur_l_immeuble",
+      "labelFr": "Rapport d'inspection sur l'immeuble",
+      "labelEn": "Rapport d'inspection sur l'immeuble",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "lettre_d_intention_d_achat_d_actions",
+      "labelFr": "Lettre d'intention d'achat d'actions",
+      "labelEn": "Lettre d'intention d'achat d'actions",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "lettre_d_intention_d_achat_d_actions_acceptee",
+      "labelFr": "Lettre d'intention d'achat d'actions Acceptée",
+      "labelEn": "Lettre d'intention d'achat d'actions Acceptée",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "lettre_d_intention_d_achat_d_actions_refusee",
+      "labelFr": "Lettre d'intention d'achat d'actions Refusée",
+      "labelEn": "Lettre d'intention d'achat d'actions Refusée",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "lettre_d_intention_d_achat_d_actions_annulee",
+      "labelFr": "Lettre d'intention d'achat d'actions annulée",
+      "labelEn": "Lettre d'intention d'achat d'actions annulée",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "contre_proposition_a_la_lettre_d_intention_du_vendeur",
+      "labelFr": "Contre-proposition à la Lettre d'intention du vendeur",
+      "labelEn": "Contre-proposition à la Lettre d'intention du vendeur",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "contre_proposition_a_la_lettre_d_intention_acceptee",
+      "labelFr": "Contre-proposition à la Lettre d'intention acceptée",
+      "labelEn": "Contre-proposition à la Lettre d'intention acceptée",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "contre_proposition_a_la_lettre_d_intention_refusee",
+      "labelFr": "Contre-proposition à la Lettre d'intention refusée",
+      "labelEn": "Contre-proposition à la Lettre d'intention refusée",
+      "parentCategory": "promesse_achat",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "modifications_successives_a_la_declaration_du_vendeur",
+      "labelFr": "Modifications successives à la déclaration du vendeur",
+      "labelEn": "Modifications successives à la déclaration du vendeur",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    },
+    {
+      "id": "liste_des_inclusions_et_exclusions",
+      "labelFr": "Liste des inclusions et exclusions",
+      "labelEn": "Liste des inclusions et exclusions",
+      "parentCategory": "documents_a_partager",
+      "storageCategory": "financier",
+      "priority": "optional"
+    },
+    {
+      "id": "entente_de_confidentialite_du_vendeur",
+      "labelFr": "Entente de confidentialité du vendeur",
+      "labelEn": "Entente de confidentialité du vendeur",
+      "parentCategory": "contrat_mandat_titres",
+      "storageCategory": "legal",
+      "priority": "optional"
+    }
+  ]
+}

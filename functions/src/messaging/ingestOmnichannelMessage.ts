@@ -42,6 +42,65 @@ function sanitizeTaskDocId(externalMessageId: string): string {
   return `sms_critical_${externalMessageId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 100)}`;
 }
 
+function sanitizeVendorUploadTaskId(documentId: string): string {
+  return `vendor_upload_${documentId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 100)}`;
+}
+
+/** Téléversement portail vendeur — tâche prioritaire pour le courtier responsable. */
+export async function createVendorPortalUploadBrokerTask(params: {
+  orgId: string;
+  brokerId: string;
+  residenceId: string;
+  documentId: string;
+  contactId?: string | null;
+  contactName: string;
+  propertyLabel: string;
+  documentLabel: string;
+  uploadedAtMillis: number;
+}): Promise<void> {
+  const {
+    orgId,
+    brokerId,
+    residenceId,
+    documentId,
+    contactId,
+    contactName,
+    propertyLabel,
+    documentLabel,
+    uploadedAtMillis,
+  } = params;
+  if (!orgId.trim() || !brokerId.trim()) return;
+  const db = getDb();
+  const taskId = sanitizeVendorUploadTaskId(documentId);
+  await db
+    .collection('organizations')
+    .doc(orgId)
+    .collection('tasks')
+    .doc(taskId)
+    .set(
+      {
+        orgId,
+        ownerId: brokerId,
+        residenceId,
+        contactId: contactId ?? null,
+        title: 'Document vendeur televerse — verification requise',
+        description: `${documentLabel} — ${propertyLabel} (${contactName}).`,
+        channel: 'portal',
+        priority: 'haute',
+        status: 'a_faire',
+        kind: 'task',
+        source: 'vendor_portal_upload',
+        sourceDocumentId: documentId,
+        contactName,
+        dueAtMillis: uploadedAtMillis,
+        createdAtMillis: uploadedAtMillis,
+        updatedAt: FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+}
+
 async function createCriticalSmsTask(params: {
   orgId: string;
   brokerId: string;

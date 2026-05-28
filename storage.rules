@@ -38,12 +38,19 @@ service firebase.storage {
 
     // Espace Documents — diligence (primexpert / courtier / propriété / dossier)
     match /primexpert/{brokerId}/properties/{propertyId}/documents/{category}/{fileName} {
-      allow read: if request.auth != null && request.auth.uid == brokerId;
+      function isVendorPortalPropertyUpload() {
+        return request.auth != null
+          && request.auth.token.vendorPortal == true
+          && request.auth.token.brokerId == brokerId
+          && request.auth.token.residenceId == propertyId;
+      }
+
+      allow read: if request.auth != null && (request.auth.uid == brokerId || isVendorPortalPropertyUpload());
 
       allow create: if request.auth != null
-                    && request.auth.uid == brokerId
                     && request.resource.size < 25 * 1024 * 1024
-                    && request.resource.metadata.courtiersResponsables == brokerId;
+                    && request.resource.metadata.courtiersResponsables == brokerId
+                    && (request.auth.uid == brokerId || isVendorPortalPropertyUpload());
 
       allow delete: if request.auth != null && request.auth.uid == brokerId;
     }

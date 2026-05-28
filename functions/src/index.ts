@@ -726,6 +726,13 @@ export { getGlobalFinancialBenchmark } from './benchmark/getGlobalFinancialBench
 /** Briefing du matin + Radar opportunités (06:00 America/Toronto). */
 export { morningBriefingGenerator } from './cron/morningBriefingGenerator';
 
+/** Portail vendeur — jeton d'invitation et notification téléversement. */
+export {
+  createVendorPortalInvite,
+  validateVendorPortalToken,
+  notifyVendorPortalDocumentUpload,
+} from './vendor/vendorPortalAccess';
+
 /** Notes vocales mobile — Whisper + intention Gemini → notes / tâches (Montréal). */
 export { onVoiceNoteUploaded } from './audio/onVoiceNoteUploaded';
 

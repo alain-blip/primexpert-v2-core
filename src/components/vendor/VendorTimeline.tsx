@@ -17,57 +17,42 @@ export function VendorTimeline({
   const activeIdx = vendorTimelineActiveIndex(activeStageId);
 
   return (
-    <div className="w-full overflow-x-auto pb-2">
-      <ol className="flex min-w-[640px] items-start gap-0">
-        {VENDOR_TIMELINE_STAGES.map((stage, idx) => {
-          const done = idx < activeIdx;
-          const active = idx === activeIdx;
-          return (
-            <li key={stage.id} className="relative flex flex-1 flex-col items-center">
-              {idx > 0 ? (
-                <motion.div
-                  className="absolute left-0 top-5 h-0.5 w-full -translate-x-1/2 bg-slate-200"
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: done || active ? 1 : 0.15 }}
-                  transition={{ duration: 0.5, delay: idx * 0.08 }}
-                  style={{ originX: 0 }}
-                >
-                  <motion.div
-                    className={cn(
-                      'h-full w-full',
-                      done ? 'bg-primexpert-blue' : active ? 'bg-primexpert-blue/60' : 'bg-slate-200'
-                    )}
-                    layout
-                  />
-                </motion.div>
-              ) : null}
-              <motion.div
-                initial={{ scale: 0.85, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: idx * 0.06 }}
-                className={cn(
-                  'relative z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 text-xs font-black shadow-sm',
-                  done
-                    ? 'border-primexpert-blue bg-primexpert-blue text-white'
-                    : active
-                      ? 'border-primexpert-blue bg-white text-primexpert-blue ring-4 ring-primexpert-blue/20'
-                      : 'border-slate-300 bg-white text-slate-700'
-                )}
-              >
-                {idx + 1}
-              </motion.div>
-              <p
-                className={cn(
-                  'mt-3 max-w-[9rem] text-center text-[10px] font-bold uppercase leading-snug tracking-wide',
-                  active ? 'text-primexpert-dark' : done ? 'text-slate-700' : 'text-slate-700'
-                )}
-              >
-                {t(stage.labelFr, stage.labelEn)}
-              </p>
-            </li>
-          );
-        })}
-      </ol>
-    </div>
+    <ol className="relative flex flex-col gap-6 sm:flex-row sm:gap-0">
+      {VENDOR_TIMELINE_STAGES.map((stage, index) => {
+        const done = index < activeIdx;
+        const active = index === activeIdx;
+        return (
+          <li key={stage.id} className="relative flex flex-1 flex-col items-center text-center">
+            {index > 0 ? (
+              <span
+                className="absolute left-0 top-5 hidden h-0.5 w-full -translate-x-1/2 bg-primexpert-light dark:bg-primexpert-cardDark sm:block"
+                aria-hidden
+              />
+            ) : null}
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: index * 0.08 }}
+              className={cn(
+                'relative z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 text-[11px] font-black',
+                done || active
+                  ? 'border-primexpert-blue bg-white text-primexpert-blue dark:bg-primexpert-cardDark'
+                  : 'border-primexpert-dark/25 bg-white text-slate-900 dark:bg-primexpert-cardDark'
+              )}
+            >
+              {index + 1}
+            </motion.div>
+            <p
+              className={cn(
+                'mt-3 max-w-[9rem] text-[10px] font-black uppercase leading-tight tracking-wide',
+                active ? 'text-primexpert-dark' : 'text-slate-900'
+              )}
+            >
+              {t(stage.labelFr, stage.labelEn)}
+            </p>
+          </li>
+        );
+      })}
+    </ol>
   );
 }

@@ -337,13 +337,26 @@ function ProtectedWorkhub() {
   );
 }
 
-function ProtectedAccesVendeur() {
+function AccesVendeurRoute() {
   const { user, loading } = useAuth();
+  const token =
+    typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('token')
+      : null;
+
+  if (token) {
+    return (
+      <Suspense fallback={<RouteSuspense />}>
+        <AccesVendeurPage forcedMode="client" />
+      </Suspense>
+    );
+  }
+
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/" replace />;
   return (
     <Suspense fallback={<RouteSuspense />}>
-      <AccesVendeurPage />
+      <AccesVendeurPage forcedMode="broker" />
     </Suspense>
   );
 }
@@ -353,7 +366,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/workhub" element={<ProtectedWorkhub />} />
-      <Route path="/acces-vendeur" element={<ProtectedAccesVendeur />} />
+      <Route path="/acces-vendeur" element={<AccesVendeurRoute />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

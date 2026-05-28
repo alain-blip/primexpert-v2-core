@@ -7,34 +7,22 @@ export function VendorPortalSkeleton() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="mx-auto max-w-3xl space-y-6 px-4 py-8"
-      aria-busy
-      aria-label="Chargement…"
+      className="mx-auto max-w-3xl space-y-4 px-4 py-8"
     >
-      <motion.div
-        className="h-8 w-48 rounded-lg bg-white/60"
-        animate={{ opacity: [0.4, 0.8, 0.4] }}
-        transition={{ duration: 1.4, repeat: Infinity }}
+      <div className="h-8 w-48 animate-pulse rounded-lg bg-white dark:bg-primexpert-cardDark" />
+      <div
+        className={`h-24 animate-pulse rounded-2xl bg-white dark:bg-primexpert-cardDark ${institutionalListingsCardShellClass}`}
       />
-      <motion.div
-        className={`h-24 rounded-2xl bg-white/60 ${institutionalListingsCardShellClass}`}
-        animate={{ opacity: [0.4, 0.8, 0.4] }}
-        transition={{ duration: 1.4, repeat: Infinity, delay: 0.1 }}
-      />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {[0, 1].map((i) => (
-          <motion.div
+          <div
             key={i}
-            className={`h-40 rounded-2xl bg-white/60 ${institutionalListingsCardShellClass}`}
-            animate={{ opacity: [0.4, 0.8, 0.4] }}
-            transition={{ duration: 1.4, repeat: Infinity, delay: 0.15 + i * 0.08 }}
+            className={`h-40 animate-pulse rounded-2xl bg-white dark:bg-primexpert-cardDark ${institutionalListingsCardShellClass}`}
           />
         ))}
       </div>
-      <motion.div
-        className={`h-32 rounded-2xl bg-white/60 ${institutionalListingsCardShellClass}`}
-        animate={{ opacity: [0.4, 0.8, 0.4] }}
-        transition={{ duration: 1.4, repeat: Infinity, delay: 0.25 }}
+      <div
+        className={`h-32 animate-pulse rounded-2xl bg-white dark:bg-primexpert-cardDark ${institutionalListingsCardShellClass}`}
       />
     </motion.div>
   );

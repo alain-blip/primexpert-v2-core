@@ -100,6 +100,9 @@ export interface PropertyDocumentRecord {
   /** Pièce rattachée au dossier promesse d'achat. */
   promesseScope?: boolean;
   promesseDocLabel?: string;
+  vendorPortalTypeId?: string;
+  vendorPortalLabelFr?: string;
+  uploadSource?: 'vendor_portal' | 'broker';
 }
 
 export interface PropertyDocumentCategoryDef {

@@ -1,15 +1,20 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { cn } from '../../lib/utils';
 import { institutionalListingsCardShellClass } from '../../lib/institutionalTheme';
 
 export function VendorComplianceGauge({
   percent,
   label,
   sublabel,
+  receivedCount,
+  requiredCount,
 }: {
   percent: number;
   label: string;
   sublabel: string;
+  receivedCount?: number;
+  requiredCount?: number;
 }) {
   const clamped = Math.max(0, Math.min(100, percent));
   const radius = 54;
@@ -22,7 +27,9 @@ export function VendorComplianceGauge({
     <motion.div
       initial={{ opacity: 0, scale: 0.92 }}
       animate={{ opacity: 1, scale: 1 }}
-      className={`flex flex-col items-center p-6 ${institutionalListingsCardShellClass}`}
+      className={cn(
+        `flex flex-col items-center p-6 bg-white dark:bg-primexpert-cardDark ${institutionalListingsCardShellClass}`
+      )}
     >
       <div className="relative h-36 w-36">
         <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120" aria-hidden>
@@ -54,13 +61,18 @@ export function VendorComplianceGauge({
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
         >
-          <span className="text-4xl font-black tabular-nums">{clamped}%</span>
+          <span className="text-4xl font-black tabular-nums text-black">{clamped}%</span>
         </motion.div>
       </div>
-      <p className="mt-4 text-center text-sm font-black uppercase tracking-widest text-slate-900">
+      <p className="mt-4 text-center text-sm font-black uppercase tracking-widest text-black">
         {label}
       </p>
-      <p className="mt-2 max-w-xs text-center text-xs font-medium leading-relaxed text-slate-700">
+      {requiredCount != null ? (
+        <p className="mt-1 text-center text-[10px] font-bold uppercase tracking-widest text-primexpert-dark">
+          {receivedCount ?? 0}/{requiredCount}
+        </p>
+      ) : null}
+      <p className="mt-2 max-w-xs text-center text-xs font-semibold leading-relaxed text-slate-900">
         {sublabel}
       </p>
     </motion.div>

@@ -3,6 +3,8 @@ export * from './normalizeNumbers';
 export * from './listingCommission';
 export * from './mandateCompleteness';
 export * from './vendorPortalTimeline';
+export * from './vendorPortalCatalogue';
+export * from './vendorPortalCompliance';
 export * from './quebecRegions';
 export * from './pipelineDragRules';
 export * from './legacyResidenceImport';

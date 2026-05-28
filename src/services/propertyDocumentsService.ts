@@ -143,6 +143,14 @@ function mapDoc(
     promesseScope: data.promesseScope === true || data.promesseDocument === true,
     promesseDocLabel:
       typeof data.promesseDocLabel === 'string' ? data.promesseDocLabel : undefined,
+    vendorPortalTypeId:
+      typeof data.vendorPortalTypeId === 'string' ? data.vendorPortalTypeId : undefined,
+    vendorPortalLabelFr:
+      typeof data.vendorPortalLabelFr === 'string' ? data.vendorPortalLabelFr : undefined,
+    uploadSource:
+      data.uploadSource === 'vendor_portal' || data.uploadSource === 'broker'
+        ? data.uploadSource
+        : undefined,
   };
 }
 
@@ -239,13 +247,27 @@ export interface UploadPropertyDocumentInput {
   /** Onglet Promesses d'achat — pièce rattachée au dossier PA. */
   promesseScope?: boolean;
   promesseDocLabel?: string;
+  /** Portail vendeur — type catalogue SSOT. */
+  vendorPortalTypeId?: string;
+  vendorPortalLabelFr?: string;
+  uploadSource?: 'vendor_portal' | 'broker';
 }
 
 /** Téléverse vers Storage + métadonnées Firestore (après validation stricte). */
 export async function uploadPropertyDocument(
   input: UploadPropertyDocumentInput
 ): Promise<PropertyDocumentRecord> {
-  const { propertyId, category, file, uploadedBy, promesseScope, promesseDocLabel } = input;
+  const {
+    propertyId,
+    category,
+    file,
+    uploadedBy,
+    promesseScope,
+    promesseDocLabel,
+    vendorPortalTypeId,
+    vendorPortalLabelFr,
+    uploadSource,
+  } = input;
   if (!propertyId || !file || !uploadedBy) {
     throw new Error('propertyId, file et uploadedBy requis.');
   }
@@ -264,6 +286,7 @@ export async function uploadPropertyDocument(
   const storagePath = buildStoragePath(uploadedBy, propertyId, category, storageFileName);
   const uploadedAtMillis = stamp;
 
+  const catalogueLabel = vendorPortalLabelFr?.trim() || promesseDocLabel?.trim() || '';
   const docRef = await addDoc(documentsCol(propertyId), {
     propertyId,
     scope: 'property',
@@ -278,7 +301,15 @@ export async function uploadPropertyDocument(
     virusScanStatus: 'pending' satisfies VirusScanStatus,
     parsingStatus: 'not_applicable' satisfies ParsingStatus,
     parsingEligible,
-    extractedData: EMPTY_EXTRACTED_DATA,
+    extractedData: catalogueLabel
+      ? {
+          documentType: catalogueLabel,
+          ...(vendorPortalTypeId ? { vendorPortalTypeId } : {}),
+        }
+      : EMPTY_EXTRACTED_DATA,
+    ...(vendorPortalTypeId ? { vendorPortalTypeId } : {}),
+    ...(vendorPortalLabelFr ? { vendorPortalLabelFr } : {}),
+    ...(uploadSource ? { uploadSource } : {}),
     ...(promesseScope
       ? {
           promesseScope: true,

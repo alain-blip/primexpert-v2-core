@@ -35,6 +35,24 @@ service cloud.firestore {
       return isSignedIn() && userProfile().role in ['admin', 'admin_system'];
     }
 
+    /** Session portail vendeur (jeton d'invitation — custom claims). */
+    function isVendorPortalSession(residenceId) {
+      return isSignedIn()
+        && request.auth.token.vendorPortal == true
+        && request.auth.token.residenceId == residenceId;
+    }
+
+    function isVendorPortalContact(orgId, contactId) {
+      return isSignedIn()
+        && request.auth.token.vendorPortal == true
+        && request.auth.token.orgId == orgId
+        && request.auth.token.contactId == contactId;
+    }
+
+    match /vendor_portal_invites/{tokenId} {
+      allow read, write: if false;
+    }
+
     // Users (Split PII logic)
     match /users/{userId} {
       allow read: if isSignedIn() && (isOwner(userId) || isOrgMember(existing().orgId));
@@ -148,10 +166,12 @@ service cloud.firestore {
 
       // Notes de suivi CRM (notes vocales + saisie)
       match /notes/{noteId} {
-        allow read: if isOrgMember(orgId) && (
+      allow read: if isVendorPortalContact(orgId, contactId) || (
+        isOrgMember(orgId) && (
           get(/databases/$(database)/documents/organizations/$(orgId)/contacts/$(contactId)).data.ownerId == request.auth.uid ||
           get(/databases/$(database)/documents/organizations/$(orgId)/contacts/$(contactId)).data.visibility == 'AGENCY_SHARED'
-        );
+        )
+      );
         allow create, update, delete: if isOrgMember(orgId) &&
           get(/databases/$(database)/documents/organizations/$(orgId)/contacts/$(contactId)).data.ownerId == request.auth.uid;
       }
@@ -234,6 +254,7 @@ service cloud.firestore {
   function canReadResidenceSubcollection(residenceId) {
     let data = residenceDoc(residenceId);
     return isSignedIn() && (
+      isVendorPortalSession(residenceId) ||
       isAgencyAdmin() ||
       data.courtiersResponsables == request.auth.uid ||
       !('courtiersResponsables' in data) ||
@@ -251,7 +272,7 @@ service cloud.firestore {
 
     // residences — collection multi-tenant racine (Brief Silos 2026 v4 §5)
     match /residences/{residenceId} {
-      allow read:   if isAgencyAdmin() || isTenantOwner() || isSharedCatalogResidence();
+      allow read:   if isAgencyAdmin() || isTenantOwner() || isSharedCatalogResidence() || isVendorPortalSession(residenceId);
       allow create: if isAgencyAdmin() || isIncomingTenantOwner();
       allow update: if isAgencyAdmin()
         || (isTenantOwner() && isIncomingTenantOwner())
@@ -273,7 +294,8 @@ service cloud.firestore {
       // Bibliothèque documentaire migrée depuis Copilote
       match /documents/{documentId} {
         allow read: if canReadResidenceSubcollection(residenceId);
-        allow create, update: if isResidenceTenantOwner(residenceId);
+        allow create: if isResidenceTenantOwner(residenceId) || isVendorPortalSession(residenceId);
+        allow update: if isResidenceTenantOwner(residenceId);
         allow delete: if isResidenceTenantOwner(residenceId);
       }
 
