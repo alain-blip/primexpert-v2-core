@@ -43,7 +43,6 @@ import {
   type MarketGpsRatioSample,
   type MarketGpsTransaction,
 } from '@primexpert/core/market';
-import { AcmHistoricalTrendsSection } from './AcmHistoricalTrendsSection';
 import type {
   CertifiableReportBrokerFooter,
   FinancialDataV2Doc,
@@ -653,18 +652,6 @@ export function AcmValuationWorkspace({
           </button>
         </div>
       ) : null}
-
-      {ratioSamples.length > 0 && (
-        <AcmHistoricalTrendsSection
-          ratioSamples={ratioSamples}
-          transactions={transactions}
-          region={bootstrap.regionLabel}
-          locale={language}
-          units={bootstrap.units}
-          subjectExpenses={subjectExpenses}
-          t={t}
-        />
-      )}
 
       {result && bootstrap.revenuNetExploitation > 0 && !bootstrap.rneBlocksValuation ? (
         <motion.div
