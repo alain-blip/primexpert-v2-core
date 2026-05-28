@@ -24,6 +24,7 @@ import {
   normalizeMailboxFolder,
   type MailboxFolder,
 } from '../lib/mailboxFolders';
+import { parseCommunicationChannel } from '@primexpert/core/mail';
 import type {
   EmailAttachment,
   EmailMessage,
@@ -110,6 +111,12 @@ function mapThreadDoc(id: string, data: Record<string, unknown>): EmailThread {
     createdAtMillis: toMillis(data.createdAtMillis ?? data.createdAt),
     nylasThreadId: typeof data.nylasThreadId === 'string' ? data.nylasThreadId : undefined,
     mailboxFolder: normalizeMailboxFolder(data.mailboxFolder),
+    primaryChannel: data.primaryChannel
+      ? parseCommunicationChannel(data.primaryChannel)
+      : undefined,
+    contactPhone: typeof data.contactPhone === 'string' ? data.contactPhone : null,
+    externalThreadKey:
+      typeof data.externalThreadKey === 'string' ? data.externalThreadKey : null,
   };
 }
 
@@ -158,6 +165,12 @@ function mapMessageDoc(id: string, threadId: string, data: Record<string, unknow
     mailUrgency: typeof data.mailUrgency === 'string' ? data.mailUrgency : undefined,
     matchedContactId:
       typeof data.matchedContactId === 'string' ? data.matchedContactId : null,
+    channel: parseCommunicationChannel(data.channel),
+    isCritical: data.isCritical === true,
+    metadata:
+      data.metadata && typeof data.metadata === 'object' && !Array.isArray(data.metadata)
+        ? (data.metadata as EmailMessage['metadata'])
+        : undefined,
   };
 }
 

@@ -512,8 +512,8 @@ export function ContactFormDrawer({
     () => ({
       nom,
       prenom: prenom.trim() || undefined,
-      dateNaissance: dateNaissance.trim() || undefined,
-      occupationProfession: occupationProfession.trim() || undefined,
+      dateNaissance: (dateNaissance ?? '').trim() || undefined,
+      occupationProfession: (occupationProfession ?? '').trim() || undefined,
       adresse:
         ligne1.trim() || ville.trim() || codePostal.trim()
           ? {
@@ -565,8 +565,8 @@ export function ContactFormDrawer({
       visibility,
       nom,
       prenom: prenom.trim() || undefined,
-      dateNaissance: dateNaissance.trim() || undefined,
-      occupationProfession: occupationProfession.trim() || undefined,
+      dateNaissance: (dateNaissance ?? '').trim() || undefined,
+      occupationProfession: (occupationProfession ?? '').trim() || undefined,
       adresse:
         ligne1.trim() || ville.trim() || codePostal.trim()
           ? {
@@ -699,11 +699,17 @@ export function ContactFormDrawer({
       onClose();
     } catch (err) {
       console.error('[ContactFormDrawer] submit failed', err);
+      const code = (err as { code?: string })?.code ?? '';
       setSubmitError(
-        t(
-          'Erreur Firestore — vérifiez vos permissions ou réessayez.',
-          'Firestore error — check permissions or retry.'
-        )
+        code === 'permission-denied'
+          ? t(
+              'Accès refusé — vérifiez que vous êtes propriétaire du contact ou administrateur de l’agence.',
+              'Access denied — ensure you own this contact or have agency admin rights.'
+            )
+          : t(
+              'Erreur Firestore — vérifiez vos permissions ou réessayez.',
+              'Firestore error — check permissions or retry.'
+            )
       );
     } finally {
       setPending(false);
@@ -1545,6 +1551,7 @@ export function ContactFormDrawer({
                 <IntelligenceChronologie
                   brokerId={ctx.uid}
                   mode="communications-only"
+                  contactId={editing.id}
                   timelineEvents={timelineEvents}
                 />
               )}

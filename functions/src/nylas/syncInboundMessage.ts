@@ -160,6 +160,7 @@ export async function syncNylasMessageToFirestore(input: SyncInboundInput): Prom
 
   const messageDoc: Record<string, unknown> = {
     threadId: threadDocId,
+    channel: 'email',
     nylasMessageId,
     body,
     sentAtMillis,

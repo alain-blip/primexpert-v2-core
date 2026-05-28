@@ -3,7 +3,12 @@
  * Ne crée pas interactionEvents ; ne modifie pas email_threads.
  */
 
-export type TimelineChannel = 'nylas_mail' | 'vertex_call';
+export type TimelineChannel =
+  | 'nylas_mail'
+  | 'vertex_call'
+  | 'sms'
+  | 'facebook'
+  | 'instagram';
 
 export interface TimelineMailInput {
   messageId: string;
@@ -14,6 +19,9 @@ export interface TimelineMailInput {
   intent?: string | null;
   matchedResidenceId?: string | null;
   matchedContactId?: string | null;
+  /** Canal SSOT message (défaut courriel). */
+  channel?: 'email' | 'sms' | 'facebook' | 'instagram';
+  isCritical?: boolean;
 }
 
 export interface TimelineCallInput {
@@ -35,6 +43,16 @@ export interface UnifiedTimelineEvent {
   statusLabel?: string | null;
   residenceId?: string | null;
   contactEmail?: string | null;
+  isCritical?: boolean;
+}
+
+function resolveMailTimelineChannel(
+  channel?: TimelineMailInput['channel']
+): TimelineChannel {
+  if (channel === 'sms') return 'sms';
+  if (channel === 'facebook') return 'facebook';
+  if (channel === 'instagram') return 'instagram';
+  return 'nylas_mail';
 }
 
 export function normalizeContactEmail(email: unknown): string | null {
@@ -62,15 +80,25 @@ function callMatchesContactResidences(
 }
 
 export function mailToTimelineEvent(mail: TimelineMailInput): UnifiedTimelineEvent {
+  const ch = resolveMailTimelineChannel(mail.channel);
+  const defaultTitle =
+    ch === 'sms'
+      ? 'SMS'
+      : ch === 'facebook'
+        ? 'Facebook'
+        : ch === 'instagram'
+          ? 'Instagram'
+          : 'Courriel';
   return {
     id: `mail-${mail.messageId}`,
-    channel: 'nylas_mail',
+    channel: ch,
     sortMs: mail.analyzedAtMillis,
-    title: mail.contactName?.trim() || mail.contactEmail?.trim() || 'Courriel',
-    subtitle: mail.summaryOneLine?.trim() || mail.intent?.trim() || 'Analyse messagerie',
+    title: mail.contactName?.trim() || mail.contactEmail?.trim() || defaultTitle,
+    subtitle: mail.summaryOneLine?.trim() || mail.intent?.trim() || 'Message',
     detail: mail.intent ? `Intent : ${mail.intent}` : null,
     residenceId: mail.matchedResidenceId ?? null,
     contactEmail: mail.contactEmail ?? null,
+    isCritical: mail.isCritical === true,
   };
 }
 

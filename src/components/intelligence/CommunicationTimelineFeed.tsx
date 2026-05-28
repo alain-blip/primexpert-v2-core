@@ -30,6 +30,30 @@ function channelMeta(
       badge: 'bg-emerald-50 text-emerald-900 border-emerald-200',
     };
   }
+  if (channel === 'sms') {
+    return {
+      icon: Phone,
+      label: t('SMS', 'SMS'),
+      border: 'border-l-teal-500',
+      badge: 'bg-teal-50 text-teal-900 border-teal-200',
+    };
+  }
+  if (channel === 'facebook') {
+    return {
+      icon: Mail,
+      label: t('Facebook', 'Facebook'),
+      border: 'border-l-blue-500',
+      badge: 'bg-blue-50 text-blue-900 border-blue-200',
+    };
+  }
+  if (channel === 'instagram') {
+    return {
+      icon: Mail,
+      label: t('Instagram', 'Instagram'),
+      border: 'border-l-pink-500',
+      badge: 'bg-pink-50 text-pink-900 border-pink-200',
+    };
+  }
   return {
     icon: Mail,
     label: t('Courriel · Nylas', 'Email · Nylas'),
@@ -90,6 +114,11 @@ export function CommunicationTimelineFeed({
                     >
                       {meta.label}
                     </span>
+                    {ev.isCritical ? (
+                      <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border border-amber-500 bg-amber-50 text-amber-950">
+                        {t('Urgent', 'Urgent')}
+                      </span>
+                    ) : null}
                   </div>
                   <time className="text-[9px] font-mono text-slate-500">{when}</time>
                 </div>

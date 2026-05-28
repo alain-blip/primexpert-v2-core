@@ -26,7 +26,8 @@
     "migrate:contacts": "npx tsx packages/core/src/scripts/migrateLegacyContacts.ts",
     "migrate:contacts:execute": "npx tsx packages/core/src/scripts/migrateLegacyContacts.ts --execute",
     "test:voice-note": "npx tsx packages/core/src/scripts/testVoiceNotePipeline.ts",
-    "test:voice-note:gemini": "npx tsx packages/core/src/scripts/testVoiceNotePipeline.ts --gemini"
+    "test:voice-note:gemini": "npx tsx packages/core/src/scripts/testVoiceNotePipeline.ts --gemini",
+    "test:incoming-sms": "npx tsx packages/core/src/scripts/testIncomingSms.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

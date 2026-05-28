@@ -1,8 +1,11 @@
-/** Messagerie synchronisée — fils et messages (Firestore). */
+/** Messagerie synchronisée — fils et messages (Firestore SSOT email_threads). */
 
+import type { CommunicationChannel, CommunicationMessageMetadata } from '@primexpert/core/mail';
 import type { MailboxFolder } from '../lib/mailboxFolders';
 
 export type EmailMessageDirection = 'inbound' | 'outbound';
+
+export type { CommunicationChannel };
 
 export type { MailboxFolder };
 
@@ -16,9 +19,14 @@ export interface EmailAttachment {
 export interface EmailMessage {
   id: string;
   threadId: string;
+  /** Canal omnicanal (défaut courriel). */
+  channel?: CommunicationChannel;
   body: string;
   sentAtMillis: number;
   direction: EmailMessageDirection;
+  metadata?: CommunicationMessageMetadata;
+  /** Notification push — urgence détectée (SMS / Meta). */
+  isCritical?: boolean;
   authorName?: string;
   authorId?: string;
   /** Boîte expéditrice (`EmailAccount.id`). */
@@ -64,4 +72,8 @@ export interface EmailThread {
   nylasThreadId?: string;
   /** Dossier courriel (INBOX, SENT, …) — aligné Nylas. */
   mailboxFolder?: MailboxFolder;
+  /** Canal dominant du fil. */
+  primaryChannel?: CommunicationChannel;
+  contactPhone?: string | null;
+  externalThreadKey?: string | null;
 }

@@ -87,7 +87,9 @@ service cloud.firestore {
           allow create: if isOwner(userId) &&
             incoming().direction in ['inbound', 'outbound'] &&
             incoming().sentAtMillis is int &&
-            (!('body' in incoming()) || incoming().body is string);
+            (!('body' in incoming()) || incoming().body is string) &&
+            (!('channel' in incoming()) || incoming().channel in ['email', 'sms', 'facebook', 'instagram']) &&
+            (!('isCritical' in incoming()) || incoming().isCritical is bool);
         }
       }
     }

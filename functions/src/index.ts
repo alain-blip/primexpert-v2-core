@@ -725,3 +725,34 @@ export { getGlobalFinancialBenchmark } from './benchmark/getGlobalFinancialBench
 
 /** Notes vocales mobile — Whisper + intention Gemini → notes / tâches (Montréal). */
 export { onVoiceNoteUploaded } from './audio/onVoiceNoteUploaded';
+
+/** Webhooks omnicanaux — SMS Twilio + Meta (Montréal). */
+export const twilioSmsWebhook = onRequest(
+  {
+    region: 'northamerica-northeast1',
+    cors: false,
+    invoker: 'public',
+    timeoutSeconds: 60,
+    maxInstances: 20,
+    secrets: ['TWILIO_AUTH_TOKEN'],
+  },
+  async (req, res) => {
+    const { handleTwilioSmsWebhook } = await import('./messaging/webhooks');
+    await handleTwilioSmsWebhook(req, res);
+  }
+);
+
+export const metaMessagingWebhook = onRequest(
+  {
+    region: 'northamerica-northeast1',
+    cors: false,
+    invoker: 'public',
+    timeoutSeconds: 60,
+    maxInstances: 20,
+    secrets: ['META_VERIFY_TOKEN', 'META_APP_SECRET'],
+  },
+  async (req, res) => {
+    const { handleMetaMessagingWebhook } = await import('./messaging/webhooks');
+    await handleMetaMessagingWebhook(req, res);
+  }
+);

@@ -24,18 +24,27 @@ const HEADER_BANNER = [
   '',
 ].join('\n');
 
-const FILES = ['types.ts', 'mailParser.ts', 'contactMatch.ts', 'index.ts'];
+const CORE_AUDIO_DIR = path.join(REPO_ROOT, 'packages', 'core', 'src', 'audio');
+const FILES = ['types.ts', 'mailParser.ts', 'contactMatch.ts', 'messageUrgency.ts', 'index.ts'];
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-function syncFile(name) {
-  const from = path.join(CORE_MAIL_DIR, name);
+function syncFile(name, options = {}) {
+  const from = options.fromDir
+    ? path.join(options.fromDir, name)
+    : path.join(CORE_MAIL_DIR, name);
   if (!fs.existsSync(from)) {
     throw new Error(`[sync-core-mail] Source manquante : ${from}`);
   }
-  const original = fs.readFileSync(from, 'utf-8');
+  let original = fs.readFileSync(from, 'utf-8');
+  if (name === 'messageUrgency.ts') {
+    original = original.replace(
+      "from '../audio/transcriber'",
+      "from './transcriber'"
+    );
+  }
   const target = path.join(VENDORED_DIR, name);
   fs.writeFileSync(target, HEADER_BANNER + original, 'utf-8');
   return target;
@@ -43,7 +52,8 @@ function syncFile(name) {
 
 function main() {
   ensureDir(VENDORED_DIR);
-  const written = FILES.map(syncFile);
+  const written = FILES.map((f) => syncFile(f));
+  syncFile('transcriber.ts', { fromDir: CORE_AUDIO_DIR });
   process.stdout.write(
     `[sync-core-mail] ${written.length} fichier(s) → ${path.relative(REPO_ROOT, VENDORED_DIR)}/\n`
   );

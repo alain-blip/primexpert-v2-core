@@ -25,6 +25,7 @@ import {
 import { isNylasConfigured } from '../../services/nylasClient';
 import type { UnifiedTimelineEvent } from '@primexpert/core/intelligence';
 import { CommunicationTimelineFeed } from './CommunicationTimelineFeed';
+import { CommunicationHub } from './CommunicationHub';
 import { inst } from '../residence/institutional/InstitutionalUi';
 
 export type ChronologieMode = 'residence-full' | 'communications-only';
@@ -39,6 +40,8 @@ export interface IntelligenceChronologieProps {
   mode?: ChronologieMode;
   /** Événements agrégés (@primexpert/core/intelligence) — lecture seule. */
   timelineEvents?: UnifiedTimelineEvent[];
+  /** Contact CRM — hub messagerie unifiée (SMS, courriel, Meta). */
+  contactId?: string | null;
 }
 
 function StepStatusText({
@@ -69,13 +72,18 @@ function StepStatusText({
 export function IntelligenceChronologie(props: IntelligenceChronologieProps) {
   if (props.mode === 'communications-only') {
     return (
-      <CommunicationTimelineFeed
-        events={props.timelineEvents ?? []}
-        titleFr="Historique des communications"
-        titleEn="Communication history"
-        emptyFr="Aucun courriel Nylas ni appel Vertex rattaché à ce contact pour le moment."
-        emptyEn="No Nylas emails or Vertex calls linked to this contact yet."
-      />
+      <div className="space-y-4">
+        {props.contactId ? (
+          <CommunicationHub brokerId={props.brokerId} contactId={props.contactId} />
+        ) : null}
+        <CommunicationTimelineFeed
+          events={props.timelineEvents ?? []}
+          titleFr="Historique des communications"
+          titleEn="Communication history"
+          emptyFr="Aucun courriel, SMS, réseau social ni appel rattaché à ce contact pour le moment."
+          emptyEn="No email, SMS, social, or call linked to this contact yet."
+        />
+      </div>
     );
   }
   if (!props.residence) return null;

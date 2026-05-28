@@ -61,3 +61,39 @@ export function findContactsByEmail<T extends ContactEmailCandidate>(
   if (!email) return [];
   return contacts.filter((c) => normalizeMailAddress(c.email) === email);
 }
+
+/** Chiffres uniquement (10+ pour NA). */
+export function normalizePhoneDigits(phone: unknown): string | null {
+  if (typeof phone !== 'string' && typeof phone !== 'number') return null;
+  const digits = String(phone).replace(/\D/g, '');
+  if (digits.length < 10) return null;
+  return digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+}
+
+export interface ContactPhoneCandidate {
+  id: string;
+  displayName: string;
+  phone?: string | null;
+  mobile?: string | null;
+}
+
+export function contactPhoneDigits(contact: ContactPhoneCandidate): string[] {
+  const out: string[] = [];
+  for (const raw of [contact.phone, contact.mobile]) {
+    const d = normalizePhoneDigits(raw);
+    if (d && !out.includes(d)) out.push(d);
+  }
+  return out;
+}
+
+export function findContactsByPhone<T extends ContactPhoneCandidate>(
+  contacts: readonly T[],
+  phoneRaw: unknown
+): T[] {
+  const needle = normalizePhoneDigits(phoneRaw);
+  if (!needle) return [];
+  return contacts.filter((c) => {
+    const digits = contactPhoneDigits(c);
+    return digits.some((d) => d === needle || d.endsWith(needle) || needle.endsWith(d));
+  });
+}
