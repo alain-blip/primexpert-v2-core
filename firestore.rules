@@ -121,26 +121,45 @@ service cloud.firestore {
         resource.data.visibility == 'AGENCY_SHARED'
       );
 
+      // Création rapide prospect : nom seul (SSOT validateContactLciFields) — LCI secondaire via importMeta.lciIncomplete
       allow create: if isOrgMember(orgId) &&
-        incoming().ownerId == request.auth.uid &&
         incoming().orgId == orgId &&
+        (incoming().ownerId == request.auth.uid || isOrgAdmin(orgId)) &&
         incoming().silo in ['RESIDENTIEL', 'RES_COM', 'COMMERCIAL_SPEC'] &&
         incoming().visibility in ['PRIVATE', 'AGENCY_SHARED'] &&
         incoming().leadSource in ['AGENCY_AD', 'BROKER_GENERATED', 'REFERRAL', 'IMPORT_LEGACY', 'OTHER'] &&
         incoming().nom is string && incoming().nom.size() > 0 &&
-        incoming().dateNaissance is string && incoming().dateNaissance.size() > 0 &&
-        incoming().occupationProfession is string && incoming().occupationProfession.size() > 0 &&
-        incoming().adresse is map;
+        (!('dateNaissance' in incoming()) ||
+          (incoming().dateNaissance is string && incoming().dateNaissance.size() > 0)) &&
+        (!('occupationProfession' in incoming()) ||
+          (incoming().occupationProfession is string && incoming().occupationProfession.size() > 0)) &&
+        (!('adresse' in incoming()) || incoming().adresse is map);
 
+      // Propriétaire du contact OU administrateur d'agence (direction incluse)
       allow update: if isOrgMember(orgId) && (
         (resource.data.ownerId == request.auth.uid &&
          incoming().ownerId == resource.data.ownerId) ||
-        (isOrgAdmin(orgId) &&
-         resource.data.leadSource == 'AGENCY_AD' &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ownerId', 'updatedAt']))
+        isOrgAdmin(orgId)
       );
 
       allow delete: if isOrgMember(orgId) && resource.data.ownerId == request.auth.uid;
+
+      // Notes de suivi CRM (notes vocales + saisie)
+      match /notes/{noteId} {
+        allow read: if isOrgMember(orgId) && (
+          get(/databases/$(database)/documents/organizations/$(orgId)/contacts/$(contactId)).data.ownerId == request.auth.uid ||
+          get(/databases/$(database)/documents/organizations/$(orgId)/contacts/$(contactId)).data.visibility == 'AGENCY_SHARED'
+        );
+        allow create, update, delete: if isOrgMember(orgId) &&
+          get(/databases/$(database)/documents/organizations/$(orgId)/contacts/$(contactId)).data.ownerId == request.auth.uid;
+      }
+    }
+
+    // Tâches organisation (ex. intention détectée depuis note vocale contact)
+    match /organizations/{orgId}/tasks/{taskId} {
+      allow read: if isOrgMember(orgId);
+      allow create, update, delete: if isOrgMember(orgId) &&
+        incoming().ownerId == request.auth.uid;
     }
 
     match /organizations/{orgId}/transactions/{transactionId} {

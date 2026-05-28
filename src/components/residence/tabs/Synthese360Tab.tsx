@@ -35,6 +35,7 @@ import { fmtBuyerPercent } from '../../../services/buyerReportPdfService';
 import type { PropertyDocumentExtractedData, PropertyDocumentRecord } from '../../../types/propertyDocument';
 import { ResidenceActivitiesPanel } from '../activities/ResidenceActivitiesPanel';
 import { ResidenceTasksPanel } from '../tasks/ResidenceTasksPanel';
+import { AudioRecorderButton } from '../../mobile/AudioRecorderButton';
 
 type ResidenceLoose = Residence & Record<string, unknown>;
 type BusinessStatus = 'complet' | 'attention' | 'a_completer';
@@ -50,6 +51,7 @@ interface BrokerNote {
   authorId?: string;
   authorName?: string;
   createdAt?: unknown;
+  source?: string;
 }
 
 function parseSafeNumber(value: unknown): number {
@@ -1286,6 +1288,7 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
               authorId: typeof data.authorId === 'string' ? data.authorId : undefined,
               authorName: typeof data.authorName === 'string' ? data.authorName : undefined,
               createdAt: data.createdAt,
+              source: typeof data.source === 'string' ? data.source : undefined,
             };
           })
         );
@@ -1660,6 +1663,11 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
                     </div>
                   ) : (
                     <>
+                      {note.source === 'voice' ? (
+                        <span className="mb-2 inline-flex rounded-lg border border-[#142c6a]/30 bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#142c6a]">
+                          {t('Note vocale (IA)', 'Voice note (AI)')}
+                        </span>
+                      ) : null}
                       <p className="font-semibold leading-relaxed">{note.text}</p>
                       <div className="mt-2 flex items-center justify-between gap-3 text-[12px] font-bold text-slate-600">
                         <span>

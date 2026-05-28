@@ -722,3 +722,6 @@ export const sendDocumentSelection = onCall({ invoker: 'public' }, async (reques
 
 /** Benchmark portefeuille — médianes dépense/RBE (IQR, dataV2). */
 export { getGlobalFinancialBenchmark } from './benchmark/getGlobalFinancialBenchmark';
+
+/** Notes vocales mobile — Whisper + intention Gemini → notes / tâches (Montréal). */
+export { onVoiceNoteUploaded } from './audio/onVoiceNoteUploaded';

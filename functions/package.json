@@ -10,7 +10,9 @@
     "sync:core-mail": "node scripts/sync-core-mail.cjs",
     "sync:core-documents": "node scripts/sync-core-documents.cjs",
     "sync:core-market": "node scripts/sync-core-market.cjs",
-    "prebuild": "npm run sync:core-diffusion && npm run sync:core-mail && npm run sync:core-documents && npm run sync:core-market",
+    "sync:core-telephony": "node scripts/sync-core-telephony.cjs",
+    "sync:core-ai": "node scripts/sync-core-ai.cjs",
+    "prebuild": "npm run sync:core-diffusion && npm run sync:core-mail && npm run sync:core-documents && npm run sync:core-market && npm run sync:core-telephony && npm run sync:core-ai",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "serve": "npm run build && firebase emulators:start --only functions",
@@ -19,7 +21,8 @@
   "dependencies": {
     "@google-cloud/vertexai": "^1.10.0",
     "firebase-admin": "^13.10.0",
-    "firebase-functions": "^7.2.5"
+    "firebase-functions": "^7.2.5",
+    "twilio": "^5.13.1"
   },
   "devDependencies": {
     "typescript": "~5.8.2"

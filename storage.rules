@@ -57,6 +57,20 @@ service firebase.storage {
       allow delete: if request.auth != null && userOrgId() == orgId;
     }
 
+    // Notes vocales mobile — courtier authentifié, membre de l'organisation
+    match /organizations/{orgId}/voice_notes/{parentKind}/{parentId}/{fileName} {
+      allow read: if request.auth != null && userOrgId() == orgId;
+
+      allow create: if request.auth != null
+                    && userOrgId() == orgId
+                    && request.auth.uid == request.resource.metadata.brokerId
+                    && parentKind in ['residences', 'contacts']
+                    && request.resource.size < 10 * 1024 * 1024
+                    && request.resource.contentType.matches('audio/.*');
+
+      allow delete: if false;
+    }
+
     // Drive PrimeXpert — reste du silo courtier
     match /primexpert/{brokerId}/{allPaths=**} {
       allow read: if request.auth != null

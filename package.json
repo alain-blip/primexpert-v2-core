@@ -22,13 +22,18 @@
     "migrate:financial:dry": "node migrate_financial_subcollections.js --dry-run --uid=bYwUG6mxNmPcvK9Xz2Uuy4FxqD83",
     "migrate:financial": "node migrate_financial_subcollections.js --uid=bYwUG6mxNmPcvK9Xz2Uuy4FxqD83",
     "cleanup:email:dry": "node scripts/cleanup-email-data.js --dry-run",
-    "cleanup:email": "node scripts/cleanup-email-data.js"
+    "cleanup:email": "node scripts/cleanup-email-data.js",
+    "migrate:contacts": "npx tsx packages/core/src/scripts/migrateLegacyContacts.ts",
+    "migrate:contacts:execute": "npx tsx packages/core/src/scripts/migrateLegacyContacts.ts --execute",
+    "test:voice-note": "npx tsx packages/core/src/scripts/testVoiceNotePipeline.ts",
+    "test:voice-note:gemini": "npx tsx packages/core/src/scripts/testVoiceNotePipeline.ts --gemini"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
     "@hello-pangea/dnd": "^18.0.1",
     "@tailwindcss/vite": "^4.1.14",
     "@tanstack/react-virtual": "^3.13.24",
+    "@twilio/voice-sdk": "^2.18.3",
     "@vitejs/plugin-react": "^5.0.4",
     "chart.js": "^4.5.1",
     "clsx": "^2.1.1",
