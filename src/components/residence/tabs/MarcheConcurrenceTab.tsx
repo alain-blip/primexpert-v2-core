@@ -1,5 +1,5 @@
 /**
- * Marché & Concurrence — 3 piliers (zone, diagnostic territorial, registre visiteurs).
+ * Marché & Concurrence — zone de pénétration, concurrence locale, analyse de mise en marché (ACM).
  * SSOT : @primexpert/core/market + ResidenceDocumentContext.
  */
 
@@ -10,9 +10,6 @@ import { useResidenceDocument } from '../../../context/ResidenceDocumentContext'
 import { inst } from '../institutional/InstitutionalUi';
 import { CompetitorZoneSection } from '../market/CompetitorZoneSection';
 import { MarketPenetrationSection } from '../market/MarketPenetrationSection';
-import { TerritorialDiagnosticSection } from '../market/TerritorialDiagnosticSection';
-import { VisitorRegistrySection } from '../market/VisitorRegistrySection';
-import { WorkforceBasinSection } from '../market/WorkforceBasinSection';
 import { ResidenceAcmValuationPanel } from '../market/ResidenceAcmValuationPanel';
 import { FinancialDataProvider } from '../../../context/FinancialDataContext';
 
@@ -22,7 +19,7 @@ export interface MarcheConcurrenceTabProps {
 
 export function MarcheConcurrenceTab({ residence }: MarcheConcurrenceTabProps) {
   const { t } = useLanguage();
-  const { residenceDoc, loading, error, isInProvider, saveError } = useResidenceDocument();
+  const { loading, error, isInProvider, saveError } = useResidenceDocument();
 
   if (!isInProvider) {
     return (
@@ -56,16 +53,13 @@ export function MarcheConcurrenceTab({ residence }: MarcheConcurrenceTabProps) {
       {loading ? (
         <div className={inst.loading}>
           <p className={inst.loadingText}>
-            {t('Chargement du diagnostic territorial…', 'Loading territorial diagnostic…')}
+            {t('Chargement du marché et de la concurrence…', 'Loading market & competition…')}
           </p>
         </div>
       ) : (
         <>
           <MarketPenetrationSection />
           <CompetitorZoneSection />
-          <WorkforceBasinSection />
-          <TerritorialDiagnosticSection />
-          <VisitorRegistrySection />
         </>
       )}
     </div>
