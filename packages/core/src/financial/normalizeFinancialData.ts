@@ -29,6 +29,8 @@ export interface FinancialCalc {
   prixDemande?: number | null;
   ratioCouvertureDette?: number | null;
   empruntMaxDSCR?: number | null;
+  /** Plafond ratio prêt-valeur (RPV) sur le prix demandé. */
+  plafondLtv?: number | null;
   empruntMaxTransaction?: number | null;
   hypothequeMaxRecommandee?: number | null;
   surplusTresorerie?: number | null;

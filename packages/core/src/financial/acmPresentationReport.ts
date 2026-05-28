@@ -240,8 +240,8 @@ function buildFinancingTiles(
       value: fmtMoney(kpis.revenuNetExploitation, locale),
     },
     {
-      labelFr: 'Emprunt maximum',
-      labelEn: 'Maximum loan',
+      labelFr: 'Emprunt maximum autorisé (le plus bas des critères)',
+      labelEn: 'Maximum authorized loan (lowest of criteria)',
       value: fmtMoney(kpis.empruntMaximum, locale),
     },
     {

@@ -5,7 +5,11 @@
 import { useCallback, useMemo, useState } from 'react';
 import { ChevronUp } from 'lucide-react';
 import { extractBuyerPreviewKpis } from '@primexpert/core/diffusion';
-import { FINANCE_HUB_GLOSSARY, normalizeFinancialData } from '@primexpert/core/financial';
+import {
+  computeFinancabilite,
+  FINANCE_HUB_GLOSSARY,
+  normalizeFinancialData,
+} from '@primexpert/core/financial';
 import { useFinancialData } from '../../../context/FinancialDataContext';
 import { useAuth } from '../../../lib/auth';
 import { useLanguage } from '../../../lib/i18n';
@@ -51,13 +55,24 @@ export function FinanceHubMasterPanel({ onOpenAnalyse360, residence }: FinanceHu
   const calculatedResults =
     financialData?.calculatedResults ?? normalized.calc ?? undefined;
 
-  const kpis = useMemo(
-    () => extractBuyerPreviewKpis(calculatedResults),
-    [calculatedResults]
+  const fmt = useCallback(
+    (n: number | null) =>
+      n != null && Number.isFinite(n) ? formatCurrency(n, { maxDecimals: 0 }) : '—',
+    []
   );
 
-  const fmt = (n: number | null) =>
-    n != null && Number.isFinite(n) ? formatCurrency(n, { maxDecimals: 0 }) : '—';
+  const kpis = useMemo(() => {
+    const preview = extractBuyerPreviewKpis(calculatedResults);
+    const fin = computeFinancabilite(financialData, residenceHints, { formatCurrency: fmt });
+    if (fin.hasValidInputs) {
+      return {
+        ...preview,
+        empruntMaximum: fin.empruntMaxTransaction ?? preview.empruntMaximum,
+        miseDeFonds: fin.miseDeFondsRequise ?? preview.miseDeFonds,
+      };
+    }
+    return preview;
+  }, [calculatedResults, financialData, residenceHints, fmt]);
 
   const hasKpisOnScreen =
     kpis.revenuNetExploitation != null ||
@@ -163,7 +178,10 @@ export function FinanceHubMasterPanel({ onOpenAnalyse360, residence }: FinanceHu
         />
         <FinanceKpiTile label={t('Cash flow', 'Cash flow')} value={loading ? '…' : fmt(kpis.cashFlow)} />
         <FinanceKpiTile
-          label={t('Emprunt maximum', 'Maximum loan')}
+          label={t(
+            'Emprunt maximum autorisé (le plus bas des critères)',
+            'Maximum authorized loan (lowest of criteria)'
+          )}
           value={loading ? '…' : fmt(kpis.empruntMaximum)}
         />
         <FinanceKpiTile

@@ -157,7 +157,10 @@ export function PublicPreviewPanel({
               />
               <KpiTile label={t('Cash flow', 'Cash flow')} value={fmt(kpis.cashFlow)} />
               <KpiTile
-                label={t('Emprunt maximum', 'Maximum loan')}
+                label={t(
+                  'Emprunt maximum autorisé (le plus bas des critères)',
+                  'Maximum authorized loan (lowest of criteria)'
+                )}
                 value={fmt(kpis.empruntMaximum)}
               />
               <KpiTile

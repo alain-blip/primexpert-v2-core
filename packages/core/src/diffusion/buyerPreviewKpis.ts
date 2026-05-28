@@ -3,6 +3,10 @@
  * Source : `residences/{id}/financial/dataV2.calculatedResults`.
  */
 
+import {
+  resolveEmpruntMaximumAutorise,
+  resolveMiseDeFondsRequiseAcheteur,
+} from '../financial/bankingSubscriptionLimits';
 import type { FinancialCalc } from '../financial/normalizeFinancialData';
 
 export interface BuyerPreviewKpiSnapshot {
@@ -30,10 +34,7 @@ export function extractBuyerPreviewKpis(
   return {
     revenuNetExploitation: finiteNum(calculatedResults.revenuNetExploitation),
     cashFlow: finiteNum(calculatedResults.cashFlow),
-    empruntMaximum:
-      finiteNum(calculatedResults.empruntMaxTransaction) ??
-      finiteNum(calculatedResults.empruntMaxDSCR) ??
-      finiteNum(calculatedResults.hypothequeMaxRecommandee),
-    miseDeFonds: finiteNum(calculatedResults.miseDeFondsRequise),
+    empruntMaximum: resolveEmpruntMaximumAutorise(calculatedResults),
+    miseDeFonds: resolveMiseDeFondsRequiseAcheteur(calculatedResults),
   };
 }
