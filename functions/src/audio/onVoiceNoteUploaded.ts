@@ -1,6 +1,7 @@
 /**
  * Pipeline note vocale — Storage → Whisper → Gemini intention → notes + tasks.
- * Région : northamerica-northeast1 (Montréal). Gemini : us-central1 (Vertex).
+ * Région trigger Storage : us-east1 (obligatoire — bucket Firebase `*.firebasestorage.app`).
+ * Analyse intention : Vertex Gemini us-central1.
  */
 
 import { onObjectFinalized } from 'firebase-functions/v2/storage';
@@ -40,7 +41,7 @@ async function transcribeVoiceNote(
 
 export const onVoiceNoteUploaded = onObjectFinalized(
   {
-    region: 'northamerica-northeast1',
+    region: 'us-east1',
     memory: '512MiB',
     timeoutSeconds: 120,
     serviceAccount:
