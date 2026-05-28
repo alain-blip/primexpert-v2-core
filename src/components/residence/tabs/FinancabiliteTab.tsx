@@ -730,6 +730,31 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
         </InstitutionalSection>
       )}
 
+      <div className={cn(inst.kpi, 'border-2 border-[#142c6a] p-6')}>
+        <p className={inst.kpiLabel}>
+          {t(
+            'Emprunt maximum autorisé (le plus bas des critères)',
+            'Maximum authorized loan (lowest of criteria)'
+          )}
+        </p>
+        <p className="mt-2 text-4xl font-black tabular-nums tracking-tight text-[#142c6a]">
+          {fmt(model.empruntMaxTransaction)}
+        </p>
+        <p className="mt-3 text-[13px] leading-relaxed text-slate-700">
+          {t(
+            'Mise de fonds requise (MFR) — prix demandé moins emprunt retenu :',
+            'Required down payment (RFR) — asking price minus retained loan:'
+          )}{' '}
+          <span className="font-black text-black">{fmt(model.miseDeFondsRequise)}</span>
+        </p>
+        <p className="mt-2 text-[11px] text-slate-600">
+          {t(
+            'Détail des critères (ratio de couverture (DSCR) vs ratio prêt-valeur (RPV)) — voir tableau ci-dessous.',
+            'Criteria detail (debt service coverage ratio (DSCR) vs loan-to-value (LTV)) — see table below.'
+          )}
+        </p>
+      </div>
+
       <section className={inst.section}>
         <header className={inst.sectionHeader}>
           <h3 className={inst.sectionTitle}>{t('Scénario de financement', 'Financing scenario')}</h3>

@@ -7,6 +7,12 @@ export * from './normalizeFinancialData';
 export * from './nonOpexFinancialLines';
 export { buildFinancialDataV2PatchFromExtraction, recomputeFinancialCalculatedResults } from './applyExtractedFinancials';
 export {
+  mergeExtractedIntoFinancialDataV2,
+  extractedPatchTouchesRevenues,
+  type MergeExtractedFinancialInput,
+  type MergeExtractedFinancialResult,
+} from './mergeExtractedFinancials';
+export {
   resolveCanonicalFinancialMetrics,
   resolveAdmissibleOpex,
   applyCanonicalMetricsToCalc,
@@ -22,6 +28,7 @@ export {
 } from './financialOverwriteAssessment';
 export * from './revenusDepensesGrid';
 export * from './computeFinancabilite';
+export * from './bankingSubscriptionLimits';
 export * from './bilanCfoView';
 export * from './performanceRatios';
 export * from './financialOptimization360';

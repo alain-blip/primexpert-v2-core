@@ -474,8 +474,14 @@ export function BilanExecutifTab({ residence }: BilanExecutifTabProps) {
             value={fmtDscr(bank.dscrTarget)}
           />
           <CfoKpiCard
-            label={t('EM (emprunt max.)', 'Max debt (EM)')}
-            sublabel={t('Capacité d’endettement', 'Debt capacity')}
+            label={t(
+              'Emprunt maximum autorisé (le plus bas des critères)',
+              'Maximum authorized loan (lowest of criteria)'
+            )}
+            sublabel={t(
+              'Ratio de couverture (DSCR) et ratio prêt-valeur (RPV)',
+              'Debt service coverage ratio (DSCR) and loan-to-value (LTV)'
+            )}
             value={bank.canSimulate ? fmt(bank.empruntMax) : '—'}
           />
           <CfoKpiCard

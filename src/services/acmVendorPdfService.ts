@@ -7,6 +7,8 @@
 import {
   buildRevenusDepensesGrid,
   computeFinancabilite,
+  resolveEmpruntMaximumAutorise,
+  resolveMiseDeFondsRequiseAcheteur,
   type CertifiableReportBrokerFooter,
   type FinancialCalc,
   type FinancialDataV2Doc,
@@ -186,30 +188,15 @@ export function resolveAcmVendorBankingMetrics(
     formatCurrency: (n) => String(n ?? 0),
   });
 
-  let capaciteEmprunt =
-    safeNum(fin.empruntMaxTransaction) ||
-    safeNum(calc.empruntMaxTransaction) ||
-    safeNum(calc.empruntMaxDSCR) ||
-    safeNum(calc.hypothequeMaxRecommandee);
+  const capaciteEmprunt =
+    safeNum(fin.empruntMaxTransaction) ??
+    resolveEmpruntMaximumAutorise(calc) ??
+    0;
 
-  if (capaciteEmprunt <= 0) {
-    capaciteEmprunt = safeNum(fin.empruntMaxDscr);
-  }
-
-  let miseDeFondsMinimale =
-    prixSuggere > 0 && capaciteEmprunt > 0 ? Math.max(0, prixSuggere - capaciteEmprunt) : 0;
-
-  if (miseDeFondsMinimale <= 0) {
-    const fromFin = safeNum(fin.miseDeFondsRequise);
-    const fromCalc = safeNum(calc.miseDeFondsRequise);
-    if (prixSuggere > 0 && capaciteEmprunt > 0) {
-      miseDeFondsMinimale = Math.max(0, prixSuggere - capaciteEmprunt);
-    } else if (fromFin > 0) {
-      miseDeFondsMinimale = fromFin;
-    } else if (fromCalc > 0) {
-      miseDeFondsMinimale = fromCalc;
-    }
-  }
+  const miseDeFondsMinimale =
+    safeNum(fin.miseDeFondsRequise) ??
+    resolveMiseDeFondsRequiseAcheteur(calc, prixSuggere) ??
+    (prixSuggere > 0 && capaciteEmprunt > 0 ? Math.max(0, prixSuggere - capaciteEmprunt) : 0);
 
   const rcd =
     safeNum(calc.ratioCouvertureDette) ||

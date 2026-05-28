@@ -136,13 +136,16 @@ function drawCoverBlock(pdf: jsPDF, model: CertifiableFinancialReportModel, y: n
     ? [
         ['Revenu net d’exploitation (RNE)', fmtKpi(model.kpis.revenuNetExploitation)],
         ['Cash flow', fmtKpi(model.kpis.cashFlow)],
-        ['Emprunt maximum', fmtKpi(model.kpis.empruntMaximum)],
+        [
+          'Emprunt maximum autorisé (le plus bas des critères)',
+          fmtKpi(model.kpis.empruntMaximum),
+        ],
         ['Mise de fonds requise (MFR)', fmtKpi(model.kpis.miseDeFonds)],
       ]
     : [
         ['Net operating income (NOI)', fmtKpi(model.kpis.revenuNetExploitation)],
         ['Cash flow', fmtKpi(model.kpis.cashFlow)],
-        ['Maximum loan', fmtKpi(model.kpis.empruntMaximum)],
+        ['Maximum authorized loan (lowest of criteria)', fmtKpi(model.kpis.empruntMaximum)],
         ['Required down payment (RFR)', fmtKpi(model.kpis.miseDeFonds)],
       ];
   let ky = y + 14;

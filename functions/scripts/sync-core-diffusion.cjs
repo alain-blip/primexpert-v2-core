@@ -69,6 +69,10 @@ const FILES = [
     to: 'formatPublicListingHeadline.ts',
   },
   { from: path.join(CORE_FINANCIAL_DIR, 'safeNumbers.ts'), to: 'safeNumbers.ts' },
+  {
+    from: path.join(CORE_FINANCIAL_DIR, 'bankingSubscriptionLimits.ts'),
+    to: 'bankingSubscriptionLimits.ts',
+  },
 ];
 
 function rewriteImports(source) {
@@ -76,6 +80,14 @@ function rewriteImports(source) {
     .replace(/from\s+['"]\.\.\/financial\/safeNumbers['"]/g, "from './safeNumbers'")
     .replace(
       /from\s+['"]\.\.\/financial\/normalizeFinancialData['"]/g,
+      "from './financialCalcTypes'"
+    )
+    .replace(
+      /from\s+['"]\.\.\/financial\/bankingSubscriptionLimits['"]/g,
+      "from './bankingSubscriptionLimits'"
+    )
+    .replace(
+      /from\s+['"]\.\/normalizeFinancialData['"]/g,
       "from './financialCalcTypes'"
     );
 }
