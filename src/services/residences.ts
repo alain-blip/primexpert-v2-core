@@ -113,6 +113,10 @@ export interface Residence {
   /** Champs identité — conformité mandat / matching. */
   unitesRPA?: number;
   nombreUnitesTotal?: number;
+  tauxOccupation?: number;
+  certificationsCiusss?: string[];
+  revenuBrutEffectif?: number;
+  revenuNetExploitation?: number;
   unitsCount?: number;
   nombreUnites?: number;
   region?: string;
@@ -264,6 +268,64 @@ function mapLegacyNumber(...candidates: unknown[]): number | undefined {
   return undefined;
 }
 
+function mapLegacyInteger(...candidates: unknown[]): number | undefined {
+  for (const c of candidates) {
+    if (c === undefined || c === null || c === '') continue;
+    if (typeof c === 'number' && Number.isFinite(c)) {
+      const n = parseInt(String(c), 10);
+      if (Number.isFinite(n) && n >= 0) return n;
+    }
+    if (typeof c === 'string') {
+      const cleaned = c.trim().replace(/\s/g, '').replace(/[^\d-]/g, '');
+      if (!cleaned) continue;
+      const n = parseInt(cleaned, 10);
+      if (Number.isFinite(n) && n >= 0) return n;
+    }
+  }
+  return undefined;
+}
+
+function mapLegacyFloat(...candidates: unknown[]): number | undefined {
+  for (const c of candidates) {
+    if (c === undefined || c === null || c === '') continue;
+    if (typeof c === 'number' && Number.isFinite(c)) {
+      const n = parseFloat(String(c));
+      if (Number.isFinite(n) && n >= 0) return n;
+    }
+    if (typeof c === 'string') {
+      const cleaned = c
+        .trim()
+        .replace(/\s/g, '')
+        .replace(/[^\d.,-]/g, '')
+        .replace(',', '.');
+      if (!cleaned) continue;
+      const n = parseFloat(cleaned);
+      if (Number.isFinite(n) && n >= 0) return n;
+    }
+  }
+  return undefined;
+}
+
+function mapLegacyStringArray(...candidates: unknown[]): string[] | undefined {
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      const values = candidate
+        .map((v) => (typeof v === 'string' ? v.trim() : ''))
+        .filter(Boolean);
+      if (values.length) return [...new Set(values)];
+      continue;
+    }
+    if (typeof candidate === 'string' && candidate.trim()) {
+      const values = candidate
+        .split(/[;,|]/)
+        .map((v) => v.trim())
+        .filter(Boolean);
+      if (values.length) return [...new Set(values)];
+    }
+  }
+  return undefined;
+}
+
 function mapCommercialName(data: DocumentData): string | undefined {
   const candidates: unknown[] = [
     data.nomResidence,
@@ -310,7 +372,7 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
     data.revenuPotentielAnnuel,
     data.revenusPotentiels
   );
-  const unitesRPA = mapLegacyNumber(
+  const unitesRPA = mapLegacyInteger(
     data.unitesRPA,
     data.nombreUnitesTotal,
     data.unitsCount,
@@ -318,6 +380,34 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
     data.nombreUnitesRPA,
     data.unites,
     data.capacite
+  );
+  const tauxOccupation = mapLegacyFloat(
+    data.tauxOccupation,
+    data.taux_occupation,
+    data.occupationRate,
+    data.occupancyRate,
+    data.operations?.tauxOccupation,
+    data.operations?.occupancyRate
+  );
+  const certificationsCiusss = mapLegacyStringArray(
+    data.certificationsCiusss,
+    data.certificationCiusss,
+    data.certificationCIUSSS,
+    data.certificationsCIUSSS,
+    data.operations?.certificationsCiusss
+  );
+  const revenuBrutEffectif = mapLegacyFloat(
+    data.revenuBrutEffectif,
+    data.rbe,
+    data.revenus?.revenuBrutEffectif,
+    data.financial?.calculatedResults?.revenuBrutEffectif,
+    data.financial?.calculatedResults?.revenusAnnuels
+  );
+  const revenuNetExploitation = mapLegacyFloat(
+    data.revenuNetExploitation,
+    data.rne,
+    data.revenus?.revenuNetExploitation,
+    data.financial?.calculatedResults?.revenuNetExploitation
   );
   const loc = extractResidenceAddressAndCities(data as Record<string, unknown>);
   const regionRaw = data.region ?? data.regionSociosanitaire ?? loc.ville ?? loc.city;
@@ -370,6 +460,10 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
     potentialRevenue,
     unitesRPA,
     nombreUnitesTotal: unitesRPA,
+    tauxOccupation,
+    certificationsCiusss,
+    revenuBrutEffectif,
+    revenuNetExploitation,
     region,
     residenceType,
     type: residenceType,
@@ -626,6 +720,14 @@ export async function updateResidencePipelineStatus(
 
   const existing = await getResidenceById(ctx, residenceId);
   if (!existing) throw new Error('Résidence introuvable ou accès refusé');
+  if (columnId === 'promise') {
+    const prixAccepte = mapLegacyFloat(existing.prixAccepte);
+    if (!prixAccepte || prixAccepte <= 0) {
+      throw new Error(
+        "Action requise: impossible de passer en promesse d'achat acceptée sans prix accepté."
+      );
+    }
+  }
 
   const statusPatch = buildPipelineStatusFirestorePatch(columnId);
   const ref = doc(db, 'residences', residenceId);

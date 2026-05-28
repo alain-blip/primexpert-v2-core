@@ -31,14 +31,18 @@ import { stripUndefinedDeep } from '../lib/firestoreSanitize';
 import {
   parseContactBuyerFields,
   parseContactBrokerFields,
-  parseContactCommunicationPreferences,
   parseContactProfessionalFields,
+  parseContactRpaFields,
   parseContactSellerFields,
   defaultContactSiloForRoles,
+  deriveRpaBuyerCommercialTier,
+  mapBuyerTierToQualificationStatus,
   syncAddCoBuyerId,
+  syncAddContactRelation,
   syncAddCoSellerId,
   syncAddManagedBuyerId,
   syncRemoveCoBuyerId,
+  syncRemoveContactRelation,
   syncRemoveCoSellerId,
   syncRemoveManagedBuyerId,
   buildContactDisplayName,
@@ -53,6 +57,8 @@ import {
   validateContactLciFields,
   parseContactImportMeta,
   type ContactCriteriaDocumentRef,
+  type ContactRelationLink,
+  type ContactRpaTypology,
   type BuyerQualificationStatus,
   type ContactBuyerCriteria,
   type ContactBrokerCriteria,
@@ -110,8 +116,10 @@ export interface CreateOrganizationContactInput {
   /** Admin ou création — sinon `ctx.uid` par défaut. */
   ownerId?: string;
   coBuyerIds?: string[];
+  relations?: ContactRelationLink[];
   sellerCriteria?: ContactSellerCriteria;
   coSellerIds?: string[];
+  rpaTypologies?: ContactRpaTypology[];
   brokerCriteria?: ContactBrokerCriteria;
   professionalType?: ProfessionalType;
   notes?: string;
@@ -189,6 +197,17 @@ function pickContactString(...values: unknown[]): string | undefined {
   return undefined;
 }
 
+function parseContactCommunicationPreferencesFromDoc(
+  raw: unknown
+): ContactCommunicationPreferences | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const o = raw as Record<string, unknown>;
+  return {
+    unsubscribedFromEmails: o.unsubscribedFromEmails === true,
+    excludedFromMassMailing: o.excludedFromMassMailing === true,
+  };
+}
+
 function mapContactDoc(orgId: string, id: string, data: DocumentData): OrganizationContact {
   const prenom = pickContactString(data.prenom, data.firstName);
   const nom =
@@ -232,6 +251,10 @@ function mapContactDoc(orgId: string, id: string, data: DocumentData): Organizat
     ...parseContactSellerFields(data as Record<string, unknown>),
     ...parseContactBrokerFields(data as Record<string, unknown>),
     ...parseContactProfessionalFields(data as Record<string, unknown>),
+    ...parseContactRpaFields(data as Record<string, unknown>),
+    communicationPreferences: parseContactCommunicationPreferencesFromDoc(
+      data.communicationPreferences
+    ),
     notes: data.notes ? String(data.notes) : undefined,
     legalVerification: normalizeContactLegalVerification(data.legalVerification),
     importMeta: parseContactImportMeta(data.importMeta),
@@ -274,13 +297,19 @@ export async function findOrganizationContactsByEmail(
   const email = normalizeMailAddress(emailRaw);
   if (!email) return [];
   const rows = await listOrganizationContacts(ctx);
-  return findContactsByEmail(
-    rows.map((c) => ({
+  const candidates = rows
+    .filter((c): c is OrganizationContact & { email: string } => !!c.email?.trim())
+    .map((c) => ({
       ...c,
+      email: c.email.trim(),
       displayName: buildContactDisplayName(c),
-    })),
+    }));
+  const matched = findContactsByEmail(
+    candidates,
     email
   );
+  const byId = new Map(rows.map((row) => [row.id, row] as const));
+  return matched.map((m) => byId.get(m.id)).filter((row): row is OrganizationContact => !!row);
 }
 
 export async function getOrganizationContactById(
@@ -303,7 +332,12 @@ export async function createOrganizationContact(
   input: CreateOrganizationContactInput,
   contactId?: string
 ): Promise<{ ok: true; id: string } | { ok: false; error: string; missing?: string[] }> {
-  const lci = validateContactLciFields(input);
+  const lci = validateContactLciFields({
+    nom: input.nom,
+    adresse: normalizeContactAddressForWrite(input.adresse),
+    dateNaissance: input.dateNaissance?.trim(),
+    occupationProfession: input.occupationProfession?.trim(),
+  });
   if (!lci.ok) {
     return { ok: false, error: 'lci_incomplete', missing: lci.missing };
   }
@@ -350,6 +384,8 @@ export async function createOrganizationContact(
       ? { buyerQualificationStatus: input.buyerQualificationStatus }
       : {}),
     ...(input.buyerCriteria ? { buyerCriteria: input.buyerCriteria } : {}),
+    ...(input.rpaTypologies?.length ? { rpaTypologies: input.rpaTypologies } : {}),
+    ...(input.relations?.length ? { relations: input.relations } : {}),
     ...(input.coBuyerIds?.length ? { coBuyerIds: input.coBuyerIds } : {}),
     ...(input.sellerCriteria ? { sellerCriteria: input.sellerCriteria } : {}),
     ...(input.coSellerIds?.length ? { coSellerIds: input.coSellerIds } : {}),
@@ -368,6 +404,16 @@ export async function createOrganizationContact(
     createdAt: now,
     updatedAt: now,
   };
+
+  const derivedTier = deriveRpaBuyerCommercialTier({
+    rpaTypologies: input.rpaTypologies,
+    relationRoles: input.relationRoles,
+    buyerCriteria: input.buyerCriteria,
+  });
+  if (derivedTier) {
+    payload.buyerCommercialTier = derivedTier;
+    payload.buyerQualificationStatus = mapBuyerTierToQualificationStatus(derivedTier);
+  }
 
   await setDoc(
     doc(db, 'organizations', ctx.orgId, 'contacts', id),
@@ -395,18 +441,22 @@ export async function updateOrganizationContact(
 
   const normalizedAdresse =
     patch.adresse !== undefined ? normalizeContactAddressForWrite(patch.adresse) : undefined;
-  const merged: Partial<OrganizationContact> = {
-    ...existing,
-    ...patch,
-    ...(patch.adresse !== undefined ? { adresse: normalizedAdresse } : {}),
-    ...(patch.dateNaissance !== undefined
-      ? { dateNaissance: patch.dateNaissance?.trim() || undefined }
-      : {}),
-    ...(patch.occupationProfession !== undefined
-      ? { occupationProfession: patch.occupationProfession?.trim() || undefined }
-      : {}),
+  const mergedForLci: Partial<OrganizationContact> = {
+    nom: patch.nom?.trim() || existing.nom,
+    adresse:
+      patch.adresse !== undefined
+        ? normalizedAdresse
+        : normalizeContactAddressForWrite(existing.adresse),
+    dateNaissance:
+      patch.dateNaissance !== undefined
+        ? patch.dateNaissance?.trim() || undefined
+        : existing.dateNaissance,
+    occupationProfession:
+      patch.occupationProfession !== undefined
+        ? patch.occupationProfession?.trim() || undefined
+        : existing.occupationProfession,
   };
-  const lci = validateContactLciFields(merged);
+  const lci = validateContactLciFields(mergedForLci);
   if (!lci.ok) {
     return { ok: false, error: 'lci_incomplete', missing: lci.missing };
   }
@@ -441,8 +491,28 @@ export async function updateOrganizationContact(
   if (admin && patch.ownerId?.trim()) {
     updatePayload.ownerId = patch.ownerId.trim();
   }
+  const mergedRpaTypologies = (patch.rpaTypologies ?? existing.rpaTypologies) as
+    | ContactRpaTypology[]
+    | undefined;
+  const mergedRelationRoles = (patch.relationRoles ?? existing.relationRoles) as
+    | ContactRelationRole[]
+    | undefined;
+  const mergedBuyerCriteria = (patch.buyerCriteria ?? existing.buyerCriteria) as
+    | ContactBuyerCriteria
+    | undefined;
+  const derivedTier = deriveRpaBuyerCommercialTier({
+    rpaTypologies: mergedRpaTypologies,
+    relationRoles: mergedRelationRoles,
+    buyerCriteria: mergedBuyerCriteria,
+  });
+  if (derivedTier) {
+    updatePayload.buyerCommercialTier = derivedTier;
+    updatePayload.buyerQualificationStatus = mapBuyerTierToQualificationStatus(derivedTier);
+  } else if (patch.rpaTypologies !== undefined) {
+    updatePayload.buyerCommercialTier = null;
+  }
   if (lci.ok && existing.importMeta) {
-    const secondaryMissing = getContactLciSecondaryGaps(merged);
+    const secondaryMissing = getContactLciSecondaryGaps(mergedForLci);
     updatePayload.importMeta = {
       ...existing.importMeta,
       lciIncomplete: secondaryMissing.length > 0,
@@ -540,7 +610,7 @@ export async function uploadContactBuyerDocument(
   kind: ContactBuyerDocumentKind,
   file: File
 ): Promise<
-  | { ok: true; ref: BuyerCriteriaDocumentRef }
+  | { ok: true; ref: ContactCriteriaDocumentRef }
   | { ok: false; error: 'forbidden' | 'not_found' | 'upload_failed' }
 > {
   const existing = await getOrganizationContactById(ctx, contactId);
@@ -577,8 +647,19 @@ export async function uploadContactBuyerDocument(
       kind,
       docRef
     );
+    const derivedTier = deriveRpaBuyerCommercialTier({
+      rpaTypologies: existing.rpaTypologies,
+      relationRoles: existing.relationRoles,
+      buyerCriteria,
+    });
     await updateDoc(doc(db, 'organizations', ctx.orgId, 'contacts', contactId), {
       buyerCriteria,
+      ...(derivedTier
+        ? {
+            buyerCommercialTier: derivedTier,
+            buyerQualificationStatus: mapBuyerTierToQualificationStatus(derivedTier),
+          }
+        : {}),
       updatedAt: new Date().toISOString(),
     });
     return { ok: true, ref: docRef };
@@ -951,6 +1032,154 @@ export async function unlinkCoSeller(
     console.warn('[contacts.unlinkCoSeller] batch failed:', e);
     return { ok: false, error: 'batch_failed' };
   }
+}
+
+/**
+ * Liaison relationnelle bidirectionnelle atomique (`relations[]` des deux fiches).
+ */
+export async function linkContactRelation(
+  ctx: ContactServiceContext,
+  contactId: string,
+  partnerContactId: string,
+  relationType: string,
+  notes?: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const aId = contactId.trim();
+  const bId = partnerContactId.trim();
+  const type = relationType.trim();
+  if (!aId || !bId || !type || aId === bId) return { ok: false, error: 'invalid_args' };
+
+  const [contactA, contactB] = await Promise.all([
+    getOrganizationContactDoc(ctx, aId),
+    getOrganizationContactDoc(ctx, bId),
+  ]);
+  if (!contactA || !contactB) return { ok: false, error: 'not_found' };
+  const isolation = validateMultiTenantIsolationStructure({
+    contextOrgId: ctx.orgId,
+    sourceOrgId: contactA.orgId,
+    targetOrgId: contactB.orgId,
+    sourceContactId: aId,
+    targetContactId: bId,
+  });
+  if (isIsolationBlocked(isolation)) return { ok: false, error: isolation.error };
+  if (!canWriteOrganizationContact(ctx, contactA)) return { ok: false, error: 'forbidden' };
+  if (!canWriteOrganizationContact(ctx, contactB)) return { ok: false, error: 'partner_not_writable' };
+
+  const now = new Date().toISOString();
+  const refA = doc(db, 'organizations', ctx.orgId, 'contacts', aId);
+  const refB = doc(db, 'organizations', ctx.orgId, 'contacts', bId);
+  const batch = writeBatch(db);
+  batch.update(refA, {
+    relations: syncAddContactRelation(contactA.relations, {
+      contactId: bId,
+      type,
+      ...(notes?.trim() ? { notes: notes.trim() } : {}),
+    }),
+    updatedAt: now,
+  });
+  batch.update(refB, {
+    relations: syncAddContactRelation(contactB.relations, {
+      contactId: aId,
+      type,
+      ...(notes?.trim() ? { notes: notes.trim() } : {}),
+    }),
+    updatedAt: now,
+  });
+  try {
+    await batch.commit();
+    return { ok: true };
+  } catch (e) {
+    console.warn('[contacts.linkContactRelation] batch failed:', e);
+    return { ok: false, error: 'batch_failed' };
+  }
+}
+
+/**
+ * Retrait relationnel bidirectionnel atomique (`relations[]` des deux fiches).
+ */
+export async function unlinkContactRelation(
+  ctx: ContactServiceContext,
+  contactId: string,
+  partnerContactId: string,
+  relationType: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const aId = contactId.trim();
+  const bId = partnerContactId.trim();
+  const type = relationType.trim();
+  if (!aId || !bId || !type) return { ok: false, error: 'invalid_args' };
+
+  const [contactA, contactB] = await Promise.all([
+    getOrganizationContactDoc(ctx, aId),
+    getOrganizationContactDoc(ctx, bId),
+  ]);
+  if (!contactA || !contactB) return { ok: false, error: 'not_found' };
+  const isolation = validateMultiTenantIsolationStructure({
+    contextOrgId: ctx.orgId,
+    sourceOrgId: contactA.orgId,
+    targetOrgId: contactB.orgId,
+    sourceContactId: aId,
+    targetContactId: bId,
+  });
+  if (isIsolationBlocked(isolation)) return { ok: false, error: isolation.error };
+  if (!canWriteOrganizationContact(ctx, contactA)) return { ok: false, error: 'forbidden' };
+
+  const now = new Date().toISOString();
+  const refA = doc(db, 'organizations', ctx.orgId, 'contacts', aId);
+  const batch = writeBatch(db);
+  batch.update(refA, {
+    relations: syncRemoveContactRelation(contactA.relations, { contactId: bId, type }),
+    updatedAt: now,
+  });
+  if (canWriteOrganizationContact(ctx, contactB)) {
+    const refB = doc(db, 'organizations', ctx.orgId, 'contacts', bId);
+    batch.update(refB, {
+      relations: syncRemoveContactRelation(contactB.relations, { contactId: aId, type }),
+      updatedAt: now,
+    });
+  }
+  try {
+    await batch.commit();
+    return { ok: true };
+  } catch (e) {
+    console.warn('[contacts.unlinkContactRelation] batch failed:', e);
+    return { ok: false, error: 'batch_failed' };
+  }
+}
+
+export interface MultiTenantIsolationValidationInput {
+  contextOrgId: string;
+  sourceOrgId: string;
+  targetOrgId: string;
+  sourceContactId: string;
+  targetContactId: string;
+}
+
+/**
+ * Vérification de conformité multi-tenant avant écriture atomique relationnelle.
+ * Rejette toute tentative de liaison inter-organisation.
+ */
+export function validateMultiTenantIsolationStructure(
+  input: MultiTenantIsolationValidationInput
+): { ok: true } | { ok: false; error: 'cross_org_write_forbidden' | 'org_context_mismatch' } {
+  const contextOrg = input.contextOrgId.trim();
+  const sourceOrg = input.sourceOrgId.trim();
+  const targetOrg = input.targetOrgId.trim();
+  if (!contextOrg || !sourceOrg || !targetOrg) {
+    return { ok: false, error: 'org_context_mismatch' };
+  }
+  if (sourceOrg !== targetOrg) {
+    return { ok: false, error: 'cross_org_write_forbidden' };
+  }
+  if (sourceOrg !== contextOrg || targetOrg !== contextOrg) {
+    return { ok: false, error: 'org_context_mismatch' };
+  }
+  return { ok: true };
+}
+
+function isIsolationBlocked(
+  result: ReturnType<typeof validateMultiTenantIsolationStructure>
+): result is { ok: false; error: 'cross_org_write_forbidden' | 'org_context_mismatch' } {
+  return result.ok === false;
 }
 
 /**

@@ -3,8 +3,19 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Facebook, Instagram, Loader2, Mail, MessageSquare } from 'lucide-react';
+import {
+  AlertTriangle,
+  Facebook,
+  Loader2,
+  Mail,
+  MessageSquare,
+  PhoneCall,
+} from 'lucide-react';
 import { buildCrmThreadId } from '@primexpert/core/mail';
+import {
+  calculateHotLeadScore,
+  extractHotLeadSignalsFromMessages,
+} from '@primexpert/core/crm';
 import { useLanguage } from '../../lib/i18n';
 import { cn } from '../../lib/utils';
 import type { EmailMessage } from '../../types/emailSync';
@@ -13,6 +24,7 @@ import { inst } from '../residence/institutional/InstitutionalUi';
 
 export interface CommunicationHubProps {
   brokerId: string;
+  orgId?: string | null;
   /** Contact CRM — fil `crm_{contactId}`. */
   contactId?: string | null;
   /** Repli si pas de contactId (SMS anonyme). */
@@ -29,18 +41,18 @@ function channelBadge(channel: EmailMessage['channel'], t: (fr: string, en: stri
       cls: 'border-emerald-600/40 bg-emerald-50 text-emerald-900',
     };
   }
-  if (ch === 'facebook') {
+  if (ch === 'facebook' || ch === 'instagram') {
     return {
       icon: Facebook,
-      label: t('Facebook', 'Facebook'),
+      label: t('Meta', 'Meta'),
       cls: 'border-blue-600/40 bg-blue-50 text-blue-900',
     };
   }
-  if (ch === 'instagram') {
+  if (ch === 'voice_call') {
     return {
-      icon: Instagram,
-      label: t('Instagram', 'Instagram'),
-      cls: 'border-pink-600/40 bg-pink-50 text-pink-900',
+      icon: PhoneCall,
+      label: t('Appel', 'Voice call'),
+      cls: 'border-violet-600/40 bg-violet-50 text-violet-900',
     };
   }
   return {
@@ -52,6 +64,7 @@ function channelBadge(channel: EmailMessage['channel'], t: (fr: string, en: stri
 
 export function CommunicationHub({
   brokerId,
+  orgId,
   contactId,
   fallbackThreadId,
   className,
@@ -77,21 +90,35 @@ export function CommunicationHub({
       brokerId,
       threadId,
       (rows) => {
-        setMessages(rows);
+        const sorted = [...rows].sort(
+          (a, b) => (a.timestamp ?? a.sentAtMillis) - (b.timestamp ?? b.sentAtMillis)
+        );
+        setMessages(sorted);
         setLoading(false);
       },
-      () => setLoading(false)
+      () => setLoading(false),
+      orgId
     );
     return unsub;
-  }, [brokerId, threadId]);
+  }, [brokerId, threadId, orgId]);
+
+  const hotLeadScore = useMemo(() => {
+    const signals = extractHotLeadSignalsFromMessages(messages);
+    return calculateHotLeadScore({ signals }).score;
+  }, [messages]);
 
   return (
     <section className={cn(inst.section, 'overflow-hidden', className)}>
-      <header className={cn(inst.sectionHeader, 'flex items-center gap-2')}>
-        <MessageSquare className="h-4 w-4 text-[#142c6a]" />
-        <h3 className={inst.sectionTitle}>
-          {t('Messagerie unifiée', 'Unified messaging')}
-        </h3>
+      <header className={cn(inst.sectionHeader, 'flex items-center justify-between gap-2')}>
+        <div className="flex items-center gap-2">
+          <MessageSquare className="h-4 w-4 text-[#142c6a]" />
+          <h3 className={inst.sectionTitle}>
+            {t('Messagerie unifiée', 'Unified messaging')}
+          </h3>
+        </div>
+        <span className="inline-flex items-center rounded-lg border-2 border-primexpert-dark bg-white dark:bg-primexpert-cardDark px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-black">
+          {t('Score hot lead', 'Hot lead score')} {hotLeadScore}/100
+        </span>
       </header>
 
       {!threadId ? (
@@ -107,12 +134,19 @@ export function CommunicationHub({
           <span className="text-sm font-bold">{t('Chargement…', 'Loading…')}</span>
         </div>
       ) : messages.length === 0 ? (
-        <p className="px-6 py-8 text-center text-sm font-semibold text-slate-600">
-          {t(
-            'Aucun message pour le moment — SMS, courriel ou réseaux sociaux apparaîtront ici.',
-            'No messages yet — SMS, email, or social will appear here.'
-          )}
-        </p>
+        <div className="px-6 py-8">
+          <div className="mx-auto max-w-xl animate-pulse space-y-2 rounded-xl border-2 border-dashed border-primexpert-dark/35 bg-primexpert-light dark:bg-primexpert-cardDark p-4">
+            <div className="h-3 w-1/3 rounded bg-white/80 dark:bg-white/40" />
+            <div className="h-3 w-full rounded bg-white/80 dark:bg-white/40" />
+            <div className="h-3 w-2/3 rounded bg-white/80 dark:bg-white/40" />
+          </div>
+          <p className="mt-3 text-center text-sm font-semibold text-slate-700">
+            {t(
+              'Aucune interaction journalisée pour ce contact. Lancez une séquence de suivi.',
+              'Aucune interaction journalisée pour ce contact. Lancez une séquence de suivi.'
+            )}
+          </p>
+        </div>
       ) : (
         <ul className="flex max-h-[min(420px,45vh)] flex-col gap-3 overflow-y-auto p-4 custom-scrollbar">
           {messages.map((msg) => {
@@ -132,8 +166,8 @@ export function CommunicationHub({
                   className={cn(
                     'max-w-[min(100%,28rem)] rounded-2xl border-2 px-4 py-3 shadow-sm',
                     inbound
-                      ? 'border-slate-200 bg-white text-slate-900'
-                      : 'border-[#142c6a]/30 bg-[#f1f5f9] text-slate-900'
+                      ? 'border-slate-200 bg-white dark:bg-primexpert-cardDark text-slate-900'
+                      : 'border-[#142c6a]/30 bg-[#f1f5f9] dark:bg-primexpert-cardDark text-slate-900'
                   )}
                 >
                   <div className="mb-2 flex flex-wrap items-center gap-2">

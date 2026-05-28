@@ -24,6 +24,11 @@ import { VendorComplianceGauge } from './VendorComplianceGauge';
 import { VendorDocumentDropzone } from './VendorDocumentDropzone';
 import { VendorOfferPanel } from './VendorOfferPanel';
 import { VendorPortalSkeleton } from './VendorPortalSkeleton';
+import {
+  institutionalListingsCardShellClass,
+  institutionalListingsCardTitleClass,
+  institutionalListingsPanelClass,
+} from '../../lib/institutionalTheme';
 
 function AccesVendeurShell({ children }: { children: React.ReactNode }) {
   const { language, setLanguage, t } = useLanguage();
@@ -32,29 +37,29 @@ function AccesVendeurShell({ children }: { children: React.ReactNode }) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-gradient-to-b from-primexpert-blue via-[#1a4fd6] to-[#0f172a] text-white"
+      className="min-h-screen bg-primexpert-blue text-slate-900"
     >
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0f172a]/80 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b-2 border-primexpert-dark/20 bg-primexpert-blue/95 backdrop-blur-md">
         <motion.div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-4">
           <div className="flex items-center gap-3 min-w-0">
             <Link
               to="/workhub"
-              className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white/70 hover:bg-white/10 hover:text-white"
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-primexpert-dark/20 bg-white px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-700 hover:text-slate-900"
             >
               <ChevronLeft className="h-4 w-4" aria-hidden />
               {t('Retour', 'Back')}
             </Link>
             <div className="min-w-0">
-              <p className="truncate text-sm font-black uppercase tracking-widest">
+              <p className="truncate text-sm font-black uppercase tracking-widest text-white">
                 {t('Accès Vendeur', 'Seller access')}
               </p>
-              <p className="truncate text-[10px] font-medium text-white/60">
+              <p className="truncate text-[10px] font-medium text-white/90">
                 {t('Espace client sécurisé', 'Secure client space')}
               </p>
             </div>
           </div>
           <motion.div
-            className="flex shrink-0 items-center rounded-lg border border-white/20 p-0.5"
+            className="flex shrink-0 items-center rounded-lg border border-primexpert-dark/30 bg-white p-0.5"
             role="group"
             aria-label={t('Langue', 'Language')}
           >
@@ -64,7 +69,7 @@ function AccesVendeurShell({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={() => setLanguage(lang)}
                 className={`rounded-md px-2.5 py-1 text-xs font-bold uppercase ${
-                  language === lang ? 'bg-white text-primexpert-dark' : 'text-white/70'
+                  language === lang ? 'bg-primexpert-dark text-white' : 'text-slate-700'
                 }`}
               >
                 {lang}
@@ -118,13 +123,13 @@ function ContactPicker({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mx-auto max-w-3xl space-y-6 px-4 py-8"
+      className={`mx-auto max-w-3xl space-y-6 px-4 py-8 ${institutionalListingsPanelClass}`}
     >
-      <section className="rounded-2xl border border-white/15 bg-white/10 p-6 shadow-lg backdrop-blur-sm">
-        <h1 className="text-2xl font-black tracking-tight">
+      <section className={`${institutionalListingsCardShellClass} p-6`}>
+        <h1 className="text-2xl font-black tracking-tight text-slate-900">
           {t('Accès Vendeur', 'Seller access')}
         </h1>
-        <p className="mt-2 text-sm font-medium leading-relaxed text-white/80">
+        <p className="mt-2 text-sm font-medium leading-relaxed text-slate-700">
           {t(
             'Sélectionnez un vendeur pour ouvrir son espace de suivi de propriété.',
             'Select a seller to open their property follow-up space.'
@@ -133,7 +138,7 @@ function ContactPicker({
       </section>
 
       {sellers.length === 0 ? (
-        <p className="rounded-xl border border-white/15 bg-white/5 px-5 py-4 text-sm text-white/80">
+        <p className="rounded-xl border-2 border-primexpert-dark/20 bg-white px-5 py-4 text-sm text-slate-700">
           {t(
             'Aucun contact vendeur lié à une propriété pour le moment.',
             'No seller contact linked to a property yet.'
@@ -151,11 +156,11 @@ function ContactPicker({
               <button
                 type="button"
                 onClick={() => onSelect(s.id)}
-                className="flex w-full items-center justify-between gap-4 rounded-2xl border border-white/15 bg-white/10 px-5 py-4 text-left shadow-md transition hover:border-white/40 hover:bg-white/15"
+                className="flex w-full items-center justify-between gap-4 rounded-2xl border-2 border-primexpert-dark/20 bg-white px-5 py-4 text-left shadow-md transition hover:border-primexpert-dark/40 hover:bg-primexpert-light"
               >
                 <div>
-                  <p className="font-black text-white">{s.name}</p>
-                  <p className="mt-1 text-xs text-white/60">
+                  <p className="font-black text-slate-900">{s.name}</p>
+                  <p className="mt-1 text-xs text-slate-700">
                     {s.residences}{' '}
                     {t(
                       s.residences === 1 ? 'propriété liée' : 'propriétés liées',
@@ -163,7 +168,7 @@ function ContactPicker({
                     )}
                   </p>
                 </div>
-                <Home className="h-5 w-5 shrink-0 text-white/50" aria-hidden />
+                <Home className="h-5 w-5 shrink-0 text-slate-600" aria-hidden />
               </button>
             </motion.li>
           ))}
@@ -182,29 +187,29 @@ function VendorPortalContent({ vm }: { vm: VendorPortalViewModel }) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mx-auto max-w-3xl space-y-6 px-4 py-8 pb-16"
+      className={`mx-auto max-w-3xl space-y-6 px-4 py-8 pb-16 ${institutionalListingsPanelClass}`}
     >
-      <section className="rounded-2xl border border-white/15 bg-white/10 p-6 shadow-lg backdrop-blur-sm">
+      <section className={`${institutionalListingsCardShellClass} p-6`}>
         <div className="flex items-start justify-between gap-4">
           <motion.div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">
+            <p className={`${institutionalListingsCardTitleClass} tracking-[0.2em]`}>
               {buildContactDisplayName(vm.contact)}
             </p>
-            <h1 className="mt-2 text-2xl font-black leading-tight tracking-tight sm:text-3xl">
+            <h1 className="mt-2 text-2xl font-black leading-tight tracking-tight text-slate-900 sm:text-3xl">
               {vm.propertyLabel}
             </h1>
           </motion.div>
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/30 bg-emerald-500/15 px-3 py-1.5">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" aria-hidden />
-            <span className="text-[9px] font-black uppercase tracking-widest text-emerald-100">
+          <div className="inline-flex items-center gap-1.5 rounded-full border-2 border-emerald-300 bg-emerald-50 px-3 py-1.5">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-800" aria-hidden />
+            <span className="text-[9px] font-black uppercase tracking-widest text-emerald-900">
               {t('Connexion sécurisée', 'Secure connection')}
             </span>
           </div>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-white/15 bg-white/10 p-6 shadow-lg backdrop-blur-sm">
-        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-white/60">
+      <section className={`${institutionalListingsCardShellClass} p-6`}>
+        <h2 className={`${institutionalListingsCardTitleClass} tracking-[0.2em]`}>
           {t('Progression de la vente', 'Sale progress')}
         </h2>
         <div className="mt-6">
@@ -229,11 +234,11 @@ function VendorPortalContent({ vm }: { vm: VendorPortalViewModel }) {
           }
         />
 
-        <section className="rounded-2xl border border-white/15 bg-white/10 p-6 shadow-lg backdrop-blur-sm">
-          <h2 className="text-xs font-black uppercase tracking-[0.2em] text-white/60">
+        <section className={`${institutionalListingsCardShellClass} p-6`}>
+          <h2 className={`${institutionalListingsCardTitleClass} tracking-[0.2em]`}>
             {t('Téléversement — diligence', 'Upload — diligence')}
           </h2>
-          <p className="mt-2 text-xs font-medium leading-relaxed text-white/70">
+          <p className="mt-2 text-xs font-medium leading-relaxed text-slate-700">
             {t(
               'Déposez une pièce manquante pour accélérer la vérification par votre courtier.',
               'Upload a missing document to speed up verification by your broker.'
@@ -252,8 +257,8 @@ function VendorPortalContent({ vm }: { vm: VendorPortalViewModel }) {
       {vm.hasActivePromesse && vm.promesse ? (
         <VendorOfferPanel promesse={vm.promesse} locale={locale} t={t} />
       ) : (
-        <section className="rounded-2xl border border-white/10 bg-white/5 px-6 py-8 text-center">
-          <p className="text-sm font-semibold text-white/70">
+        <section className={`${institutionalListingsCardShellClass} px-6 py-8 text-center`}>
+          <p className="text-sm font-semibold text-slate-700">
             {t(
               "Aucune promesse d'achat active pour le moment.",
               'No active purchase promise at this time.'
@@ -262,7 +267,7 @@ function VendorPortalContent({ vm }: { vm: VendorPortalViewModel }) {
         </section>
       )}
 
-      <p className="text-center text-[10px] font-medium leading-relaxed text-white/40">
+      <p className="text-center text-[10px] font-medium leading-relaxed text-slate-700">
         {t(
           'Analyse par algorithme — validation professionnelle du courtier requise avant toute diffusion.',
           'Algorithm-based analysis — broker professional validation required before any release.'
@@ -335,7 +340,7 @@ export function AccesVendeurPage() {
           animate={{ opacity: 1 }}
           className="mx-auto max-w-3xl px-4 py-12 text-center"
         >
-          <p className="text-sm font-semibold text-white/80">
+          <p className="text-sm font-semibold text-slate-900">
             {t(
               'Impossible de charger cette propriété. Vérifiez le lien ou contactez votre courtier.',
               'Unable to load this property. Check the link or contact your broker.'

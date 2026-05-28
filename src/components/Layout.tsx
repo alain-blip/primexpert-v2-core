@@ -15,6 +15,11 @@ import {
   resolveStorageTier,
   STORAGE_TIER_LIMITS_BYTES,
 } from '../lib/quotaStorageService';
+import {
+  institutionalListingsCardHeaderClass,
+  institutionalListingsCardShellClass,
+  institutionalListingsCardTitleClass,
+} from '../lib/institutionalTheme';
 
 /** Logos silo (fichiers `public/`, noms avec espaces). */
 const SILO_LOGO_SRC: Record<AssetNiche, string> = {
@@ -306,7 +311,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
        </footer>
       </main>
 
-      <aside className="app-assistant hidden xl:flex w-[360px] shrink-0 text-white relative overflow-hidden">
+      <aside className="app-assistant hidden xl:flex w-[360px] shrink-0 text-white relative overflow-hidden border-l-2 border-primexpert-dark">
         <div aria-hidden="true" className="app-assistant-glow absolute inset-0" />
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-blue-400/30 rounded-full blur-[90px]" />
         <div className="absolute bottom-0 left-0 right-0 h-72 bg-[radial-gradient(circle_at_50%_100%,rgba(37, 99, 235,0.28),transparent_62%)]" />
@@ -324,19 +329,24 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
             </div>
           </div>
 
-          <div className="rounded-[32px] bg-white/10 border border-white/15 p-5 backdrop-blur-md shadow-[0_30px_80px_rgba(2,6,23,0.24)]">
+          <div className={institutionalListingsCardShellClass}>
+            <div className={institutionalListingsCardHeaderClass}>
+              <p className={institutionalListingsCardTitleClass}>{t('Brief instantané', 'Instant brief')}</p>
+            </div>
+            <div className="p-5">
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-2xl bg-blue-400/20 border border-blue-200/20 flex items-center justify-center">
-                <MessageSquare className="w-5 h-5 text-blue-100" />
+              <div className="w-10 h-10 rounded-2xl bg-primexpert-light border border-primexpert-dark/20 flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-primexpert-dark" />
               </div>
               <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-200/60">{t('Brief instantané', 'Instant brief')}</p>
-                <p className="text-xs font-black uppercase tracking-wider">{t('Centre de mission', 'Mission Control')}</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-700">{t('Brief instantané', 'Instant brief')}</p>
+                <p className="text-xs font-black uppercase tracking-wider text-black">{t('Centre de mission', 'Mission Control')}</p>
               </div>
             </div>
-            <p className="text-sm font-semibold leading-relaxed text-blue-50/90 italic">
+            <p className="text-sm font-semibold leading-relaxed text-slate-900 italic">
               "{t('Priorité conformité: valider les délais critiques, garder le coffre-fort immuable et préparer une analyse comparative de marché (ACM) motivée avant diffusion.', 'Compliance priority: validate critical deadlines, keep the Vault immutable and prepare a reasoned comparative market analysis (CMA) before publication.')}"
             </p>
+            </div>
           </div>
 
           <div className="mt-7 grid grid-cols-2 gap-3">
@@ -346,31 +356,31 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
               { label: t('Coffre', 'Vault'), value: '6Y' },
               { label: t('Validation humaine (HITL)', 'Human-in-the-loop (HITL)'), value: 'ON' },
             ].map((metric) => (
-              <div key={metric.label} className="rounded-[24px] bg-white/[0.08] border border-white/10 p-4">
-                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-blue-200/55">{metric.label}</p>
-                <p className="mt-2 text-3xl font-black italic tracking-tighter">{metric.value}</p>
+              <div key={metric.label} className="rounded-[24px] bg-white border-2 border-primexpert-dark p-4">
+                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-700">{metric.label}</p>
+                <p className="mt-2 text-3xl font-black italic tracking-tighter text-black">{metric.value}</p>
               </div>
             ))}
           </div>
 
           <div className="mt-7 space-y-3">
-            <div className="flex gap-3 rounded-[24px] bg-white/[0.08] border border-white/10 p-4">
-              <ShieldCheck className="w-5 h-5 text-blue-200 shrink-0" />
+            <div className="flex gap-3 rounded-[24px] bg-white border-2 border-primexpert-dark p-4">
+              <ShieldCheck className="w-5 h-5 text-primexpert-dark shrink-0" />
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest">{t('Protection OACIQ', 'OACIQ Guard')}</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-blue-100/70">{t('Signature, prix contrat et validation humaine sous surveillance.', 'Signature, contract price and human validation under watch.')}</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-black">{t('Protection OACIQ', 'OACIQ Guard')}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-900">{t('Signature, prix contrat et validation humaine sous surveillance.', 'Signature, contract price and human validation under watch.')}</p>
               </div>
             </div>
-            <div className="flex gap-3 rounded-[24px] bg-white/[0.08] border border-white/10 p-4">
-              <Zap className="w-5 h-5 text-blue-200 shrink-0" />
+            <div className="flex gap-3 rounded-[24px] bg-white border-2 border-primexpert-dark p-4">
+              <Zap className="w-5 h-5 text-primexpert-dark shrink-0" />
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest">{t('Action rapide', 'Quick action')}</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-blue-100/70">{t('Lancer une révision d’analyse comparative de marché (ACM) sans contourner la note du courtier.', 'Launch a comparative market analysis (CMA) review without bypassing the broker note.')}</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-black">{t('Action rapide', 'Quick action')}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-900">{t('Lancer une révision d’analyse comparative de marché (ACM) sans contourner la note du courtier.', 'Launch a comparative market analysis (CMA) review without bypassing the broker note.')}</p>
               </div>
             </div>
           </div>
 
-          <button className="mt-auto w-full py-4 rounded-[24px] bg-white text-[#172554] text-[11px] font-black uppercase tracking-[0.22em] shadow-[0_24px_60px_rgba(37, 99, 235,0.35)] hover:bg-blue-500/[0.08] transition-all">
+          <button className="mt-auto w-full rounded-[24px] border-2 border-primexpert-dark bg-white py-4 text-[11px] font-black uppercase tracking-[0.22em] text-slate-900 shadow-[0_24px_60px_rgba(37,99,235,0.22)] hover:bg-primexpert-light transition-all">
             {t('Demander une analyse IA', 'Request AI Analysis')}
           </button>
         </div>

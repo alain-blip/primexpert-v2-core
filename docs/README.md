@@ -8,6 +8,9 @@
 | [project_canonical_fields.md](./project_canonical_fields.md) | Champs Firestore (`users`, `residences`, `market_documents`, `market_analytics_raw`, …) |
 | [project_pipeline_gps.md](./project_pipeline_gps.md) | Flux essai 45 j, Chérif, pipeline fiche résidence, messagerie, Statistiques du marché |
 | [arborescence.md](./arborescence.md) | Structure du dépôt, onglets, Firebase, Cloud Functions, fichiers clés |
+| [CANON_UNIQUE_PRIMEXPERT_V2.md](./CANON_UNIQUE_PRIMEXPERT_V2.md) | Version consolidée unique (gouvernance, architecture, SSOT, modules, déploiement) |
+| [VERIFICATION_COHERENCE_CROISEE.md](./VERIFICATION_COHERENCE_CROISEE.md) | Vérification transversale des docs avec écarts et actions de normalisation |
+| [CHECKLIST_PREDEPLOIEMENT_PROD.md](./CHECKLIST_PREDEPLOIEMENT_PROD.md) | Checklist opérationnelle Go/No-Go avant déploiement production |
 
 ---
 

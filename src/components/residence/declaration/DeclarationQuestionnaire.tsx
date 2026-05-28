@@ -145,7 +145,7 @@ function DeclarationQuestionCard({
         </p>
       ) : null}
 
-      <p className="text-sm font-semibold text-[#142c6a] leading-snug mb-3">
+      <p className="text-sm font-bold text-slate-900 leading-snug mb-3">
         {label}
         {question.optional ? (
           <span className="ml-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">
@@ -160,7 +160,7 @@ function DeclarationQuestionCard({
             {t('Valeur', 'Value')}
           </p>
           {locked ? (
-            <p className="text-sm font-semibold text-[#142c6a] whitespace-pre-wrap leading-relaxed">
+            <p className="text-sm font-semibold text-slate-900 whitespace-pre-wrap leading-relaxed">
               {value || '—'}
             </p>
           ) : (
@@ -179,7 +179,7 @@ function DeclarationQuestionCard({
           {t('Réponse', 'Answer')}
         </p>
         {locked ? (
-          <p className="text-sm font-bold text-[#142c6a]">
+          <p className="text-sm font-bold text-slate-900">
             {response
               ? useNspLabel && response === 'na'
                 ? NSP_LABELS[lang]
@@ -219,7 +219,7 @@ function DeclarationQuestionCard({
           {t('Notes de vérification', 'Verification notes')}
         </p>
         {locked ? (
-          <p className="text-sm text-[#142c6a] whitespace-pre-wrap leading-relaxed min-h-[1.25rem]">
+          <p className="text-sm text-slate-900 whitespace-pre-wrap leading-relaxed min-h-[1.25rem]">
             {notes || '—'}
           </p>
         ) : (
@@ -264,7 +264,7 @@ function DeclarationValueField({
   }, [local, initialValue, onSave, question.id]);
 
   const baseClass = cn(
-    'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-[#142c6a]',
+    'w-full rounded-xl border-2 border-primexpert-dark/20 bg-white px-3 py-2 text-sm text-slate-900',
     'placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30'
   );
 
@@ -327,7 +327,7 @@ function DeclarationNotesField({
       rows={2}
       placeholder={placeholder}
       className={cn(
-        'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-[#142c6a]',
+        'w-full rounded-xl border-2 border-primexpert-dark/20 bg-white px-3 py-2 text-sm text-slate-900',
         'placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30 resize-y min-h-[4rem]'
       )}
     />

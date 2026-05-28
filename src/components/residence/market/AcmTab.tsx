@@ -15,6 +15,10 @@ import {
   downloadAcmPresentationPdf,
 } from '../../../services/acmPresentationPdfService';
 import { inst } from '../institutional/InstitutionalUi';
+import {
+  institutionalListingsCardShellClass,
+  institutionalListingsCardTitleClass,
+} from '../../../lib/institutionalTheme';
 
 const GOLD_BTN =
   'inline-flex items-center justify-center gap-2 min-h-[52px] rounded-lg border-2 border-black bg-[#D4AF37] px-5 py-3 text-[14px] font-black text-black hover:bg-[#c9a432] transition disabled:opacity-50 disabled:cursor-not-allowed';
@@ -79,11 +83,11 @@ function AcmTabContent({ residence }: AcmTabProps) {
   }, [financialData, residence, residenceDoc, broker, language, t]);
 
   return (
-    <section className="rounded-xl border-2 border-[#142c6a] bg-white p-5 space-y-4 shadow-sm">
+    <section className={`${institutionalListingsCardShellClass} space-y-4 p-5`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#142c6a]">
-            {t('Mise en marché · ACM', 'Market launch · CMA')}
+          <p className={institutionalListingsCardTitleClass}>
+            {t('Mise en marché · analyse comparative de marché (ACM)', 'Market launch · CMA')}
           </p>
           <h3 className="mt-2 text-xl font-black text-black leading-snug">
             {t(

@@ -20,6 +20,8 @@ import {
   defaultContactSiloForRoles,
   defaultContactVisibility,
   isAgencyShareAllowedForContact,
+  calculateHotLeadScore,
+  extractHotLeadSignalsFromMessages,
   validateContactLciFields,
   resolveContactLegalCompliance,
   type ContactAssetNiche,
@@ -481,6 +483,26 @@ export function ContactFormDrawer({
   const ownerDisplayName =
     brokers.find((b) => b.uid === (ownerId || editing?.ownerId || ctx.uid))?.displayName ??
     (ownerId || editing?.ownerId || ctx.uid);
+
+  const contactHotLeadScore = useMemo(() => {
+    const signals = extractHotLeadSignalsFromMessages(
+      timelineEvents.map((event) => ({
+        id: event.id,
+        summaryOneLine: `${event.title} ${event.subtitle}`,
+        body: event.detail ?? '',
+        channel:
+          event.channel === 'sms'
+            ? 'sms'
+            : event.channel === 'facebook'
+              ? 'facebook'
+              : event.channel === 'instagram'
+                ? 'instagram'
+                : 'email',
+        direction: event.channel === 'sms' ? 'outbound' : 'inbound',
+      }))
+    );
+    return calculateHotLeadScore({ signals }).score;
+  }, [timelineEvents]);
 
   const legalVerificationPayload = useMemo(
     () =>
@@ -1543,6 +1565,11 @@ export function ContactFormDrawer({
 
           {editing ? (
             <div className="rounded-xl border-2 border-primexpert-dark/20 bg-primexpert-light/30 p-2">
+              <div className="mb-2 px-2">
+                <span className="inline-flex items-center rounded-lg border-2 border-primexpert-dark bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-black">
+                  {t('Score hot lead', 'Hot lead score')} {contactHotLeadScore}/100
+                </span>
+              </div>
               {timelineLoading ? (
                 <p className="px-4 py-6 text-center text-sm font-semibold text-primexpert-dark">
                   {t('Chargement de l’historique…', 'Loading history…')}
@@ -1550,6 +1577,7 @@ export function ContactFormDrawer({
               ) : (
                 <IntelligenceChronologie
                   brokerId={ctx.uid}
+                  orgId={ctx.orgId}
                   mode="communications-only"
                   contactId={editing.id}
                   timelineEvents={timelineEvents}

@@ -46,6 +46,21 @@ export interface DedupeRowMetadata {
   userAction: 'import' | 'skip';
 }
 
+export interface IaOpportunityScoring {
+  score: number;
+  criticalFactors: string[];
+  evaluatedAt: string;
+}
+
+export interface OpportunityScoringInput {
+  selectedRegionsCount: number;
+  selectedTransactionsCount: number;
+  selectedOperationalBenchmarksCount: number;
+  hasSourcePublisher: boolean;
+  hasDocumentType: boolean;
+  parsingStatus?: string | null;
+}
+
 const MAX_FIRESTORE_DOC_ID = 1500;
 
 /** Normalise adresse / ville pour comparaison (legacy). */
@@ -268,4 +283,45 @@ export function stripDedupeFields<T extends Record<string, unknown>>(row: T): Om
   if (!row || typeof row !== 'object') return row as Omit<T, '_dedupe'>;
   const { _dedupe: _ignored, ...rest } = row;
   return rest as Omit<T, '_dedupe'>;
+}
+
+/**
+ * Score de signaux faibles (prospection IA) à injecter sur `market_documents`.
+ * Enrichissement incrémental, sans collection parallèle.
+ */
+export function evaluateMarketOpportunityScoring(input: OpportunityScoringInput): IaOpportunityScoring {
+  const factors: string[] = [];
+  let score = 0;
+
+  if (input.selectedRegionsCount > 0) {
+    score += Math.min(30, input.selectedRegionsCount * 5);
+    factors.push('Couverture régionale validée');
+  }
+  if (input.selectedTransactionsCount > 0) {
+    score += Math.min(35, input.selectedTransactionsCount * 2);
+    factors.push('Transactions comparables disponibles');
+  }
+  if (input.selectedOperationalBenchmarksCount > 0) {
+    score += Math.min(20, input.selectedOperationalBenchmarksCount * 2);
+    factors.push('Ratios de performance exploitables');
+  }
+  if (input.hasSourcePublisher) {
+    score += 8;
+    factors.push('Source publiée identifiée');
+  }
+  if (input.hasDocumentType) {
+    score += 7;
+    factors.push('Type de rapport catégorisé');
+  }
+  if (input.parsingStatus === 'verified' || input.parsingStatus === 'completed') {
+    score += 10;
+    factors.push('Extraction vérifiée par contrôle humain');
+  }
+
+  const boundedScore = Math.max(0, Math.min(100, Math.round(score)));
+  return {
+    score: boundedScore,
+    criticalFactors: factors.slice(0, 5),
+    evaluatedAt: new Date().toISOString(),
+  };
 }

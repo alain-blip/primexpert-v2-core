@@ -17,14 +17,19 @@ function getFunctionsInstance(): Functions {
   return functionsInstance;
 }
 
-const CACHE_KEY = 'primexpert_global_fin_benchmark_v1';
 const TTL_MS = 15 * 60 * 1000;
 
 let inflightPromise: Promise<GlobalFinancialBenchmarkPayload> | null = null;
 
-function readCache(): GlobalFinancialBenchmarkPayload | null {
+function buildCacheKey(regionAdministrative?: string, assetClassLabel?: string): string {
+  const region = (regionAdministrative ?? 'all').trim() || 'all';
+  const klass = (assetClassLabel ?? 'all').trim() || 'all';
+  return `primexpert_global_fin_benchmark_v2__${region}__${klass}`;
+}
+
+function readCache(cacheKey: string): GlobalFinancialBenchmarkPayload | null {
   try {
-    const raw = sessionStorage.getItem(CACHE_KEY);
+    const raw = sessionStorage.getItem(cacheKey);
     if (!raw) return null;
     const { t, payload } = JSON.parse(raw) as { t: number; payload: GlobalFinancialBenchmarkPayload };
     if (Date.now() - t > TTL_MS) return null;
@@ -34,23 +39,30 @@ function readCache(): GlobalFinancialBenchmarkPayload | null {
   }
 }
 
-function writeCache(payload: GlobalFinancialBenchmarkPayload): void {
+function writeCache(cacheKey: string, payload: GlobalFinancialBenchmarkPayload): void {
   try {
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), payload }));
+    sessionStorage.setItem(cacheKey, JSON.stringify({ t: Date.now(), payload }));
   } catch {
     /* quota */
   }
 }
 
-export function readGlobalFinancialBenchmarkCache(): GlobalFinancialBenchmarkPayload | null {
-  return readCache();
+export function readGlobalFinancialBenchmarkCache(input?: {
+  regionAdministrative?: string;
+  assetClassLabel?: string;
+}): GlobalFinancialBenchmarkPayload | null {
+  const cacheKey = buildCacheKey(input?.regionAdministrative, input?.assetClassLabel);
+  return readCache(cacheKey);
 }
 
 export async function fetchGlobalFinancialBenchmark(options?: {
   forceRefresh?: boolean;
+  regionAdministrative?: string;
+  assetClassLabel?: string;
 }): Promise<GlobalFinancialBenchmarkPayload> {
+  const cacheKey = buildCacheKey(options?.regionAdministrative, options?.assetClassLabel);
   if (!options?.forceRefresh) {
-    const cached = readCache();
+    const cached = readCache(cacheKey);
     if (cached) return cached;
   }
 
@@ -58,13 +70,21 @@ export async function fetchGlobalFinancialBenchmark(options?: {
 
   inflightPromise = (async () => {
     try {
-      const fn = httpsCallable<Record<string, never>, GlobalFinancialBenchmarkPayload>(
+      const fn = httpsCallable<
+        { regionAdministrative?: string; assetClassLabel?: string },
+        GlobalFinancialBenchmarkPayload
+      >(
         getFunctionsInstance(),
         'getGlobalFinancialBenchmark'
       );
-      const res = await fn({});
+      const res = await fn({
+        ...(options?.regionAdministrative
+          ? { regionAdministrative: options.regionAdministrative }
+          : {}),
+        ...(options?.assetClassLabel ? { assetClassLabel: options.assetClassLabel } : {}),
+      });
       const data = res.data;
-      writeCache(data);
+      writeCache(cacheKey, data);
       return data;
     } finally {
       inflightPromise = null;

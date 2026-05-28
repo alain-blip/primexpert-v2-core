@@ -6,6 +6,7 @@
 import { getDb } from '../lib/firestore';
 import { FieldValue } from 'firebase-admin/firestore';
 import {
+  evaluateMarketOpportunityScoring,
   marketMacroRegionFingerprint,
   marketOperationalBenchmarkFingerprint,
   marketTransactionFingerprint,
@@ -123,6 +124,8 @@ export async function injectMasterMarketExtractionServer(
   const documentType = String(extracted.documentType ?? 'Statistiques du marché');
   const sourcePublisher = extracted.sourcePublisher ? String(extracted.sourcePublisher) : null;
   const anneeDonnees = resolveAnnee(extracted);
+  const parsingStatus =
+    typeof data.parsingStatus === 'string' ? String(data.parsingStatus) : null;
 
   const macroFingerprints = selectedRegions.map((region) =>
     marketMacroRegionFingerprint({
@@ -371,6 +374,14 @@ export async function injectMasterMarketExtractionServer(
     isValidated: true,
     validatedAtMillis: now,
     parsingStatus: 'verified',
+    iaOpportunityScoring: evaluateMarketOpportunityScoring({
+      selectedRegionsCount: selectedRegions.length,
+      selectedTransactionsCount: selectedTransactions.length,
+      selectedOperationalBenchmarksCount: selectedOperationalBenchmarks.length,
+      hasSourcePublisher: !!sourcePublisher,
+      hasDocumentType: !!documentType,
+      parsingStatus,
+    }),
   });
 
   await batch.commit();

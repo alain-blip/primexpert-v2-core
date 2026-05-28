@@ -185,6 +185,7 @@ export function ResidenceIntelligencePanel({
 
       <IntelligenceChronologie
         brokerId={brokerId}
+        orgId={profile?.orgId}
         residence={residence}
         calls={calls}
         mails={mails}

@@ -3,8 +3,7 @@ import { ChevronDown, Inbox } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { EmailAccount } from '../../types/emailAccount';
 import { providerLabel, syncStatusLabel } from '../../lib/emailAccounts';
-
-const LIME = '#deff9a';
+import { institutionalListingsInlineInputClass } from '../../lib/institutionalTheme';
 
 export interface AccountSelectorProps {
   accounts: EmailAccount[];
@@ -30,7 +29,7 @@ export function AccountSelector({
 
   return (
     <div className="space-y-2">
-      <label className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-500">
+      <label className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-700">
         <Inbox className="h-3 w-3" />
         {inboxLabel}
       </label>
@@ -39,9 +38,8 @@ export function AccountSelector({
           value={activeAccountId ?? ''}
           onChange={(e) => onChange(e.target.value ? e.target.value : null)}
           className={cn(
-            'w-full appearance-none rounded-xl border border-white/10 bg-vault py-2.5 pl-3 pr-9',
-            'text-[11px] font-bold text-slate-200 shadow-inner',
-            'focus:border-[#deff9a]/50 focus:outline-none focus:ring-1 focus:ring-[#deff9a]/25'
+            institutionalListingsInlineInputClass,
+            'w-full appearance-none py-2.5 pl-3 pr-9 text-[11px] font-bold text-slate-900 shadow-none'
           )}
         >
           <option value="">{allInboxesLabel}</option>
@@ -52,23 +50,23 @@ export function AccountSelector({
             </option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-700" />
       </div>
       {active ? (
         <p className="text-[9px] font-semibold leading-snug">
           <span
             className={cn(
-              active.syncStatus === 'connected' ? 'text-[#deff9a]' : 'text-slate-500'
+              active.syncStatus === 'connected' ? 'text-emerald-800' : 'text-slate-700'
             )}
-            style={active.syncStatus === 'connected' ? { color: LIME } : undefined}
+            style={undefined}
           >
             {syncStatusLabel(active.syncStatus, locale)}
           </span>
           <span className="text-slate-600"> · </span>
-          <span className="text-slate-500">{providerLabel(active.provider, locale)}</span>
+          <span className="text-slate-700">{providerLabel(active.provider, locale)}</span>
         </p>
       ) : accounts.length > 0 ? (
-        <p className="text-[9px] font-semibold text-slate-500">{allInboxesLabel}</p>
+        <p className="text-[9px] font-semibold text-slate-700">{allInboxesLabel}</p>
       ) : null}
     </div>
   );

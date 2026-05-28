@@ -5,6 +5,7 @@ import type { EmailThread } from '../../types/emailSync';
 import type { EmailAccount } from '../../types/emailAccount';
 import { AccountSelector } from './AccountSelector';
 import { emailHtmlToPlainText } from '../../lib/emailHtml';
+import { institutionalListingsInlineInputClass } from '../../lib/institutionalTheme';
 
 const LIME = '#deff9a';
 
@@ -73,9 +74,9 @@ export function ThreadList({
     : threads;
 
   return (
-    <div className="flex h-full w-full flex-col border-r border-white/10 lg:w-[380px]">
-      <div className="border-b border-white/10 bg-white/[0.03] p-5">
-        <h2 className="text-2xl font-black italic uppercase tracking-tighter text-slate-100">
+    <div className="flex h-full w-full flex-col border-r border-slate-200 bg-white lg:w-[380px]">
+      <div className="border-b border-slate-200 bg-primexpert-light p-5">
+        <h2 className="text-2xl font-black italic uppercase tracking-tighter text-black">
           {title}
         </h2>
         {accounts.length > 0 ? (
@@ -91,20 +92,23 @@ export function ThreadList({
           </div>
         ) : null}
         <div className="relative mt-4">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-700" />
           <input
             type="search"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-full rounded-xl border border-white/10 bg-vault py-2 pl-10 pr-3 text-[10px] font-black uppercase tracking-widest text-slate-200 placeholder:text-slate-500 focus:border-[#deff9a]/50 focus:outline-none focus:ring-1 focus:ring-[#deff9a]/30"
+            className={cn(
+              institutionalListingsInlineInputClass,
+              'py-2 pl-10 pr-3 text-[10px] font-black uppercase tracking-widest text-slate-900 placeholder:text-slate-500'
+            )}
           />
         </div>
       </div>
 
-      <div className="custom-scrollbar flex-1 divide-y divide-white/[0.06] overflow-y-auto">
+      <div className="custom-scrollbar flex-1 divide-y divide-slate-200 overflow-y-auto bg-white">
         {filtered.length === 0 ? (
-          <p className="px-5 py-12 text-center text-[11px] font-semibold text-slate-500">{emptyLabel}</p>
+          <p className="px-5 py-12 text-center text-[11px] font-semibold text-slate-700">{emptyLabel}</p>
         ) : (
           filtered.map((thread) => (
             <button
@@ -112,26 +116,26 @@ export function ThreadList({
               type="button"
               onClick={() => onSelect(thread)}
               className={cn(
-                'relative w-full p-5 text-left transition-colors hover:bg-white/[0.04]',
-                selectedId === thread.id && 'bg-blue-500/10'
+                'relative w-full p-5 text-left transition-colors hover:bg-primexpert-light/70',
+                selectedId === thread.id && 'bg-primexpert-light'
               )}
             >
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-[10px] font-black italic text-slate-400">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primexpert-dark/15 bg-primexpert-light text-[10px] font-black italic text-slate-900">
                     {initials(thread.contactName)}
                   </div>
                   <span
                     className={cn(
                       'truncate text-xs font-black uppercase tracking-tighter',
-                      thread.isUnread ? 'text-slate-100' : 'text-slate-400'
+                      thread.isUnread ? 'text-black' : 'text-slate-900'
                     )}
                   >
                     {thread.contactName}
                   </span>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1.5">
-                  <span className="font-mono text-[9px] font-bold text-slate-500">
+                  <span className="font-mono text-[9px] font-bold text-slate-700">
                     {formatThreadTime(thread.lastMessageAtMillis)}
                   </span>
                   {thread.isUnread ? (
@@ -146,12 +150,12 @@ export function ThreadList({
               <h4
                 className={cn(
                   'mb-1 truncate text-sm font-black italic tracking-tighter',
-                  thread.isUnread ? 'text-[#deff9a]' : 'text-slate-300'
+                  thread.isUnread ? 'text-black' : 'text-slate-900'
                 )}
               >
                 {thread.subject}
               </h4>
-              <p className="line-clamp-2 text-[10px] font-medium leading-snug text-slate-500">
+              <p className="line-clamp-2 text-[10px] font-medium leading-snug text-slate-700">
                 {emailHtmlToPlainText(thread.lastMessageSnippet)}
               </p>
             </button>

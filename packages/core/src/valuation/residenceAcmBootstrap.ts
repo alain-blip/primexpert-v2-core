@@ -24,6 +24,7 @@ import {
   getSubjectUnitCount,
 } from '../market';
 import {
+  calculateValuation,
   createDefaultValuationInputs,
   mapFirestoreDataToValuationInputs,
   type ValuationInputs,
@@ -74,11 +75,21 @@ export interface ResidenceAcmBootstrap {
   capRateRationaleEn: string;
   penetrationRatePct: number;
   marketContext: AcmMarketContext;
+  valuationAngles: {
+    marketValue: number;
+    regionalCapRatePerformanceValue: number;
+    maxPotentialValue: number;
+  };
   valuationInputs: ValuationInputs;
 }
 
 function finiteNum(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function roundToNearestThousand(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.round(value / 1000) * 1000;
 }
 
 function buildMergedResidenceRecord(
@@ -314,6 +325,15 @@ export function bootstrapResidenceAcm(
     finiteNum(residence.price) ??
     valuationInputs.askingPrice;
 
+  const valuationOutputs = calculateValuation({
+    ...valuationInputs,
+    valuationMode: 'acm_unified_cap',
+  });
+  const regionalCapRatePerformanceValue =
+    rne > 0 && suggestedCapRatePct > 0
+      ? roundToNearestThousand(rne / (suggestedCapRatePct / 100))
+      : 0;
+
   return {
     residenceLabel: resolveResidenceLabel(residence, residenceDoc),
     regionLabel,
@@ -334,6 +354,11 @@ export function bootstrapResidenceAcm(
     capRateRationaleEn: gpsSelection.rationaleEn,
     penetrationRatePct: resolvePenetrationPct(residence, residenceDoc, marketContext),
     marketContext,
+    valuationAngles: {
+      marketValue: valuationOutputs.valueByIncomeMarket,
+      regionalCapRatePerformanceValue,
+      maxPotentialValue: valuationOutputs.suggestedHigh,
+    },
     valuationInputs,
   };
 }

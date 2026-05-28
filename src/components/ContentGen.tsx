@@ -22,7 +22,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FileText, Wand2, Copy, Check, ShieldCheck, Signature, BadgeAlert, ShieldAlert, Sparkles, Home } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { generateListingDescription } from '../services/gemini';
+import {
+  generateListingDescription,
+  generateRelationMemoryBrief,
+  translateFinancialStakeArgument,
+} from '../services/gemini';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../lib/auth';
 import { useLanguage } from '../lib/i18n';
@@ -44,6 +48,11 @@ export function ContentGen() {
   const [loading, setLoading] = useState(false);
   const [description, setDescription] = useState('');
   const [copied, setCopied] = useState(false);
+  const [relationLoading, setRelationLoading] = useState(false);
+  const [relationDraft, setRelationDraft] = useState('');
+  const [translatorLoading, setTranslatorLoading] = useState(false);
+  const [technicalArgument, setTechnicalArgument] = useState('');
+  const [translatedArgument, setTranslatedArgument] = useState('');
 
   // Phase E-1b — Sélecteur de résidence (tenant-filtered) pour auto-remplir
   // l'adresse et le prix. Le courtier valide les inclusions / atouts ensuite.
@@ -142,6 +151,52 @@ export function ContentGen() {
     navigator.clipboard.writeText(description);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleGenerateRelationBrief = async () => {
+    setRelationLoading(true);
+    try {
+      const result = await generateRelationMemoryBrief({
+        language,
+        contactName: profile?.displayName || 'Contact',
+        recentInteractions: [
+          'Demande récente de comparables et précisions financières.',
+          'Échange sur la tolérance au risque et les conditions de financement.',
+        ],
+      });
+      const block = [
+        result.briefTitle,
+        result.contextSummary,
+        result.personalSignals.length > 0
+          ? `${t('Signaux personnels', 'Personal signals')}: ${result.personalSignals.join(' · ')}`
+          : '',
+        `${t('Approche proposée', 'Suggested approach')}: ${result.nextBestApproach}`,
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+      setRelationDraft(block);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setRelationLoading(false);
+    }
+  };
+
+  const handleTranslateArgument = async () => {
+    if (!technicalArgument.trim()) return;
+    setTranslatorLoading(true);
+    try {
+      const result = await translateFinancialStakeArgument({
+        language,
+        technicalArgument,
+        audience: 'family',
+      });
+      setTranslatedArgument(result);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setTranslatorLoading(false);
+    }
   };
 
   const scoreColor =
@@ -291,6 +346,64 @@ export function ContentGen() {
                </div>
              </div>
            </div>
+        </div>
+
+        <div className="bg-vault p-8 rounded-[24px] border border-white/10 space-y-4">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            {t('Adjointe communicante (HITL)', 'Communication assistant (HITL)')}
+          </p>
+          <div className="space-y-2">
+            <button
+              onClick={handleGenerateRelationBrief}
+              disabled={relationLoading}
+              className="rounded-xl border border-blue-400/40 bg-blue-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-blue-300 hover:bg-blue-500/20 disabled:opacity-50"
+            >
+              {relationLoading
+                ? t('Préparation du mini-brief…', 'Preparing relation brief…')
+                : t('Mémorisateur de Relations', 'Relation memorizer')}
+            </button>
+            <textarea
+              rows={5}
+              value={relationDraft}
+              onChange={(e) => setRelationDraft(e.target.value)}
+              placeholder={t(
+                'Mini-brief contextuel avant appel (modifiable par le courtier).',
+                'Pre-call contextual brief (editable by broker).'
+              )}
+              className="workhub-input w-full p-4 rounded-xl text-sm font-semibold tracking-tight"
+            />
+          </div>
+          <div className="space-y-2">
+            <textarea
+              rows={4}
+              value={technicalArgument}
+              onChange={(e) => setTechnicalArgument(e.target.value)}
+              placeholder={t(
+                'Coller un argument technique (ex: optimisation du taux de capitalisation).',
+                'Paste a technical argument (e.g. cap rate optimization).'
+              )}
+              className="workhub-input w-full p-4 rounded-xl text-sm font-semibold tracking-tight"
+            />
+            <button
+              onClick={handleTranslateArgument}
+              disabled={translatorLoading || !technicalArgument.trim()}
+              className="rounded-xl border border-purple-400/40 bg-purple-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-purple-200 hover:bg-purple-500/20 disabled:opacity-50"
+            >
+              {translatorLoading
+                ? t('Reformulation en cours…', 'Rephrasing…')
+                : t("Traducteur d'Enjeux", 'Issue translator')}
+            </button>
+            <textarea
+              rows={5}
+              value={translatedArgument}
+              onChange={(e) => setTranslatedArgument(e.target.value)}
+              placeholder={t(
+                'Version vulgarisée prête à être revue avant envoi.',
+                'Plain-language version ready for review before sending.'
+              )}
+              className="workhub-input w-full p-4 rounded-xl text-sm font-semibold tracking-tight"
+            />
+          </div>
         </div>
       </div>
 

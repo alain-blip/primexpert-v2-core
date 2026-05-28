@@ -14,6 +14,11 @@ import { TernaryToggle } from '../../ui/TernaryToggle';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { useLanguage } from '../../../lib/i18n';
 import { PA_LABEL_CLASS } from './PaConfortPanel';
+import {
+  institutionalListingsCardHeaderClass,
+  institutionalListingsCardShellClass,
+  institutionalListingsCardTitleClass,
+} from '../../../lib/institutionalTheme';
 
 export interface OffreConditionsLegalesSectionProps {
   conditions: OffreConditionsInput;
@@ -46,9 +51,9 @@ export function OffreConditionsLegalesSection({
   );
 
   return (
-    <section className="overflow-hidden rounded-xl border-2 border-slate-200 bg-white shadow-sm border-l-8 border-l-amber-500">
-      <header className="border-b-2 border-slate-100 bg-slate-50/80 px-5 py-4">
-        <h3 className="text-[13px] font-black uppercase tracking-[0.18em] text-[#142c6a]">
+    <section className={`${institutionalListingsCardShellClass} border-l-8 border-l-amber-500`}>
+      <header className={`${institutionalListingsCardHeaderClass} py-4`}>
+        <h3 className={`${institutionalListingsCardTitleClass} text-[13px] tracking-[0.18em]`}>
           {t('[ CONDITIONS SUSPENSIVES RPA ]', '[ RPA SUSPENSIVE CONDITIONS ]')}
         </h3>
       </header>

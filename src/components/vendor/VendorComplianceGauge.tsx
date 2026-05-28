@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { institutionalListingsCardShellClass } from '../../lib/institutionalTheme';
 
 export function VendorComplianceGauge({
   percent,
@@ -21,7 +22,7 @@ export function VendorComplianceGauge({
     <motion.div
       initial={{ opacity: 0, scale: 0.92 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="flex flex-col items-center rounded-2xl border border-white/20 bg-white/10 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.35)] backdrop-blur-sm"
+      className={`flex flex-col items-center p-6 ${institutionalListingsCardShellClass}`}
     >
       <div className="relative h-36 w-36">
         <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120" aria-hidden>
@@ -30,7 +31,7 @@ export function VendorComplianceGauge({
             cy="60"
             r={normalized}
             fill="none"
-            stroke="rgba(255,255,255,0.15)"
+            stroke="rgba(20,44,106,0.15)"
             strokeWidth={stroke}
           />
           <motion.circle
@@ -38,7 +39,7 @@ export function VendorComplianceGauge({
             cy="60"
             r={normalized}
             fill="none"
-            stroke="white"
+            stroke="#142c6a"
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={circumference}
@@ -48,7 +49,7 @@ export function VendorComplianceGauge({
           />
         </svg>
         <motion.div
-          className="absolute inset-0 flex flex-col items-center justify-center text-white"
+          className="absolute inset-0 flex flex-col items-center justify-center text-slate-900"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
@@ -56,10 +57,10 @@ export function VendorComplianceGauge({
           <span className="text-4xl font-black tabular-nums">{clamped}%</span>
         </motion.div>
       </div>
-      <p className="mt-4 text-center text-sm font-black uppercase tracking-widest text-white">
+      <p className="mt-4 text-center text-sm font-black uppercase tracking-widest text-slate-900">
         {label}
       </p>
-      <p className="mt-2 max-w-xs text-center text-xs font-medium leading-relaxed text-white/80">
+      <p className="mt-2 max-w-xs text-center text-xs font-medium leading-relaxed text-slate-700">
         {sublabel}
       </p>
     </motion.div>

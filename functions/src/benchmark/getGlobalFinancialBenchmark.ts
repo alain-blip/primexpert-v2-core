@@ -16,6 +16,7 @@ const MAX_RESIDENCES = 250;
 const BATCH = 30;
 const DEFAULT_MIN_SAMPLES = 3;
 const MAX_RATIO_PER_LINE = 0.995;
+const MAX_TERRITORIAL_SAMPLES = 400;
 
 function parseNum(v: unknown): number {
   if (v === null || v === undefined || v === '') return 0;
@@ -67,6 +68,98 @@ function medianOf(nums: number[]): number | null {
   if (v.length === 0) return null;
   const m = Math.floor(v.length / 2);
   return v.length % 2 === 1 ? v[m]! : (v[m - 1]! + v[m]!) / 2;
+}
+
+interface TerritorialComparableSample {
+  capRatePct: number | null;
+  salePrice: number | null;
+  units: number | null;
+  netIncomePerUnit: number | null;
+  regionAdministrative: string | null;
+  assetClassLabel: string | null;
+}
+
+function toNullableString(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const s = v.trim();
+  return s.length ? s : null;
+}
+
+function resolveTerritorialSample(
+  row: Record<string, unknown>
+): TerritorialComparableSample | null {
+  const comparable = (row.comparableSnapshot ?? {}) as Record<string, unknown>;
+  const meta = (row.marketTransactionMeta ?? {}) as Record<string, unknown>;
+  const units = parseNum(comparable.units);
+  const salePrice = parseNum(comparable.salePrice);
+  const capRatePct = parseNum(comparable.capRatePct);
+  const netIncomePerUnit = parseNum(comparable.netIncomePerUnit);
+  return {
+    capRatePct: capRatePct > 0 ? capRatePct : null,
+    salePrice: salePrice > 0 ? salePrice : null,
+    units: units > 0 ? units : null,
+    netIncomePerUnit: netIncomePerUnit > 0 ? netIncomePerUnit : null,
+    regionAdministrative: toNullableString(
+      row.regionAdministrative ?? row.regionDisplayName ?? meta.regionAdministrative
+    ),
+    assetClassLabel: toNullableString(
+      comparable.assetClassLabel ?? meta.assetClassLabel ?? meta.classeImmeuble
+    ),
+  };
+}
+
+async function computeTerritorialAcmMedians(db: Firestore, input: {
+  regionAdministrative?: string | null;
+  assetClassLabel?: string | null;
+}) {
+  const regionTarget = toNullableString(input.regionAdministrative);
+  const classTarget = toNullableString(input.assetClassLabel);
+  const snap = await db.collection('market_analytics_raw').limit(MAX_TERRITORIAL_SAMPLES).get();
+  const samples = snap.docs
+    .map((d) => resolveTerritorialSample(d.data() as Record<string, unknown>))
+    .filter((row): row is TerritorialComparableSample => !!row);
+
+  const filtered = samples.filter((row) => {
+    const regionOk = !regionTarget || row.regionAdministrative === regionTarget;
+    const classOk = !classTarget || row.assetClassLabel === classTarget;
+    return regionOk && classOk;
+  });
+  const base = filtered.length >= 3 ? filtered : samples;
+
+  const tgaPct = medianOf(
+    base.map((s) => s.capRatePct).filter((n): n is number => n != null && Number.isFinite(n))
+  );
+  const prixParUnite = medianOf(
+    base
+      .map((s) => {
+        if (s.salePrice == null || s.units == null || s.units <= 0) return null;
+        return s.salePrice / s.units;
+      })
+      .filter((n): n is number => n != null && Number.isFinite(n))
+  );
+  const netParUnite = medianOf(
+    base
+      .map((s) => s.netIncomePerUnit)
+      .filter((n): n is number => n != null && Number.isFinite(n))
+  );
+  const mrn =
+    prixParUnite != null && netParUnite != null && netParUnite > 0
+      ? prixParUnite / netParUnite
+      : null;
+  const mrb =
+    prixParUnite != null && netParUnite != null && netParUnite > 0
+      ? prixParUnite / (netParUnite / 0.7)
+      : null;
+
+  return {
+    regionAdministrative: regionTarget ?? 'Portefeuille',
+    assetClassLabel: classTarget,
+    mrb,
+    mrn,
+    tgaPct,
+    prixParUnite,
+    sampleCount: base.length,
+  };
 }
 
 function sumDeclaredOperatingExpenses(dep: Record<string, unknown>): number {
@@ -210,6 +303,10 @@ export const getGlobalFinancialBenchmark = onCall(
     }
 
     const db = getDb();
+    const requestData = (request.data ?? {}) as {
+      regionAdministrative?: string;
+      assetClassLabel?: string;
+    };
     const currentYear = new Date().getFullYear();
     const windowMinYear = currentYear - 2;
     const windowMaxYear = currentYear;
@@ -347,6 +444,11 @@ export const getGlobalFinancialBenchmark = onCall(
       outliersDroppedApprox: outliersDropped,
     });
 
+    const territorialMedians = await computeTerritorialAcmMedians(db, {
+      regionAdministrative: requestData.regionAdministrative ?? null,
+      assetClassLabel: requestData.assetClassLabel ?? null,
+    });
+
     const result = {
       means,
       medians,
@@ -365,6 +467,7 @@ export const getGlobalFinancialBenchmark = onCall(
       thresholdFactor: 0.85,
       summary,
       benchmarkGroups,
+      territorialMedians,
     };
 
     try {

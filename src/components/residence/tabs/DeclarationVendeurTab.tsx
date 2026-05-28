@@ -18,6 +18,12 @@ import { cn } from '../../../lib/utils';
 import { DeclarationCertificationHeader } from '../declaration/DeclarationCertificationHeader';
 import { DeclarationQuestionnaire } from '../declaration/DeclarationQuestionnaire';
 import { inst } from '../institutional/InstitutionalUi';
+import {
+  institutionalListingsActionButtonClass,
+  institutionalListingsCardShellClass,
+  institutionalListingsFailSafeClass,
+  institutionalListingsPanelClass,
+} from '../../../lib/institutionalTheme';
 
 export function DeclarationVendeurTab() {
   const { t, language } = useLanguage();
@@ -163,7 +169,7 @@ export function DeclarationVendeurTab() {
 
   if (!isInProvider) {
     return (
-      <div className="rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+      <div className={institutionalListingsFailSafeClass}>
         {t('Provider document résidence manquant.', 'Residence document provider missing.')}
       </div>
     );
@@ -171,7 +177,7 @@ export function DeclarationVendeurTab() {
 
   if (loading) {
     return (
-      <div className={inst.loading}>
+      <div className={institutionalListingsFailSafeClass}>
         <p className={inst.loadingText}>
           {t('Chargement de la déclaration…', 'Loading disclosure…')}
         </p>
@@ -181,7 +187,7 @@ export function DeclarationVendeurTab() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-300 bg-red-50 px-5 py-4 text-sm text-red-900">
+      <div className={institutionalListingsFailSafeClass}>
         {t('Erreur Firestore', 'Firestore error')}: {error.message}
       </div>
     );
@@ -189,29 +195,31 @@ export function DeclarationVendeurTab() {
 
   if (!residenceId) {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+      <div className={institutionalListingsFailSafeClass}>
         {t('Identifiant de résidence manquant.', 'Residence id missing.')}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <DeclarationCertificationHeader
-        residenceId={residenceId}
-        declaration={declaration}
-        progress={progress}
-        certifiedByLabel={certifiedByLabel}
-      />
+    <div className={institutionalListingsPanelClass}>
+      <div className={institutionalListingsCardShellClass}>
+        <DeclarationCertificationHeader
+          residenceId={residenceId}
+          declaration={declaration}
+          progress={progress}
+          certifiedByLabel={certifiedByLabel}
+        />
+      </div>
 
       {(localError || saveError) && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 pointer-events-auto">
+        <div className={institutionalListingsFailSafeClass}>
           {localError || saveError}
         </div>
       )}
 
       {!isUploaded ? (
-        <div className={cn(progress.isLocked && 'pointer-events-none')}>
+        <div className={cn(institutionalListingsCardShellClass, progress.isLocked && 'pointer-events-none')}>
           <DeclarationQuestionnaire
             declaration={declaration}
             locked={progress.isLocked}
@@ -224,8 +232,8 @@ export function DeclarationVendeurTab() {
       ) : null}
 
       {!isUploaded && !progress.isLocked ? (
-        <div className="rounded-xl border border-slate-200 bg-white px-6 py-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 pointer-events-auto">
-          <p className="text-xs text-slate-600 max-w-md">
+        <div className={cn(institutionalListingsCardShellClass, 'flex flex-col items-center justify-between gap-4 px-6 py-6 pointer-events-auto sm:flex-row')}>
+          <p className="max-w-md text-xs text-slate-700">
             {t(
               'En certifiant, vous attestez l’exactitude des réponses. Le questionnaire passera en lecture seule.',
               'By certifying, you attest the accuracy of your answers. The questionnaire becomes read-only.'
@@ -236,8 +244,8 @@ export function DeclarationVendeurTab() {
             disabled={certifying || saving || !progress.isComplete || !progress.criticalLocksMet}
             onClick={() => void handleCertify()}
             className={cn(
-              'inline-flex items-center gap-2 rounded-xl border border-[#D4AF37]/50 bg-amber-50 px-6 py-3',
-              'text-[10px] font-black uppercase tracking-[0.16em] text-[#142c6a]',
+              institutionalListingsActionButtonClass,
+              'inline-flex items-center gap-2 px-6 py-3 text-[10px] tracking-[0.16em]',
               'transition hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed'
             )}
           >

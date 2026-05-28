@@ -40,9 +40,9 @@ export function MessageReadReceipt({
       aria-label={tooltip}
     >
       {isOpened ? (
-        <CheckCheck className={cn('h-3.5 w-3.5 text-blue-200')} strokeWidth={2.5} />
+        <CheckCheck className={cn('h-3.5 w-3.5 text-blue-700')} strokeWidth={2.5} />
       ) : (
-        <Check className="h-3.5 w-3.5 text-slate-400/90" strokeWidth={2.5} />
+        <Check className="h-3.5 w-3.5 text-slate-700" strokeWidth={2.5} />
       )}
     </span>
   );

@@ -38,6 +38,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../../lib/i18n';
 import { useAuth } from '../../lib/auth';
+import { cn } from '../../lib/utils';
 import { useSilo } from '../../context/SiloContext';
 import { buildResidenceTenantContext, listResidences, type Residence } from '../../services/residences';
 import { uploadDriveRecording, type DriveDocument } from '../../services/driveStorage';
@@ -46,6 +47,12 @@ import {
   subscribeRecentCallAnalyses,
   type CallAnalysisRow,
 } from '../../services/transcriptionService';
+import {
+  institutionalListingsCardHeaderClass,
+  institutionalListingsCardShellClass,
+  institutionalListingsCardTitleClass,
+  institutionalListingsPanelClass,
+} from '../../lib/institutionalTheme';
 
 const KEYPAD = [
   ['1', '2', '3'],
@@ -311,29 +318,29 @@ export function Softphone() {
   const selectedResidence = residences.find((r) => r.id === selectedResidenceId);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className={cn(institutionalListingsPanelClass, 'mx-auto max-w-4xl')}>
       {/* Header — halo inline supprimé (doublon avec bg-vault::after),
           padding et rayon réduits pour éliminer le vide haut. */}
-      <div className="bg-vault text-white p-6 rounded-[28px] shadow-[0_24px_70px_rgba(0,0,0,0.55)] relative overflow-hidden border border-white/10">
-        <div className="relative z-10 flex items-start justify-between">
+      <div className={institutionalListingsCardShellClass}>
+        <div className={cn(institutionalListingsCardHeaderClass, 'flex items-start justify-between')}>
           <div>
-            <p className="text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
+            <p className={institutionalListingsCardTitleClass}>
               {t('Phase D-2.C-lite · Direct Drive Auto', 'Phase D-2.C-lite · Direct Drive Auto')}
             </p>
-            <h2 className="text-4xl font-black italic tracking-tighter uppercase">
+            <h2 className="text-4xl font-black italic tracking-tighter uppercase text-black">
               {t('Téléphonie logicielle', 'Softphone')}
-              <span className="text-blue-500">.V2_LITE</span>
+              <span className="text-primexpert-dark">.V2_LITE</span>
             </h2>
-            <p className="mt-3 text-[12px] font-semibold text-blue-200/80 max-w-xl">
+            <p className="mt-3 max-w-xl text-[12px] font-semibold text-slate-700">
               {t(
                 "Click-to-call (tel:) + MediaRecorder navigateur. Aucun robot. C'est toi qui pilotes.",
                 'Click-to-call (tel:) + browser MediaRecorder. No robots. You stay in control.'
               )}
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 px-3 py-1.5">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-emerald-100 font-mono">
+          <div className="flex items-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50 px-3 py-1.5">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-800" />
+            <span className="font-mono text-[9px] font-black uppercase tracking-widest text-emerald-900">
               brokerId · {brokerId?.slice(0, 8) ?? '—'}
             </span>
           </div>
@@ -341,8 +348,8 @@ export function Softphone() {
       </div>
 
       {/* Sélecteur résidence — OBLIGATOIRE pour archiver */}
-      <div className="rounded-2xl border border-white/10 bg-vault px-5 py-4 flex items-center gap-3">
-        <Home className="h-4 w-4 text-blue-400 shrink-0" />
+      <div className={cn(institutionalListingsCardShellClass, 'px-5 py-4 flex items-center gap-3')}>
+        <Home className="h-4 w-4 text-primexpert-dark shrink-0" />
         <div className="flex-1 min-w-0">
           <span className="block text-[10px] font-black uppercase tracking-widest text-slate-500">
             {t('Résidence rattachée (obligatoire)', 'Attached residence (required)')}
@@ -351,7 +358,7 @@ export function Softphone() {
             value={selectedResidenceId}
             onChange={(e) => setSelectedResidenceId(e.target.value)}
             disabled={state === 'recording' || state === 'uploading' || state === 'requesting'}
-            className="mt-1.5 w-full text-[12px] font-bold bg-transparent border-b border-white/10 py-1.5 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+            className="mt-1.5 w-full border-b border-slate-200 bg-transparent py-1.5 text-[12px] font-bold text-slate-900 focus:border-primexpert-dark focus:outline-none disabled:opacity-50"
           >
             <option value="">— {residencesLoading ? t('Chargement…', 'Loading…') : t('Choisis une résidence', 'Pick a residence')} —</option>
             {residences.map((r) => (
@@ -364,7 +371,7 @@ export function Softphone() {
       </div>
 
       {/* Dialer */}
-      <div className="rounded-[32px] border border-white/10 bg-vault p-10 shadow-[0_24px_70px_rgba(15,23,42,0.08)] relative">
+      <div className={cn(institutionalListingsCardShellClass, 'relative p-10')}>
         {/* Overlay REC */}
         <AnimatePresence>
           {state === 'recording' && (
@@ -372,14 +379,14 @@ export function Softphone() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-red-500/[0.08] border border-red-300 px-3 py-1.5"
+              className="absolute right-4 top-4 flex items-center gap-2 rounded-full border border-red-300 bg-red-50 px-3 py-1.5"
             >
               <motion.span
                 animate={{ opacity: [1, 0.2, 1] }}
                 transition={{ repeat: Infinity, duration: 1.2 }}
                 className="block h-2.5 w-2.5 rounded-full bg-red-600"
               />
-              <span className="text-[10px] font-black uppercase tracking-widest text-red-300 font-mono">
+              <span className="font-mono text-[10px] font-black uppercase tracking-widest text-red-900">
                 REC · {formatDuration(elapsedMs)}
               </span>
             </motion.div>
@@ -395,7 +402,7 @@ export function Softphone() {
             onChange={(e) => setNumber(e.target.value)}
             placeholder="+1 (514) ..."
             disabled={state === 'recording' || state === 'uploading' || state === 'requesting'}
-            className="mt-2 w-full text-4xl font-black tracking-tight bg-transparent border-b-2 border-white/10 py-3 focus:outline-none focus:border-blue-600 disabled:opacity-60"
+            className="mt-2 w-full border-b-2 border-slate-200 bg-transparent py-3 text-4xl font-black tracking-tight text-black focus:border-primexpert-dark focus:outline-none disabled:opacity-60"
           />
         </label>
 
@@ -406,7 +413,7 @@ export function Softphone() {
               type="button"
               onClick={() => append(digit)}
               disabled={state === 'recording' || state === 'uploading' || state === 'requesting'}
-              className="aspect-square rounded-2xl bg-white/[0.03] hover:bg-blue-500/10 active:bg-blue-500/15 border border-white/10 hover:border-blue-300 text-2xl font-black italic tracking-tight text-slate-100 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="aspect-square rounded-2xl border border-primexpert-dark/15 bg-primexpert-light text-2xl font-black italic tracking-tight text-black transition hover:border-primexpert-dark hover:bg-white active:bg-primexpert-light disabled:cursor-not-allowed disabled:opacity-40"
             >
               {digit}
             </button>
@@ -418,7 +425,7 @@ export function Softphone() {
             type="button"
             onClick={backspace}
             disabled={!number || state === 'recording' || state === 'uploading'}
-            className="flex items-center gap-2 rounded-2xl border border-white/10 bg-vault px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:border-slate-400 disabled:opacity-30 transition"
+            className="flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-900 hover:border-primexpert-dark disabled:opacity-30 transition"
           >
             <Delete className="h-3.5 w-3.5" />
             {t('Effacer', 'Backspace')}
@@ -427,7 +434,7 @@ export function Softphone() {
             type="button"
             onClick={clear}
             disabled={!number || state === 'recording' || state === 'uploading'}
-            className="rounded-2xl border border-white/10 bg-vault px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:border-slate-400 disabled:opacity-30 transition"
+            className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-900 hover:border-primexpert-dark disabled:opacity-30 transition"
           >
             {t('Réinitialiser', 'Clear')}
           </button>
@@ -450,7 +457,7 @@ export function Softphone() {
                 href={number ? buildTelHref(number) : undefined}
                 aria-disabled={!number}
                 onClick={(e) => { if (!number) e.preventDefault(); }}
-                className={`flex items-center justify-center gap-3 rounded-2xl border-2 border-white/10 bg-vault px-6 py-5 text-slate-300 text-[11px] font-black uppercase tracking-[0.2em] hover:border-blue-300 hover:text-blue-300 transition ${!number ? 'opacity-40 cursor-not-allowed' : ''}`}
+                className={`flex items-center justify-center gap-3 rounded-2xl border-2 border-slate-300 bg-white px-6 py-5 text-[11px] font-black uppercase tracking-[0.2em] text-slate-900 hover:border-primexpert-dark hover:text-slate-900 transition ${!number ? 'opacity-40 cursor-not-allowed' : ''}`}
               >
                 <Phone className="h-4 w-4" />
                 {t('Appeler (sans rec.)', 'Call (no rec.)')}
@@ -474,7 +481,7 @@ export function Softphone() {
               <button
                 type="button"
                 onClick={handleCancelRecording}
-                className="flex items-center justify-center gap-3 rounded-2xl border-2 border-white/10 bg-vault px-6 py-5 text-slate-300 text-[11px] font-black uppercase tracking-[0.2em] hover:border-red-300 hover:text-red-300 transition"
+                className="flex items-center justify-center gap-3 rounded-2xl border-2 border-slate-300 bg-white px-6 py-5 text-[11px] font-black uppercase tracking-[0.2em] text-slate-900 hover:border-red-300 hover:text-red-700 transition"
               >
                 <PhoneOff className="h-4 w-4" />
                 {t('Annuler', 'Cancel')}
@@ -490,7 +497,7 @@ export function Softphone() {
 
         {/* Helper text */}
         {!selectedResidenceId && state === 'idle' && (
-          <p className="mt-4 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <p className="mt-4 text-center text-[10px] font-bold uppercase tracking-widest text-slate-700">
             {t('Sélectionne une résidence pour activer l\'enregistrement', 'Select a residence to enable recording')}
           </p>
         )}
@@ -498,9 +505,9 @@ export function Softphone() {
 
       {/* Error banner */}
       {errorMsg && (
-        <div className="flex items-start gap-3 rounded-2xl border border-red-400/30 bg-red-500/[0.08] px-5 py-4">
-          <AlertCircle className="h-4 w-4 text-red-300 mt-0.5 shrink-0" />
-          <p className="text-[12px] font-semibold text-red-300 leading-relaxed">{errorMsg}</p>
+        <div className="flex items-start gap-3 rounded-2xl border border-red-300 bg-red-50 px-5 py-4">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-700" />
+          <p className="text-[12px] font-semibold leading-relaxed text-red-900">{errorMsg}</p>
         </div>
       )}
 
@@ -509,17 +516,17 @@ export function Softphone() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-start gap-3 rounded-2xl border border-emerald-400/30 bg-emerald-500/[0.08] px-5 py-4"
+          className="flex items-start gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 px-5 py-4"
         >
-          <CheckCircle2 className="h-4 w-4 text-emerald-300 mt-0.5 shrink-0" />
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-800" />
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-300">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-900">
               {t('Enregistrement archivé dans l’espace documents', 'Recording archived in Drive')}
             </p>
-            <p className="text-[12px] font-bold text-emerald-300 mt-1 truncate font-mono">
+            <p className="mt-1 truncate font-mono text-[12px] font-bold text-emerald-900">
               {selectedResidence?.address ?? '—'} / recordings / {lastSaved.fileName}
             </p>
-            <p className="text-[10px] font-semibold text-emerald-300 mt-0.5">
+            <p className="mt-0.5 text-[10px] font-semibold text-emerald-900">
               {t('Durée', 'Duration')} · {formatDuration(lastSaved.durationMs ?? 0)} ·{' '}
               {(lastSaved.size / 1024).toFixed(1)} kB
             </p>
@@ -529,20 +536,20 @@ export function Softphone() {
 
       {/* E-3 — Appels récents & comptes-rendus (Firestore call_analyses) */}
       {brokerId && (
-        <div className="rounded-2xl border border-white/10 bg-vault px-5 py-5 space-y-4">
+        <div className={cn(institutionalListingsCardShellClass, 'px-5 py-5 space-y-4')}>
           <div className="flex items-center gap-2">
             <Mic className="h-4 w-4 text-violet-400 shrink-0" />
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-700">
                 {t('Phase E-3 · Intelligence vocale', 'Phase E-3 · Voice intelligence')}
               </p>
-              <h3 className="text-lg font-black text-slate-100 tracking-tight">
+              <h3 className="text-lg font-black tracking-tight text-black">
                 {t('Appels récents & Comptes-rendus', 'Recent calls & debriefs')}
               </h3>
             </div>
           </div>
           {recentCalls.length === 0 ? (
-            <p className="text-[12px] text-slate-400 font-semibold leading-relaxed">
+            <p className="text-[12px] font-semibold leading-relaxed text-slate-700">
               {t(
                 'Aucun appel archivé pour l’instant. Enregistre un appel pour voir le statut ici.',
                 'No archived calls yet. Save a recording to see status here.'
@@ -564,15 +571,15 @@ export function Softphone() {
                 return (
                   <li
                     key={row.driveDocumentId}
-                    className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3"
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-3"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="text-[11px] font-mono font-bold text-slate-200 truncate">
+                        <p className="truncate text-[11px] font-mono font-bold text-black">
                           {row.fileName}
                         </p>
-                        <p className="text-[10px] text-slate-500 font-semibold truncate">{resLabel}</p>
-                        <p className="text-[9px] text-slate-600 mt-1">
+                        <p className="truncate text-[10px] font-semibold text-slate-700">{resLabel}</p>
+                        <p className="mt-1 text-[9px] text-slate-600">
                           {formatCallListTime(row.updatedAtMillis, language)}
                         </p>
                       </div>
@@ -580,13 +587,13 @@ export function Softphone() {
                         <span className="text-lg leading-none" aria-hidden>
                           {statusPiece.emoji}
                         </span>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1">
+                        <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-700">
                           {statusPiece.label}
                         </p>
                       </div>
                     </div>
                     {row.pipelineStatus === 'analyzed' && row.executiveSummary?.trim() ? (
-                      <p className="mt-2 text-[11px] text-slate-300 leading-snug line-clamp-3 border-t border-white/5 pt-2">
+                      <p className="mt-2 line-clamp-3 border-t border-slate-200 pt-2 text-[11px] leading-snug text-slate-900">
                         {row.executiveSummary}
                       </p>
                     ) : null}
@@ -604,14 +611,14 @@ export function Softphone() {
       )}
 
       {/* Bandeau Compliance OACIQ — TOUJOURS VISIBLE pendant un recording */}
-      <div className="rounded-[24px] border border-amber-300 bg-amber-500/[0.06] p-6">
+      <div className="rounded-[24px] border border-amber-300 bg-amber-50 p-6">
         <div className="flex items-center gap-2">
-          <BadgeAlert className="h-4 w-4 text-amber-400" />
-          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-300">
+          <BadgeAlert className="h-4 w-4 text-amber-800" />
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-900">
             {t("OACIQ — Consentement à l'enregistrement OBLIGATOIRE", 'OACIQ — Recording consent MANDATORY')}
           </p>
         </div>
-        <p className="mt-2 text-[12px] font-semibold text-amber-300 leading-relaxed">
+        <p className="mt-2 text-[12px] font-semibold leading-relaxed text-amber-900">
           {t(
             "Avant d'appuyer sur « Appeler & Enregistrer », tu DOIS annoncer verbalement à ton interlocuteur que l'appel est enregistré. Le micro local capte uniquement TA voix — pour une captation bidirectionnelle, on passera en D-2.C complète (Twilio).",
             'Before pressing « Call & Record », you MUST verbally inform the other party that the call is being recorded. The local microphone captures ONLY your voice — for bidirectional capture, we will upgrade to D-2.C full (Twilio).'
@@ -620,8 +627,8 @@ export function Softphone() {
       </div>
 
       {/* Note technique */}
-      <div className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5 text-[11px] leading-relaxed text-slate-300">
-        <p className="font-black uppercase tracking-widest text-[9px] text-slate-500 mb-2 flex items-center gap-1.5">
+      <div className={cn(institutionalListingsCardShellClass, 'p-5 text-[11px] leading-relaxed text-slate-900')}>
+        <p className="mb-2 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-700">
           <Sparkles className="h-3 w-3" />
           {t('Comment ça marche', 'How it works')}
         </p>

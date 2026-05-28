@@ -15,6 +15,10 @@ import { VisitorRegistrySection } from '../market/VisitorRegistrySection';
 import { WorkforceBasinSection } from '../market/WorkforceBasinSection';
 import { ResidenceAcmValuationPanel } from '../market/ResidenceAcmValuationPanel';
 import { FinancialDataProvider } from '../../../context/FinancialDataContext';
+import {
+  institutionalListingsFailSafeClass,
+  institutionalListingsPanelClass,
+} from '../../../lib/institutionalTheme';
 
 export interface MarcheConcurrenceTabProps {
   residence: Residence;
@@ -26,7 +30,7 @@ export function MarcheConcurrenceTab({ residence }: MarcheConcurrenceTabProps) {
 
   if (!isInProvider) {
     return (
-      <div className="rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+      <div className={institutionalListingsFailSafeClass}>
         {t(
           'Provider document résidence manquant.',
           'Residence document provider missing.'
@@ -36,9 +40,9 @@ export function MarcheConcurrenceTab({ residence }: MarcheConcurrenceTabProps) {
   }
 
   return (
-    <div className={inst.page}>
+    <div className={institutionalListingsPanelClass}>
       {saveError && (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+        <p className={institutionalListingsFailSafeClass}>
           {saveError}
         </p>
       )}
@@ -48,13 +52,13 @@ export function MarcheConcurrenceTab({ residence }: MarcheConcurrenceTabProps) {
       </FinancialDataProvider>
 
       {error ? (
-        <div className="rounded-xl border border-red-300 bg-red-50 px-5 py-4 text-sm text-red-900">
+        <div className={institutionalListingsFailSafeClass}>
           {t('Erreur Firestore', 'Firestore error')}: {error.message}
         </div>
       ) : null}
 
       {loading ? (
-        <div className={inst.loading}>
+        <div className={institutionalListingsFailSafeClass}>
           <p className={inst.loadingText}>
             {t('Chargement du diagnostic territorial…', 'Loading territorial diagnostic…')}
           </p>

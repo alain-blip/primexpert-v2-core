@@ -12,11 +12,17 @@ import { useAuth } from '../../../lib/auth';
 import { useFinancialData } from '../../../context/FinancialDataContext';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { useMarketData } from '../../../hooks/useMarketData';
+import { useGlobalFinancialBenchmark } from '../../../hooks/useGlobalFinancialBenchmark';
 import { getListingPrice } from '@primexpert/core/residence';
 import type { Residence } from '../../../services/residences';
 import { AcmValuationWorkspace } from '../../acm/AcmValuationWorkspace';
 import { AcmTab } from './AcmTab';
-import { inst } from '../institutional/InstitutionalUi';
+import {
+  institutionalListingsCardHeaderClass,
+  institutionalListingsCardShellClass,
+  institutionalListingsCardTitleClass,
+  institutionalListingsFailSafeClass,
+} from '../../../lib/institutionalTheme';
 
 export interface ResidenceAcmValuationPanelProps {
   residence: Residence;
@@ -67,6 +73,11 @@ export function ResidenceAcmValuationPanel({
     );
   }, [residenceLive, residenceDoc, financialData, marketTransactions]);
 
+  const benchmarkState = useGlobalFinancialBenchmark(Boolean(bootstrap), {
+    regionAdministrative: bootstrap?.regionLabel ?? null,
+    assetClassLabel: bootstrap?.assetClassLabel ?? null,
+  });
+
   const pdfExport = useMemo(() => {
     if (!financialData) return undefined;
     const addressParts = [residenceLive.address, residenceLive.city].filter(Boolean);
@@ -82,8 +93,8 @@ export function ResidenceAcmValuationPanel({
 
   if (loading) {
     return (
-      <div className={inst.loading}>
-        <p className={inst.loadingText}>
+      <div className={institutionalListingsFailSafeClass}>
+        <p className="text-sm font-bold text-slate-900">
           {t('Chargement des états financiers…', 'Loading financial statements…')}
         </p>
       </div>
@@ -92,7 +103,7 @@ export function ResidenceAcmValuationPanel({
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-300 bg-red-50 px-5 py-4 text-sm text-red-900">
+      <div className="rounded-xl border-2 border-red-400 bg-red-50 px-5 py-4 text-sm font-bold text-red-900">
         {t('Erreur Firestore', 'Firestore error')}: {error.message}
       </div>
     );
@@ -125,15 +136,28 @@ export function ResidenceAcmValuationPanel({
 
   return (
     <div className="space-y-6">
-      <AcmValuationWorkspace
-        bootstrap={bootstrap}
-        onOpenComparables={onOpenComparables}
-        compact
-        ratioSamples={ratioSamples}
-        transactions={marketTransactions}
-        subjectExpenses={subjectExpenses}
-        pdfExport={pdfExport}
-      />
+      <section className={institutionalListingsCardShellClass}>
+        <header className={institutionalListingsCardHeaderClass}>
+          <h3 className={institutionalListingsCardTitleClass}>
+            {t(
+              'Analyse comparative de marché (ACM) — valorisation',
+              'Comparative market analysis (CMA) — valuation'
+            )}
+          </h3>
+        </header>
+        <div className="p-4 sm:p-5">
+          <AcmValuationWorkspace
+            bootstrap={bootstrap}
+            onOpenComparables={onOpenComparables}
+            compact
+            ratioSamples={ratioSamples}
+            transactions={marketTransactions}
+            subjectExpenses={subjectExpenses}
+            pdfExport={pdfExport}
+            territorialMedians={benchmarkState.territorialMedians ?? undefined}
+          />
+        </div>
+      </section>
       <AcmTab residence={residenceLive} />
     </div>
   );

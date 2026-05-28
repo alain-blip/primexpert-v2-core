@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Upload, FileCheck, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { uploadPropertyDocument } from '../../services/propertyDocumentsService';
+import { institutionalListingsCardShellClass } from '../../lib/institutionalTheme';
 
 export function VendorDocumentDropzone({
   propertyId,
@@ -68,12 +69,12 @@ export function VendorDocumentDropzone({
           void handleFiles(e.dataTransfer.files);
         }}
         animate={{
-          borderColor: dragOver ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)',
+          borderColor: dragOver ? 'rgba(20,44,106,0.85)' : 'rgba(20,44,106,0.3)',
           scale: dragOver ? 1.01 : 1,
         }}
         className={cn(
-          'cursor-pointer rounded-2xl border-2 border-dashed bg-white/5 p-8 text-center transition-shadow',
-          dragOver && 'shadow-[0_0_40px_rgba(255,255,255,0.12)]'
+          `cursor-pointer border-2 border-dashed bg-white p-8 text-center transition-shadow ${institutionalListingsCardShellClass}`,
+          dragOver && 'shadow-[0_0_40px_rgba(20,44,106,0.18)]'
         )}
       >
         <input
@@ -84,14 +85,14 @@ export function VendorDocumentDropzone({
           onChange={(e) => void handleFiles(e.target.files)}
         />
         {uploading ? (
-          <Loader2 className="mx-auto h-10 w-10 animate-spin text-white/80" aria-hidden />
+          <Loader2 className="mx-auto h-10 w-10 animate-spin text-slate-700" aria-hidden />
         ) : (
-          <Upload className="mx-auto h-10 w-10 text-white/70" aria-hidden />
+          <Upload className="mx-auto h-10 w-10 text-slate-700" aria-hidden />
         )}
-        <p className="mt-4 text-sm font-black uppercase tracking-widest text-white">
+        <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-900">
           {t('Glisser-déposer une pièce manquante', 'Drag and drop a missing document')}
         </p>
-        <p className="mt-2 text-xs font-medium text-white/70">
+        <p className="mt-2 text-xs font-medium text-slate-700">
           {t(
             'PDF, images ou documents Word — vérification automatique après dépôt.',
             'PDF, images, or Word documents — automatic verification after upload.'
@@ -106,7 +107,7 @@ export function VendorDocumentDropzone({
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="flex items-center gap-2 rounded-xl border border-emerald-300/40 bg-emerald-500/15 px-4 py-3 text-emerald-100"
+            className="flex items-center gap-2 rounded-xl border-2 border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-900"
           >
             <FileCheck className="h-4 w-4 shrink-0" aria-hidden />
             <p className="text-xs font-semibold">
@@ -120,7 +121,7 @@ export function VendorDocumentDropzone({
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="flex items-start gap-2 rounded-xl border border-red-300/40 bg-red-500/15 px-4 py-3 text-red-100"
+            className="flex items-start gap-2 rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 text-red-900"
           >
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden />
             <p className="text-xs font-semibold">{error}</p>

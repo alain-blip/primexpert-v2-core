@@ -38,6 +38,24 @@ export const CONTACT_RELATION_ROLES = [
 ] as const;
 export type ContactRelationRole = (typeof CONTACT_RELATION_ROLES)[number];
 
+/** Typologies CRM spécialisées RPA (phase 1). */
+export const CONTACT_RPA_TYPOLOGIES = [
+  'vendeur_proprietaire',
+  'acheteur_investisseur',
+  'groupe_rpa',
+  'notaire',
+  'avocat',
+  'courtier_collaborateur',
+] as const;
+export type ContactRpaTypology = (typeof CONTACT_RPA_TYPOLOGIES)[number];
+
+/** Liaison relationnelle cartographiée entre deux contacts CRM. */
+export interface ContactRelationLink {
+  contactId: string;
+  type: string;
+  notes?: string;
+}
+
 /** Spécialisation professionnelle (fiche contact `professional`). */
 export const PROFESSIONAL_TYPES = [
   'NOTARY',
@@ -56,6 +74,18 @@ export interface ContactBrokerCriteria {
   agencyName?: string;
   /** Acheteurs sous la responsabilité de ce courtier (`contactId` acheteur). */
   managedBuyerIds?: string[];
+}
+
+/** Liaisons transactionnelles RPA (SSOT CRM, sans sous-collection parallèle). */
+export interface ContactTransactionLinks {
+  /** Covendeurs liés au dossier (`contactId`). */
+  coSellerIds?: string[];
+  /** Notaires externes liés (`contactId`). */
+  notaryIds?: string[];
+  /** Avocats externes liés (`contactId`). */
+  lawyerIds?: string[];
+  /** Courtiers collaborateurs liés (`contactId`). */
+  collaboratorBrokerIds?: string[];
 }
 
 /** Pipeline acheteur qualifié — état sur la fiche contact (pas de collection `buyerPipeline`). */
@@ -200,18 +230,30 @@ export interface OrganizationContact {
   /** Métier / occupation de la partie — optionnel ; ≠ taux d’occupation immeuble */
   occupationProfession?: string;
   relationRoles?: ContactRelationRole[];
+  /** Typologies métier RPA (classification opérationnelle). */
+  rpaTypologies?: ContactRpaTypology[];
   email?: string;
   telephone?: string;
+  /** Relations cartographiées bidirectionnelles (écrites via writeBatch). */
+  relations?: ContactRelationLink[];
   residenceIds?: string[];
   /** Coacheteurs liés (`contactId` dans la même organisation). */
   coBuyerIds?: string[];
   /** Covendeurs liés (`contactId` dans la même organisation). */
   coSellerIds?: string[];
+  /** Notaires liés à la transaction (`contactId`). */
+  notaryIds?: string[];
+  /** Avocats liés à la transaction (`contactId`). */
+  lawyerIds?: string[];
+  /** Courtiers collaborateurs liés à la transaction (`contactId`). */
+  collaboratorBrokerIds?: string[];
   /**
    * Qualification acheteur (null / absent = non renseigné).
    * Remplace le pipeline Firestore legacy sans dupliquer la fiche.
    */
   buyerQualificationStatus?: BuyerQualificationStatus | null;
+  /** Niveau commercial dérivé via `deriveBuyerTier()` pour les typologies RPA acheteur. */
+  buyerCommercialTier?: BuyerCommercialTier | null;
   buyerCriteria?: ContactBuyerCriteria;
   sellerCriteria?: ContactSellerCriteria;
   /** Agence et acheteurs gérés — rôle `broker`. */
@@ -440,6 +482,46 @@ export function deriveBuyerTier(contact: BuyerTierInput): BuyerCommercialTier | 
   return null;
 }
 
+/** Vrai si la fiche appartient aux typologies RPA nécessitant la dérivation acheteur. */
+export function requiresRpaBuyerTierDerivation(
+  rpaTypologies: readonly ContactRpaTypology[] | undefined
+): boolean {
+  if (!rpaTypologies?.length) return false;
+  return (
+    rpaTypologies.includes('acheteur_investisseur') || rpaTypologies.includes('groupe_rpa')
+  );
+}
+
+/**
+ * Dérive le tier commercial acheteur pour les typologies RPA ciblées.
+ * Force l'appel à `deriveBuyerTier()` avec un rôle `buyer` pour la logique documentaire.
+ */
+export function deriveRpaBuyerCommercialTier(input: {
+  rpaTypologies?: readonly ContactRpaTypology[];
+  relationRoles?: readonly ContactRelationRole[];
+  buyerCriteria?: ContactBuyerCriteria;
+}): BuyerCommercialTier | null {
+  if (!requiresRpaBuyerTierDerivation(input.rpaTypologies)) return null;
+  const relationRoles = input.relationRoles?.length
+    ? input.relationRoles
+    : (['buyer'] as const);
+  const relationRolesWithBuyer = relationRoles.includes('buyer')
+    ? relationRoles
+    : ([...relationRoles, 'buyer'] as ContactRelationRole[]);
+  return deriveBuyerTier({
+    relationRoles: relationRolesWithBuyer,
+    buyerCriteria: input.buyerCriteria,
+  });
+}
+
+/** Map tier commercial dérivé -> statut pipeline acheteur persistant. */
+export function mapBuyerTierToQualificationStatus(
+  tier: BuyerCommercialTier | null
+): BuyerQualificationStatus | null {
+  if (!tier) return null;
+  return 'QUALIFIED';
+}
+
 function parseBuyerQualificationStatus(raw: unknown): BuyerQualificationStatus | null | undefined {
   if (raw == null) return null;
   if (typeof raw !== 'string') return undefined;
@@ -532,6 +614,99 @@ export function parseContactPartnerIds(raw: unknown): string[] | undefined {
   return ids.length ? [...new Set(ids)] : undefined;
 }
 
+/** Lit les liaisons transactionnelles RPA depuis un document contact. */
+export function parseContactTransactionRoleFields(data: Record<string, unknown>): {
+  coSellerIds?: string[];
+  notaryIds?: string[];
+  lawyerIds?: string[];
+  collaboratorBrokerIds?: string[];
+} {
+  const coSellerIds = parseContactPartnerIds(data.coSellerIds);
+  const notaryIds = parseContactPartnerIds(data.notaryIds ?? data.notaryId);
+  const lawyerIds = parseContactPartnerIds(data.lawyerIds ?? data.lawyerId);
+  const collaboratorBrokerIds = parseContactPartnerIds(
+    data.collaboratorBrokerIds ?? data.collaboratorBrokerId
+  );
+  return {
+    ...(coSellerIds ? { coSellerIds } : {}),
+    ...(notaryIds ? { notaryIds } : {}),
+    ...(lawyerIds ? { lawyerIds } : {}),
+    ...(collaboratorBrokerIds ? { collaboratorBrokerIds } : {}),
+  };
+}
+
+/** Lit typologies RPA depuis un document contact. */
+export function parseContactRpaTypologies(raw: unknown): ContactRpaTypology[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const rows = raw
+    .map((v) => (typeof v === 'string' ? v.trim() : ''))
+    .filter((v): v is ContactRpaTypology =>
+      (CONTACT_RPA_TYPOLOGIES as readonly string[]).includes(v)
+    );
+  return rows.length ? [...new Set(rows)] : undefined;
+}
+
+/** Lit relations cartographiées depuis Firestore. */
+export function parseContactRelations(raw: unknown): ContactRelationLink[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: ContactRelationLink[] = [];
+  for (const row of raw) {
+    if (!row || typeof row !== 'object') continue;
+    const o = row as Record<string, unknown>;
+    const contactId = typeof o.contactId === 'string' ? o.contactId.trim() : '';
+    const type = typeof o.type === 'string' ? o.type.trim() : '';
+    const notes = typeof o.notes === 'string' && o.notes.trim() ? o.notes.trim() : undefined;
+    if (!contactId || !type) continue;
+    out.push({ contactId, type, ...(notes ? { notes } : {}) });
+  }
+  if (!out.length) return undefined;
+  const dedup = new Map<string, ContactRelationLink>();
+  for (const rel of out) {
+    dedup.set(`${rel.contactId}::${rel.type.toLowerCase()}`, rel);
+  }
+  return Array.from(dedup.values());
+}
+
+/** Normalise et ajoute une relation cartographiée (sans duplication contactId+type). */
+export function syncAddContactRelation(
+  relations: readonly ContactRelationLink[] | undefined,
+  link: ContactRelationLink
+): ContactRelationLink[] {
+  const contactId = link.contactId.trim();
+  const type = link.type.trim();
+  const notes = link.notes?.trim();
+  if (!contactId || !type) return [...(relations ?? [])];
+  const key = `${contactId}::${type.toLowerCase()}`;
+  const map = new Map<string, ContactRelationLink>();
+  for (const rel of relations ?? []) {
+    if (!rel.contactId?.trim() || !rel.type?.trim()) continue;
+    map.set(`${rel.contactId.trim()}::${rel.type.trim().toLowerCase()}`, {
+      contactId: rel.contactId.trim(),
+      type: rel.type.trim(),
+      ...(rel.notes?.trim() ? { notes: rel.notes.trim() } : {}),
+    });
+  }
+  map.set(key, { contactId, type, ...(notes ? { notes } : {}) });
+  return Array.from(map.values());
+}
+
+/** Retire une relation cartographiée (clé composite contactId+type). */
+export function syncRemoveContactRelation(
+  relations: readonly ContactRelationLink[] | undefined,
+  target: { contactId: string; type: string }
+): ContactRelationLink[] {
+  const contactId = target.contactId.trim();
+  const type = target.type.trim().toLowerCase();
+  if (!contactId || !type) return [...(relations ?? [])];
+  return (relations ?? []).filter(
+    (rel) =>
+      !(
+        rel.contactId?.trim() === contactId &&
+        rel.type?.trim().toLowerCase() === type
+      )
+  );
+}
+
 /** @deprecated Alias — `parseContactPartnerIds`. */
 export const parseContactCoBuyerIds = parseContactPartnerIds;
 
@@ -606,14 +781,23 @@ export function parseContactSellerFields(data: Record<string, unknown>): {
 /** Lit qualification + critères acheteur depuis un document contact. */
 export function parseContactBuyerFields(data: Record<string, unknown>): {
   buyerQualificationStatus?: BuyerQualificationStatus | null;
+  buyerCommercialTier?: BuyerCommercialTier | null;
   buyerCriteria?: ContactBuyerCriteria;
   coBuyerIds?: string[];
 } {
   const status = parseBuyerQualificationStatus(data.buyerQualificationStatus);
+  const tier =
+    typeof data.buyerCommercialTier === 'string' &&
+    (BUYER_COMMERCIAL_TIERS as readonly string[]).includes(data.buyerCommercialTier)
+      ? (data.buyerCommercialTier as BuyerCommercialTier)
+      : data.buyerCommercialTier === null
+        ? null
+        : undefined;
   const criteria = parseContactBuyerCriteria(data.buyerCriteria);
   const coBuyerIds = parseContactPartnerIds(data.coBuyerIds);
   return {
     ...(status !== undefined ? { buyerQualificationStatus: status } : {}),
+    ...(tier !== undefined ? { buyerCommercialTier: tier } : {}),
     ...(criteria ? { buyerCriteria: criteria } : {}),
     ...(coBuyerIds ? { coBuyerIds } : {}),
   };
@@ -625,4 +809,17 @@ export function parseContactProfessionalFields(data: Record<string, unknown>): {
 } {
   const professionalType = parseProfessionalType(data.professionalType);
   return professionalType ? { professionalType } : {};
+}
+
+/** Lit typologies et relations RPA depuis un document contact. */
+export function parseContactRpaFields(data: Record<string, unknown>): {
+  rpaTypologies?: ContactRpaTypology[];
+  relations?: ContactRelationLink[];
+} {
+  const rpaTypologies = parseContactRpaTypologies(data.rpaTypologies);
+  const relations = parseContactRelations(data.relations);
+  return {
+    ...(rpaTypologies ? { rpaTypologies } : {}),
+    ...(relations ? { relations } : {}),
+  };
 }

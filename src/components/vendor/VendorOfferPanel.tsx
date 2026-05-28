@@ -2,6 +2,10 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { formatCurrency } from '../../lib/utils';
 import type { PromesseAchatViewModel } from '@primexpert/core/transaction';
+import {
+  institutionalListingsCardShellClass,
+  institutionalListingsCardTitleClass,
+} from '../../lib/institutionalTheme';
 
 function formatDateLabel(iso: string | undefined, locale: 'fr' | 'en'): string {
   if (!iso) return '—';
@@ -31,15 +35,15 @@ export function VendorOfferPanel({
     <motion.section
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-3xl border border-white/15 bg-gradient-to-br from-white/12 to-white/5 p-6 sm:p-8 shadow-[0_24px_80px_rgba(0,0,0,0.35)]"
+      className={`${institutionalListingsCardShellClass} rounded-3xl p-6 sm:p-8`}
     >
-      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/60">
+      <p className={`${institutionalListingsCardTitleClass} tracking-[0.22em]`}>
         {t("Promesse d'achat active", 'Active purchase promise')}
       </p>
-      <p className="mt-3 text-4xl font-black tracking-tight text-white sm:text-5xl">
+      <p className="mt-3 text-4xl font-black tracking-tight text-black sm:text-5xl">
         {price != null ? formatCurrency(price, { maxDecimals: 0 }) : '—'}
       </p>
-      <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-white/50">
+      <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-slate-700">
         {t('Prix offert ou accepté', 'Offered or accepted price')}
       </p>
 
@@ -64,12 +68,12 @@ export function VendorOfferPanel({
           <motion.div
             key={row.label}
             variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}
-            className="rounded-2xl border border-white/10 bg-black/20 px-5 py-4"
+            className="rounded-2xl border-2 border-primexpert-dark/20 bg-white px-5 py-4"
           >
-            <p className="text-[10px] font-black uppercase tracking-widest text-white/50">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-700">
               {row.label}
             </p>
-            <p className="mt-2 text-xl font-black text-white">{row.value}</p>
+            <p className="mt-2 text-xl font-black text-black">{row.value}</p>
           </motion.div>
         ))}
       </motion.div>

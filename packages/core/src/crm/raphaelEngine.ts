@@ -207,6 +207,11 @@ export function rankRaphaelMatches(
     const scored = scoreRaphaelBuyerMatch(residence, contact);
     if (scored) rows.push(scored);
   }
-  rows.sort((a, b) => b.relevanceScore - a.relevanceScore);
+  rows.sort((a, b) => {
+    const budgetA = a.budgetMax ?? 0;
+    const budgetB = b.budgetMax ?? 0;
+    if (budgetB !== budgetA) return budgetB - budgetA;
+    return b.relevanceScore - a.relevanceScore;
+  });
   return rows.slice(0, limit);
 }

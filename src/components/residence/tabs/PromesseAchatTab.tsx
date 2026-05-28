@@ -30,10 +30,16 @@ import { OffreConditionsLegalesSection } from '../promesse/OffreConditionsLegale
 import { OffreTroncFinancierSection } from '../promesse/OffreTroncFinancierSection';
 import { PromesseCommissionPaSection } from '../promesse/PromesseCommissionPaSection';
 import { PromesseDelaisPaSection } from '../promesse/PromesseDelaisPaSection';
+import { PartiesImpliquees } from '../promesse/PartiesImpliquees';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { useAuth } from '../../../lib/auth';
 import { useLanguage } from '../../../lib/i18n';
 import { cn, formatCurrency } from '../../../lib/utils';
+import {
+  institutionalListingsActionButtonClass,
+  institutionalListingsInlineInputClass,
+  institutionalListingsPanelClass,
+} from '../../../lib/institutionalTheme';
 import {
   searchInternalContacts,
   type InternalContact,
@@ -49,9 +55,9 @@ import { inst, InstitutionalSection } from '../institutional/InstitutionalUi';
 import type { Residence } from '../../../services/residences';
 
 type InnerTab = 'edit' | 'summary';
+type TransactionStage = 'analyse_financiere' | 'due_diligence' | 'cloture';
 
-const fieldClass =
-  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-[#142c6a] focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300 disabled:bg-slate-50 disabled:text-slate-600';
+const fieldClass = `${institutionalListingsInlineInputClass} text-sm disabled:bg-slate-50 disabled:text-slate-600`;
 
 const labelClass = 'text-[10px] font-black uppercase tracking-[0.12em] text-slate-600';
 
@@ -86,6 +92,56 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
 
   const vm = useMemo(() => buildPromesseAchatViewModel(form), [form]);
   const locked = vm.isWormLocked;
+  const residenceRecord = (residenceDoc ?? {}) as Record<string, unknown>;
+
+  const transactionStage: TransactionStage = useMemo(() => {
+    if (form.status === 'accepted') return 'due_diligence';
+    if (form.status === 'refused' || form.status === 'cancelled') return 'cloture';
+    return 'analyse_financiere';
+  }, [form.status]);
+
+  const stageLabels = useMemo(
+    () => ({
+      analyse_financiere: t('Analyse financière', 'Financial analysis'),
+      due_diligence: t('Diligence raisonnable', 'Due diligence'),
+      cloture: t('Clôture', 'Closing'),
+    }),
+    [t]
+  );
+
+  const dueDiligenceChecklist = useMemo(
+    () => [
+      t('Vérification des certifications CIUSSS', 'Verification of CIUSSS certifications'),
+      t('Vérification des baux et grilles de soins', 'Verification of leases and care grids'),
+      t("Conformité du permis d'opération", 'Operating permit compliance'),
+    ],
+    [t]
+  );
+
+  const coSellerIds = useMemo(() => {
+    const raw = residenceRecord.coSellerIds;
+    return Array.isArray(raw) ? raw.map((id) => String(id)).filter(Boolean) : [];
+  }, [residenceRecord]);
+
+  const notaryIds = useMemo(() => {
+    const raw = residenceRecord.notaryIds ?? residenceRecord.notaireIds;
+    if (Array.isArray(raw)) return raw.map((id) => String(id)).filter(Boolean);
+    if (typeof raw === 'string' && raw.trim()) return [raw.trim()];
+    return [];
+  }, [residenceRecord]);
+
+  const lawyerIds = useMemo(() => {
+    const raw = residenceRecord.lawyerIds ?? residenceRecord.avocatIds;
+    if (Array.isArray(raw)) return raw.map((id) => String(id)).filter(Boolean);
+    if (typeof raw === 'string' && raw.trim()) return [raw.trim()];
+    return [];
+  }, [residenceRecord]);
+
+  const collaboratorBrokerIds = useMemo(() => {
+    const raw = residenceRecord.collaboratorBrokerIds;
+    if (Array.isArray(raw)) return raw.map((id) => String(id)).filter(Boolean);
+    return [];
+  }, [residenceRecord]);
 
   useEffect(() => {
     if (!residenceDoc) return;
@@ -266,7 +322,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
   }
 
   return (
-    <div className="space-y-5">
+    <div className={institutionalListingsPanelClass}>
       {locked && (
         <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-[#142c6a]">
           {language === 'fr' ? WORM_LOCK_MESSAGE_FR : WORM_LOCK_MESSAGE_EN}
@@ -351,6 +407,74 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
         </InstitutionalSection>
       ) : (
         <>
+          <InstitutionalSection title={t('Pipeline transaction RPA', 'RPA transaction pipeline')}>
+            <div className="grid gap-3 md:grid-cols-3">
+              {(['analyse_financiere', 'due_diligence', 'cloture'] as TransactionStage[]).map(
+                (stage) => {
+                  const isActive = stage === transactionStage;
+                  return (
+                    <article
+                      key={stage}
+                      className={cn(
+                        'rounded-xl border-2 p-4 transition',
+                        isActive
+                          ? 'border-primexpert-dark bg-white dark:bg-primexpert-cardDark'
+                          : 'border-primexpert-dark/25 bg-primexpert-light dark:bg-primexpert-cardDark'
+                      )}
+                    >
+                      <p className="text-[11px] font-black uppercase tracking-wider text-slate-900">
+                        {stageLabels[stage]}
+                      </p>
+                      <p className="mt-1 text-[12px] font-semibold text-slate-700">
+                        {isActive
+                          ? t('Étape active', 'Active stage')
+                          : t('En attente', 'Pending')}
+                      </p>
+                    </article>
+                  );
+                }
+              )}
+            </div>
+
+            {transactionStage === 'due_diligence' ? (
+              <div className="mt-4 rounded-xl border-2 border-primexpert-dark/20 bg-white dark:bg-primexpert-cardDark p-4">
+                <p className="text-[11px] font-black uppercase tracking-wider text-slate-900">
+                  {t('Checklist diligence raisonnable', 'Due diligence checklist')}
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {dueDiligenceChecklist.map((item) => (
+                    <li
+                      key={item}
+                      className="rounded-lg border border-primexpert-dark/15 bg-primexpert-light px-3 py-2 text-[13px] font-bold text-slate-900"
+                    >
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </InstitutionalSection>
+
+          <PartiesImpliquees
+            title={t('Parties impliquées à la transaction', 'Parties involved in transaction')}
+            labels={{
+              coOwners: t('Co-propriétaires', 'Co-owners'),
+              collaboratorBroker: t('Courtier collaborateur', 'Collaborating broker'),
+              notary: t('Notaire', 'Notary'),
+              lawyer: t('Avocat lié', 'Linked lawyer'),
+              failSafe: t(
+                'Aucun intervenant externe lié à cette transaction',
+                'Aucun intervenant externe lié à cette transaction'
+              ),
+            }}
+            coSellerIds={coSellerIds}
+            collaboratorBrokerIds={collaboratorBrokerIds}
+            notaryIds={notaryIds}
+            lawyerIds={lawyerIds}
+            collaboratorBrokerName={form.courtierCollaborateur?.nom}
+            buyerName={form.buyer?.fullName}
+          />
+
           <OffreTroncFinancierSection
             offre={offreTronc}
             locked={locked}
@@ -374,7 +498,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
               <label className="block space-y-1">
                 <span className={labelClass}>{t('Statut de la promesse', 'Promise status')}</span>
                 {locked ? (
-                  <p className="text-sm font-semibold text-[#142c6a]">
+                  <p className="text-sm font-bold text-slate-900">
                     {language === 'fr'
                       ? PROMESSE_STATUS_OPTIONS.find((o) => o.value === form.status)?.labelFr
                       : PROMESSE_STATUS_OPTIONS.find((o) => o.value === form.status)?.labelEn}
@@ -442,7 +566,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
                 <span className={labelClass}>
                   {t('Date limite de réponse', 'Response deadline')}
                 </span>
-                <p className="text-sm font-semibold text-[#142c6a] tabular-nums">
+                <p className="text-sm font-black text-black tabular-nums">
                   {formatIsoDateForDisplay(vm.deadlines.dateLimiteReponse, locale)}
                 </p>
               </label>
@@ -488,7 +612,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
                         <li key={c.id}>
                           <button
                             type="button"
-                            className="w-full text-left px-3 py-2 text-sm text-[#142c6a] hover:bg-slate-50"
+                            className="w-full text-left px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
                             onClick={() => linkContact(c)}
                           >
                             {c.fullName} · {c.email}
@@ -501,12 +625,12 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
               )}
               {form.buyer ? (
                 <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-                  <p className="text-sm font-semibold text-[#142c6a]">{form.buyer.fullName}</p>
+                  <p className="text-sm font-bold text-slate-900">{form.buyer.fullName}</p>
                   {form.buyer.company ? (
-                    <p className="text-sm text-[#142c6a]">({form.buyer.company})</p>
+                    <p className="text-sm text-slate-700">({form.buyer.company})</p>
                   ) : null}
-                  <p className="text-sm text-[#142c6a] mt-1">{form.buyer.email}</p>
-                  <p className="text-sm text-[#142c6a]">{form.buyer.phone}</p>
+                  <p className="mt-1 text-sm text-slate-700">{form.buyer.email}</p>
+                  <p className="text-sm text-slate-700">{form.buyer.phone}</p>
                   <span className="inline-block mt-2 text-[9px] font-black uppercase tracking-widest text-slate-600 border border-slate-200 rounded-lg px-2 py-0.5">
                     {t('Contact interne', 'Internal contact')}
                   </span>
@@ -563,7 +687,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
                   type="button"
                   disabled={uploading}
                   onClick={() => fileRef.current?.click()}
-                  className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-[#142c6a] hover:border-slate-300 disabled:opacity-50"
+                  className={`${institutionalListingsActionButtonClass} border-primexpert-dark/40 bg-white text-primexpert-dark hover:bg-primexpert-light disabled:opacity-50`}
                 >
                   {uploading ? (
                     <Loader2 className="inline h-3.5 w-3.5 animate-spin mr-2" />
@@ -600,7 +724,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
                             {doc.virusScanStatus === 'clean' && (
                               <button
                                 type="button"
-                                className="text-[10px] font-black uppercase tracking-widest underline text-[#142c6a]"
+                                className="text-[10px] font-black uppercase tracking-widest underline text-slate-900"
                                 onClick={() =>
                                   void getPropertyDocumentDownloadUrl(doc.storagePath).then(
                                     (url) => window.open(url, '_blank')
@@ -613,7 +737,7 @@ export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps)
                             {!locked && (
                               <button
                                 type="button"
-                                className="text-[10px] font-black uppercase tracking-widest underline text-[#142c6a]"
+                                className="text-[10px] font-black uppercase tracking-widest underline text-slate-900"
                                 onClick={() =>
                                   void removePromesseDocument(residence.id, doc)
                                 }

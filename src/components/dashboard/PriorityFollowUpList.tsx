@@ -48,6 +48,12 @@ function PriorityRow({
   t: (fr: string, en: string) => string;
 }) {
   const companySuffix = item.buyerCompany ? ` (${item.buyerCompany})` : '';
+  const kindBadge =
+    item.briefingKind === 'hot_lead'
+      ? t('Piste chaude', 'Hot lead')
+      : item.briefingKind === 'certification'
+        ? t('Certification', 'Certification')
+        : null;
 
   return (
     <li className={institutionalWhiteCardCompactClass}>
@@ -74,6 +80,11 @@ function PriorityRow({
         </button>
       </p>
       <p className={`text-sm ${institutionalInkTextClass} leading-relaxed`}>
+        {kindBadge ? (
+          <span className="mr-2 rounded-md border border-[#142c6a]/25 bg-[#142c6a]/5 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-[#142c6a]">
+            {kindBadge}
+          </span>
+        ) : null}
         {item.step === 'pa_inspection' || item.step === 'pa_financement' ? (
           item.actionText
         ) : (

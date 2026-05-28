@@ -32,6 +32,7 @@ export type ChronologieMode = 'residence-full' | 'communications-only';
 
 export interface IntelligenceChronologieProps {
   brokerId: string;
+  orgId?: string | null;
   /** Requis pour le protocole J+7 ; optionnel en mode communications-only. */
   residence?: Residence;
   calls?: CallAnalysisRow[];
@@ -74,7 +75,11 @@ export function IntelligenceChronologie(props: IntelligenceChronologieProps) {
     return (
       <div className="space-y-4">
         {props.contactId ? (
-          <CommunicationHub brokerId={props.brokerId} contactId={props.contactId} />
+          <CommunicationHub
+            brokerId={props.brokerId}
+            orgId={props.orgId}
+            contactId={props.contactId}
+          />
         ) : null}
         <CommunicationTimelineFeed
           events={props.timelineEvents ?? []}

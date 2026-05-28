@@ -18,7 +18,7 @@
 ### Ton et verbes d’action (exemples)
 
 - Boutons / états : *Vérification*, *Certification*, *Verrouillage*, *Preuves de conformité*, *Journal de conformité* (pas « journal d’audit »).
-- Analyse financière 360° : parler de **vérification de performance** ou **analyse 360°**, jamais « audit 360° » côté client.
+- Analyse financière 360° : parler de **vérification de performance** ou **analyse 360°**, jamais du terme banni côté client.
 - Registres OACIQ / coffre-fort : **journal de conformité**, **traçabilité**, **conservation 6 ans**.
 
 ### Abréviations — jamais seules
@@ -523,9 +523,12 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 - **2026-05-24** : Option A messagerie ↔ CRM (`6d31058`) ; Kanban inscriptions DnD + régions ; bibliothèque marché + benchmark finance ; déploiement complet Firebase.
 - **2026-05-20 (soir, clôture PO)** : ACM résidence SSOT — `fa3cb1b`, `e1a900c` ; hosting `primexpert-app-v2.web.app`.
 - **2026-05-28** : CRM Storage 90 contacts ; Matchmaker sous notes ; notes vocales (`onVoiceNoteUploaded` us-east1) ; hub omnicanal (`0b0b97b`) ; VoIP + finance manuelle en parallèle.
+- **2026-05-28 (session locale)** : démarrage du serveur de développement `npm run dev` (Vite `--port=3000 --host=0.0.0.0`) ; URLs actives `http://localhost:3000/` et réseau local.
+- **2026-05-28 — GO-LIVE V2.5 STABLE (`primexpert-app-v2`)** : conseil d’administration **[GO]** après inspection manuelle ACM/HITL réussie. **Livré en production :** Cœur CRM spécialisé RPA (typologies, relations atomiques, garde-fous pipeline) ; moteur ACM connecté aux médianes territoriales (`getGlobalFinancialBenchmark`, suggestions IA en brouillon `manualVerifications`) ; Hub omnicanal V1 (SSOT `email_threads/messages`, canal `sms` / `voice_call`, filtre `orgId`, briefing matin enrichi, adjointes IA HITL). **Déploiement exécuté :** `functions` — `getGlobalFinancialBenchmark` (us-central1), `onVoiceNoteUploaded` (us-east1) ; `hosting` — https://primexpert-app-v2.web.app . **Note ops :** `twilioSmsWebhook` redéployé (`northamerica-northeast1`, ACTIVE) — signature Twilio requise en prod ; correctif init Admin `getDb()` avant `getStorage()` sur `onVoiceNoteUploaded` (déploiement réussi).
+- **2026-05-28 — CLÔTURE SPRINT MAJOR (Conseil d’administration)** : statut plateforme **[PRODUCTION IMMUABLE LIVE]** — URL certifiée https://primexpert-app-v2.web.app . **Périmètre clos :** (1) Cœur CRM spécialisé RPA ; (2) Workspace analyse comparative de marché (ACM) + médianes territoriales ; (3) Hub omnicanal unifié (SMS Twilio, courriels, notes vocales → `email_threads/messages`, canaux `sms` / `voice_call`) ; (4) Dictionnaire de distribution Centris RESO — [`CENTRIS_RESO_MAPPING_DRAFT.md`](./CENTRIS_RESO_MAPPING_DRAFT.md) (OData v4, `listings_cache`, déduplication `ListingId` → `marketDeduplication.ts`, feuille de route https://docs.datadistributionqc.centris.ca/fr/ ). **Hors périmètre sprint (été 2026) :** connecteur OData Centris exécutable ; promotion automatique `listings_cache` → `residences`. **Suivi ops notes vocales :** repli STT Vertex (`gemini-2.0-flash-001` 404) — lier `OPENAI_API_KEY` (Whisper) ou aligner modèle sur `gemini-2.5-flash` pour certification bout-en-bout message `voice_call`.
 
 **Repo :** https://github.com/alain-blip/primexpert-v2-core.git — branche `main`.
 
 ---
 
-*Journal mis à jour : 2026-05-28 — CRM Storage, Matchmaker Raphaël, notes vocales, hub omnicanal, VoIP/finance parallèle ; voir [`DATA_MAPPING_LEGACY_V2.md`](./DATA_MAPPING_LEGACY_V2.md), [`AUDIT_VOIP_COMPARATIF_LEGACY_VS_V2.md`](./AUDIT_VOIP_COMPARATIF_LEGACY_VS_V2.md).*
+*Journal mis à jour : 2026-05-28 — Clôture sprint major : PRODUCTION IMMUABLE LIVE sur https://primexpert-app-v2.web.app (CRM RPA, ACM, Hub omnicanal, cartographie Centris RESO). Voir [`CENTRIS_RESO_MAPPING_DRAFT.md`](./CENTRIS_RESO_MAPPING_DRAFT.md), [`DATA_MAPPING_LEGACY_V2.md`](./DATA_MAPPING_LEGACY_V2.md).*

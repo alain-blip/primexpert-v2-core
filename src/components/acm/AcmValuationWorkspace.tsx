@@ -47,12 +47,22 @@ import { AcmHistoricalTrendsSection } from './AcmHistoricalTrendsSection';
 import type {
   CertifiableReportBrokerFooter,
   FinancialDataV2Doc,
+  TerritorialAcmMedians,
 } from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
+import {
+  institutionalListingsCardHeaderClass,
+  institutionalListingsCardShellClass,
+  institutionalListingsCardTitleClass,
+  institutionalListingsInlineInputClass,
+  institutionalListingsSecondaryButtonClass,
+} from '../../lib/institutionalTheme';
 
-const TGA_INPUT_CLASS =
-  'w-full rounded-xl border-2 border-blue-300 bg-white px-4 py-3 text-base font-black text-[#142c6a] tabular-nums shadow-sm focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/40 outline-none transition';
+const TGA_INPUT_CLASS = `${institutionalListingsInlineInputClass} text-base font-black tabular-nums text-black`;
+const ACM_METRIC_VALUE_CLASS = 'font-black text-black dark:text-slate-900 tabular-nums';
+const ACM_METRIC_LABEL_CLASS =
+  'text-[9px] font-black uppercase tracking-widest text-slate-700 dark:text-primexpert-dark';
 
 function PositioningBadge({
   positioning,
@@ -65,17 +75,17 @@ function PositioningBadge({
     'sous-évalué': {
       Icon: TrendingDown,
       label: t('Sous-évalué', 'Underpriced'),
-      color: 'bg-emerald-500/[0.08] text-emerald-300 border-emerald-400/30',
+      color: 'bg-emerald-50 text-emerald-900 border-emerald-400 dark:bg-emerald-100',
     },
     'bien-positionné': {
       Icon: CheckCircle2,
       label: t('Bien positionné', 'Well priced'),
-      color: 'bg-blue-500/10 text-blue-300 border-blue-400/30',
+      color: 'bg-blue-50 text-blue-900 border-blue-400 dark:bg-blue-100',
     },
     surévalué: {
       Icon: TrendingUp,
       label: t('Surévalué', 'Overpriced'),
-      color: 'bg-red-500/[0.08] text-red-300 border-red-400/30',
+      color: 'bg-red-50 text-red-900 border-red-400 dark:bg-red-100',
     },
   }[positioning];
   const Icon = meta.Icon;
@@ -122,6 +132,7 @@ export interface AcmValuationWorkspaceProps {
   ratioSamples?: MarketGpsRatioSample[];
   transactions?: MarketGpsTransaction[];
   subjectExpenses?: Partial<Record<string, number>>;
+  territorialMedians?: TerritorialAcmMedians;
   /** Contexte export CraftMyPDF — rapport vendeur (ACM). */
   pdfExport?: AcmValuationPdfExportContext;
 }
@@ -133,6 +144,7 @@ export function AcmValuationWorkspace({
   ratioSamples = [],
   transactions = [],
   subjectExpenses,
+  territorialMedians,
   pdfExport,
 }: AcmValuationWorkspaceProps) {
   const { t, language } = useLanguage();
@@ -160,6 +172,17 @@ export function AcmValuationWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [vendorPdfPending, setVendorPdfPending] = useState(false);
   const [vendorPdfError, setVendorPdfError] = useState<string | null>(null);
+  const [manualVerifications, setManualVerifications] = useState<{
+    pricingSuggestions: Array<{ label: string; value: number | null; rationale: string }>;
+    narrativeDraft: string | null;
+    status: 'pending_human_review';
+    updatedAt: string;
+  }>({
+    pricingSuggestions: [],
+    narrativeDraft: null,
+    status: 'pending_human_review',
+    updatedAt: new Date().toISOString(),
+  });
 
   const bootstrapSyncKey = useMemo(
     () =>
@@ -397,11 +420,62 @@ export function AcmValuationWorkspace({
     t,
   ]);
 
+  const multiAngleSuggestions = useMemo(() => {
+    if (!result) return [];
+    const marketAligned = territorialMedians?.prixParUnite
+      ? territorialMedians.prixParUnite * Math.max(1, bootstrap.units)
+      : null;
+    const performanceBased =
+      territorialMedians?.tgaPct && territorialMedians.tgaPct > 0
+        ? bootstrap.revenuNetExploitation / (territorialMedians.tgaPct / 100)
+        : null;
+    const maxPotential = stressSummary?.occ100 ?? null;
+    const rows = [
+      {
+        label: t('Aligné marché', 'Market-aligned'),
+        value: marketAligned,
+        rationale: t(
+          'Basé sur la médiane territoriale prix/unité.',
+          'Based on territorial median price per unit.'
+        ),
+      },
+      {
+        label: t('Basé performance', 'Performance-based'),
+        value: performanceBased,
+        rationale: t(
+          'Basé sur le revenu net d’exploitation (RNE) et la médiane du taux de capitalisation global (TGA) territorial.',
+          'Based on net operating income (NOI) and territorial median capitalization rate (cap rate).'
+        ),
+      },
+      {
+        label: t('Potentiel maximum', 'Maximum potential'),
+        value: maxPotential,
+        rationale: t(
+          'Basé sur le scénario de pleine occupation (100%).',
+          'Based on full occupancy scenario (100%).'
+        ),
+      },
+    ];
+    return rows;
+  }, [result, territorialMedians, bootstrap.units, bootstrap.revenuNetExploitation, stressSummary, t]);
+
+  useEffect(() => {
+    setManualVerifications({
+      pricingSuggestions: multiAngleSuggestions,
+      narrativeDraft: narrative?.signedReading ?? null,
+      status: 'pending_human_review',
+      updatedAt: new Date().toISOString(),
+    });
+  }, [multiAngleSuggestions, narrative]);
+
   const ratios = useMemo(() => {
     if (!result) return null;
     return [
       {
-        label: t('Taux de capitalisation implicite (TGA)', 'Implied capitalization rate (cap rate)'),
+        label: t(
+          'Taux de capitalisation global (TGA) implicite',
+          'Implied global capitalization rate (cap rate)'
+        ),
         value:
           result.capRateImpliedAtAsking !== undefined
             ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%`
@@ -494,46 +568,45 @@ export function AcmValuationWorkspace({
           </div>
         </div>
       )}
-      <div className="bg-vault text-white p-6 rounded-[28px] shadow-[0_24px_70px_rgba(0,0,0,0.55)] relative overflow-hidden border border-white/10">
-        <motion.div className="relative z-10 flex flex-col gap-6">
-          <div className={compact ? 'flex flex-wrap items-center justify-between gap-3' : 'flex items-center justify-between'}>
+      <section className={institutionalListingsCardShellClass}>
+        <header className={institutionalListingsCardHeaderClass}>
+          <div className={compact ? 'flex flex-wrap items-center justify-between gap-3' : 'flex items-center justify-between gap-3'}>
             <div>
-              <p className="text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
+              <p className={institutionalListingsCardTitleClass}>
                 {t('Moteur Core · @primexpert/core/valuation', 'Core Engine · @primexpert/core/valuation')}
               </p>
               <h2
                 className={
                   compact
-                    ? 'text-2xl font-black italic tracking-tighter uppercase'
-                    : 'text-4xl font-black italic tracking-tighter uppercase'
+                    ? 'mt-1 text-2xl font-black uppercase tracking-tight text-black'
+                    : 'mt-1 text-3xl font-black uppercase tracking-tight text-black'
                 }
               >
-                {t('Analyse de mise en marché (ACM)', 'Market launch analysis (CMA)')}
-                <span className="text-blue-500">{t('_OACIQ', '_OACIQ')}</span>
+                {t('Analyse comparative de marché (ACM)', 'Comparative market analysis (CMA)')}
               </h2>
             </div>
-            <div className="flex items-center gap-2 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 px-3 py-1.5">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
-              <span className="text-[9px] font-black uppercase tracking-widest text-emerald-100">
+            <div className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-emerald-50 px-3 py-1.5 dark:bg-emerald-100">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-900" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-emerald-900">
                 {t('Données CRM · SSOT', 'CRM data · SSOT')}
               </span>
             </div>
           </div>
+        </header>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 space-y-4">
+        <motion.div className="flex flex-col gap-6 p-5">
+          <div className="rounded-xl border-2 border-primexpert-dark/15 bg-primexpert-light dark:bg-primexpert-cardDark p-5 space-y-4">
             <div className="flex items-center gap-2">
-              <Lock className="h-4 w-4 text-blue-300" aria-hidden />
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-300/80">
+              <Lock className="h-4 w-4 text-primexpert-dark" aria-hidden />
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-900">
                 {t('Données sujet verrouillées (financial/dataV2)', 'Locked subject data (financial/dataV2)')}
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {lockedFields.map((f) => (
                 <div key={f.label} className="space-y-1">
-                  <span className="block text-[9px] font-black uppercase tracking-widest text-blue-300/50">
-                    {f.label}
-                  </span>
-                  <p className="text-sm font-bold text-white truncate" title={f.value}>
+                  <span className={ACM_METRIC_LABEL_CLASS}>{f.label}</span>
+                  <p className={`text-sm truncate ${ACM_METRIC_VALUE_CLASS}`} title={f.value}>
                     {f.value}
                   </p>
                 </div>
@@ -541,17 +614,17 @@ export function AcmValuationWorkspace({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <label
-                  htmlFor="acm-target-cap-rate"
-                  className="block text-[10px] font-black uppercase tracking-widest text-blue-300/60"
-                >
-                  {t('Taux de capitalisation cible (TGA) (%)', 'Target capitalization rate (cap rate) (%)')}
+                <label htmlFor="acm-target-cap-rate" className={ACM_METRIC_LABEL_CLASS}>
+                  {t(
+                    'Taux de capitalisation global (TGA) cible (%)',
+                    'Target global capitalization rate (cap rate) (%)'
+                  )}
                 </label>
                 {tgaManuallyAdjusted ? (
-                  <span className="rounded-full border border-amber-400/50 bg-amber-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-200">
+                  <span className="rounded-lg border-2 border-amber-400 bg-amber-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-950">
                     {t('Taux personnalisé par l’utilisateur', 'User-customized rate')}
                   </span>
                 ) : null}
@@ -567,13 +640,10 @@ export function AcmValuationWorkspace({
                 aria-describedby="acm-tga-rationale"
               />
               {!tgaManuallyAdjusted && capRateRationale ? (
-                <p id="acm-tga-rationale" className="text-[11px] leading-relaxed text-blue-200/90">
+                <p id="acm-tga-rationale" className="text-[11px] font-semibold leading-relaxed text-slate-800">
                   {capRateRationale}
                   {bootstrap.capRateSampleCount > 0 ? (
-                    <span className="text-blue-300/60">
-                      {' '}
-                      · n={bootstrap.capRateSampleCount}
-                    </span>
+                    <span className="text-slate-600"> · n={bootstrap.capRateSampleCount}</span>
                   ) : null}
                 </p>
               ) : null}
@@ -581,16 +651,22 @@ export function AcmValuationWorkspace({
                 <button
                   type="button"
                   onClick={resetTgaToMarket}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-300 hover:text-blue-100 underline underline-offset-2"
+                  className={`inline-flex items-center gap-1.5 ${institutionalListingsSecondaryButtonClass}`}
                 >
                   <RotateCcw className="h-3 w-3" />
-                  {t('Réinitialiser au TGA marché GPS', 'Reset to GPS market cap rate')}
+                  {t(
+                    'Réinitialiser au taux de capitalisation global (TGA) marché GPS',
+                    'Reset to GPS market global cap rate'
+                  )}
                 </button>
               ) : null}
             </div>
             <label className="space-y-2">
-              <span className="block text-[10px] font-black uppercase tracking-widest text-blue-300/60">
-                {t('Pénétration RPA 75+ (%) — ajustement TGA', 'RPA 75+ penetration (%) — cap rate adj.')}
+              <span className={ACM_METRIC_LABEL_CLASS}>
+                {t(
+                  'Pénétration RPA 75+ (%) — ajustement taux de capitalisation global (TGA)',
+                  'RPA 75+ penetration (%) — global cap rate adjustment'
+                )}
               </span>
               <input
                 type="number"
@@ -609,7 +685,7 @@ export function AcmValuationWorkspace({
             <button
               type="button"
               onClick={onOpenComparables}
-              className="text-left text-[11px] font-bold text-blue-300 hover:text-blue-200 underline underline-offset-2"
+              className={`text-left ${institutionalListingsSecondaryButtonClass}`}
             >
               {t(
                 'Sélectionner les comparables régionaux (onglet Marché)',
@@ -618,17 +694,17 @@ export function AcmValuationWorkspace({
             </button>
           ) : null}
         </motion.div>
-      </div>
+      </section>
 
       {error ? (
-        <div className="flex items-center gap-3 rounded-2xl border border-red-400/30 bg-red-500/[0.08] px-5 py-3 text-[11px] font-semibold text-red-300">
-          <AlertCircle className="h-4 w-4" />
+        <div className="flex items-center gap-3 rounded-xl border-2 border-red-400 bg-red-50 px-5 py-3 text-[11px] font-bold text-red-900">
+          <AlertCircle className="h-4 w-4 shrink-0" />
           {error}
         </div>
       ) : null}
 
       {vendorPdfError ? (
-        <p className="text-[13px] font-bold text-red-300" role="alert">
+        <p className="text-[13px] font-bold text-red-800" role="alert">
           {vendorPdfError}
         </p>
       ) : null}
@@ -672,93 +748,150 @@ export function AcmValuationWorkspace({
           animate={{ opacity: 1, scale: 1 }}
           className="space-y-6"
         >
-          <motion.div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 bg-vault-bright p-10 rounded-[32px] border border-white/10 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-blue-400" />
-                  {t('Prix suggéré (Core OACIQ)', 'Suggested price (OACIQ Core)')}
-                </h3>
-                <PositioningBadge positioning={result.pricePositioning} t={t} />
-              </div>
-              <p className="text-6xl font-black italic tracking-tighter text-slate-300 leading-none">
-                {formatCurrency(result.suggestedPrice)}
-              </p>
-              <div className="mt-8 grid grid-cols-2 gap-4">
-                <div className="p-5 bg-white/[0.03] rounded-xl border border-white/10">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                    {t('Plancher', 'Floor')}
-                  </span>
-                  <p className="font-mono text-sm font-black text-slate-300 mt-1">
-                    {formatCurrency(result.suggestedLow)}
-                  </p>
+          <motion.div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div className={`md:col-span-2 ${institutionalListingsCardShellClass}`}>
+              <header className={institutionalListingsCardHeaderClass}>
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className={`${institutionalListingsCardTitleClass} flex items-center gap-2`}>
+                    <CheckCircle2 className="h-4 w-4 text-primexpert-dark" />
+                    {t('Prix suggéré (Core OACIQ)', 'Suggested price (OACIQ Core)')}
+                  </h3>
+                  <PositioningBadge positioning={result.pricePositioning} t={t} />
                 </div>
-                <div className="p-5 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-blue-400">
-                    {t('Plafond', 'Ceiling')}
-                  </span>
-                  <p className="font-mono text-sm font-black text-blue-300 mt-1">
-                    {formatCurrency(result.suggestedHigh)}
-                  </p>
+              </header>
+              <div className="p-6">
+                <p className={`text-5xl leading-none sm:text-6xl ${ACM_METRIC_VALUE_CLASS}`}>
+                  {formatCurrency(result.suggestedPrice)}
+                </p>
+                <div className="mt-8 grid grid-cols-2 gap-4">
+                  <div className="rounded-xl border-2 border-primexpert-dark/15 bg-primexpert-light p-5 dark:bg-primexpert-cardDark">
+                    <span className={ACM_METRIC_LABEL_CLASS}>{t('Plancher', 'Floor')}</span>
+                    <p className={`mt-1 font-mono text-sm ${ACM_METRIC_VALUE_CLASS}`}>
+                      {formatCurrency(result.suggestedLow)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border-2 border-primexpert-dark/25 bg-white p-5 dark:bg-primexpert-cardDark">
+                    <span className={ACM_METRIC_LABEL_CLASS}>{t('Plafond', 'Ceiling')}</span>
+                    <p className={`mt-1 font-mono text-sm ${ACM_METRIC_VALUE_CLASS}`}>
+                      {formatCurrency(result.suggestedHigh)}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="bg-blue-500 text-white p-8 rounded-[32px] shadow-lg flex flex-col gap-5 relative overflow-hidden">
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-200">
-                {t('Valeur banquable', 'Bankable value')}
+            <div className={`${institutionalListingsCardShellClass} flex flex-col gap-4 p-6`}>
+              <p className={ACM_METRIC_LABEL_CLASS}>{t('Valeur banquable', 'Bankable value')}</p>
+              <p className={`text-3xl ${ACM_METRIC_VALUE_CLASS}`}>
+                {formatCurrency(result.bankableValue)}
               </p>
-              <p className="text-3xl font-black italic">{formatCurrency(result.bankableValue)}</p>
-              <p className="text-[10px] font-mono text-blue-100/80">DSCR · {result.dscrAtAsking.toFixed(2)}</p>
+              <p className={`text-[11px] font-bold ${ACM_METRIC_VALUE_CLASS}`}>
+                {t('Ratio de couverture du service de la dette (DSCR)', 'Debt service coverage ratio (DSCR)')}{' '}
+                · {result.dscrAtAsking.toFixed(2)}
+              </p>
             </div>
           </motion.div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {ratios?.map((r) => (
-              <div key={r.label} className="rounded-2xl border border-white/10 bg-vault-bright p-5">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{r.label}</p>
-                <p className="mt-2 text-xl font-black italic text-slate-300">{r.value}</p>
+              <div key={r.label} className={`${institutionalListingsCardShellClass} p-5`}>
+                <p className={ACM_METRIC_LABEL_CLASS}>{r.label}</p>
+                <p className={`mt-2 text-xl ${ACM_METRIC_VALUE_CLASS}`}>{r.value}</p>
               </div>
             ))}
           </div>
 
           {tgaAdjustment ? (
-            <div className="rounded-2xl border border-blue-400/30 bg-blue-500/10 p-5 space-y-2">
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">
-                {t('Ajustement TGA — pénétration & taille', 'Cap rate adjustment — penetration & size')}
+            <div className="rounded-xl border-2 border-primexpert-dark/20 bg-primexpert-light p-5 space-y-2 dark:bg-primexpert-cardDark">
+              <p className={ACM_METRIC_LABEL_CLASS}>
+                {t(
+                  'Ajustement taux de capitalisation global (TGA) — pénétration et taille',
+                  'Global cap rate adjustment — penetration and size'
+                )}
               </p>
-              <p className="text-sm font-bold text-white">
+              <p className={`text-sm ${ACM_METRIC_VALUE_CLASS}`}>
                 {(tgaAdjustment.baseTga * 100).toFixed(2)} % → {(tgaAdjustment.finalTga * 100).toFixed(2)} %
               </p>
             </div>
           ) : null}
 
           {stressSummary && recommendedPrice != null ? (
-            <div className="rounded-2xl border border-white/10 bg-vault-bright p-5 space-y-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                {t('Scénarios d’occupation & prix recommandé', 'Occupancy scenarios & recommended price')}
+            <div className={`${institutionalListingsCardShellClass} space-y-3 p-5`}>
+              <p className={ACM_METRIC_LABEL_CLASS}>
+                {t('Scénarios d’occupation et prix recommandé', 'Occupancy scenarios and recommended price')}
               </p>
-              <p className="text-xs text-slate-300">
+              <p className="text-xs font-semibold text-slate-800">
                 85 % : {formatCurrency(stressSummary.occ85)} · 90 % : {formatCurrency(stressSummary.occ90)} · 100 % :{' '}
                 {formatCurrency(stressSummary.occ100)}
               </p>
-              <p className="text-lg font-black text-emerald-300">
-                {t('Prix recommandé (RNE ÷ TGA cible)', 'Recommended price (NOI ÷ target cap rate)')} :{' '}
-                {formatCurrency(recommendedPrice)}
+              <p className={`text-lg ${ACM_METRIC_VALUE_CLASS}`}>
+                {t(
+                  'Prix recommandé (revenu net d’exploitation (RNE) ÷ taux de capitalisation global (TGA) cible)',
+                  'Recommended price (net operating income (NOI) ÷ target global cap rate)'
+                )}{' '}
+                : {formatCurrency(recommendedPrice)}
               </p>
             </div>
           ) : null}
 
+          {territorialMedians ? (
+            <div className={`${institutionalListingsCardShellClass} space-y-3 p-5`}>
+              <p className={ACM_METRIC_LABEL_CLASS}>
+                {t('Médianes territoriales Québec (serveur)', 'Territorial medians Quebec (server)')}
+              </p>
+              <p className="text-xs font-semibold text-slate-800">
+                {territorialMedians.regionAdministrative}
+                {territorialMedians.assetClassLabel ? ` · ${territorialMedians.assetClassLabel}` : ''}
+                {` · n=${territorialMedians.sampleCount}`}
+              </p>
+              <p className={`text-xs font-bold ${ACM_METRIC_VALUE_CLASS}`}>
+                {t('Taux de capitalisation global (TGA) médian', 'Median global cap rate')}:{' '}
+                {territorialMedians.tgaPct?.toFixed(2) ?? '—'}% ·{' '}
+                {t('Prix par unité médian', 'Median price per unit')}:{' '}
+                {fmtMoneyField(territorialMedians.prixParUnite ?? NaN)} ·{' '}
+                {t('Multiple du revenu net (MRN)', 'Net income multiplier (MRN)')}:{' '}
+                {territorialMedians.mrn?.toFixed(2) ?? '—'} ·{' '}
+                {t('Multiple du revenu brut réel (MRB)', 'Actual gross rent multiplier (GRM)')}:{' '}
+                {territorialMedians.mrb?.toFixed(2) ?? '—'}
+              </p>
+            </div>
+          ) : null}
+
+          {manualVerifications.pricingSuggestions.length > 0 ? (
+            <div className={`${institutionalListingsCardShellClass} space-y-3 p-5`}>
+              <p className={ACM_METRIC_LABEL_CLASS}>
+                {t(
+                  'Suggestions IA transitoires — validation humaine requise (revenu brut effectif (RBE), revenu net d’exploitation (RNE), taux de capitalisation global (TGA))',
+                  'Transient AI suggestions — human validation required (EGI, NOI, global cap rate)'
+                )}
+              </p>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                {manualVerifications.pricingSuggestions.map((row) => (
+                  <div
+                    key={row.label}
+                    className="rounded-xl border-2 border-primexpert-dark/15 bg-primexpert-light p-3 dark:bg-primexpert-cardDark"
+                  >
+                    <p className={ACM_METRIC_LABEL_CLASS}>{row.label}</p>
+                    <p className={`mt-1 text-lg ${ACM_METRIC_VALUE_CLASS}`}>
+                      {row.value != null ? formatCurrency(row.value, { maxDecimals: 0 }) : '—'}
+                    </p>
+                    <p className="mt-1 text-[11px] font-semibold text-slate-800">{row.rationale}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {result.warnings.length > 0 ? (
-            <div className="rounded-[24px] border border-amber-500/20 bg-amber-500/[0.08] p-6 space-y-3">
+            <div className="rounded-xl border-2 border-amber-400 bg-amber-50 p-6 space-y-3">
               <motion.div className="flex items-center gap-2">
-                <BadgeAlert className="h-4 w-4 text-amber-400" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-amber-300">
+                <BadgeAlert className="h-4 w-4 text-amber-800" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-950">
                   {t('Avertissements moteur', 'Engine warnings')}
                 </p>
               </motion.div>
               <ul className="space-y-1.5">
                 {result.warnings.map((w, i) => (
-                  <li key={i} className="text-[12px] text-amber-300">
+                  <li key={i} className="text-[12px] font-semibold text-amber-950">
                     — {w}
                   </li>
                 ))}
@@ -766,23 +899,23 @@ export function AcmValuationWorkspace({
             </div>
           ) : null}
 
-          <motion.div className="rounded-[28px] border border-white/10 bg-vault p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <BookOpen className="h-4 w-4 text-blue-300" />
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-300/70">
-                {t('Lecture Vendeur', 'Seller reading')}
-              </p>
+          <motion.div className={`${institutionalListingsCardShellClass} p-6`}>
+            <div className="mb-4 flex items-center gap-3">
+              <BookOpen className="h-4 w-4 text-primexpert-dark" />
+              <p className={ACM_METRIC_LABEL_CLASS}>{t('Lecture vendeur', 'Seller reading')}</p>
               {narrative ? (
-                <span className="ml-auto flex items-center gap-1 text-[9px] font-black uppercase text-blue-300">
+                <span className="ml-auto flex items-center gap-1 text-[9px] font-black uppercase text-slate-800">
                   <Sparkles className="h-3 w-3" />
                   {narrative.source}
                 </span>
               ) : null}
             </div>
             {narrativeLoading ? (
-              <p className="text-[11px] text-blue-300/70">{t('Génération…', 'Generating…')}</p>
+              <p className="text-[11px] font-semibold text-slate-700">{t('Génération…', 'Generating…')}</p>
             ) : narrative ? (
-              <p className="text-[13px] leading-relaxed text-slate-200 whitespace-pre-wrap">{narrative.signedReading}</p>
+              <p className="text-[13px] font-semibold leading-relaxed text-slate-900 whitespace-pre-wrap">
+                {narrative.signedReading}
+              </p>
             ) : null}
           </motion.div>
         </motion.div>
@@ -804,54 +937,56 @@ export function AcmValuationWorkspace({
             </p>
           </div>
 
-          <motion.div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 bg-vault-bright p-10 rounded-[32px] border border-white/10 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-blue-400" />
-                  {t('Prix suggéré (Core OACIQ)', 'Suggested price (OACIQ Core)')}
-                </h3>
-                <span className="inline-flex items-center gap-2 rounded-full border border-slate-500/40 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-300">
-                  {t('En attente', 'Pending')}
-                </span>
-              </div>
-              <p className="text-6xl font-black italic tracking-tighter text-slate-400 leading-none">--- $</p>
-              <div className="mt-8 grid grid-cols-2 gap-4">
-                <div className="p-5 bg-white/[0.03] rounded-xl border border-white/10">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                    {t('Plancher', 'Floor')}
+          <motion.div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div className={`md:col-span-2 ${institutionalListingsCardShellClass}`}>
+              <header className={institutionalListingsCardHeaderClass}>
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className={`${institutionalListingsCardTitleClass} flex items-center gap-2`}>
+                    <CheckCircle2 className="h-4 w-4 text-primexpert-dark" />
+                    {t('Prix suggéré (Core OACIQ)', 'Suggested price (OACIQ Core)')}
+                  </h3>
+                  <span className="inline-flex items-center gap-2 rounded-lg border-2 border-primexpert-dark/25 bg-primexpert-light px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-800">
+                    {t('En attente', 'Pending')}
                   </span>
-                  <p className="font-mono text-sm font-black text-slate-300 mt-1">--- $</p>
                 </div>
-                <div className="p-5 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-blue-400">
-                    {t('Plafond', 'Ceiling')}
-                  </span>
-                  <p className="font-mono text-sm font-black text-blue-300 mt-1">--- $</p>
+              </header>
+              <div className="p-6">
+                <p className={`text-5xl leading-none sm:text-6xl ${ACM_METRIC_VALUE_CLASS}`}>—</p>
+                <div className="mt-8 grid grid-cols-2 gap-4">
+                  <div className="rounded-xl border-2 border-primexpert-dark/15 bg-primexpert-light p-5 dark:bg-primexpert-cardDark">
+                    <span className={ACM_METRIC_LABEL_CLASS}>{t('Plancher', 'Floor')}</span>
+                    <p className={`mt-1 font-mono text-sm ${ACM_METRIC_VALUE_CLASS}`}>—</p>
+                  </div>
+                  <div className="rounded-xl border-2 border-primexpert-dark/25 bg-white p-5 dark:bg-primexpert-cardDark">
+                    <span className={ACM_METRIC_LABEL_CLASS}>{t('Plafond', 'Ceiling')}</span>
+                    <p className={`mt-1 font-mono text-sm ${ACM_METRIC_VALUE_CLASS}`}>—</p>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="bg-blue-500 text-white p-8 rounded-[32px] shadow-lg flex flex-col gap-5 relative overflow-hidden">
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-200">
-                {t('Valeur banquable', 'Bankable value')}
+            <div className={`${institutionalListingsCardShellClass} flex flex-col gap-4 p-6`}>
+              <p className={ACM_METRIC_LABEL_CLASS}>{t('Valeur banquable', 'Bankable value')}</p>
+              <p className={`text-3xl ${ACM_METRIC_VALUE_CLASS}`}>—</p>
+              <p className={`text-[11px] font-bold ${ACM_METRIC_VALUE_CLASS}`}>
+                {t('Ratio de couverture du service de la dette (DSCR)', 'Debt service coverage ratio (DSCR)')}{' '}
+                · —
               </p>
-              <p className="text-3xl font-black italic">--- $</p>
-              <p className="text-[10px] font-mono text-blue-100/80">DSCR · —</p>
             </div>
           </motion.div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {[
-              t('Taux de capitalisation implicite (TGA)', 'Implied capitalization rate (cap rate)'),
+              t(
+                'Taux de capitalisation global (TGA) implicite',
+                'Implied global capitalization rate (cap rate)'
+              ),
               t('Multiple du revenu brut réel (MRB)', 'Actual gross rent multiplier (GRM)'),
               t('Ratio de couverture du service de la dette (DSCR)', 'Debt service coverage ratio (DSCR)'),
               t('Revenu net d’exploitation comptable (RNE)', 'Accounting net operating income (NOI)'),
             ].map((label) => (
-              <div key={label} className="rounded-2xl border border-white/10 bg-vault-bright p-5">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label}</p>
-                <p className="mt-2 text-xl font-black italic text-slate-300">
-                  {t('En attente', 'Pending')}
-                </p>
+              <div key={label} className={`${institutionalListingsCardShellClass} p-5`}>
+                <p className={ACM_METRIC_LABEL_CLASS}>{label}</p>
+                <p className={`mt-2 text-xl ${ACM_METRIC_VALUE_CLASS}`}>{t('En attente', 'Pending')}</p>
               </div>
             ))}
           </div>

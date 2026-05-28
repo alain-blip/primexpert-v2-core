@@ -271,6 +271,112 @@ Requirements: OACIQ-safe wording (no guarantees, no artificial urgency). Prefer 
   }
 }
 
+const RELATION_MEMORY_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    briefTitle: { type: Type.STRING },
+    contextSummary: { type: Type.STRING },
+    personalSignals: { type: Type.ARRAY, items: { type: Type.STRING } },
+    nextBestApproach: { type: Type.STRING },
+  },
+};
+
+export interface RelationMemoryBrief {
+  briefTitle: string;
+  contextSummary: string;
+  personalSignals: string[];
+  nextBestApproach: string;
+}
+
+export async function generateRelationMemoryBrief(input: {
+  language: Language;
+  contactName: string;
+  recentInteractions: string[];
+  personalNotes?: string[];
+}): Promise<RelationMemoryBrief> {
+  const model = 'gemini-3-flash-preview';
+  const lang = input.language === 'fr' ? 'français du Québec' : 'English';
+  const prompt =
+    input.language === 'fr'
+      ? `Tu es l'adjointe communicante de Primexpert.
+Prépare un mini-brief avant appel pour le courtier (HITL obligatoire).
+
+Contact: ${input.contactName}
+Derniers échanges:
+${input.recentInteractions.map((x, i) => `${i + 1}. ${x}`).join('\n') || 'Aucun'}
+Enjeux personnels consignés:
+${(input.personalNotes ?? []).map((x, i) => `${i + 1}. ${x}`).join('\n') || 'Aucun'}
+
+Règles:
+- Ton factuel, professionnel.
+- Ne pas inventer.
+- Éviter le mot "audit"; utiliser "vérification de conformité" au besoin.
+- Fournir un angle relationnel concret pour le prochain appel.
+- Répondre en ${lang}.`
+      : `You are Primexpert's communication assistant. Build a short pre-call brief (HITL required).
+Contact: ${input.contactName}
+Recent interactions:
+${input.recentInteractions.map((x, i) => `${i + 1}. ${x}`).join('\n') || 'None'}
+Personal context:
+${(input.personalNotes ?? []).map((x, i) => `${i + 1}. ${x}`).join('\n') || 'None'}
+No invented facts. Keep pragmatic. Language: ${lang}.`;
+
+  const response = await getGeminiClient().models.generateContent({
+    model,
+    contents: prompt,
+    config: {
+      temperature: 0.25,
+      responseMimeType: 'application/json',
+      responseSchema: RELATION_MEMORY_SCHEMA,
+    },
+  });
+  const parsed = JSON.parse(response.text || '{}') as Partial<RelationMemoryBrief>;
+  return {
+    briefTitle: parsed.briefTitle?.trim() || 'Mini-brief relationnel',
+    contextSummary: parsed.contextSummary?.trim() || '',
+    personalSignals: Array.isArray(parsed.personalSignals)
+      ? parsed.personalSignals.filter((x): x is string => typeof x === 'string').map((x) => x.trim()).filter(Boolean)
+      : [],
+    nextBestApproach: parsed.nextBestApproach?.trim() || '',
+  };
+}
+
+export async function translateFinancialStakeArgument(input: {
+  language: Language;
+  technicalArgument: string;
+  audience?: 'family' | 'general';
+}): Promise<string> {
+  const model = 'gemini-3-flash-preview';
+  const lang = input.language === 'fr' ? 'français du Québec' : 'English';
+  const audienceLabel = input.audience === 'family' ? 'audience familiale' : 'grand public';
+  const prompt =
+    input.language === 'fr'
+      ? `Tu reformules un argument financier technique pour ${audienceLabel}.
+Argument technique:
+"""
+${input.technicalArgument}
+"""
+Règles:
+- Garder le sens financier intact.
+- Utiliser des mots simples et concrets.
+- Si tu mentionnes un ratio, explique-le en une phrase.
+- Ne pas utiliser le mot "audit"; préférer "vérification de conformité".
+- Sortie en ${lang}, format paragraphe prêt à réviser par un courtier.`
+      : `Rewrite this technical financial argument for a ${audienceLabel}.
+Argument:
+"""
+${input.technicalArgument}
+"""
+Keep financial meaning intact, simplify wording, explain ratios in plain language. Language: ${lang}.`;
+
+  const response = await getGeminiClient().models.generateContent({
+    model,
+    contents: prompt,
+    config: { temperature: 0.35 },
+  });
+  return response.text?.trim() || '';
+}
+
 const AUDIO_TRANSCRIPT_ONLY_SCHEMA = {
   type: Type.OBJECT,
   properties: {

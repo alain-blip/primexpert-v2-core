@@ -7,8 +7,6 @@ import {
   type MailboxFolder,
 } from '../../lib/mailboxFolders';
 
-const LIME = '#deff9a';
-
 const FOLDER_ICONS: Record<
   MailboxFolder,
   React.ComponentType<{ className?: string }>
@@ -40,18 +38,18 @@ export function MailboxFolderSidebar({
   foldersTitle,
 }: MailboxFolderSidebarProps) {
   return (
-    <aside className="flex h-full w-[220px] shrink-0 flex-col border-r border-white/10 bg-[#020617]/80">
-      <div className="border-b border-white/10 p-4">
-        <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">
+    <aside className="flex h-full w-[220px] shrink-0 flex-col border-r border-slate-200 bg-white">
+      <div className="border-b border-slate-200 bg-primexpert-light p-4">
+        <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-700">
           {foldersTitle}
         </p>
         {accountEmail ? (
-          <p className="mt-2 truncate text-[11px] font-semibold text-slate-200" title={accountEmail}>
+          <p className="mt-2 truncate text-[11px] font-semibold text-slate-900" title={accountEmail}>
             {accountLabel || accountEmail}
           </p>
         ) : null}
         {accountEmail && accountLabel && accountLabel !== accountEmail ? (
-          <p className="truncate font-mono text-[10px] text-slate-500">{accountEmail}</p>
+          <p className="truncate font-mono text-[10px] text-slate-700">{accountEmail}</p>
         ) : null}
       </div>
 
@@ -68,20 +66,20 @@ export function MailboxFolderSidebar({
               className={cn(
                 'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition',
                 active
-                  ? 'border border-blue-500/35 bg-blue-600/20 shadow-sm'
-                  : 'border border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.04] hover:text-slate-200'
+                  ? 'border border-primexpert-dark/35 bg-primexpert-light shadow-sm'
+                  : 'border border-transparent text-slate-700 hover:border-slate-300 hover:bg-primexpert-light/70 hover:text-slate-900'
               )}
             >
               <Icon
                 className={cn(
                   'h-4 w-4 shrink-0',
-                  active ? 'text-blue-300' : 'text-slate-500'
+                  active ? 'text-primexpert-dark' : 'text-slate-700'
                 )}
               />
               <span
                 className={cn(
                   'min-w-0 flex-1 truncate text-[10px] font-black uppercase tracking-[0.14em]',
-                  active ? 'text-slate-100' : undefined
+                  active ? 'text-black' : 'text-slate-900'
                 )}
               >
                 {folderLabel(folder, locale)}
@@ -90,7 +88,7 @@ export function MailboxFolderSidebar({
                 <span
                   className={cn(
                     'shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold',
-                    active ? 'bg-blue-500/30 text-blue-100' : 'bg-white/5 text-slate-500'
+                    active ? 'bg-white text-slate-900 border border-slate-300' : 'bg-primexpert-light text-slate-900'
                   )}
                 >
                   {count > 99 ? '99+' : count}
@@ -99,7 +97,7 @@ export function MailboxFolderSidebar({
               {active && folder === 'INBOX' && count > 0 ? (
                 <span
                   className="h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: LIME, boxShadow: `0 0 6px ${LIME}` }}
+                  style={{ backgroundColor: '#047857' }}
                   aria-hidden
                 />
               ) : null}

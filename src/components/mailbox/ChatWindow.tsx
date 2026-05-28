@@ -89,12 +89,12 @@ export function ChatWindow({
 }: ChatWindowProps) {
   if (!thread) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center bg-vault p-12 text-center opacity-40">
-        <Inbox className="mb-6 h-28 w-28 text-slate-500" />
-        <h3 className="text-3xl font-black italic uppercase tracking-tighter text-slate-300">
+      <div className="flex flex-1 flex-col items-center justify-center bg-white p-12 text-center">
+        <Inbox className="mb-6 h-28 w-28 text-slate-700" />
+        <h3 className="text-3xl font-black italic uppercase tracking-tighter text-black">
           {labels.selectThread}
         </h3>
-        <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+        <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-700">
           {labels.secureMode}
         </p>
       </div>
@@ -102,23 +102,23 @@ export function ChatWindow({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-vault">
-      <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-white/10 bg-white/[0.03] px-4 py-3">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white">
+      <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-slate-200 bg-primexpert-light px-4 py-3">
         {onBack ? (
           <button
             type="button"
             onClick={onBack}
-            className="rounded-lg p-2 hover:bg-white/[0.06] lg:hidden"
+            className="rounded-lg p-2 hover:bg-white lg:hidden"
             aria-label="Retour"
           >
-            <ChevronLeft className="h-5 w-5 text-slate-300" />
+            <ChevronLeft className="h-5 w-5 text-slate-900" />
           </button>
         ) : null}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-black italic uppercase tracking-tighter text-slate-200">
+          <p className="truncate text-sm font-black italic uppercase tracking-tighter text-black">
             {thread.contactName}
           </p>
-          <p className="truncate text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          <p className="truncate text-[10px] font-bold uppercase tracking-widest text-slate-700">
             {thread.subject}
           </p>
         </div>
@@ -126,7 +126,7 @@ export function ChatWindow({
           <button
             type="button"
             onClick={() => onOpenProperty(thread.propertyId!)}
-            className="inline-flex max-w-[min(100%,14rem)] items-center gap-1.5 rounded-lg border border-blue-400/35 bg-blue-500/15 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-blue-200 transition hover:bg-blue-500/25"
+            className="inline-flex max-w-[min(100%,14rem)] items-center gap-1.5 rounded-lg border border-primexpert-dark/25 bg-white px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-900 transition hover:bg-primexpert-light"
           >
             <Home className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{thread.propertyLabel ?? labels.radarBadge}</span>
@@ -137,24 +137,24 @@ export function ChatWindow({
       {contactLinkBar}
 
       {threadHydrating ? (
-        <div className="flex shrink-0 items-center gap-2 border-b border-blue-400/20 bg-blue-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-blue-200">
+        <div className="flex shrink-0 items-center gap-2 border-b border-blue-200 bg-blue-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-900">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           {labels.syncingThread}
         </div>
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-vault">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
         {messagesLoading ? (
-          <div className="flex flex-1 items-center justify-center gap-2 text-slate-400">
+          <div className="flex flex-1 items-center justify-center gap-2 text-slate-900">
             <Loader2 className="h-5 w-5 animate-spin" />
             <span className="text-[11px] font-black uppercase tracking-widest">
               {labels.loadingMessages}
             </span>
           </div>
         ) : messages.length === 0 ? (
-          <div className="m-4 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-white">
+          <div className="m-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-slate-900">
             <p>{labels.noMessagesInThread}</p>
-            <p className="mt-2 font-mono text-[10px] text-amber-200/80">
+            <p className="mt-2 font-mono text-[10px] text-amber-900">
               threadId={thread.id} · messages={messages.length}
             </p>
           </div>
@@ -176,7 +176,7 @@ export function ChatWindow({
                 <article
                   key={msg.id}
                   className={cn(
-                    'flex w-full flex-col border-b border-white/10',
+                    'flex w-full flex-col border-b border-slate-200',
                     fillPane && 'min-h-0 flex-1'
                   )}
                 >
@@ -255,15 +255,15 @@ export function ChatWindow({
       </div>
 
       {onArchive || onDelete ? (
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-white/10 bg-white/[0.02] px-4 py-3 lg:px-8">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-200 bg-white px-4 py-3 lg:px-8">
           {onArchive ? (
             <button
               type="button"
               onClick={onArchive}
               disabled={folderActionPending || messagesLoading}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-300 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-slate-100 disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-900 transition hover:border-primexpert-dark hover:bg-primexpert-light disabled:opacity-40"
             >
-              <Archive className="h-4 w-4 shrink-0 text-slate-400" />
+              <Archive className="h-4 w-4 shrink-0 text-slate-700" />
               {labels.archive}
             </button>
           ) : null}
@@ -272,7 +272,7 @@ export function ChatWindow({
               type="button"
               onClick={onDelete}
               disabled={folderActionPending || messagesLoading}
-              className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-700 transition hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
             >
               <Trash2 className="h-4 w-4 shrink-0" />
               {labels.delete}

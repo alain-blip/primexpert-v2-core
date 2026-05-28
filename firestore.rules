@@ -164,6 +164,20 @@ service cloud.firestore {
         incoming().ownerId == request.auth.uid;
     }
 
+    // Radar à opportunités (prospection IA off-market) — écriture Functions Admin SDK uniquement
+    match /organizations/{orgId}/prospects_radar/{prospectId} {
+      allow read: if isOrgMember(orgId);
+      allow write: if false;
+    }
+
+    // Briefing du matin (généré par cron morningBriefingGenerator)
+    match /organizations/{orgId}/morning_briefings/{brokerId} {
+      allow read: if isOrgMember(orgId) && (
+        brokerId == request.auth.uid || isOrgAdmin(orgId)
+      );
+      allow write: if false;
+    }
+
     match /organizations/{orgId}/transactions/{transactionId} {
       allow read: if isOrgMember(orgId);
       allow write: if isOrgMember(orgId);

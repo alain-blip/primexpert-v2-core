@@ -21,6 +21,8 @@ export interface EmailMessage {
   threadId: string;
   /** Canal omnicanal (défaut courriel). */
   channel?: CommunicationChannel;
+  /** Horodatage canonique omnicanal (ms) pour la timeline unifiée. */
+  timestamp?: number;
   body: string;
   sentAtMillis: number;
   direction: EmailMessageDirection;

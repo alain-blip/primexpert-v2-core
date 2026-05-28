@@ -3,7 +3,7 @@
  */
 
 import { FieldValue } from 'firebase-admin/firestore';
-import { threadMessagesCol, userThreadsCol } from '../lib/firestore';
+import { getDb, threadMessagesCol, userThreadsCol } from '../lib/firestore';
 import {
   analyzeInboundUrgencyHeuristic,
   buildCrmThreadId,
@@ -36,6 +36,49 @@ export interface IngestOmnichannelMessageResult {
   threadId: string;
   messageId: string;
   isCritical: boolean;
+}
+
+function sanitizeTaskDocId(externalMessageId: string): string {
+  return `sms_critical_${externalMessageId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 100)}`;
+}
+
+async function createCriticalSmsTask(params: {
+  orgId: string;
+  brokerId: string;
+  matchedContactId?: string | null;
+  externalMessageId: string;
+  contactName: string;
+  body: string;
+  summaryOneLine: string;
+  sentAtMillis: number;
+}) {
+  const { orgId, brokerId, matchedContactId, externalMessageId, contactName, body, summaryOneLine, sentAtMillis } =
+    params;
+  if (!orgId.trim()) return;
+  const db = getDb();
+  const taskId = sanitizeTaskDocId(externalMessageId);
+  const taskRef = db.collection('organizations').doc(orgId).collection('tasks').doc(taskId);
+  await taskRef.set(
+    {
+      orgId,
+      ownerId: brokerId,
+      contactId: matchedContactId ?? null,
+      title: 'Interaction critique SMS a traiter',
+      description: summaryOneLine || body.slice(0, 400) || 'SMS entrant critique detecte.',
+      channel: 'sms',
+      priority: 'haute',
+      status: 'a_faire',
+      kind: 'task',
+      source: 'omnichannel_sms_critical',
+      sourceMessageId: externalMessageId,
+      contactName,
+      dueAtMillis: sentAtMillis,
+      createdAtMillis: sentAtMillis,
+      updatedAt: FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
 }
 
 function resolveThreadDocId(input: IngestOmnichannelMessageInput): string {
@@ -133,6 +176,7 @@ export async function ingestOmnichannelMessage(
     channel,
     body,
     sentAtMillis,
+    timestamp: sentAtMillis,
     direction,
     authorName: direction === 'inbound' ? contactName : 'Moi',
     authorId: direction === 'outbound' ? brokerId : null,
@@ -144,6 +188,19 @@ export async function ingestOmnichannelMessage(
     mailAnalysisAtMillis: sentAtMillis,
     mailAnalysisSource: channel === 'email' ? 'nylas' : 'omnichannel',
   });
+
+  if (direction === 'inbound' && channel === 'sms' && isCritical) {
+    await createCriticalSmsTask({
+      orgId,
+      brokerId,
+      matchedContactId: input.matchedContactId ?? null,
+      externalMessageId,
+      contactName,
+      body,
+      summaryOneLine,
+      sentAtMillis,
+    });
+  }
 
   return { threadId: threadDocId, messageId, isCritical };
 }

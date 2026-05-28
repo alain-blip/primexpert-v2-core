@@ -5,6 +5,7 @@
  */
 
 import { onObjectFinalized } from 'firebase-functions/v2/storage';
+import { FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { getDb } from '../lib/firestore';
 import { transcribeAudioWithGeminiVertex } from './geminiTranscribe';
@@ -12,6 +13,15 @@ import { transcribeAudioWithWhisper } from './whisperTranscribe';
 import { analyzeVoiceIntentWithGemini } from './analyzeVoiceIntent';
 import { hydrateVoiceNote } from './hydrateVoiceNote';
 import { montrealReferenceDateIso, parseVoiceNoteStorageObjectPath } from './voiceNotePaths';
+import { threadMessagesCol, userThreadsCol } from '../lib/firestore';
+
+function resolveVoiceThreadId(path: {
+  parentKind: 'residences' | 'contacts';
+  parentId: string;
+}): string {
+  if (path.parentKind === 'contacts') return `crm_${path.parentId}`;
+  return `voice_residence_${path.parentId}`;
+}
 
 /** Whisper si OPENAI_API_KEY est lié à la fonction ; sinon Vertex Gemini. */
 async function transcribeVoiceNote(
@@ -73,6 +83,7 @@ export const onVoiceNoteUploaded = onObjectFinalized(
     const localeRaw = String(object.metadata?.locale ?? 'fr').toLowerCase();
     const locale = localeRaw.startsWith('en') ? 'en' : 'fr';
 
+    getDb();
     const bucket = getStorage().bucket(object.bucket);
     const [audioBuffer] = await bucket.file(objectName).download();
     const mimeType = object.contentType || 'audio/webm';
@@ -112,6 +123,69 @@ export const onVoiceNoteUploaded = onObjectFinalized(
       taskId: result.taskId,
       hasActionItem: intent.hasActionItem,
       suggestedDate: intent.suggestedDate,
+    });
+
+    const sentAtMillis = Date.now();
+    const threadId = resolveVoiceThreadId(parsed);
+    const threadRef = userThreadsCol(brokerId).doc(threadId);
+    const summaryLine =
+      intent.taskDescription?.trim() ||
+      intent.cleanText?.trim().slice(0, 160) ||
+      rawTranscript.trim().slice(0, 160) ||
+      'Résumé d’appel vocal';
+    const bodyText = [
+      `Résumé d’appel vocal (${authorName})`,
+      summaryLine,
+      intent.taskDescription ? `Suivi de dossier: ${intent.taskDescription}` : null,
+      rawTranscript.trim() ? `Transcription:\n${rawTranscript.trim()}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    await threadRef.set(
+      {
+        brokerId,
+        orgId: parsed.orgId,
+        accountId: 'omni_voice_call',
+        subject:
+          parsed.parentKind === 'contacts'
+            ? 'Appels contact'
+            : 'Appels dossier résidence',
+        contactName: authorName || 'Contact',
+        lastMessageSnippet: summaryLine,
+        lastMessageAtMillis: sentAtMillis,
+        lastMessageAt: FieldValue.serverTimestamp(),
+        isUnread: false,
+        mailboxFolder: 'INBOX',
+        primaryChannel: 'voice_call',
+        externalThreadKey: threadId,
+        matchedContactId: parsed.parentKind === 'contacts' ? parsed.parentId : null,
+        createdAtMillis: sentAtMillis,
+      },
+      { merge: true }
+    );
+
+    await threadMessagesCol(brokerId, threadId).doc(`voice_${parsed.uploadId}`).set({
+      threadId,
+      channel: 'voice_call',
+      body: bodyText,
+      sentAtMillis,
+      timestamp: sentAtMillis,
+      direction: 'inbound',
+      authorName,
+      authorId: null,
+      isCritical: intent.hasActionItem === true,
+      summaryOneLine: summaryLine,
+      mailUrgency: intent.hasActionItem ? 'high' : 'medium',
+      matchedContactId: parsed.parentKind === 'contacts' ? parsed.parentId : null,
+      metadata: {
+        voiceNoteId: result.noteId,
+        taskId: result.taskId,
+        parentKind: parsed.parentKind,
+        parentId: parsed.parentId,
+      },
+      mailAnalysisAtMillis: sentAtMillis,
+      mailAnalysisSource: 'omnichannel',
     });
   }
 );

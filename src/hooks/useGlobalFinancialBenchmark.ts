@@ -17,12 +17,22 @@ export interface UseGlobalFinancialBenchmarkState {
   thresholdFactor: number;
   scannedResidences: number | null;
   summary: GlobalFinancialBenchmarkPayload['summary'] | null;
+  territorialMedians: GlobalFinancialBenchmarkPayload['territorialMedians'] | null;
   loading: boolean;
   error: string | null;
 }
 
-export function useGlobalFinancialBenchmark(enabled: boolean): UseGlobalFinancialBenchmarkState {
-  const cached = typeof window !== 'undefined' ? readGlobalFinancialBenchmarkCache() : null;
+export function useGlobalFinancialBenchmark(
+  enabled: boolean,
+  input?: { regionAdministrative?: string | null; assetClassLabel?: string | null }
+): UseGlobalFinancialBenchmarkState {
+  const cached =
+    typeof window !== 'undefined'
+      ? readGlobalFinancialBenchmarkCache({
+          regionAdministrative: input?.regionAdministrative ?? undefined,
+          assetClassLabel: input?.assetClassLabel ?? undefined,
+        })
+      : null;
   const [state, setState] = useState<UseGlobalFinancialBenchmarkState>({
     means: cached?.means ?? null,
     medians: cached?.medians ?? null,
@@ -31,6 +41,7 @@ export function useGlobalFinancialBenchmark(enabled: boolean): UseGlobalFinancia
     thresholdFactor: cached?.thresholdFactor ?? PORTFOLIO_EXPENSE_RATIO_TOLERANCE,
     scannedResidences: cached?.scannedResidences ?? null,
     summary: cached?.summary ?? null,
+    territorialMedians: cached?.territorialMedians ?? null,
     loading: false,
     error: null,
   });
@@ -38,7 +49,10 @@ export function useGlobalFinancialBenchmark(enabled: boolean): UseGlobalFinancia
   useEffect(() => {
     if (!enabled) return;
 
-    const hit = readGlobalFinancialBenchmarkCache();
+    const hit = readGlobalFinancialBenchmarkCache({
+      regionAdministrative: input?.regionAdministrative ?? undefined,
+      assetClassLabel: input?.assetClassLabel ?? undefined,
+    });
     if (hit) {
       setState({
         means: hit.means ?? null,
@@ -48,6 +62,7 @@ export function useGlobalFinancialBenchmark(enabled: boolean): UseGlobalFinancia
         thresholdFactor: hit.thresholdFactor ?? PORTFOLIO_EXPENSE_RATIO_TOLERANCE,
         scannedResidences: hit.scannedResidences ?? null,
         summary: hit.summary ?? null,
+        territorialMedians: hit.territorialMedians ?? null,
         loading: false,
         error: null,
       });
@@ -56,7 +71,10 @@ export function useGlobalFinancialBenchmark(enabled: boolean): UseGlobalFinancia
 
     let cancelled = false;
     setState((s) => ({ ...s, loading: true, error: null }));
-    fetchGlobalFinancialBenchmark()
+    fetchGlobalFinancialBenchmark({
+      regionAdministrative: input?.regionAdministrative ?? undefined,
+      assetClassLabel: input?.assetClassLabel ?? undefined,
+    })
       .then((data) => {
         if (cancelled) return;
         setState({
@@ -67,6 +85,7 @@ export function useGlobalFinancialBenchmark(enabled: boolean): UseGlobalFinancia
           thresholdFactor: data.thresholdFactor ?? PORTFOLIO_EXPENSE_RATIO_TOLERANCE,
           scannedResidences: data.scannedResidences ?? null,
           summary: data.summary ?? null,
+          territorialMedians: data.territorialMedians ?? null,
           loading: false,
           error: null,
         });
@@ -81,13 +100,14 @@ export function useGlobalFinancialBenchmark(enabled: boolean): UseGlobalFinancia
           medians: null,
           counts: null,
           summary: null,
+          territorialMedians: null,
         }));
       });
 
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
+  }, [enabled, input?.assetClassLabel, input?.regionAdministrative]);
 
   return state;
 }

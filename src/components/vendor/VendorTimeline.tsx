@@ -51,7 +51,7 @@ export function VendorTimeline({
                     ? 'border-primexpert-blue bg-primexpert-blue text-white'
                     : active
                       ? 'border-primexpert-blue bg-white text-primexpert-blue ring-4 ring-primexpert-blue/20'
-                      : 'border-slate-200 bg-white text-slate-400'
+                      : 'border-slate-300 bg-white text-slate-700'
                 )}
               >
                 {idx + 1}
@@ -59,7 +59,7 @@ export function VendorTimeline({
               <p
                 className={cn(
                   'mt-3 max-w-[9rem] text-center text-[10px] font-bold uppercase leading-snug tracking-wide',
-                  active ? 'text-primexpert-dark' : done ? 'text-slate-600' : 'text-slate-400'
+                  active ? 'text-primexpert-dark' : done ? 'text-slate-700' : 'text-slate-700'
                 )}
               >
                 {t(stage.labelFr, stage.labelEn)}

@@ -10,7 +10,12 @@ export type MailUrgency = 'low' | 'medium' | 'high';
 export type ResidenceMatchConfidence = 'high' | 'medium' | 'low' | 'none';
 
 /** Canaux supportés dans le fil unifié (SSOT message.channel). */
-export type CommunicationChannel = 'email' | 'sms' | 'facebook' | 'instagram';
+export type CommunicationChannel =
+  | 'email'
+  | 'sms'
+  | 'voice_call'
+  | 'facebook'
+  | 'instagram';
 
 /**
  * Alias documentaire — la collection Firestore reste `email_threads` (Règle #0).
@@ -108,12 +113,19 @@ export interface InboundUrgencyAnalysis {
   summaryOneLine: string;
 }
 
-const CHANNELS: readonly CommunicationChannel[] = ['email', 'sms', 'facebook', 'instagram'];
+const CHANNELS: readonly CommunicationChannel[] = [
+  'email',
+  'sms',
+  'voice_call',
+  'facebook',
+  'instagram',
+];
 
 export function parseCommunicationChannel(raw: unknown): CommunicationChannel {
   if (typeof raw !== 'string') return 'email';
   const v = raw.trim().toLowerCase();
   if (v === 'sms' || v === 'text') return 'sms';
+  if (v === 'voice' || v === 'voice_call' || v === 'call' || v === 'phone') return 'voice_call';
   if (v === 'facebook' || v === 'messenger' || v === 'fb') return 'facebook';
   if (v === 'instagram' || v === 'ig') return 'instagram';
   return CHANNELS.includes(v as CommunicationChannel) ? (v as CommunicationChannel) : 'email';

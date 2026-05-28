@@ -13,6 +13,14 @@ import {
 import { saveUserEmailAccounts } from '../../services/emailAccountService';
 import { fetchNylasAuthUrl, isNylasConfigured } from '../../services/nylasClient';
 import type { EmailAccountConfig, EmailAccountProvider } from '../../types/emailAccount';
+import {
+  institutionalListingsActionButtonClass,
+  institutionalListingsCardShellClass,
+  institutionalListingsCardTitleClass,
+  institutionalListingsInlineInputClass,
+  institutionalListingsSecondaryButtonClass,
+  institutionalListingsSecondaryDangerButtonClass,
+} from '../../lib/institutionalTheme';
 
 export function EmailAccountsSettings() {
   const { t, language } = useLanguage();
@@ -158,19 +166,19 @@ export function EmailAccountsSettings() {
   };
 
   return (
-    <div className="workhub-card-glow rounded-[28px] p-7">
+    <div className={`${institutionalListingsCardShellClass} rounded-[28px] p-7`}>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="mb-1 flex items-center gap-2">
-            <Mail className="h-3.5 w-3.5 text-blue-400" />
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-300/80">
+            <Mail className="h-3.5 w-3.5 text-primexpert-dark" />
+            <p className={`${institutionalListingsCardTitleClass} tracking-[0.3em]`}>
               {t('Communication courriel', 'Email communication')}
             </p>
           </div>
-          <h3 className="workhub-title-gradient text-2xl font-black italic uppercase tracking-tighter">
+          <h3 className="text-2xl font-black italic uppercase tracking-tighter text-slate-900">
             {t('Boîtes courriel synchronisées', 'Synchronized mailboxes')}
           </h3>
-          <p className="mt-1.5 max-w-2xl text-[11px] text-slate-400">
+          <p className="mt-1.5 max-w-2xl text-[11px] text-slate-700">
             {t(
               'Gérez plusieurs comptes (Direction, prospection RPA, etc.). Le compte par défaut alimente la messagerie Workhub.',
               'Manage multiple accounts (executive, RPA prospecting, etc.). The default account feeds the Workhub inbox.'
@@ -190,12 +198,12 @@ export function EmailAccountsSettings() {
       </div>
 
       {nylasNotice ? (
-        <p className="mb-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-[11px] font-semibold text-emerald-200">
+        <p className="mb-4 rounded-xl border-2 border-emerald-300 bg-emerald-50 px-4 py-3 text-[11px] font-semibold text-emerald-900">
           {nylasNotice}
         </p>
       ) : null}
       {error ? (
-        <p className="mb-4 text-[11px] font-semibold text-amber-300">{error}</p>
+        <p className="mb-4 rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 text-[11px] font-semibold text-amber-900">{error}</p>
       ) : null}
 
       {nylasOn ? (
@@ -204,7 +212,7 @@ export function EmailAccountsSettings() {
             type="button"
             disabled={saving}
             onClick={() => void handleOAuthConnect('gmail')}
-            className="rounded-2xl border border-white/15 bg-[#020617]/60 px-5 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-white hover:border-blue-400/40"
+            className={`${institutionalListingsActionButtonClass} bg-white text-primexpert-dark hover:bg-primexpert-light`}
           >
             {t('Connecter Gmail (Nylas)', 'Connect Gmail (Nylas)')}
           </button>
@@ -212,7 +220,7 @@ export function EmailAccountsSettings() {
             type="button"
             disabled={saving}
             onClick={() => void handleOAuthConnect('outlook')}
-            className="rounded-2xl border border-white/15 bg-[#020617]/60 px-5 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-white hover:border-blue-400/40"
+            className={`${institutionalListingsActionButtonClass} bg-white text-primexpert-dark hover:bg-primexpert-light`}
           >
             {t('Connecter Outlook (Nylas)', 'Connect Outlook (Nylas)')}
           </button>
@@ -223,10 +231,10 @@ export function EmailAccountsSettings() {
         {accounts.map((acc) => (
           <li
             key={acc.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#020617]/50 px-4 py-3"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-primexpert-dark/20 bg-white px-4 py-3"
           >
             <div className="min-w-0">
-              <p className="flex flex-wrap items-center gap-2 text-sm font-black text-slate-100">
+              <p className="flex flex-wrap items-center gap-2 text-sm font-black text-slate-900">
                 {acc.label}
                 {acc.isDefault ? (
                   <span className="inline-flex items-center gap-1 rounded border border-[#deff9a]/40 bg-[#deff9a]/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-[#deff9a]">
@@ -235,8 +243,8 @@ export function EmailAccountsSettings() {
                   </span>
                 ) : null}
               </p>
-              <p className="truncate font-mono text-[11px] text-slate-400">{acc.emailAddress}</p>
-              <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">
+              <p className="truncate font-mono text-[11px] text-slate-700">{acc.emailAddress}</p>
+              <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-slate-700">
                 {providerLabel(acc.provider, locale)} · {syncStatusLabel(acc.syncStatus, locale)}
               </p>
             </div>
@@ -246,7 +254,7 @@ export function EmailAccountsSettings() {
                   type="button"
                   disabled={saving}
                   onClick={() => void handleSetDefault(acc.id)}
-                  className="rounded-lg border border-white/15 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-300 hover:bg-white/5"
+                  className={institutionalListingsSecondaryButtonClass}
                 >
                   {t('Par défaut', 'Set default')}
                 </button>
@@ -255,7 +263,7 @@ export function EmailAccountsSettings() {
                 type="button"
                 disabled={saving || accounts.length <= 1}
                 onClick={() => void handleRemove(acc.id)}
-                className="rounded-lg p-2 text-slate-500 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-30"
+                  className={`${institutionalListingsSecondaryDangerButtonClass} p-2 disabled:opacity-30`}
                 aria-label={t('Supprimer', 'Remove')}
               >
                 <Trash2 className="h-4 w-4" />
@@ -265,8 +273,8 @@ export function EmailAccountsSettings() {
         ))}
       </ul>
 
-      <div className="rounded-2xl border border-dashed border-white/15 bg-[#020617]/30 p-5">
-        <p className="mb-4 text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+      <div className="rounded-2xl border-2 border-dashed border-primexpert-dark/30 bg-primexpert-light p-5">
+        <p className="mb-4 text-[10px] font-black uppercase tracking-[0.22em] text-slate-700">
           {t('Ajouter un compte', 'Add account')}
         </p>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -276,7 +284,7 @@ export function EmailAccountsSettings() {
               value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
               placeholder={t('Direction', 'Executive')}
-              className="workhub-input"
+              className={institutionalListingsInlineInputClass}
             />
           </Field>
           <Field label={t('Adresse courriel', 'Email address')}>
@@ -285,14 +293,14 @@ export function EmailAccountsSettings() {
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               placeholder="alain@primexpert.ca"
-              className="workhub-input"
+              className={institutionalListingsInlineInputClass}
             />
           </Field>
           <Field label={t('Fournisseur', 'Provider')} className="md:col-span-2">
             <select
               value={newProvider}
               onChange={(e) => setNewProvider(e.target.value as EmailAccountProvider)}
-              className="workhub-input"
+              className={institutionalListingsInlineInputClass}
             >
               <option value="gmail">Gmail / Google Workspace</option>
               <option value="outlook">Microsoft 365 / Outlook</option>
@@ -304,7 +312,7 @@ export function EmailAccountsSettings() {
           type="button"
           disabled={saving}
           onClick={() => void handleAddAccount()}
-          className="mt-4 flex items-center gap-2 rounded-2xl border-2 border-[#deff9a]/50 bg-black px-5 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-[#deff9a] transition hover:bg-[#deff9a]/10 disabled:opacity-50"
+          className={`${institutionalListingsActionButtonClass} mt-4 flex items-center gap-2 border-primexpert-dark bg-white px-5 py-3 text-[10px] text-primexpert-dark transition hover:bg-primexpert-light disabled:opacity-50`}
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           {t('Ajouter la boîte', 'Add mailbox')}
@@ -326,7 +334,7 @@ function Field({
 }) {
   return (
     <label className={cn('block', className)}>
-      <span className="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400">
+      <span className="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-700">
         {label}
       </span>
       {children}

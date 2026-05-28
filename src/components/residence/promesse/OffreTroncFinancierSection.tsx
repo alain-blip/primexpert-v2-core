@@ -13,12 +13,18 @@ import {
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { useLanguage } from '../../../lib/i18n';
 import { formatCurrency } from '../../../lib/utils';
+import {
+  institutionalListingsCardHeaderClass,
+  institutionalListingsCardShellClass,
+  institutionalListingsCardTitleClass,
+  institutionalListingsInlineInputClass,
+} from '../../../lib/institutionalTheme';
 
 const LABEL_CLASS =
-  'text-[13px] font-black uppercase tracking-wider text-[#142c6a]';
+  'text-[13px] font-black uppercase tracking-wider text-slate-900';
 
 const INPUT_CLASS =
-  'h-12 w-full rounded-xl border-2 border-black/20 bg-white px-3 text-[16px] font-black text-black placeholder-slate-400 focus:border-[#142c6a] focus:outline-none focus:ring-2 focus:ring-[#142c6a]/30';
+  `${institutionalListingsInlineInputClass} h-12 rounded-xl text-[16px] font-black placeholder-slate-400 focus:ring-2 focus:ring-primexpert-dark/30`;
 
 export interface OffreTroncFinancierSectionProps {
   offre: OffreTroncInput;
@@ -95,9 +101,9 @@ export function OffreTroncFinancierSection({
   );
 
   return (
-    <section className="overflow-hidden rounded-xl border-2 border-slate-200 bg-white shadow-sm border-l-8 border-l-green-600">
-      <header className="border-b-2 border-slate-100 bg-slate-50/80 px-5 py-4">
-        <h3 className="text-[13px] font-black uppercase tracking-[0.18em] text-[#142c6a]">
+    <section className={`${institutionalListingsCardShellClass} border-l-8 border-l-green-600`}>
+      <header className={`${institutionalListingsCardHeaderClass} py-4`}>
+        <h3 className={`${institutionalListingsCardTitleClass} text-[13px] tracking-[0.18em]`}>
           {t(
             "[ STRUCTURE FINANCIÈRE DE L'OFFRE ]",
             '[ OFFER FINANCIAL STRUCTURE ]'

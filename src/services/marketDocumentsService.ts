@@ -85,6 +85,25 @@ function mapDoc(id: string, data: Record<string, unknown>): MarketDocumentRecord
     isValidated: data.isValidated === true,
     validatedAtMillis:
       typeof data.validatedAtMillis === 'number' ? data.validatedAtMillis : undefined,
+    iaOpportunityScoring:
+      data.iaOpportunityScoring && typeof data.iaOpportunityScoring === 'object'
+        ? {
+            score: Number((data.iaOpportunityScoring as { score?: unknown }).score ?? 0),
+            criticalFactors: Array.isArray(
+              (data.iaOpportunityScoring as { criticalFactors?: unknown }).criticalFactors
+            )
+              ? ((data.iaOpportunityScoring as { criticalFactors: unknown[] }).criticalFactors
+                  .map((v) => (typeof v === 'string' ? v.trim() : ''))
+                  .filter(Boolean)
+                  .slice(0, 5) as string[])
+              : [],
+            evaluatedAt:
+              typeof (data.iaOpportunityScoring as { evaluatedAt?: unknown }).evaluatedAt ===
+              'string'
+                ? String((data.iaOpportunityScoring as { evaluatedAt: string }).evaluatedAt)
+                : new Date(0).toISOString(),
+          }
+        : undefined,
     extractedData:
       data.extractedData && typeof data.extractedData === 'object'
         ? (data.extractedData as MarketDocumentRecord['extractedData'])
@@ -135,6 +154,11 @@ export async function uploadMarketDocument(
     parsingStatus: 'pending',
     parsingEligible: true,
     isValidated: false,
+    iaOpportunityScoring: {
+      score: 0,
+      criticalFactors: ['En attente de vérification de conformité'],
+      evaluatedAt: new Date().toISOString(),
+    },
   });
 
   return mapDoc(docRef.id, {

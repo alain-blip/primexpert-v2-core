@@ -24,6 +24,15 @@ export interface PipelineKanbanColumn {
   labelEn: string;
 }
 
+export type DealStageId = 'analyse_financiere' | 'due_diligence' | 'cloture';
+
+export interface DealStageDefinition {
+  id: DealStageId;
+  labelFr: string;
+  labelEn: string;
+  allowedNext: readonly DealStageId[];
+}
+
 /** Ordre d’affichage Kanban — libellés francophones métier. */
 export const PIPELINE_KANBAN_COLUMNS: readonly PipelineKanbanColumn[] = [
   { id: 'prospect', labelFr: 'En prospection', labelEn: 'Prospecting' },
@@ -31,6 +40,31 @@ export const PIPELINE_KANBAN_COLUMNS: readonly PipelineKanbanColumn[] = [
   { id: 'promise', labelFr: "En promesse d'achat", labelEn: 'Under promise to purchase' },
   { id: 'sold', labelFr: 'Vendu', labelEn: 'Sold' },
 ] as const;
+
+/**
+ * Machine à états transactionnelle RPA (phase 1).
+ * Cycle: Analyse financière -> Due diligence (diligence raisonnable) -> Clôture.
+ */
+export const dealStageMachine: Readonly<Record<DealStageId, DealStageDefinition>> = {
+  analyse_financiere: {
+    id: 'analyse_financiere',
+    labelFr: 'Analyse financière',
+    labelEn: 'Financial analysis',
+    allowedNext: ['due_diligence'],
+  },
+  due_diligence: {
+    id: 'due_diligence',
+    labelFr: 'Due diligence (diligence raisonnable)',
+    labelEn: 'Due diligence',
+    allowedNext: ['cloture'],
+  },
+  cloture: {
+    id: 'cloture',
+    labelFr: 'Clôture',
+    labelEn: 'Closing',
+    allowedNext: [],
+  },
+} as const;
 
 export const PIPELINE_ACTIVE_STATUSES: readonly PipelineColumnId[] = PIPELINE_KANBAN_COLUMNS.map(
   (c) => c.id
@@ -175,6 +209,32 @@ export function resolveColumnId(rawStatut: unknown): PipelineColumnId | null {
   }
 
   return null;
+}
+
+/**
+ * Pont entre statut pipeline et machine à états transactionnelle RPA.
+ * - `pa-acceptee` / `promise` est considéré en Due diligence.
+ */
+export function resolveDealStage(rawStatut: unknown): DealStageId {
+  const normalized = normalizeRawStatut(rawStatut);
+  if (
+    normalized === 'pa-acceptee' ||
+    normalized === 'due-diligence' ||
+    normalized === 'financement' ||
+    normalized === 'transfert-permis'
+  ) {
+    return 'due_diligence';
+  }
+  const column = resolveColumnId(rawStatut);
+  if (column === 'sold') return 'cloture';
+  if (column === 'promise') return 'due_diligence';
+  return 'analyse_financiere';
+}
+
+/** Valide une transition explicite dans `dealStageMachine`. */
+export function canTransitionDealStage(from: DealStageId, to: DealStageId): boolean {
+  if (from === to) return true;
+  return dealStageMachine[from].allowedNext.includes(to);
 }
 
 /**

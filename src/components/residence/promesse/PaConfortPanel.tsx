@@ -3,9 +3,15 @@
  */
 
 import React, { type ReactNode } from 'react';
+import {
+  institutionalListingsCardHeaderClass,
+  institutionalListingsCardShellClass,
+  institutionalListingsCardTitleClass,
+  institutionalListingsInlineInputClass,
+} from '../../../lib/institutionalTheme';
 
 const LABEL_HEADER =
-  'text-[13px] font-black uppercase tracking-[0.18em] text-[#142c6a]';
+  `${institutionalListingsCardTitleClass} text-[13px] tracking-[0.18em]`;
 
 export interface PaConfortPanelProps {
   titleFr: string;
@@ -24,9 +30,9 @@ export function PaConfortPanel({
 }: PaConfortPanelProps) {
   return (
     <section
-      className={`overflow-hidden rounded-xl border-2 border-slate-200 bg-white shadow-sm border-l-8 ${borderAccentClass}`}
+      className={`${institutionalListingsCardShellClass} border-l-8 ${borderAccentClass}`}
     >
-      <header className="border-b-2 border-slate-100 bg-slate-50/80 px-5 py-4">
+      <header className={`${institutionalListingsCardHeaderClass} py-4`}>
         <h3 className={LABEL_HEADER}>{language === 'fr' ? titleFr : titleEn}</h3>
       </header>
       <div className="p-5">{children}</div>
@@ -35,10 +41,10 @@ export function PaConfortPanel({
 }
 
 export const PA_LABEL_CLASS =
-  'text-[13px] font-black uppercase tracking-wider text-[#142c6a]';
+  'text-[13px] font-black uppercase tracking-wider text-slate-900';
 
 export const PA_INPUT_CLASS =
-  'h-12 w-full rounded-xl border-2 border-black/20 bg-white px-3 text-[16px] font-black text-black placeholder-slate-400 focus:border-[#142c6a] focus:outline-none focus:ring-2 focus:ring-[#142c6a]/30';
+  `${institutionalListingsInlineInputClass} h-12 rounded-xl text-[16px] font-black placeholder-slate-400 focus:ring-2 focus:ring-primexpert-dark/30`;
 
 export const PA_VALUE_CLASS =
   'text-[16px] font-black text-black tabular-nums';

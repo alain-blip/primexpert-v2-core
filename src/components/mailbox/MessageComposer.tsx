@@ -3,8 +3,7 @@ import { Loader2, Send } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { EmailAccount } from '../../types/emailAccount';
 import { resolveDefaultEmailAccount } from '../../lib/emailAccounts';
-
-const LIME = '#deff9a';
+import { institutionalListingsInlineInputClass } from '../../lib/institutionalTheme';
 
 export interface SendFromSelection {
   accountId: string;
@@ -57,9 +56,9 @@ export function MessageComposer({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-white/10 bg-black/40 p-4">
+    <form onSubmit={handleSubmit} className="border-t border-slate-200 bg-white p-4">
       <div className="mb-3 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-        <label className="shrink-0 text-[9px] font-black uppercase tracking-widest text-slate-500">
+        <label className="shrink-0 text-[9px] font-black uppercase tracking-widest text-slate-700">
           {fromLabel}
         </label>
         <select
@@ -67,9 +66,8 @@ export function MessageComposer({
           onChange={(e) => onFromAccountChange(e.target.value)}
           disabled={disabled || sending || accounts.length <= 1}
           className={cn(
-            'min-w-0 flex-1 rounded-lg border border-white/10 bg-vault px-3 py-2',
-            'font-mono text-[11px] text-slate-200',
-            'focus:border-[#deff9a]/50 focus:outline-none focus:ring-1 focus:ring-[#deff9a]/25',
+            institutionalListingsInlineInputClass,
+            'min-w-0 flex-1 px-3 py-2 font-mono text-[11px] text-slate-900',
             accounts.length <= 1 && 'opacity-80'
           )}
         >
@@ -89,9 +87,8 @@ export function MessageComposer({
           rows={2}
           placeholder={placeholder}
           className={cn(
-            'min-h-[52px] flex-1 resize-none rounded-xl border border-white/10 bg-vault px-4 py-3',
-            'text-sm font-medium text-slate-200 placeholder:text-slate-500',
-            'focus:border-[#deff9a]/50 focus:outline-none focus:ring-1 focus:ring-[#deff9a]/25'
+            institutionalListingsInlineInputClass,
+            'min-h-[52px] flex-1 resize-none px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-500'
           )}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -104,11 +101,10 @@ export function MessageComposer({
           type="submit"
           disabled={disabled || sending || !body.trim() || !activeFrom}
           className={cn(
-            'inline-flex shrink-0 items-center gap-2 rounded-xl border-2 bg-black px-5 py-3',
-            'text-[10px] font-black uppercase tracking-[0.18em] transition',
+            'inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-primexpert-dark bg-white px-5 py-3',
+            'text-[10px] font-black uppercase tracking-[0.18em] text-black transition',
             'disabled:cursor-not-allowed disabled:opacity-40'
           )}
-          style={{ borderColor: LIME, color: LIME }}
         >
           {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           {sendLabel}

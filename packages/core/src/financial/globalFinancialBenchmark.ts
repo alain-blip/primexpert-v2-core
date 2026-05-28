@@ -16,6 +16,16 @@ export interface GlobalFinancialBenchmarkSummary {
   windowMaxYear: number;
 }
 
+export interface TerritorialAcmMedians {
+  regionAdministrative: string;
+  assetClassLabel: string | null;
+  mrb: number | null;
+  mrn: number | null;
+  tgaPct: number | null;
+  prixParUnite: number | null;
+  sampleCount: number;
+}
+
 export interface GlobalFinancialBenchmarkGroup {
   id: string;
   labelFr: string;
@@ -38,6 +48,7 @@ export interface GlobalFinancialBenchmarkPayload {
   thresholdFactor: number;
   summary: GlobalFinancialBenchmarkSummary;
   benchmarkGroups: GlobalFinancialBenchmarkGroup[];
+  territorialMedians?: TerritorialAcmMedians;
   benchmarkWindow?: {
     minYear: number;
     maxYear: number;

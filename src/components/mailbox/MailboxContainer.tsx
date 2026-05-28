@@ -48,6 +48,10 @@ import {
   type ContactServiceContext,
 } from '../../services/contacts';
 import {
+  institutionalListingsCardShellClass,
+  institutionalListingsPanelClass,
+} from '../../lib/institutionalTheme';
+import {
   ContactFormDrawer,
   type ContactFormInitialDraft,
 } from '../contacts/ContactFormDrawer';
@@ -736,14 +740,17 @@ export function MailboxContainer() {
 
   if (!brokerId) {
     return (
-      <div className="flex h-[calc(100vh-160px)] items-center justify-center rounded-[32px] border border-white/10 bg-vault-bright">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+      <div className={cn(institutionalListingsPanelClass, 'flex h-[calc(100vh-160px)] items-center justify-center')}>
+        <div className={cn(institutionalListingsCardShellClass, 'flex w-full items-center justify-center py-10')}>
+          <Loader2 className="h-6 w-6 animate-spin text-slate-900" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-[calc(100vh-160px)] overflow-hidden rounded-[32px] border border-white/10 bg-vault-bright shadow-sm">
+    <div className={cn(institutionalListingsPanelClass, 'h-[calc(100vh-160px)]')}>
+      <div className={cn(institutionalListingsCardShellClass, 'flex h-full overflow-hidden border-2 border-primexpert-dark shadow-sm')}>
       <div
         className={cn(
           'hidden h-full shrink-0 md:flex',
@@ -768,7 +775,7 @@ export function MailboxContainer() {
         )}
       >
         {threadsLoading ? (
-          <div className="flex w-full items-center justify-center gap-2 p-8 text-slate-400 lg:w-[380px]">
+          <div className="flex w-full items-center justify-center gap-2 p-8 text-slate-900 lg:w-[380px]">
             <Loader2 className="h-5 w-5 animate-spin" />
             <span className="text-[11px] font-black uppercase tracking-widest">
               {t('Chargement…', 'Loading…')}
@@ -801,7 +808,7 @@ export function MailboxContainer() {
         )}
       >
         {threadsError ? (
-          <div className="mx-4 mt-4 flex items-start gap-2 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-[11px] text-amber-200">
+          <div className="mx-4 mt-4 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[11px] text-slate-900">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{threadsError}</span>
           </div>
@@ -900,6 +907,7 @@ export function MailboxContainer() {
           onSaved={handleContactSaved}
         />
       ) : null}
+      </div>
     </div>
   );
 }

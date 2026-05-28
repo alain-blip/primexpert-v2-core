@@ -7,7 +7,6 @@ import {
   Pencil,
   ShieldCheck,
   Sparkles,
-  Target,
   Users,
   X,
   Check,
@@ -27,6 +26,7 @@ import { useLanguage } from '../../../lib/i18n';
 import { cn, formatCurrency } from '../../../lib/utils';
 import { getListingPrice } from '@primexpert/core/residence';
 import { readCalculatedResultsDisplayMirror, type CalculatedResultsDisplayMirror } from '@primexpert/core/financial';
+import { bootstrapResidenceAcm } from '@primexpert/core/valuation';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { useFinancialData } from '../../../context/FinancialDataContext';
 import type { Residence } from '../../../services/residences';
@@ -36,6 +36,15 @@ import type { PropertyDocumentExtractedData, PropertyDocumentRecord } from '../.
 import { ResidenceActivitiesPanel } from '../activities/ResidenceActivitiesPanel';
 import { ResidenceTasksPanel } from '../tasks/ResidenceTasksPanel';
 import { AudioRecorderButton } from '../../mobile/AudioRecorderButton';
+import {
+  institutionalListingsActionButtonClass,
+  institutionalListingsCardHeaderClass,
+  institutionalListingsCardShellClass,
+  institutionalListingsCardTitleClass,
+  institutionalListingsFailSafeClass,
+  institutionalListingsInlineInputClass,
+  institutionalListingsPanelClass,
+} from '../../../lib/institutionalTheme';
 
 type ResidenceLoose = Residence & Record<string, unknown>;
 type BusinessStatus = 'complet' | 'attention' | 'a_completer';
@@ -136,6 +145,18 @@ function formatPctDisplay(value: number): string {
 
 function formatMirrorCurrency(value: number | null | undefined): string {
   return value != null && Number.isFinite(value) && value > 0 ? formatCurrency(value) : '—';
+}
+
+function hasFinanceIncompleteStatus(residence: ResidenceLoose): boolean {
+  const candidates = [
+    residence.financeStatus,
+    residence.financialStatus,
+    residence.finance_state,
+    residence.financesStatus,
+  ];
+  return candidates.some(
+    (value) => typeof value === 'string' && value.trim().toUpperCase() === 'INCOMPLETE'
+  );
 }
 
 function calculateBusinessStatus(residence: ResidenceLoose): BusinessStatus {
@@ -428,6 +449,29 @@ function GuardrailBanner({ status }: { status: BusinessStatus }) {
   );
 }
 
+function ListingsStyleFailSafe({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <div className={institutionalListingsFailSafeClass}>
+      <div className="animate-pulse space-y-3">
+        <div className="h-2 w-44 rounded bg-primexpert-dark/20" />
+        <div className="h-5 w-2/3 rounded bg-primexpert-dark/15" />
+        <div className="h-4 w-full rounded bg-primexpert-dark/10" />
+        <div className="h-4 w-5/6 rounded bg-primexpert-dark/10" />
+      </div>
+      <p className="mt-3 text-[11px] font-black uppercase tracking-[0.16em] text-primexpert-dark">
+        {title}
+      </p>
+      <p className="mt-1 text-[12px] font-semibold text-slate-700">{subtitle}</p>
+    </div>
+  );
+}
+
 function AskingPriceEditor({
   value,
   onSave,
@@ -548,7 +592,7 @@ function AskingPriceEditor({
 
 function FinancialSafetyBlock({ commissionRate, potentialRevenue }: { commissionRate: number; potentialRevenue: number }) {
   return (
-    <div className="my-4 flex w-full flex-col gap-2 rounded-xl border-2 border-[#142c6a] bg-[#f1f5f9] p-4 text-[15px] font-black text-[#142c6a] sm:flex-row sm:items-center sm:justify-between">
+    <div className="my-4 flex w-full flex-col gap-2 rounded-xl border-2 border-primexpert-dark bg-primexpert-light p-4 text-[15px] font-black text-primexpert-dark sm:flex-row sm:items-center sm:justify-between">
       <span>TAUX DE COMMISSION COMPLET : {formatPctDisplay(commissionRate)}</span>
       <span>REVENU POTENTIEL ATTENDU : {potentialRevenue > 0 ? formatCurrency(potentialRevenue) : '—'}</span>
     </div>
@@ -670,7 +714,7 @@ function FinancialPerformancePanel({
     financialLoading ? loadingLabel : financialError ? '—' : formatted;
 
   return (
-    <section className="my-4 rounded-xl border-2 border-[#142c6a] bg-[#f1f5f9] p-5 shadow-lg">
+    <section className="my-4 rounded-xl border-2 border-primexpert-dark bg-primexpert-light p-5 shadow-lg">
       <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2 border-b-2 border-[#142c6a]/15 pb-2">
         <h4 className="text-[13px] font-black uppercase tracking-wider text-[#142c6a]">
           Performance financière & rétribution
@@ -773,7 +817,7 @@ function InlineField({
   }, [value]);
   return (
     <label className="space-y-1">
-      <span className="text-[10px] font-black uppercase tracking-wider text-[#142c6a]/70">{label}</span>
+      <span className="text-[10px] font-black uppercase tracking-wider text-primexpert-dark/70">{label}</span>
       <div className="flex items-center gap-2">
         <input
           type={type}
@@ -781,9 +825,9 @@ function InlineField({
           disabled={saving}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={() => void onBlurSave(draft)}
-          className="w-full rounded-lg border-2 border-[#142c6a]/20 bg-white px-3 py-2 text-[14px] font-semibold text-black outline-none focus:border-[#142c6a]"
+          className={institutionalListingsInlineInputClass}
         />
-        {suffix ? <span className="text-[12px] font-black text-[#142c6a]">{suffix}</span> : null}
+        {suffix ? <span className="text-[12px] font-black text-primexpert-dark">{suffix}</span> : null}
       </div>
     </label>
   );
@@ -802,7 +846,7 @@ function BooleanField({
 }) {
   return (
     <label className="space-y-1">
-      <span className="text-[10px] font-black uppercase tracking-wider text-[#142c6a]/70">{label}</span>
+      <span className="text-[10px] font-black uppercase tracking-wider text-primexpert-dark/70">{label}</span>
       <select
         value={value == null ? '' : value ? 'oui' : 'non'}
         disabled={saving}
@@ -810,7 +854,7 @@ function BooleanField({
           const v = e.target.value;
           void onSave(v === '' ? null : v === 'oui');
         }}
-        className="w-full rounded-lg border-2 border-[#142c6a]/20 bg-white px-3 py-2 text-[14px] font-semibold text-black outline-none focus:border-[#142c6a]"
+        className={institutionalListingsInlineInputClass}
       >
         <option value="">—</option>
         <option value="oui">Oui</option>
@@ -1019,15 +1063,15 @@ function RaphaelMatchmakerPanel({
   };
 
   return (
-    <section className="w-full rounded-xl border-2 border-[#142c6a] bg-[#f8fafc] shadow-lg">
-      <header className="border-b-2 border-[#142c6a]/15 bg-white px-5 py-4">
+    <section className={cn(institutionalListingsCardShellClass, 'w-full')}>
+      <header className={institutionalListingsCardHeaderClass}>
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-[#D4AF37]" aria-hidden />
-          <h3 className="text-[11px] font-black uppercase tracking-wider text-[#142c6a]">
+          <h3 className={institutionalListingsCardTitleClass}>
             {t('Matchmaker IA — Acheteurs potentiels', 'AI Matchmaker — Prospective buyers')}
           </h3>
         </div>
-        <p className="mt-2 text-[10px] font-semibold leading-snug text-slate-600">
+        <p className="mt-2 text-[10px] font-semibold leading-snug text-slate-700">
           {t(
             'Opinion fondée et motivée générée par l\'IA — aucun envoi automatique.',
             'AI-generated reasoned opinion — no automated outbound send.'
@@ -1037,7 +1081,7 @@ function RaphaelMatchmakerPanel({
 
       <div className="space-y-4 p-5">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <div className="flex items-center gap-2 text-[11px] font-bold text-[#142c6a]">
+          <div className="flex items-center gap-2 text-[11px] font-bold text-primexpert-dark">
             <Users className="h-3.5 w-3.5" />
             <span>
               {t(
@@ -1057,7 +1101,7 @@ function RaphaelMatchmakerPanel({
         </div>
 
         {loading ? (
-          <p className="rounded-lg border border-[#142c6a]/20 bg-white p-4 text-[12px] font-semibold text-slate-700">
+          <p className="rounded-lg border-2 border-primexpert-dark/20 bg-white dark:bg-primexpert-cardDark p-4 text-[12px] font-semibold text-slate-700">
             {t('Analyse des acheteurs en cours…', 'Analyzing buyer base…')}
           </p>
         ) : candidates.length === 0 ? (
@@ -1068,17 +1112,68 @@ function RaphaelMatchmakerPanel({
             )}
           </p>
         ) : (
-          <ul className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {candidates.map((candidate) => (
-              <RaphaelMatchmakerCard
-                key={candidate.contactId}
-                candidate={candidate}
-                askingPrice={askingPrice}
-                t={t}
-                onPrepareEmail={() => handlePrepareEmail(candidate)}
-              />
-            ))}
-          </ul>
+          <div className="overflow-x-auto rounded-xl border-2 border-primexpert-dark/20 bg-white dark:bg-primexpert-cardDark">
+            <table className="min-w-full border-collapse text-left">
+              <thead className="bg-primexpert-light dark:bg-primexpert-cardDark">
+                <tr>
+                  <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-900">
+                    {t('Acheteur', 'Buyer')}
+                  </th>
+                  <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-900">
+                    {t('Enveloppe budgétaire', 'Budget envelope')}
+                  </th>
+                  <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-900">
+                    {t('Pertinence', 'Relevance')}
+                  </th>
+                  <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-900">
+                    {t('Taux de capitalisation global (TGA) cible', 'Target capitalization rate (cap rate)')}
+                  </th>
+                  <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-900">
+                    {t('Actions', 'Actions')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {candidates.map((candidate) => (
+                  <tr
+                    key={candidate.contactId}
+                    className="border-t border-primexpert-dark/15 align-top"
+                  >
+                    <td className="px-3 py-3">
+                      <p className="text-[13px] font-black text-slate-900">{candidate.displayName}</p>
+                      {candidate.companyName ? (
+                        <p className="text-[11px] font-semibold text-slate-700">{candidate.companyName}</p>
+                      ) : null}
+                    </td>
+                    <td className="px-3 py-3 text-[12px] font-black text-black">
+                      {candidate.budgetMax != null ? formatCurrency(candidate.budgetMax) : '—'}
+                    </td>
+                    <td className="px-3 py-3 text-[12px] font-black text-black">
+                      {candidate.relevanceScore} %
+                    </td>
+                    <td className="px-3 py-3 text-[12px] font-black text-black">
+                      {candidate.buyerTgaMinimumPercent != null
+                        ? formatPctDisplay(candidate.buyerTgaMinimumPercent)
+                        : '—'}
+                    </td>
+                    <td className="px-3 py-3">
+                      <button
+                        type="button"
+                        onClick={() => handlePrepareEmail(candidate)}
+                        className={cn(
+                          institutionalListingsActionButtonClass,
+                          'px-3 py-1.5 text-[10px]'
+                        )}
+                      >
+                        <Mail className="h-3.5 w-3.5" />
+                        {t('Préparer courriel', 'Prepare email')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </section>
@@ -1095,9 +1190,9 @@ function PaperSection({
   className?: string;
 }) {
   return (
-    <section className={cn('overflow-hidden rounded-xl border-2 border-[#142c6a] bg-white shadow-xl', className)}>
-      <header className="border-b-2 border-[#142c6a]/15 bg-[#f1f5f9] px-5 py-3">
-        <h3 className="text-[12px] font-black uppercase tracking-wider text-[#142c6a]">{title}</h3>
+    <section className={cn(institutionalListingsCardShellClass, className)}>
+      <header className={institutionalListingsCardHeaderClass}>
+        <h3 className={institutionalListingsCardTitleClass}>{title}</h3>
       </header>
       <div className="p-5">{children}</div>
     </section>
@@ -1121,6 +1216,19 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
   const financialMirror = useMemo(
     () => readCalculatedResultsDisplayMirror(financialData),
     [financialData]
+  );
+  const acmBootstrap = useMemo(
+    () =>
+      bootstrapResidenceAcm(
+        mergedResidence,
+        residenceDoc ?? null,
+        (financialData as Record<string, unknown> | null | undefined) ?? null
+      ),
+    [mergedResidence, residenceDoc, financialData]
+  );
+  const financeIncomplete = useMemo(
+    () => hasFinanceIncompleteStatus(loose) || !financialMirror.hasCalculatedResults,
+    [loose, financialMirror.hasCalculatedResults]
   );
   const commissionDraft = useMemo(() => resolveCommissionDraft(loose), [loose]);
   const juridiqueDraft = useMemo(() => readCanonicalJuridique(loose), [loose]);
@@ -1386,13 +1494,35 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
   const pageCount = Math.max(1, Math.ceil(notes.length / notesPerPage));
 
   return (
-    <div className="space-y-5 rounded-2xl border-2 border-[#142c6a] bg-white p-4 text-slate-900 shadow-2xl">
+    <div className={cn(institutionalListingsPanelClass, 'text-slate-900')}>
       <div className="space-y-3">
         <GuardrailBanner status={businessStatus} />
         <BusinessStatusBadge status={businessStatus} />
       </div>
 
       <PaperSection title={t('Bilan exécutif 360°', '360° executive summary')}>
+        {businessStatus === 'a_completer' ? (
+          <div className="mb-4">
+            <ListingsStyleFailSafe
+              title={t('Dossier incomplet', 'Incomplete file')}
+              subtitle={t(
+                'Renseignez le nom commercial, le prix demandé et l’adresse pour activer tous les blocs de synthèse.',
+                'Complete commercial name, asking price and address to unlock all summary blocks.'
+              )}
+            />
+          </div>
+        ) : null}
+        {financeIncomplete && !financialLoading ? (
+          <div className="mb-4">
+            <ListingsStyleFailSafe
+              title={t('Données financières en cours de vérification', 'Financial data under verification')}
+              subtitle={t(
+                'Données financières en cours de vérification',
+                'Financial data under verification'
+              )}
+            />
+          </div>
+        ) : null}
         <div className="w-full">
           <div>
             <p className="block truncate text-[18px] font-black uppercase tracking-wide text-[#142c6a]">{residenceName}</p>
@@ -1454,6 +1584,65 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
             savingCommission={savingResidence}
             t={t}
           />
+
+          <section className={cn(institutionalListingsCardShellClass, 'mt-4')}>
+            <header className={institutionalListingsCardHeaderClass}>
+              <h4 className={institutionalListingsCardTitleClass}>
+                {t(
+                  "Angles d'évaluation — marché, taux de capitalisation global (TGA) régional, potentiel maximum",
+                  'Valuation angles — market, regional capitalization rate (cap rate) performance, maximum potential'
+                )}
+              </h4>
+            </header>
+            <div className="p-4">
+              {financeIncomplete || !acmBootstrap ? (
+                <ListingsStyleFailSafe
+                  title={t('Données financières en cours de vérification', 'Financial data under verification')}
+                  subtitle={t(
+                    'Données financières en cours de vérification',
+                    'Financial data under verification'
+                  )}
+                />
+              ) : (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div className="rounded-xl border-2 border-primexpert-dark/20 bg-white dark:bg-primexpert-cardDark p-4">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-slate-900">
+                      {t('Angle marché', 'Market angle')}
+                    </p>
+                    <p className="mt-1 text-[22px] font-black text-black">
+                      {formatCurrency(acmBootstrap.valuationAngles.marketValue)}
+                    </p>
+                    <p className="mt-2 text-[11px] font-semibold text-slate-700">
+                      {t('Revenu brut effectif (RBE) / Revenu net d\'exploitation (RNE)', 'Effective gross income (EGI) / Net operating income (NOI)')}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border-2 border-primexpert-dark/20 bg-white dark:bg-primexpert-cardDark p-4">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-slate-900">
+                      {t('Performance taux de capitalisation global (TGA) régional', 'Regional capitalization rate (cap rate) performance')}
+                    </p>
+                    <p className="mt-1 text-[22px] font-black text-black">
+                      {formatCurrency(acmBootstrap.valuationAngles.regionalCapRatePerformanceValue)}
+                    </p>
+                    <p className="mt-2 text-[11px] font-semibold text-slate-700">
+                      {t('Taux de capitalisation global (TGA) cible: ', 'Target capitalization rate (cap rate): ')}
+                      <span className="font-black text-black">{formatPctDisplay(acmBootstrap.suggestedCapRatePct)}</span>
+                    </p>
+                  </div>
+                  <div className="rounded-xl border-2 border-primexpert-dark/20 bg-white dark:bg-primexpert-cardDark p-4">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-slate-900">
+                      {t('Potentiel maximum', 'Maximum potential')}
+                    </p>
+                    <p className="mt-1 text-[22px] font-black text-black">
+                      {formatCurrency(acmBootstrap.valuationAngles.maxPotentialValue)}
+                    </p>
+                    <p className="mt-2 text-[11px] font-semibold text-slate-700">
+                      {t('Revenu net d\'exploitation (RNE) optimisé', 'Optimized net operating income (NOI)')}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
 
           <div className="mt-4 space-y-4">
             <div className="rounded-xl border-2 border-[#142c6a]/20 bg-[#f8fafc] p-4">
@@ -1613,6 +1802,38 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
 
       <PaperSection title={t('Notes de suivi', 'Follow-up notes')}>
         <div className="space-y-3">
+          <div className="rounded-xl border-2 border-primexpert-dark/20 bg-white dark:bg-primexpert-cardDark p-3">
+            {profile?.orgId && user?.uid ? (
+              <AudioRecorderButton
+                orgId={profile.orgId}
+                brokerId={user.uid}
+                authorName={profile.displayName || user.displayName || user.email || 'Courtier'}
+                parentKind="residences"
+                parentId={residenceId}
+                locale={language === 'fr' ? 'fr' : 'en'}
+              />
+            ) : (
+              <p className="text-[12px] font-semibold text-slate-700">
+                {t(
+                  "Capture vocale indisponible tant que le profil d'organisation n'est pas chargé.",
+                  'Voice capture is unavailable until organization profile is loaded.'
+                )}
+              </p>
+            )}
+          </div>
+
+          <RaphaelMatchmakerPanel
+            candidates={raphaelMatches}
+            loading={raphaelLoading}
+            askingPrice={askingPrice}
+            residenceLabel={residenceName}
+            residenceId={residenceId}
+            ville={municipalite}
+            rne={raphaelSnapshot.rne}
+            tgaPercent={raphaelTgaPercent}
+            t={t}
+          />
+
           <textarea
             value={newNote}
             onChange={(event) => setNewNote(event.target.value)}
@@ -1622,7 +1843,7 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
           <button
             type="button"
             onClick={() => void addNote()}
-            className="rounded-lg border-2 border-[#142c6a] bg-[#142c6a] px-4 py-2 text-[12px] font-black uppercase tracking-wider text-white"
+            className={institutionalListingsActionButtonClass}
           >
             {t('Ajouter la note', 'Add note')}
           </button>
@@ -1719,18 +1940,6 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
           ) : null}
         </div>
       </PaperSection>
-
-      <RaphaelMatchmakerPanel
-        candidates={raphaelMatches}
-        loading={raphaelLoading}
-        askingPrice={askingPrice}
-        residenceLabel={residenceName}
-        residenceId={residenceId}
-        ville={municipalite}
-        rne={raphaelSnapshot.rne}
-        tgaPercent={raphaelTgaPercent}
-        t={t}
-      />
 
       <ExtractedRawModal
         open={rawModalOpen}

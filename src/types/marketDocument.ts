@@ -13,6 +13,12 @@ export type MarketDocumentParsingStatus =
 
 export type MarketDocumentVirusScanStatus = 'pending' | 'clean' | 'infected';
 
+export interface MarketDocumentOpportunityScoring {
+  score: number;
+  criticalFactors: string[];
+  evaluatedAt: string;
+}
+
 export interface MarketDocumentRecord {
   id: string;
   fileName: string;
@@ -28,6 +34,7 @@ export interface MarketDocumentRecord {
   parsedAtMillis?: number;
   isValidated?: boolean;
   validatedAtMillis?: number;
+  iaOpportunityScoring?: MarketDocumentOpportunityScoring;
   extractedData?: MasterMarketExtraction | Record<string, unknown>;
   /** Pont CRM passif — document issu d'une fiche résidence. */
   bridgeOrigin?: 'residence_passive';

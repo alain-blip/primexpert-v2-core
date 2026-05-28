@@ -131,11 +131,13 @@ export function resolveStoredMessageBody(data: Record<string, unknown>): string 
 
 function mapMessageDoc(id: string, threadId: string, data: Record<string, unknown>): EmailMessage {
   const body = resolveStoredMessageBody(data);
+  const ts = toMillis(data.timestamp ?? data.sentAtMillis ?? data.sentAt);
   return {
     id,
     threadId,
     body,
     sentAtMillis: toMillis(data.sentAtMillis ?? data.sentAt),
+    timestamp: ts,
     direction: data.direction === 'outbound' ? 'outbound' : 'inbound',
     authorName: typeof data.authorName === 'string' ? data.authorName : undefined,
     authorId: typeof data.authorId === 'string' ? data.authorId : undefined,
@@ -287,27 +289,62 @@ export function subscribeThreadMessages(
   brokerId: string,
   threadId: string,
   onUpdate: (messages: EmailMessage[]) => void,
-  onError?: (err: Error) => void
+  onError?: (err: Error) => void,
+  expectedOrgId?: string | null
 ): Unsubscribe {
   if (!brokerId || !threadId) {
     onUpdate([]);
     return () => {};
   }
   const q = query(messagesCol(brokerId, threadId), orderBy('sentAtMillis', 'asc'), limit(500));
-  return onSnapshot(
-    q,
-    (snap) => {
-      const rows = snap.docs.map((d) =>
-        mapMessageDoc(d.id, threadId, d.data() as Record<string, unknown>)
+  let messageUnsub: Unsubscribe | null = null;
+  const threadUnsub = onSnapshot(
+    threadRef(brokerId, threadId),
+    (threadSnap) => {
+      const requiredOrgId = expectedOrgId?.trim();
+      const threadOrgId = threadSnap.exists()
+        ? ((threadSnap.data() as Record<string, unknown>).orgId as string | undefined)
+        : undefined;
+      const orgMismatch =
+        Boolean(requiredOrgId) &&
+        Boolean(threadOrgId) &&
+        String(threadOrgId).trim() !== requiredOrgId;
+
+      if (orgMismatch) {
+        messageUnsub?.();
+        messageUnsub = null;
+        onUpdate([]);
+        return;
+      }
+
+      if (messageUnsub) return;
+      messageUnsub = onSnapshot(
+        q,
+        (snap) => {
+          const rows = snap.docs.map((d) =>
+            mapMessageDoc(d.id, threadId, d.data() as Record<string, unknown>)
+          );
+          onUpdate(rows);
+        },
+        (err) => {
+          console.error('[emailSync] subscribe messages failed', err);
+          onError?.(err);
+          onUpdate([]);
+        }
       );
-      onUpdate(rows);
     },
     (err) => {
-      console.error('[emailSync] subscribe messages failed', err);
-      onError?.(err);
+      console.error('[emailSync] subscribe thread failed', err);
+      onError?.(err as Error);
       onUpdate([]);
     }
   );
+
+  return () => {
+    messageUnsub?.();
+    messageUnsub = null;
+    threadUnsub();
+  };
 }
 
 /** Marque un fil comme lu. */
@@ -365,6 +402,7 @@ export async function sendMessage(
     threadId,
     body: trimmed,
     sentAtMillis,
+    timestamp: sentAtMillis,
     direction: 'outbound' satisfies EmailMessageDirection,
     authorId: brokerId,
     authorName: opts?.authorName ?? 'Moi',

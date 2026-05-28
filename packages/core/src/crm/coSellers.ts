@@ -24,3 +24,25 @@ export function syncRemoveCoSellerId(
   if (!id) return [...(coSellerIds ?? [])];
   return (coSellerIds ?? []).filter((c) => c !== id);
 }
+
+/** Ajoute un identifiant de liaison transactionnelle (tableau d'IDs, sans doublon). */
+export function syncAddLinkedPartyId(
+  linkedIds: readonly string[] | undefined,
+  partnerContactId: string
+): string[] {
+  const id = partnerContactId.trim();
+  if (!id) return [...(linkedIds ?? [])];
+  const set = new Set(linkedIds ?? []);
+  set.add(id);
+  return Array.from(set);
+}
+
+/** Retire un identifiant de liaison transactionnelle (tableau d'IDs). */
+export function syncRemoveLinkedPartyId(
+  linkedIds: readonly string[] | undefined,
+  partnerContactId: string
+): string[] {
+  const id = partnerContactId.trim();
+  if (!id) return [...(linkedIds ?? [])];
+  return (linkedIds ?? []).filter((c) => c !== id);
+}
