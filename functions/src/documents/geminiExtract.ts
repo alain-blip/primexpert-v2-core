@@ -418,6 +418,9 @@ function normalizeEvaluation(raw: Record<string, unknown>, documentTypeLabel: st
   const sujet = coerceSubject(raw.sujet);
   if (sujet) extracted.sujet = sujet;
 
+  if (merged.length > 0) {
+    return enrichExtractedDataWithOperatingBenchmarks(extracted);
+  }
   return extracted;
 }
 
@@ -465,6 +468,13 @@ export function normalizeExtractedData(
     default:
       if (normalizeMasterMarketExtract(raw, fileName)) {
         extracted = normalizeMarketReport(raw, fileName);
+      } else if (
+        (Array.isArray(raw.amounts) && raw.amounts.length > 0) ||
+        (Array.isArray(raw.revenus) && raw.revenus.length > 0) ||
+        (Array.isArray(raw.depenses) && raw.depenses.length > 0) ||
+        (Array.isArray(raw.taxes) && raw.taxes.length > 0)
+      ) {
+        extracted = normalizeFinancial(raw, documentTypeLabel);
       } else {
         extracted = { documentType: documentTypeLabel, amounts: [] };
       }

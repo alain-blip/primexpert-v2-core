@@ -309,15 +309,40 @@ Fiche résidence → Onglet Marché
 
 ---
 
+## G. Session 2026-05-28 — Mobile Phase 2 + CRM Storage
+
+| Jalon | Détail |
+|-------|--------|
+| **CRM Storage** | `migrateLegacyContacts.ts` — 90 contacts → `organizations/…/contacts` ; 87 `QUALIFIED` (Matchmaker) |
+| **Matchmaker** | `raphaelEngine.ts` — panneau pleine largeur sous notes Bilan 360° |
+| **Notes vocales** | `voice_notes/` Storage → `onVoiceNoteUploaded` (us-east1) → `residences/…/notes` + `tasks` |
+| **Hub omnicanal** | `email_threads` enrichi (`channel`, urgence) ; webhooks Twilio/Meta Montréal — **déploiement webhooks en attente** |
+| **VoIP / finance** | Twilio token + saisie manuelle Hub — parallèle, non prod |
+
+```text
+Mobile courtier
+  → AudioRecorderButton (Synthèse 360°)
+  → Storage voice_notes → onVoiceNoteUploaded → note + tâche résidence
+
+SMS entrant (Twilio)
+  → twilioSmsWebhook (Montréal)
+  → ingestOmnichannelMessage → email_threads + tasks org si critique
+  → CommunicationHub (fiche contact Intelligence)
+```
+
+---
+
 ## E. Prochaines priorités (au choix du PO — prochaine session)
 
 | Option | Thème |
 |--------|--------|
 | ~~**A**~~ | ~~Phase 2 Email Center — rattachement message → contact CRM~~ **✅ livré 2026-05-24** |
-| **B** | Module ACM — **base résidence livrée** (`e1a900c`) ; suite : ingestion Centris/Matrix, comparables liés fiche |
+| ~~**E (contacts)**~~ | ~~Maillon 1 contacts `--execute`~~ **✅ Storage 90 contacts 2026-05-28** |
+| **B** | Module ACM — **base résidence livrée** ; suite : ingestion Centris/Matrix, comparables liés fiche |
 | **C** | Coffre-fort WORM OACIQ — règles Firestore verrouillage 6 ans (documents « Final ») |
 | **D** | Mes inscriptions Phase 3 — actions bulk, export pipeline, alertes stagnation |
-| **E** | Migration Firebase — **`--execute` Maillon 1 contacts** (après feu vert PO) ; maillons résidences / finance / Storage |
+| **F** | Déployer webhooks SMS/Meta + secrets Twilio ; activer VoIP prod |
+| **G** | Migration maillons 2+ — résidences, finance, documents Storage |
 
 ### Backlog technique (inchangé)
 
@@ -329,4 +354,4 @@ Fiche résidence → Onglet Marché
 
 ---
 
-*Dernière mise à jour : 2026-05-20 (fin de journée) — **Analyse de mise en marché (ACM)** SSOT (`e1a900c`), Accès Vendeur, Maillon 1 contacts.*
+*Dernière mise à jour : 2026-05-28 — CRM Storage, notes vocales, hub omnicanal, Matchmaker Raphaël.*

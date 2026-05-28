@@ -367,7 +367,7 @@ export async function scanPropertyDocumentNow(
   };
 }
 
-/** Lance l’analyse IA Gemini sur un document (dossier Financier). */
+/** Lance l’analyse IA Gemini sur un document (tout dossier PDF — pipeline universel). */
 export async function parsePropertyDocumentNow(
   propertyId: string,
   documentId: string

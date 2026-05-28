@@ -36,7 +36,12 @@
 │           │   ├── contactTypes.ts    # LCI, buyerCriteria, sellerCriteria, deriveBuyerTier
 │           │   ├── contactUiHelpers.ts
 │           │   ├── coBuyers.ts / coSellers.ts
-│           │   └── legacyContactImport.ts
+│           │   ├── legacyContactImport.ts
+│           │   └── raphaelEngine.ts   # Matchmaker acheteurs QUALIFIED ↔ résidence
+│           ├── ai/
+│           │   └── voiceParser.ts     # Intentions note vocale → note + tâche
+│           ├── telephony/             # VoIP — canUseVoip, types Twilio
+│           ├── scripts/               # migrateLegacyContacts, testVoiceNote, testIncomingSms
 │           ├── diffusion/             # Syndication Web (rpaavendre.com, guardrails OACIQ)
 │           ├── valuation/           # Cap rate, comparables, TGA, ACM résidence
 │           │   ├── residenceAcmBootstrap.ts   # Bootstrap ACM — SSOT calculatedResults + TGA GPS
@@ -53,10 +58,12 @@
 │           ├── sources/             # Sources externes
 │           ├── export/              # Export dataset / politique
 │           ├── tenant/              # Multi-tenant (courtiersResponsables)
-│           ├── mail/                # mailParser + contactMatch (Phase 2 CRM)
-│           ├── audio/               # Transcription
+│           ├── mail/                # mailParser, contactMatch, messageUrgency, types omnicanal
+│           ├── financial/
+│           │   └── mergeExtractedFinancials.ts
+│           ├── audio/               # Transcription (legacy)
 │           └── utils/formatting.ts
-├── functions/                       # Cloud Functions Gen2 (us-central1)
+├── functions/                       # Cloud Functions Gen2 (us-central1 + régions ciblées)
 │   └── src/
 │       ├── index.ts                 # Exports onCall / onRequest
 │       ├── services/
@@ -76,15 +83,17 @@
 │       │   └── sendDocumentSelection.ts  # Envoi sélection documents (callable)
 │       ├── lib/firestore.ts
 │       ├── diffusion/               # Syndication Web — _vendored/ (@primexpert/core/diffusion)
-│       └── nylas/                   # OAuth, webhook (signature Loi 25), sync email_threads
-│           ├── _vendored/mail/      # @primexpert/core/mail (prebuild sync-core-mail.cjs)
-│           ├── syncInboundMessage.ts
-│           ├── hydrateThreadMessages.ts
-│           ├── messageDocId.ts
-│           ├── verifyWebhookSignature.ts
-│           └── mailMessageAnalysis.ts
+│       ├── nylas/                   # OAuth, webhook (signature Loi 25), sync email_threads
+│       │   ├── _vendored/mail/      # @primexpert/core/mail (prebuild sync-core-mail.cjs)
+│       │   ├── syncInboundMessage.ts
+│       │   ├── hydrateThreadMessages.ts
+│       │   └── mailMessageAnalysis.ts
+│       ├── messaging/               # Hub omnicanal — ingestOmnichannelMessage, webhooks SMS/Meta (Montréal)
+│       ├── audio/                   # onVoiceNoteUploaded (us-east1), hydrateVoiceNote, geminiTranscribe
+│       └── telephony/               # getTwilioToken, twilioVoiceResponse ; sync-core-telephony.cjs
 ├── scripts/
-│   ├── migrate-legacy-contacts-to-v2.mjs   # Maillon 1 — contacts Copilote → organizations/…/contacts (dry-run défaut)
+│   ├── migrate-legacy-contacts-to-v2.mjs   # Maillon 1 Firestore — contacts Copilote (dry-run défaut)
+│   # npm run migrate:contacts → packages/core/src/scripts/migrateLegacyContacts.ts (Storage legacy)
 │   ├── deploy-diffusion-jour-4-5.sh
 │   └── output/                      # Rapports dry-run migration (gitignored)
 ├── audit_tenant_uids.js             # Ops — audit tenant Firestore
@@ -114,7 +123,10 @@
     │   ├── dashboard/
     │   │   └── PriorityFollowUpList.tsx
     │   ├── intelligence/
-    │   │   └── IntelligenceChronologie.tsx
+    │   │   ├── IntelligenceChronologie.tsx
+    │   │   └── CommunicationHub.tsx      # Fil omnicanal (SMS, Meta, courriel) par contact
+    │   ├── mobile/
+    │   │   └── AudioRecorderButton.tsx   # Note vocale → Storage voice_notes
     │   ├── Listings.tsx             # Mes inscriptions — pipeline Kanban 4 colonnes + inventaire + DnD + filtres régions
     │   ├── listings/
     │   │   ├── ListingsPipelineKanban.tsx   # @hello-pangea/dnd
@@ -158,7 +170,8 @@
     │   │   │   ├── DocumentDistributionPanel.tsx
     │   │   │   └── DocumentEmailPanel.tsx
     │   │   └── tabs/
-    │   │       ├── Synthese360Tab.tsx      # Bilan exécutif 360°, rétribution, C-73.2, notes
+    │   │       ├── Synthese360Tab.tsx      # Bilan 360°, notes, AudioRecorder, RaphaelMatchmakerPanel
+    │   │       ├── RaphaelMatchmakerPanel.tsx
     │   │       ├── IdentiteImmeubleTab.tsx
     │   │       ├── FinanceHubTab.tsx
     │   │       ├── BilanExecutifTab.tsx
@@ -326,7 +339,11 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Accès Vendeur | `src/components/vendor/`, `ResidenceAccesVendeurButton.tsx`, `vendorPortalService.ts`, `vendorPortalTimeline.ts` |
 | Import contacts Maillon 1 | `legacyContactImport.ts`, `migrate-legacy-contacts-to-v2.mjs` |
 | Parties ↔ contacts | `packages/core/src/residence/partiesImpliquees.ts`, `PartiesIntervenantsSection.tsx` |
-| Chronologie omnicanale | `contactTimeline.ts`, `CommunicationTimelineFeed.tsx`, `communicationTimelineService.ts` |
+| Chronologie omnicanale | `contactTimeline.ts`, `CommunicationTimelineFeed.tsx`, `CommunicationHub.tsx`, `ingestOmnichannelMessage.ts` |
+| Matchmaker Raphaël | `raphaelEngine.ts`, `RaphaelMatchmakerPanel.tsx`, `Synthese360Tab.tsx` |
+| Notes vocales | `voiceParser.ts`, `onVoiceNoteUploaded.ts`, `AudioRecorderButton.tsx`, `voiceNoteService.ts` |
+| VoIP Twilio | `telephony/`, `twilioVoiceService.ts`, `getTwilioToken.ts` |
+| Import CRM Storage | `migrateLegacyContacts.ts` — `npm run migrate:contacts` |
 | Identité — courtier responsable | `ResponsibleBrokerCard.tsx`, champ `courtiersResponsables` |
 | Hub Finance master | `FinanceHubMasterPanel.tsx`, `FinanceHubLockContext.tsx`, rapports PDF |
 
@@ -354,4 +371,4 @@ Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only func
 
 | Analyse de mise en marché (ACM) | `AcmValuationWorkspace`, `ResidenceAcmValuationPanel`, `residenceAcmBootstrap.ts`, `gpsCapRateByRegionClass.ts` |
 
-*Dernière mise à jour : 2026-05-20 (fin de journée) — Accès Vendeur, Maillon 1 contacts, **ACM résidence SSOT** (`e1a900c`).*
+*Dernière mise à jour : 2026-05-28 — CRM Storage, Matchmaker, notes vocales, hub omnicanal, VoIP parallèle.*

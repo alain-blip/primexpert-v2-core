@@ -12,6 +12,7 @@ import type { AssetNiche } from '../types/residence';
 import type { BillingStatus, NurtureEmailSent } from '../types/billing';
 import type { J7SurveyResponse } from '../types/nurture';
 import type { EmailAccount } from '../types/emailAccount';
+import type { UserTelephony } from '@primexpert/core/telephony';
 
 export interface UserProfile {
   uid: string;
@@ -47,6 +48,10 @@ export interface UserProfile {
   lastEmailSent?: NurtureEmailSent | null;
   /** Comptes courriel synchronisés (multi-inbox). */
   emailAccounts?: EmailAccount[];
+  /**
+   * Téléphonie VOIP — numéro Twilio assigné par l'admin (`telephony.twilioNumber` requis pour les appels intégrés).
+   */
+  telephony?: UserTelephony | null;
 }
 
 interface AuthContextType {
@@ -62,6 +67,22 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const PROFILE_READ_TIMEOUT_MS = 8_000;
+
+async function readUserProfileDoc(uid: string) {
+  try {
+    const snap = await Promise.race([
+      getDocFromServer(doc(db, 'users', uid)),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('profile-read-timeout')), PROFILE_READ_TIMEOUT_MS)
+      ),
+    ]);
+    return snap;
+  } catch {
+    return getDoc(doc(db, 'users', uid));
+  }
+}
+
 function isPopupClosedByUser(err: unknown): boolean {
   const code = (err as { code?: string })?.code ?? '';
   return code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request';
@@ -74,12 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [signInPending, setSignInPending] = useState(false);
 
   const loadProfile = async (firebaseUser: FirebaseUser) => {
-    let profileDoc;
-    try {
-      profileDoc = await getDocFromServer(doc(db, 'users', firebaseUser.uid));
-    } catch {
-      profileDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-    }
+    const profileDoc = await readUserProfileDoc(firebaseUser.uid);
     if (profileDoc.exists()) {
       setProfile(profileDoc.data() as UserProfile);
       return;
@@ -118,6 +134,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    const bootTimeout = window.setTimeout(() => {
+      if (active) setLoading(false);
+    }, 15_000);
 
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
@@ -137,6 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       active = false;
+      window.clearTimeout(bootTimeout);
       unsub();
     };
   }, []);

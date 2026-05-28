@@ -211,8 +211,8 @@ export function RevenusDepensesTab({ residence }: RevenusDepensesTabProps) {
             <p className={inst.pageTitle}>{t('Revenus & Dépenses', 'Revenue & expenses')}</p>
             <p className="mt-2 text-sm text-slate-700 leading-relaxed">
               {t(
-                'Aucune grille financial/dataV2 pour cette fiche. Téléversez des états financiers ou complétez la grille sur Copilote.',
-                'No financial/dataV2 grid for this file. Upload statements or complete the grid in Copilote.'
+                'Aucune grille financial/dataV2 pour cette fiche. Utilisez la section « Saisie manuelle » en haut du Hub Finance, téléversez des états financiers (onglet Documents) ou importez depuis Copilote.',
+                'No financial/dataV2 grid for this file. Use the « Manual entry » section at the top of the Finance Hub, upload financial statements (Documents tab), or import from Copilote.'
               )}
             </p>
           </div>

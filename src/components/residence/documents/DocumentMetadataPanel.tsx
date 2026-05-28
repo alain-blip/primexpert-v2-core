@@ -27,6 +27,7 @@ import {
   hasExtractedEvaluationSubject,
   isCertificateExpiredByDate,
   isExtractionCL,
+  hasExtractedFinancialAmounts,
   isExtractionFinancial,
   listExtractedAmounts,
   listExtractedComparables,
@@ -36,10 +37,8 @@ import {
 import {
   injectCertificateLocalisationToResidence,
   injectExtractedDataToResidence,
-  loadFinancialOverwriteAssessment,
 } from '../../../services/extractedDataInjectionService';
-import type { FinancialOverwriteAssessment } from '@primexpert/core/financial';
-import { FinancialOverwriteStopModal } from './FinancialOverwriteStopModal';
+import { useFinancialHubDraft } from '../../../context/FinancialHubDraftContext';
 import { inst } from '../institutional/InstitutionalUi';
 
 function formatSize(bytes: number): string {
@@ -207,8 +206,7 @@ export function DocumentMetadataPanel({
   const [confirming, setConfirming] = useState(false);
   const [injecting, setInjecting] = useState(false);
   const [injectError, setInjectError] = useState<string | null>(null);
-  const [overwriteAssessment, setOverwriteAssessment] =
-    useState<FinancialOverwriteAssessment | null>(null);
+  const { queueIaPrefill } = useFinancialHubDraft();
   const [parseRetrying, setParseRetrying] = useState(false);
   const [parseRetryError, setParseRetryError] = useState<string | null>(null);
   const detectedSilo = useMemo(
@@ -349,33 +347,6 @@ export function DocumentMetadataPanel({
     }
   };
 
-  const runFinancialInjection = async (confirmFinancialOverwrite: boolean) => {
-    if (!document || !propertyId || !brokerId) return;
-    const selected = amountRows.filter((r) => checkedIds.has(r.id));
-    const selectedComparables = comparableRows.filter((r) => checkedComparableIds.has(r.id));
-    setInjecting(true);
-    setInjectError(null);
-    try {
-      await injectExtractedDataToResidence({
-        propertyId,
-        document,
-        selectedRows: selected,
-        selectedComparableRows: selectedComparables,
-        siloType,
-        brokerId,
-        residenceCity,
-        residenceRegionHint,
-        confirmFinancialOverwrite,
-      });
-      setOverwriteAssessment(null);
-      onInjectionComplete?.();
-    } catch (e) {
-      setInjectError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setInjecting(false);
-    }
-  };
-
   const handleInject = async () => {
     if (!document || !propertyId || !brokerId) return;
     const selected = amountRows.filter((r) => checkedIds.has(r.id));
@@ -391,37 +362,42 @@ export function DocumentMetadataPanel({
       return;
     }
 
-    if (
-      selected.length > 0 &&
-      document.extractedData &&
-      isExtractionFinancial(document.extractedData)
-    ) {
-      try {
-        const assessment = await loadFinancialOverwriteAssessment(propertyId, document);
-        if (assessment) {
-          setOverwriteAssessment(assessment);
-          return;
-        }
-      } catch (e) {
-        setInjectError(e instanceof Error ? e.message : String(e));
-        return;
-      }
-    }
+    setInjecting(true);
+    setInjectError(null);
+    try {
+      await injectExtractedDataToResidence({
+        propertyId,
+        document,
+        selectedRows: selected,
+        selectedComparableRows: selectedComparables,
+        siloType,
+        brokerId,
+        residenceCity,
+        residenceRegionHint,
+      });
 
-    await runFinancialInjection(false);
+      if (
+        selected.length > 0 &&
+        document.extractedData &&
+        hasExtractedFinancialAmounts(document.extractedData)
+      ) {
+        queueIaPrefill(
+          document.extractedData,
+          { documentId: document.id, fileName: document.fileName },
+          { selectedRows: selected }
+        );
+      }
+
+      onInjectionComplete?.();
+    } catch (e) {
+      setInjectError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setInjecting(false);
+    }
   };
 
   return (
     <>
-    {overwriteAssessment ? (
-      <FinancialOverwriteStopModal
-        open
-        assessment={overwriteAssessment}
-        busy={injecting}
-        onConfirmOverwrite={() => void runFinancialInjection(true)}
-        onKeepExisting={() => setOverwriteAssessment(null)}
-      />
-    ) : null}
     <aside className="flex h-full w-[300px] shrink-0 flex-col rounded-xl border border-slate-200 bg-white shadow-sm">
       <header className={inst.sectionHeader}>
         <h3 className={inst.sectionTitle}>{labels.title}</h3>

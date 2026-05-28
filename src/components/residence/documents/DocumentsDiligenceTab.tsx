@@ -1,8 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../../../lib/i18n';
 import type { PropertyDocumentRecord } from '../../../types/propertyDocument';
 import type { AssetNiche } from '../../../types/residence';
-import { sortDocumentsByFileName } from '../../../lib/extractedDataInjection';
+import {
+  hasExtractedFinancialAmounts,
+  sortDocumentsByFileName,
+} from '../../../lib/extractedDataInjection';
+import { useFinancialHubDraft } from '../../../context/FinancialHubDraftContext';
 import {
   canDownloadPropertyDocument,
   documentNeedsIaParse,
@@ -72,6 +76,8 @@ export function DocumentsDiligenceTab({
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [emailPanelOpen, setEmailPanelOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const iaPrefillQueuedDocIds = useRef(new Set<string>());
+  const { queueIaPrefill } = useFinancialHubDraft();
 
   const hasPendingScan = useMemo(
     () => allDocs.some((d) => d.virusScanStatus === 'pending'),
@@ -153,6 +159,19 @@ export function DocumentsDiligenceTab({
     );
     return unsub;
   }, [propertyId, t, uploadAllowed]);
+
+  /** Post-analyse IA : pré-remplit le panneau Saisie manuelle (aucune écriture Firestore). */
+  useEffect(() => {
+    if (!propertyId || !uploadAllowed) return;
+    for (const doc of allDocs) {
+      if (doc.parsingStatus !== 'completed') continue;
+      if (iaPrefillQueuedDocIds.current.has(doc.id)) continue;
+      if (!hasExtractedFinancialAmounts(doc.extractedData)) continue;
+
+      iaPrefillQueuedDocIds.current.add(doc.id);
+      queueIaPrefill(doc.extractedData, { documentId: doc.id, fileName: doc.fileName });
+    }
+  }, [allDocs, propertyId, uploadAllowed, queueIaPrefill]);
 
   const tabCounts = useMemo(() => {
     const next = { ...EMPTY_TAB_COUNTS };

@@ -314,12 +314,21 @@ export async function createOrganizationContact(
   const now = new Date().toISOString();
 
   const ownerId =
-    isContactAdmin(ctx) && input.ownerId?.trim() ? input.ownerId.trim() : ctx.uid;
+    isContactAdmin(ctx) && input.ownerId?.trim() && input.ownerId.trim() !== ctx.uid
+      ? input.ownerId.trim()
+      : ctx.uid;
   const silo = defaultContactSiloForRoles(input.relationRoles, input.silo);
 
   const adresse = normalizeContactAddressForWrite(input.adresse);
   const dateNaissance = input.dateNaissance?.trim();
   const occupationProfession = input.occupationProfession?.trim();
+
+  const lciGaps = getContactLciSecondaryGaps({
+    nom: input.nom,
+    adresse: normalizeContactAddressForWrite(input.adresse),
+    dateNaissance: input.dateNaissance?.trim(),
+    occupationProfession: input.occupationProfession?.trim(),
+  });
 
   const payload: Omit<OrganizationContact, 'id'> & { id?: string } = {
     orgId: ctx.orgId,
@@ -348,6 +357,14 @@ export async function createOrganizationContact(
     ...(input.professionalType ? { professionalType: input.professionalType } : {}),
     notes: input.notes?.trim(),
     ...(input.legalVerification ? { legalVerification: input.legalVerification } : {}),
+    ...(lciGaps.length > 0
+      ? {
+          importMeta: {
+            lciIncomplete: true,
+            missingLciFields: lciGaps,
+          },
+        }
+      : {}),
     createdAt: now,
     updatedAt: now,
   };

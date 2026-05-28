@@ -6,7 +6,7 @@ Les champs **serveur** (`billingStatus`, `gracePeriodStartedAt`) ne sont **pas**
 Référence alias / provenance : `packages/core/src/canonical/`.  
 **Identité Phase 4 (lecture + écriture)** : `packages/core/src/identity/` — définitions UI dans `identitySections.ts`, `buildingAuditSections.ts`, `servicesRecognition.ts`, `rentPricingGrid.ts`.  
 **Promesse d'achat (PA)** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`.  
-**Messagerie (Email Center)** : **SSOT unique** `users/{uid}/email_threads` + `messages` — ingestion Nylas, analyse `@primexpert/core/mail` à l’écriture serveur.  
+**Messagerie (Hub omnicanal)** : **SSOT unique** `users/{uid}/email_threads` (alias canonique `communication_threads` dans `@primexpert/core/mail`) + `messages` — Nylas, SMS Twilio, Meta ; analyse `@primexpert/core/mail` à l’écriture serveur.  
 **Diffusion Web** : `packages/core/src/diffusion/` — vendoré dans `functions/src/diffusion/_vendored/` au prebuild.  
 **CRM Contacts** : `packages/core/src/crm/` — fiche `organizations/{orgId}/contacts` ; liaisons `coBuyerIds` / `coSellerIds` ; typologie acheteur `deriveBuyerTier`.
 
@@ -112,6 +112,9 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 | `accessibleSilos` | array | `RPA`, `CPE`, `PLEX` | RBAC silos Radar |
 | `licenseName`, `title`, `agency` | string | optionnel | Profil OACIQ |
 | `firstName`, `lastName`, `phone` | string | optionnel | Profil |
+| **`telephony`** | map | — | VOIP — attribution admin (Phase 0–1) |
+| **`telephony.twilioNumber`** | string | E.164 | Numéro Twilio assigné — **obligatoire** pour `getTwilioToken` |
+| **`telephony.agentCellNumber`** | string | E.164, optionnel | Cellulaire de secours / callback |
 | **`j7Survey`** | map | — | Réponses enquête J+7 |
 | **`emailAccounts`** | array / map | — | Comptes Nylas liés (messagerie) |
 
@@ -152,6 +155,9 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 | `propertyId` | string \| null | Fiche résidence liée (envoi métier ou match analyse) |
 | `propertyLabel` | string \| null | Libellé affiché inscription |
 | **`matchedContactId`** | string \| null | Contact CRM lié explicitement (Phase 2 messagerie) |
+| **`primaryChannel`** | string | `email` \| `sms` \| `facebook` \| `instagram` — canal dominant |
+| **`externalThreadKey`** | string \| null | Clé stable (`crm_{contactId}`, `sms_{digits}`, `meta_{senderId}`) |
+| **`contactPhone`** | string \| null | Téléphone correspondant (SMS) |
 | `createdAtMillis` | number | Création fil (ms) |
 
 #### Sous-document `messages/{messageId}`
@@ -159,7 +165,10 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 | Champ | Type | Description |
 |--------|------|-------------|
 | `threadId` | string | Parent |
+| **`channel`** | string | `email` \| `sms` \| `facebook` \| `instagram` (défaut `email` si absent) |
 | `brokerId` | string | UID courtier (requêtes `collectionGroup`) |
+| **`metadata`** | map | `externalSenderId`, `fromPhone`, `twilioMessageSid`, `metaMessageId`, … |
+| **`isCritical`** | bool | Alerte mobile — urgence détectée (SMS / Meta entrants) |
 | `nylasMessageId` | string | Clé déduplication Nylas |
 | `body` | string | Corps (texte / HTML selon Nylas) |
 | `sentAtMillis` | number | Date envoi (ms) |
@@ -634,7 +643,12 @@ Collection **top-level** (pas sous `organizations/`).
 | Synthèse 360 | `src/components/residence/tabs/Synthese360Tab.tsx` |
 | CRM contacts | `packages/core/src/crm/`, `src/services/contacts.ts`, `src/components/contacts/` |
 | Liaisons coacheteurs/covendeurs | `coBuyers.ts`, `coSellers.ts`, `linkCoBuyer`, `linkCoSeller` |
-| Import contacts legacy | `scripts/migrate-legacy-contacts-to-v2.mjs` |
+| Import contacts legacy (Firestore) | `scripts/migrate-legacy-contacts-to-v2.mjs` |
+| Import contacts legacy (Storage) | `packages/core/src/scripts/migrateLegacyContacts.ts` — `npm run migrate:contacts` |
+| Hub omnicanal — ingestion | `functions/src/messaging/ingestOmnichannelMessage.ts` |
+| Webhooks SMS / Meta | `twilioSmsWebhook`, `metaMessagingWebhook` (`northamerica-northeast1`) |
+| Note vocale — Functions | `onVoiceNoteUploaded` (trigger Storage ; STT Whisper ou Gemini) |
+| Matchmaker Raphaël | `packages/core/src/crm/raphaelEngine.ts` + `Synthese360Tab` |
 | Courtier responsable inscription | `ResponsibleBrokerCard.tsx`, `courtiersResponsables` |
 | Liaison messagerie ↔ CRM | `matchedContactId`, `linkEmailThreadToContact`, `contactMatch.ts`, `MailContactLinkBar.tsx` |
 | Inscriptions Kanban DnD | `ListingsPipelineKanban.tsx`, `pipelineDragRules.ts`, `updateResidencePipelineStatus` |
@@ -715,10 +729,34 @@ Notes courtier (diligence) — écoute temps réel dans l’onglet Synthèse ; t
 | `text` | string | Contenu de la note |
 | `authorId` | string | UID Firebase |
 | `authorName` | string | optionnel — affichage |
+| **`source`** | string | `voice` si note vocale (pipeline IA) ; absent = saisie manuelle |
+| **`voiceUploadId`** | string | ID téléversement Storage (notes vocales) |
+| **`hasActionItem`** | bool | Intention d’action détectée (note vocale) |
 | `createdAt` | Timestamp | Création |
 | `updatedAt` | Timestamp | optionnel — édition |
 
 Lors de l’ajout d’une note : mise à jour document racine `lastCommunicationAt`, `lastCommunicationType: 'note'`, `updatedAt`.
+
+### Sous-collection `residences/{id}/tasks/{taskId}`
+
+Tâches et rendez-vous courtier (Synthèse 360°) ; création auto depuis note vocale si intention détectée.
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `title` | string | Intitulé tâche |
+| `description` | string | Détail |
+| `dueAtMillis` | number | Échéance (ms) |
+| `kind` | string | `task` \| `appointment` |
+| `status` | string | `a_faire` \| `fait` |
+| **`source`** | string | `voice_intent` si créée par pipeline note vocale |
+| **`voiceUploadId`** | string | Lien note vocale source |
+
+### Storage — notes vocales & documents contact
+
+| Chemin Storage | Usage |
+|----------------|--------|
+| `organizations/{orgId}/voice_notes/residences\|contacts/{parentId}/{uploadId}.webm` | Audio mobile → trigger `onVoiceNoteUploaded` |
+| `primexpert/{orgId}/contacts/{contactId}/…` | Pièces CRM (inchangé) |
 
 ---
 
@@ -755,4 +793,4 @@ Lors de l’ajout d’une note : mise à jour document racine `lastCommunication
 
 ---
 
-*Dernière mise à jour : 2026-05-20 (fin de journée) — **Analyse de mise en marché (ACM)** SSOT (`e1a900c`), Big Data, messagerie ↔ CRM, inscriptions Kanban.*
+*Dernière mise à jour : 2026-05-28 — Hub omnicanal (`email_threads` + `channel`), notes vocales, Matchmaker Raphaël, migration CRM Storage, VOIP Twilio (parallèle).*

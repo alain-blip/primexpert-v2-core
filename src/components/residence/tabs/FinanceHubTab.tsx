@@ -15,6 +15,7 @@ import { normalizeFinancialData } from '@primexpert/core/financial';
 import { isFinanceHubSealed } from '@primexpert/core/diffusion';
 import type { Residence } from '../../../services/residences';
 import { FinanceHubMasterPanel } from '../finance/FinanceHubMasterPanel';
+import { FinanceManualEntryPanel } from '../finance/FinanceManualEntryPanel';
 import { BilanExecutifTab } from './BilanExecutifTab';
 import { FinancabiliteTab } from './FinancabiliteTab';
 import { Analyse360FinanceTab } from './Analyse360FinanceTab';
@@ -139,6 +140,8 @@ export function FinanceHubTab({ residence }: FinanceHubTabProps) {
       <FinanceHubMasterPanel onOpenAnalyse360={openAnalyse360} residence={residence} />
 
       {!loading && (
+        <>
+        <FinanceManualEntryPanel residence={residence} defaultExpanded={!hasFinancials} />
         <div className="flex flex-wrap items-center justify-end gap-3 border-b border-[#142c6a]/15 bg-white px-5 py-3">
           <span
             className={cn(
@@ -153,6 +156,7 @@ export function FinanceHubTab({ residence }: FinanceHubTabProps) {
               : t('Aucun dataV2', 'No dataV2')}
           </span>
         </div>
+        </>
       )}
 
       <motion.div

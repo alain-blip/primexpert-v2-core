@@ -12,8 +12,6 @@ import {
 import { db } from '../lib/firebase';
 import {
   assessFinancialDataOverwrite,
-  buildFinancialDataV2PatchFromExtraction,
-  recomputeFinancialCalculatedResults,
   type FinancialDataV2Doc,
   type FinancialOverwriteAssessment,
 } from '@primexpert/core/financial';
@@ -55,8 +53,6 @@ export interface InjectExtractedDataInput {
   brokerId: string;
   residenceCity?: string;
   residenceRegionHint?: string;
-  /** Courtier a confirmé l'écrasement du SSOT financier existant. */
-  confirmFinancialOverwrite?: boolean;
 }
 
 /** Détection conflit avant injection — états financiers vs fiche existante. */
@@ -79,15 +75,6 @@ export interface InjectExtractedDataResult {
   marketEntryIds: string[];
 }
 
-function buildDepensePatch(rows: ExtractedAmountRow[]): Record<string, number> {
-  const patch: Record<string, number> = {};
-  for (const row of rows) {
-    const key = row.expenseKey ?? 'divers';
-    patch[key] = row.value;
-  }
-  return patch;
-}
-
 function resolveComparableRegion(row: ExtractedComparableRow) {
   return resolveRegionAdministrative(row.city, row.region);
 }
@@ -104,15 +91,7 @@ export async function injectExtractedDataToResidence(
     brokerId,
     residenceCity,
     residenceRegionHint,
-    confirmFinancialOverwrite = false,
   } = input;
-
-  if (selectedRows.length > 0 && !confirmFinancialOverwrite) {
-    const assessment = await loadFinancialOverwriteAssessment(propertyId, document);
-    if (assessment) {
-      throw new FinancialOverwriteConfirmationRequired(assessment);
-    }
-  }
 
   const subjectPatch = buildResidenceEvaluationSubjectPatch(document.extractedData);
   const hasSelection =
@@ -131,66 +110,16 @@ export async function injectExtractedDataToResidence(
   const defaultRegion = resolveRegionAdministrative(residenceCity, residenceRegionHint);
   const anneeDonnees = inferAnneeDonnees(document.extractedData, document.fileName);
 
-  const financialRef = doc(db, RESIDENCES, propertyId, 'financial', 'dataV2');
   const residenceRef = doc(db, RESIDENCES, propertyId);
   const docRef = doc(db, RESIDENCES, propertyId, 'documents', document.id);
-
-  const financialSnap = selectedRows.length ? await getDoc(financialRef) : null;
-  const existing = (financialSnap?.exists()
-    ? (financialSnap.data() as FinancialDataV2Doc)
-    : { baseData: { depenses: {} } }) as FinancialDataV2Doc;
-
-  const prevDepenses = (existing.baseData?.depenses ?? {}) as Record<string, number>;
-  const mergedDepenses = { ...prevDepenses, ...buildDepensePatch(selectedRows) };
 
   const marketEntryIds: string[] = [];
   const batch = writeBatch(db);
 
-  if (selectedRows.length) {
-    const extractionPatch = buildFinancialDataV2PatchFromExtraction(
-      (document.extractedData ?? {}) as Record<string, unknown>
-    );
-    const patchBase = extractionPatch?.baseData ?? {};
-    const patchCalc = extractionPatch?.calculatedResults ?? {};
+  /** Hub Finance : plus d’écriture directe — validation via panneau Saisie manuelle. */
+  const financialUpdated = false;
 
-    const mergedBaseData = {
-      ...(existing.baseData ?? {}),
-      ...patchBase,
-      revenusAnnuels:
-        (patchBase.revenusAnnuels as number | undefined) ??
-        existing.baseData?.revenusAnnuels,
-      depenses: {
-        ...((patchBase.depenses as Record<string, number> | undefined) ?? {}),
-        ...mergedDepenses,
-      },
-    };
-
-    const recalculated = recomputeFinancialCalculatedResults(
-      mergedBaseData,
-      {
-        ...(existing.calculatedResults ?? {}),
-        ...patchCalc,
-      }
-    );
-
-    batch.set(
-      financialRef,
-      stripUndefinedDeep({
-        baseData: mergedBaseData,
-        calculatedResults: recalculated ?? {
-          ...(existing.calculatedResults ?? {}),
-          ...patchCalc,
-        },
-        lastUpdated: serverTimestamp(),
-        lastInjection: {
-          source: 'document_ia',
-          documentId: document.id,
-          atMillis: Date.now(),
-        },
-      }),
-      { merge: true }
-    );
-
+  if (selectedRows.length > 0) {
     const validatedAmounts: MarketAnalyticsValidatedAmount[] = selectedRows.map((r) => {
       const row: MarketAnalyticsValidatedAmount = {
         label: r.label,
@@ -262,7 +191,7 @@ export async function injectExtractedDataToResidence(
   await batch.commit();
 
   return {
-    financialUpdated: selectedRows.length > 0,
+    financialUpdated,
     residenceIdentityUpdated: subjectPatch != null,
     marketEntryIds,
   };

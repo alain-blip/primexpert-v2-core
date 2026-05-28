@@ -180,6 +180,14 @@ function finiteNum(v: unknown): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
+function finiteNumFirst(...sources: unknown[]): number | undefined {
+  for (const src of sources) {
+    const n = finiteNum(src);
+    if (n !== undefined) return n;
+  }
+  return undefined;
+}
+
 function pickStringArray(...sources: unknown[]): string[] {
   const out: string[] = [];
   for (const src of sources) {
@@ -319,7 +327,24 @@ export function mapLegacyBuyerCriteria(data: Record<string, unknown>): ContactBu
     (t): t is BuyerTargetResidenceType =>
       (BUYER_TARGET_RESIDENCE_TYPES as readonly string[]).includes(t)
   );
-  const budgetMax = finiteNum(data.budgetMax ?? data.budget);
+  const budgetMax = finiteNumFirst(
+    data.budgetMax,
+    data.budget,
+    data.budgetMaxAchat,
+    data.capaciteAchat,
+    data.montantBudget
+  );
+  const tgaRaw = finiteNumFirst(
+    data.tgaMinimum,
+    data.tgaMin,
+    data.critereTgaMin,
+    data.tgaMinRecherche,
+    data.capRateMin,
+    data.tgaCible,
+    data.capRateTarget
+  );
+  const tgaMinimum =
+    tgaRaw !== undefined ? (tgaRaw > 1 && tgaRaw <= 100 ? tgaRaw / 100 : tgaRaw) : undefined;
   const unitsMin = finiteNum(data.nombreUnitesMin ?? data.unitesMin);
   const unitsMax = finiteNum(data.nombreUnitesMax ?? data.unitesMax);
   const downpaymentAmount = finiteNum(data.miseDeFonds ?? data.downPayment);
@@ -340,11 +365,21 @@ export function mapLegacyBuyerCriteria(data: Record<string, unknown>): ContactBu
   const proofOfFundsFile = docRefFromUrl(data.proofOfFundsUrl);
   const bankLetterFile = docRefFromUrl(data.bankLetterUrl);
   const mortgagePreApprovalFile = docRefFromUrl(data.mortgagePreApprovalUrl);
+  const companyName = pickString(
+    data.entreprise,
+    data.company,
+    data.companyName,
+    data.nomCompagnie,
+    data.societe,
+    data.organisation
+  );
+  const neq = pickString(data.neq, data.reqNumber, data.numeroEntreprise);
 
   const criteria: ContactBuyerCriteria = {
     ...(regions.length ? { regions } : {}),
     ...(residenceTypes.length ? { residenceTypes } : {}),
     ...(budgetMax !== undefined ? { budgetMax } : {}),
+    ...(tgaMinimum !== undefined ? { tgaMinimum } : {}),
     ...(unitsMin !== undefined ? { unitsMin } : {}),
     ...(unitsMax !== undefined ? { unitsMax } : {}),
     ...(downpaymentAmount !== undefined ? { downpaymentAmount } : {}),
@@ -357,9 +392,38 @@ export function mapLegacyBuyerCriteria(data: Record<string, unknown>): ContactBu
     ...(mortgagePreApprovalFile
       ? { mortgagePreApprovalFile, hasMortgagePreApproval: true }
       : {}),
+    ...(companyName
+      ? {
+          corporateMandate: {
+            isMandatory: false,
+            companyName,
+            reqNumber: neq || '',
+          },
+        }
+      : {}),
   };
 
   return Object.keys(criteria).length > 0 ? criteria : undefined;
+}
+
+/** Import bucket Storage — NDA signé → QUALIFIED ; sinon file d'attente HITL (PENDING_NDA). */
+export function resolveStorageImportQualification(
+  data: Record<string, unknown>,
+  relationRoles: ContactRelationRole[]
+): BuyerQualificationStatus | null {
+  if (!relationRoles.includes('buyer')) return null;
+  const criteria = mapLegacyBuyerCriteria(data);
+  const ndaSigned =
+    criteria?.hasNdaSigned === true ||
+    data.ndaSigned === true ||
+    data.hasNDASigned === true ||
+    data.ententeConfidentialiteSignee === true ||
+    data.confidentialitySigned === true ||
+    ['signe', 'signé', 'signed', 'oui', 'true'].includes(
+      pickString(data.statutNda, data.ndaStatus, data.statutNDA).toLowerCase()
+    );
+  if (ndaSigned) return 'QUALIFIED';
+  return 'PENDING_NDA';
 }
 
 function mergeBuyerCriteria(
@@ -609,10 +673,36 @@ export function dedupeKeyForRow(row: LegacyRawContactRow): string | null {
   return null;
 }
 
+export function storageLegacyRowToV2Payload(
+  row: LegacyRawContactRow,
+  ctx: { orgId: string; ownerId: string; visibility: ContactVisibility }
+): LegacyContactV2Payload {
+  const base = legacyRowToV2Payload(row, ctx);
+  const roles = base.relationRoles ?? ['buyer'];
+  const buyerCriteria = mergeBuyerCriteria(base.buyerCriteria, mapLegacyBuyerCriteria(row.data));
+  return {
+    ...base,
+    relationRoles: roles,
+    buyerCriteria,
+    buyerQualificationStatus: resolveStorageImportQualification(row.data, roles),
+    importMeta: {
+      ...base.importMeta,
+      legacySources: [
+        ...base.importMeta.legacySources,
+        { collection: 'contacts', id: `storage:${row.legacyId}` },
+      ],
+    },
+  };
+}
+
 export function dedupeLegacyRows(
   rows: LegacyRawContactRow[],
-  ctx: { orgId: string; ownerId: string; visibility: ContactVisibility }
+  ctx: { orgId: string; ownerId: string; visibility: ContactVisibility },
+  options?: {
+    toPayload?: (row: LegacyRawContactRow) => LegacyContactV2Payload;
+  }
 ): { payloads: LegacyContactV2Payload[]; stats: LegacyContactDedupeStats } {
+  const toPayload = options?.toPayload ?? ((row) => legacyRowToV2Payload(row, ctx));
   const contacts = rows.filter((r) => r.source === 'contacts');
   const vendors = rows.filter((r) => r.source === 'vendors');
 
@@ -647,17 +737,17 @@ export function dedupeLegacyRows(
     const sorted = [...group].sort(
       (a, b) => legacyUpdatedAtMillis(b.data) - legacyUpdatedAtMillis(a.data)
     );
-    let merged = legacyRowToV2Payload(sorted[0], ctx);
+    let merged = toPayload(sorted[0]);
     merged.importMeta.mergedCount = 1;
     for (let i = 1; i < sorted.length; i++) {
-      const next = legacyRowToV2Payload(sorted[i], ctx);
+      const next = toPayload(sorted[i]);
       merged = mergePayloads(merged, next);
     }
     payloads.push(merged);
   }
 
   for (const row of orphanRows) {
-    payloads.push(legacyRowToV2Payload(row, ctx));
+    payloads.push(toPayload(row));
   }
 
   const lciIncompleteCount = payloads.filter((p) => p.importMeta.lciIncomplete).length;
@@ -810,6 +900,25 @@ export interface LegacyContactMigrationPlan {
 /**
  * Plan complet : contacts + vendors fusionnés, puis overlay buyerPipeline.
  */
+/** Plan migration — fichiers Storage `contacts/` (sans buyerPipeline Firestore). */
+export function buildStorageContactsMigrationPlan(
+  rows: LegacyRawContactRow[],
+  ctx: { orgId: string; ownerId: string; visibility: ContactVisibility }
+): LegacyContactMigrationPlan {
+  const { payloads: deduped, stats: baseStats } = dedupeLegacyRows(rows, ctx, {
+    toPayload: (row) => storageLegacyRowToV2Payload(row, ctx),
+  });
+  return {
+    payloads: deduped,
+    stats: {
+      ...baseStats,
+      legacyBuyerPipelineCount: 0,
+      buyerPipelineLinkedCount: 0,
+      buyerPipelineOrphanCount: 0,
+    },
+  };
+}
+
 export function buildLegacyContactMigrationPlan(
   rows: LegacyRawContactRow[],
   pipelineRows: LegacyBuyerPipelineRow[],

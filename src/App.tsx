@@ -69,12 +69,14 @@ const AccesVendeurPage = lazy(() => import('./components/vendor/AccesVendeurPage
 
 function LoadingScreen() {
   return (
-    <div className="h-screen w-screen flex items-center justify-center bg-[#0a0a0a]">
-      <motion.div 
-        animate={{ rotate: 360 }}
-        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-        className="w-12 h-12 border-2 border-[#D4AF37] border-t-transparent rounded-full"
+    <div className="h-screen w-screen flex flex-col items-center justify-center gap-4 bg-[#0a0a0a]">
+      <div
+        className="w-12 h-12 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin"
+        aria-hidden
       />
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+        Chargement…
+      </p>
     </div>
   );
 }
@@ -317,14 +319,6 @@ function ProtectedWorkhub() {
   const { user, loading, profile } = useAuth();
 
   if (loading) {
-    return <LoadingScreen />;
-  }
-
-  /**
-   * Juste après une connexion par popup, `auth.currentUser` peut être défini
-   * une fraction de seconde avant `user` dans le contexte React.
-   */
-  if (!user && auth.currentUser) {
     return <LoadingScreen />;
   }
 

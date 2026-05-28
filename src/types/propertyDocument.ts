@@ -30,6 +30,16 @@ export interface PropertyDocumentExtractedData {
   revenus?: Array<{ label: string; value: number }>;
   depenses?: Array<{ label: string; value: number }>;
   annee?: number;
+  nombreUnites?: number;
+  nbPortes?: number;
+  /** Benchmarks d'exploitation dérivés des montants (Hub Finance). */
+  operatingBenchmarks?: {
+    revenuTotal?: number | null;
+    depensesExploitation?: number | null;
+    revenuNetExploitation?: number | null;
+    depensesParCle?: Record<string, number>;
+    nbPortes?: number | null;
+  };
   /** Immeuble évalué — rapport d'évaluation agréé. */
   sujet?: {
     anneeConstruction?: number;

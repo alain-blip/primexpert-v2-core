@@ -116,30 +116,9 @@ export function resolveSiloFromResidence(
   return assetNicheToDefaultSilo(assetNiche);
 }
 
-/** Lignes affichées sous « Données extraites » — SSOT `extractedData.amounts` uniquement. */
+/** Lignes affichées sous « Données extraites » — amounts, revenus, dépenses, taxes (tous dossiers). */
 export function listExtractedAmounts(data: PropertyDocumentExtractedData): ExtractedAmountRow[] {
-  const rows: ExtractedAmountRow[] = [];
-  let i = 0;
-  for (const a of data.amounts ?? []) {
-    const num =
-      typeof a.value === 'number'
-        ? a.value
-        : typeof a.value === 'string'
-          ? parseFloat(String(a.value).replace(/[^\d.-]/g, ''))
-          : NaN;
-    if (!a.label?.trim() || Number.isNaN(num)) continue;
-    const expenseKey = mapLabelToExpenseKey(a.label);
-    rows.push({
-      id: `amt-${i++}`,
-      label: a.label.trim(),
-      value: num,
-      currency: a.currency ?? 'CAD',
-      expenseKey:
-        expenseKey && (EXPENSE_KEYS as readonly string[]).includes(expenseKey) ? expenseKey : null,
-    });
-  }
-  rows.sort((a, b) => compareLocaleAlpha(a.label, b.label));
-  return rows;
+  return flattenExtractedAmounts(data);
 }
 
 /** Dossier Firestore cible après injection (reclassement — matrice Alain). */
@@ -163,12 +142,31 @@ export function isExtractionCL(data: PropertyDocumentExtractedData): boolean {
   return label.includes('certificat de localisation') || label.includes('localisation récent');
 }
 
+/** Montants financiers exploitables pour le Hub Finance (tout dossier / type de doc). */
+export function hasExtractedFinancialAmounts(data: PropertyDocumentExtractedData): boolean {
+  if (isExtractionCL(data) && !((data.amounts?.length ?? 0) > 0)) {
+    const hasOther =
+      (data.revenus?.length ?? 0) > 0 ||
+      (data.depenses?.length ?? 0) > 0 ||
+      (data.taxes?.length ?? 0) > 0;
+    if (!hasOther) return false;
+  }
+  const ob = data.operatingBenchmarks as Record<string, unknown> | undefined;
+  if (ob?.revenuTotal != null || ob?.depensesExploitation != null) return true;
+  return (
+    (data.amounts?.length ?? 0) > 0 ||
+    (data.revenus?.length ?? 0) > 0 ||
+    (data.depenses?.length ?? 0) > 0 ||
+    (data.taxes?.length ?? 0) > 0
+  );
+}
+
 export function isExtractionFinancial(data: PropertyDocumentExtractedData): boolean {
-  if (isExtractionCL(data)) return false;
+  if (isExtractionCL(data) && !hasExtractedFinancialAmounts(data)) return false;
   return (
     isLegacyStructuredKind(data, 'etats_financiers') ||
     isLegacyStructuredKind(data, 'rapport_evaluation') ||
-    (data.amounts?.length ?? 0) > 0 ||
+    hasExtractedFinancialAmounts(data) ||
     (data.comparables?.length ?? 0) > 0 ||
     hasExtractedEvaluationSubject(data)
   );
