@@ -30,6 +30,9 @@ out/
 !.env.example
 !.env.production
 *.env.local
+# Twilio — provisioning local PO (jamais versionner)
+scripts/twilio-secrets.local.env
+scripts/twilio-secrets*.env
 
 # --- Firebase secrets & cache deploy ---
 .firebase/
