@@ -4,22 +4,47 @@
  */
 
 import { onObjectFinalized } from 'firebase-functions/v2/storage';
-import { defineSecret } from 'firebase-functions/params';
 import { getStorage } from 'firebase-admin/storage';
 import { getDb } from '../lib/firestore';
+import { transcribeAudioWithGeminiVertex } from './geminiTranscribe';
 import { transcribeAudioWithWhisper } from './whisperTranscribe';
 import { analyzeVoiceIntentWithGemini } from './analyzeVoiceIntent';
 import { hydrateVoiceNote } from './hydrateVoiceNote';
 import { montrealReferenceDateIso, parseVoiceNoteStorageObjectPath } from './voiceNotePaths';
 
-const openAiApiKey = defineSecret('OPENAI_API_KEY');
+/** Whisper si OPENAI_API_KEY est lié à la fonction ; sinon Vertex Gemini. */
+async function transcribeVoiceNote(
+  audioBuffer: Buffer,
+  fileName: string,
+  mimeType: string,
+  locale: 'fr' | 'en'
+): Promise<{ text: string; engine: 'whisper' | 'gemini' }> {
+  const openAiKey = process.env.OPENAI_API_KEY?.trim();
+  if (openAiKey) {
+    try {
+      const text = await transcribeAudioWithWhisper(
+        audioBuffer,
+        fileName,
+        mimeType,
+        locale,
+        openAiKey
+      );
+      return { text, engine: 'whisper' };
+    } catch (e) {
+      console.warn('[onVoiceNoteUploaded] Whisper échoué, repli Gemini', e);
+    }
+  }
+  const text = await transcribeAudioWithGeminiVertex(audioBuffer, mimeType, locale, fileName);
+  return { text, engine: 'gemini' };
+}
 
 export const onVoiceNoteUploaded = onObjectFinalized(
   {
     region: 'northamerica-northeast1',
     memory: '512MiB',
     timeoutSeconds: 120,
-    secrets: [openAiApiKey],
+    serviceAccount:
+      '250702494735-compute@developer.gserviceaccount.com',
   },
   async (event) => {
     const object = event.data;
@@ -59,13 +84,13 @@ export const onVoiceNoteUploaded = onObjectFinalized(
       bytes: audioBuffer.length,
     });
 
-    const rawTranscript = await transcribeAudioWithWhisper(
+    const { text: rawTranscript, engine: sttEngine } = await transcribeVoiceNote(
       audioBuffer,
       parsed.fileName,
       mimeType,
-      locale,
-      openAiApiKey.value()
+      locale
     );
+    console.info('[onVoiceNoteUploaded] STT', { engine: sttEngine });
 
     const intent = await analyzeVoiceIntentWithGemini(
       rawTranscript,
