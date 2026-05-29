@@ -20,6 +20,8 @@ export interface AppResponsiveLayoutProps {
   assistantPanel?: React.ReactNode;
   footer?: React.ReactNode;
   bottomNavigation?: React.ReactNode;
+  /** Bannière conformité pleine largeur — au-dessus de la navigation principale. */
+  topComplianceBanner?: React.ReactNode;
   shell?: boolean;
   className?: string;
 }
@@ -35,6 +37,7 @@ function AppResponsiveLayoutChrome({
   assistantPanel,
   footer,
   bottomNavigation,
+  topComplianceBanner,
   shell = true,
   className,
 }: AppResponsiveLayoutProps) {
@@ -61,6 +64,10 @@ function AppResponsiveLayoutChrome({
           aria-hidden
           className="pointer-events-none fixed inset-0 -z-10 app-bg opacity-90"
         />
+
+        {topComplianceBanner ? (
+          <div className="relative z-50 w-full shrink-0">{topComplianceBanner}</div>
+        ) : null}
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {header ? (
@@ -103,6 +110,10 @@ function AppResponsiveLayoutChrome({
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10 app-bg opacity-90"
       />
+
+      {topComplianceBanner ? (
+        <div className="relative z-50 w-full shrink-0">{topComplianceBanner}</div>
+      ) : null}
 
       {navigation ? (
         <aside
