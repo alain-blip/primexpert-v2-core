@@ -596,6 +596,42 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 ---
 
+## Optimisation du moteur d'analyse comparative de marché (ACM) et traitement Big Data (V3.2 — 2026-05-29)
+
+**Statut :** **[VALIDÉ PO — commit `feature/v2.8-market-stats-optimization` — build exit 0]**
+
+| Élément | Détail |
+|---------|--------|
+| **Règle #0** | Enrichissement SSOT `@primexpert/core/market/centrisComparableCapRate.ts` — aucun moteur parallèle. |
+| **Calcul TGA réel** | `calculateComparableCapRate()` — taux de capitalisation global (TGA) = revenu net d’exploitation (RNE) ÷ prix vendu × 100. |
+| **Sources Big Data** | Fusion `listings_cache` (Centris Matrix, `source: centris_odata`) + `market_analytics_raw` filtrés par `regionAdministrative` et classe RPA. |
+| **Service client** | `marketAnalyticsService.ts` + `useTerritorialCompetition` — abonnement temps réel, tri par récence. |
+| **Workspace ACM** | `AcmValuationWorkspace.tsx` — taux de capitalisation global (TGA) médian dynamique ; ajustement qualitatif courtier (ex. +0,25 % vétusté) recalcule la valorisation SSOT instantanément. |
+| **UI Marché** | `TerritorialCentrisCompetitionSection` — sous-onglet **Concurrence territoriale** (`MarcheConcurrenceTab`). |
+| **Sécurité** | `firestore.rules` — lecture `listings_cache` pour utilisateurs authentifiés ; écriture serveur uniquement. |
+| **Nettoyage** | Suppression des doublons `useTerritorialCentrisComparables` / `TerritorialCompetitionSection`. |
+
+**HITL :** le courtier conserve la main sur le taux de capitalisation global (TGA) cible (saisie manuelle, réinitialisation au médian territorial) ; les comparables alimentent la diligence raisonnable, sans persistance automatique du prix suggéré.
+
+---
+
+## Intégration du protocole de gestion des inscriptions hors marché (Off-Market) (2026-05-29)
+
+**Statut :** **[EN REVUE HITL — sans commit]**
+
+| Élément | Détail |
+|---------|--------|
+| **Schéma** | `listingSource: 'centris' \| 'off_market'` sur `residences` (inscriptions CRM) ; défaut `'centris'` pour l'historique. |
+| **Création** | `CreateInscriptionForm` — sélecteur Centris vs hors marché sur « Nouv. Inscription ». |
+| **Statut UI** | `InscriptionStatusDropdown` — édition libre si Off-Market ; Centris verrouillé MLS avec override manuel (`isManuallyOverridden`). |
+| **PDF** | Filigrane « DOCUMENT CONFIDENTIEL — DIFFUSION RESTREINTE » sur rapports Hub Finance, ACM présentation et ACM vendeur. |
+| **Sync** | `centrisListingsSyncNightly` — ignore catégoriquement `listingSource === 'off_market'`. |
+| **Règle #0** | SSOT `@primexpert/core/residence/listingSource.ts` + `inscriptionBrokerageStatus.ts`. |
+
+**HITL :** les fiches hors marché demeurent sous la responsabilité du courtier titulaire de permis ; la mention confidentielle protège le secret commercial du client vendeur.
+
+---
+
 ## Session 2026-05-29 — Portail vendeur autonome, briefing matin, radar off-market, SPA (`c407c60` → `f9a4f23` → `194a5ea`)
 
 ### Accès Vendeur V2.8 — portail client autonome

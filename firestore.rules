@@ -378,6 +378,12 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Cache Centris Matrix — lecture seule pour comparables territoriaux ACM.
+    match /listings_cache/{entryId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if false;
+    }
+
     // Big Data marché — entrées strictement anonymisées (pas d'adresse ni de fiche résidence).
     match /market_analytics_raw/{entryId} {
       allow create: if isSignedIn() &&
