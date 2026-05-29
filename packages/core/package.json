@@ -19,7 +19,8 @@
     "./market": "./src/market/index.ts",
     "./intelligence": "./src/intelligence/index.ts",
     "./diffusion": "./src/diffusion/index.ts",
-    "./documents": "./src/documents/index.ts"
+    "./documents": "./src/documents/index.ts",
+    "./security": "./src/security/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

@@ -101,6 +101,7 @@ Données : sous-collection **`residences/{id}/financial/dataV2`** (migration dep
 - API GCP : `aiplatform.googleapis.com` + IAM `roles/aiplatform.user` sur le compte compute.
 - Client : `functions/src/services/vertexClient.ts` ; erreurs typées (`VERTEX_API_DISABLED`, `VERTEX_MODEL_NOT_FOUND`, …).
 - Réconciliation UI : relance automatique des docs `pending` ou `failed` à l’ouverture de l’onglet.
+- **V3.1 (2026-05-29)** : verrouillage légal OACIQ client — `LegalVaultWormPanel`, `LegalVaultWormLockModal`, `legalVaultService.ts` ; badges Brouillon / Sécurisé WORM·OACIQ ; mutation `organizations/{orgId}/legal_vault/` (règles V3.0).
 
 ### Phase 4c — Onglets fiche résidence (Synthèse, Déclaration, Marché, Promesse)
 
@@ -577,6 +578,24 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 ---
 
+## Vérification de conformité de l'infrastructure de données (2026-05-29)
+
+**Statut :** **[VALIDÉ PO — commit `feature/v2.8-market-stats-optimization` — 2026-05-29]**
+
+| Élément | Détail |
+|---------|--------|
+| **Décision technique** | Refonte pipeline `marketDocumentParseIA` + `injectMarketMacroStats` pour déploiement multi-tenant grand public (V2.8). |
+| **Découpage sémantique local** | `packages/core/src/market/marketPdfSemanticAnchors.ts` + `functions/src/documents/marketPdfSlice.ts` — extraction pages à ancrages québécois (taux de capitalisation (TGA), 75 ans et plus, MSSS, SCHL, indice de liquidité, SP/LP) avant Vertex. |
+| **Cache déterministe** | Empreinte `contentHashMd5` sur `market_documents` ; clone `extractedData` si hash déjà parsé — zéro appel IA sur doublon binaire. |
+| **Modèle IA** | `gemini-2.5-flash` conservé ; `responseMimeType: application/json` ; variables canoniques `tgaPct`, `population75_plus`, `monthsOfInventory`, `sellingPriceListingPriceRatio`. |
+| **Multi-tenant** | `orgId` propagé (upload client, injection HITL, règles Firestore `market_documents` / `market_macro_stats`). |
+| **Ressources Cloud Function** | `marketDocumentParseIA` : **512 MiB** / **60 s** (était 2 GiB / 540 s). |
+| **Règle #0** | Enrichissement SSOT core ; architecture HITL préservée (injection courtier avant persistance macro). |
+
+**HITL :** le courtier valide toujours les extractions avant injection ; le cache MD5 ne contourne pas la revue humaine sur les nouveaux dépôts identiques.
+
+---
+
 ## Session 2026-05-29 — Portail vendeur autonome, briefing matin, radar off-market, SPA (`c407c60` → `f9a4f23` → `194a5ea`)
 
 ### Accès Vendeur V2.8 — portail client autonome
@@ -657,14 +676,43 @@ Statut officiel consolidé (conseil d'administration) :
 | Analyse de mise en marché (ACM) & benchmark taux de capitalisation (TGA) | **[OPÉRATIONNEL — PRODUCTION LIVE]** |
 | Hub omnicanal (SMS / Nylas) | **[OPÉRATIONNEL — PRODUCTION LIVE]** |
 | Clauses négociation Gemini | **[CÂBLÉ — MOTEUR DYNAMIQUE ACTIF]** |
-| Coffre-fort WORM & sécurité | **[CÂBLÉ — INTÉGRATION CORE CERTIFIÉE]** |
+| Coffre-fort WORM & sécurité | **[OPÉRATIONNEL — PRODUCTION LIVE]** |
 
 **URL production :** https://primexpert-app-v2.web.app  
 **Modules V2.8 complémentaires (hors registre exécutif) :** portail vendeur autonome (85 pièces), briefing matin, radar off-market — voir section session 2026-05-29 ci-dessus.
 
 ---
 
-## Fin de cycle technique V2.9 — projet configuré et stable (mai 2026)
+## Registre global des architectures sécurisées — mai 2026
+
+Statut officiel post-déploiement V3.0 :
+
+| Élément | Statut certifié |
+|---------|-----------------|
+| **URL officielle** | https://primexpert-app-v2.web.app |
+| **Statut Firestore** | Règles WORM actives & verrouillées en prod |
+| **Statut Cloud Function** | `onVaultDocumentWrite` — **[PROD LIVE — MONTRÉAL]** |
+| **Registre exécutif** | 5 piliers d'élite majeurs certifiés et actifs |
+
+---
+
+## Mandat infrastructure V3.0 — Firestore WORM & journal Montréal (2026-05-29)
+
+| Livrable | Emplacement | Statut |
+|----------|-------------|--------|
+| Règles WORM `legal_vault` | `firestore.rules` | **DEPLOYE — prod active** |
+| Journal `compliance_logs` | Sous-collection append-only (Admin SDK) | **DEPLOYE** |
+| Trigger journalisation | `onVaultDocumentWrite` — `northamerica-northeast1` | **PROD LIVE — MONTRÉAL** |
+| Writer SHA-256 chaîné | `legalComplianceLogWriter.ts` | **ACTIF** |
+| Prebuild | `sync-core-security.cjs` | **ACTIF** |
+
+**Déploiement exécuté (2026-05-29) :**
+```bash
+firebase deploy --only firestore:rules                                    # ✔
+FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions:onVaultDocumentWrite  # ✔ create northamerica-northeast1
+```
+
+---
 
 Clôture officielle du cycle de développement V2.9 :
 
@@ -672,12 +720,51 @@ Clôture officielle du cycle de développement V2.9 :
 |---------|--------|
 | **URL officielle** | https://primexpert-app-v2.web.app |
 | **Monorepo** | **Archivé, validé, zéro dérive** — `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2` |
-| **Mode sécurisation** | **Cockpit technique en attente d'ordres opérationnels** |
+| **Mode sécurisation** | **Architectures sécurisées V3.0 — PROD LIVE** |
 
-**Interprétation ops :** aucun déploiement ni refactor non mandaté ; prochaines actions = ordres PO explicites (ex. branchement Firestore Vault WORM, `firestore.rules`, Functions Montréal journal de conformité).
+**Interprétation ops :** WORM Firestore + `onVaultDocumentWrite` Montréal déployés ; raccordement UI client V3.1 codé (déploiement hosting à exécuter).
 
 **Repo :** https://github.com/alain-blip/primexpert-v2-core.git — branche `main`.
 
 ---
 
-*Journal mis à jour : 2026-05-29 — Fin de cycle V2.9. Registre global mai 2026 certifié. Cockpit en attente d'ordres opérationnels.*
+## 2026-05-29 — STATUT DE PRODUCTION ET RACCORDEMENT UI V3.1
+
+**Statut sprint :** **[CODÉ — PRÊT DÉPLOIEMENT HOSTING]**
+
+| Livrable | Emplacement | Statut |
+|----------|-------------|--------|
+| Orchestration onglet Documents | `DocumentsDiligenceTab.tsx` | **BRANCHÉ** — abonnement `legal_vault`, props org/licence/prix |
+| Indicateur + action WORM | `LegalVaultWormPanel.tsx` | **ACTIF** — badge Brouillon / Sécurisé WORM·OACIQ, bouton verrouillage |
+| Modale confirmation LCI | `LegalVaultWormLockModal.tsx` | **ACTIF** — validation nom au permis, type de permis, prix au contrat |
+| Service mutation atomique | `legalVaultService.ts` | **ACTIF** — `ensureLegalVaultDraft` + `lockLegalVaultDocument`, IP client, gestion 403 |
+| Liste documents (badges) | `DocumentUploadPanel.tsx` | **ÉTENDU** — badges WORM compacts par ligne |
+| Panneau métadonnées | `DocumentMetadataPanel.tsx` | **ÉTENDU** — section « Verrouillage légal OACIQ » |
+| Mapping types | `legalVaultDocumentMapping.ts` | **ACTIF** — ID déterministe `{propertyId}__{documentId}` |
+
+**Mutation Firestore (verrouillage définitif) :**
+```typescript
+{
+  isFinalWormLocked: true,
+  lockedAtMillis: Date.now(),
+  lastWriteClientIp: "<IP résolue ou 0.0.0.0>"
+}
+```
+Chemin : `organizations/{orgId}/legal_vault/{documentId}` — règles V3.0 inchangées (transition `false → true` uniquement).
+
+**Validation UX :**
+- **Mobile-First** : modale bottom sheet (`items-end` → `sm:items-center`), boutons pleine largeur mobile, badges `flex-wrap`, layout Documents empilé (`flex-col lg:flex-row`).
+- **Laptop Cockpit** : panneau métadonnées `lg:w-[300px]`, trois colonnes Documents / liste / détail.
+- **Purge lexicale** : **0 occurrence** du mot banni « audit » dans l'UI V3.1 (libellés, modale, infobulles) — conformité OACIQ / vérification / verrouillage légal uniquement.
+
+**Correctif build (alias Vite) :** `@primexpert/core/security` ajouté à `vite.config.ts` + `tsconfig.json` (résolution Rollup).
+
+**Déploiement hosting recommandé :**
+```bash
+npm run build && firebase deploy --only hosting
+```
+Cible : https://primexpert-app-v2.web.app
+
+---
+
+*Journal mis à jour : 2026-05-29 — Sprint V3.1 consigné (raccordement UI WORM/OACIQ). Hosting en attente de déploiement.*

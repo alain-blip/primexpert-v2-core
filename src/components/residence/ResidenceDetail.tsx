@@ -243,6 +243,7 @@ function ResidenceDetailContent({
             residenceRegionHint={residence.city}
             assetNiche={residence.assetNiche}
             propertyType={residence.propertyType}
+            contractPrice={residence.price}
           />
         );
       case 'promesse':
