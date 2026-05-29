@@ -98,6 +98,26 @@ export const validateVendorPortalToken = onCall({ invoker: 'public' }, async (re
     [contact.firstName, contact.lastName].filter((x) => typeof x === 'string' && x.trim()).join(' ').trim() ||
     String(contact.company ?? contact.displayName ?? 'Vendeur');
 
+  let brokerDisplayName = '';
+  let brokerEmail = '';
+  let brokerPhone = '';
+  if (brokerId) {
+    const brokerSnap = await db.collection('users').doc(brokerId).get();
+    if (brokerSnap.exists) {
+      const broker = brokerSnap.data() as Record<string, unknown>;
+      const firstLast = [broker.firstName, broker.lastName]
+        .filter((x) => typeof x === 'string' && x.trim())
+        .join(' ')
+        .trim();
+      brokerDisplayName =
+        (typeof broker.displayName === 'string' && broker.displayName.trim()) ||
+        firstLast ||
+        'Courtier Primexpert';
+      brokerEmail = typeof broker.email === 'string' ? broker.email.trim() : '';
+      brokerPhone = typeof broker.phone === 'string' ? broker.phone.trim() : '';
+    }
+  }
+
   const vendorUid = `vendor_portal_${contactId}`;
   const customToken = await getAdminAuth().createCustomToken(vendorUid, {
     vendorPortal: true,
@@ -113,6 +133,9 @@ export const validateVendorPortalToken = onCall({ invoker: 'public' }, async (re
     contactId,
     residenceId,
     brokerId,
+    brokerDisplayName,
+    brokerEmail,
+    brokerPhone,
     contactName,
     propertyLabel: buildPropertyLabel(residence, residenceId),
     mode: 'client' as const,
@@ -175,6 +198,74 @@ export const notifyVendorPortalDocumentUpload = onCall({ invoker: 'public' }, as
       },
       { merge: true }
     );
+
+  return { ok: true };
+});
+
+async function assertVendorPortalResidenceAccess(
+  request: { auth?: { uid?: string; token?: Record<string, unknown> } },
+  residenceId: string,
+  token?: string
+): Promise<{ contactId: string; orgId: string }> {
+  const claims = request.auth?.token;
+  if (claims?.vendorPortal === true) {
+    if (String(claims.residenceId ?? '') !== residenceId) {
+      throw new HttpsError('permission-denied', 'Résidence non autorisée.');
+    }
+    return {
+      contactId: String(claims.contactId ?? ''),
+      orgId: String(claims.orgId ?? ''),
+    };
+  }
+
+  if (token) {
+    const inviteSnap = await getDb().collection('vendor_portal_invites').doc(token).get();
+    if (!inviteSnap.exists) throw new HttpsError('permission-denied', 'Jeton invalide.');
+    const invite = inviteSnap.data() as Record<string, unknown>;
+    if (String(invite.residenceId ?? '') !== residenceId) {
+      throw new HttpsError('permission-denied', 'Jeton non autorisé pour ce dossier.');
+    }
+    if (invite.active !== true || Number(invite.expiresAtMillis) < Date.now()) {
+      throw new HttpsError('failed-precondition', 'Invitation expirée.');
+    }
+    return {
+      contactId: String(invite.contactId ?? ''),
+      orgId: String(invite.orgId ?? ''),
+    };
+  }
+
+  throw new HttpsError('unauthenticated', 'Session vendeur requise.');
+}
+
+/** Vendeur — patch résidence (déclaration, identité) via jeton ou custom token. */
+export const patchVendorPortalResidence = onCall({ invoker: 'public' }, async (request) => {
+  const residenceId = String(request.data?.residenceId ?? '').trim();
+  const token = String(request.data?.token ?? '').trim();
+  const patch = request.data?.patch;
+
+  if (!residenceId) {
+    throw new HttpsError('invalid-argument', 'residenceId requis.');
+  }
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) {
+    throw new HttpsError('invalid-argument', 'patch objet requis.');
+  }
+
+  await assertVendorPortalResidenceAccess(request, residenceId, token || undefined);
+
+  const db = getDb();
+  const residenceRef = db.collection('residences').doc(residenceId);
+  const snap = await residenceRef.get();
+  if (!snap.exists) {
+    throw new HttpsError('not-found', 'Résidence introuvable.');
+  }
+
+  await residenceRef.set(
+    {
+      ...(patch as Record<string, unknown>),
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
 
   return { ok: true };
 });

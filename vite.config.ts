@@ -57,9 +57,15 @@ export default defineConfig(({mode}) => {
       // et cacheables. Combine aux React.lazy() cote App, le payload
       // initial passe largement sous les 600 KB.
       target: 'es2020',
+      /** Page publique statique : ne pas précharger vendor (2+ Mo) au paint mobile. */
+      modulePreload: false,
       cssCodeSplit: true,
       chunkSizeWarningLimit: 700,
       rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          'bootstrap-spa': path.resolve(__dirname, 'src/bootstrap-spa.tsx'),
+        },
         output: {
           manualChunks(id: string) {
             if (!id.includes('node_modules')) {

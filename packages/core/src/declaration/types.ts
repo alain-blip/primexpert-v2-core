@@ -44,8 +44,14 @@ export interface DeclarationAnswer {
   notes?: string;
 }
 
+/** Statut courtier — alerte synthèse 360° après soumission vendeur portail. */
+export type DeclarationReviewStatus = 'A_REVISER';
+
 export interface DeclarationVendeurDoc {
   status: DeclarationVendeurStatus;
+  /** Soumission portail vendeur pour révision courtier. */
+  submittedForReviewAt?: string;
+  submittedBy?: string;
   certifiedAt?: string;
   certifiedBy?: string;
   /** Code de sécurité unique (scellé à la certification). */

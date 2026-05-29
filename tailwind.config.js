@@ -7,14 +7,21 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      screens: {
+        /** SPA V2.8 — aligné useResponsiveLayoutMode */
+        mobile: { max: '767px' },
+        tablet: { min: '768px', max: '1199px' },
+        laptop: { min: '1200px' },
+      },
       colors: {
         primexpert: {
-          blue: '#2656b7', // Fond principal — cockpit / panneaux institutionnels
-          blueDeep: '#001b42', // Fond principal en mode foncé (bleu nuit réglementaire PO)
-          dark: '#142c6a', // Barre latérale Navigateur, cadres, en-têtes, encre
-          light: '#f1f5f9', // Fonds de cartes et zones d'encre brute
-          cardDark: '#daeefa', // Fond carte / tableau en mode foncé (bleu pâle réglementaire PO)
-          gold: '#D4AF37', // Rappel promesse d'achat acceptée
+          cockpit: '#0B0F19',
+          blue: '#2656b7',
+          blueDeep: '#001b42',
+          dark: '#142c6a',
+          light: '#f1f5f9',
+          cardDark: '#daeefa',
+          gold: '#D4AF37',
         },
       },
     },

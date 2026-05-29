@@ -76,3 +76,6 @@ export const institutionalListingsSecondaryDangerButtonClass =
 
 export const institutionalListingsFailSafeClass =
   'rounded-xl border-2 border-dashed border-primexpert-dark/35 bg-primexpert-light dark:bg-primexpert-cardDark px-4 py-4';
+
+/** Accès Vendeur — largeur alignée onglets Finances / Identité. */
+export const vendorPortalLayoutShellClass = 'mx-auto w-full max-w-5xl px-4';

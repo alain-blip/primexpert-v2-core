@@ -60,3 +60,25 @@ export function buildDeclarationCertifyPatch(
     },
   };
 }
+
+/** Soumission portail vendeur — alerte courtier (declarationStatus A_REVISER). */
+export function buildDeclarationSubmitForReviewPatch(
+  doc: Record<string, unknown>,
+  submittedBy: string
+): Record<string, unknown> {
+  const current = normalizeDeclarationVendeur(doc);
+  if (isDeclarationReadOnlyStatus(current.status)) {
+    throw new Error(
+      current.status === 'uploaded' ? 'DECLARATION_UPLOADED' : 'DECLARATION_LOCKED'
+    );
+  }
+  return {
+    declarationStatus: 'A_REVISER',
+    declarationVendeur: {
+      ...current,
+      status: 'draft',
+      submittedForReviewAt: new Date().toISOString(),
+      submittedBy,
+    },
+  };
+}

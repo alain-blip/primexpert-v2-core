@@ -27,6 +27,8 @@ import {
   type ResidenceStatus,
 } from '../config/pipelineStages';
 import type { MandateCompletenessResult } from '@primexpert/core/residence';
+import type { Residence } from './residences';
+import type { ResidenceStatus } from '../config/pipelineStages';
 
 export interface VendorPortalViewModel {
   contact: OrganizationContact;
@@ -86,6 +88,36 @@ function buildViewModel(
     hasActivePromesse,
     brokerId,
     residenceDoc: residenceData,
+  };
+}
+
+/** Adaptateur minimal Residence pour réutiliser les onglets fiche (Identité, Finance). */
+export function vendorPortalResidenceAdapter(
+  vm: Pick<VendorPortalViewModel, 'residenceId' | 'residenceDoc' | 'pipelineStatus' | 'brokerId'>
+): Residence {
+  const doc = vm.residenceDoc;
+  const priceRaw = doc.price ?? doc.prixDemande ?? doc.askingPrice ?? 0;
+  const price = typeof priceRaw === 'number' ? priceRaw : Number(priceRaw) || 0;
+  return {
+    id: vm.residenceId,
+    address: typeof doc.address === 'string' ? doc.address : '',
+    city: typeof doc.city === 'string' ? doc.city : '',
+    price,
+    status: vm.pipelineStatus as ResidenceStatus,
+    date: '',
+    courtiersResponsables: vm.brokerId,
+    residenceName:
+      (typeof doc.name === 'string' && doc.name) ||
+      (typeof doc.residenceName === 'string' && doc.residenceName) ||
+      undefined,
+    nombreUnitesTotal:
+      typeof doc.nombreUnitesTotal === 'number' ? doc.nombreUnitesTotal : undefined,
+    unitesRPA: typeof doc.unitesRPA === 'number' ? doc.unitesRPA : undefined,
+    region: typeof doc.region === 'string' ? doc.region : undefined,
+    residenceType:
+      (typeof doc.residenceType === 'string' && doc.residenceType) ||
+      (typeof doc.type === 'string' && doc.type) ||
+      undefined,
   };
 }
 

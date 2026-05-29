@@ -526,9 +526,33 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 - **2026-05-28 (session locale)** : démarrage du serveur de développement `npm run dev` (Vite `--port=3000 --host=0.0.0.0`) ; URLs actives `http://localhost:3000/` et réseau local.
 - **2026-05-28 — GO-LIVE V2.5 STABLE (`primexpert-app-v2`)** : conseil d’administration **[GO]** après inspection manuelle ACM/HITL réussie. **Livré en production :** Cœur CRM spécialisé RPA (typologies, relations atomiques, garde-fous pipeline) ; moteur ACM connecté aux médianes territoriales (`getGlobalFinancialBenchmark`, suggestions IA en brouillon `manualVerifications`) ; Hub omnicanal V1 (SSOT `email_threads/messages`, canal `sms` / `voice_call`, filtre `orgId`, briefing matin enrichi, adjointes IA HITL). **Déploiement exécuté :** `functions` — `getGlobalFinancialBenchmark` (us-central1), `onVoiceNoteUploaded` (us-east1) ; `hosting` — https://primexpert-app-v2.web.app . **Note ops :** `twilioSmsWebhook` redéployé (`northamerica-northeast1`, ACTIVE) — signature Twilio requise en prod ; correctif init Admin `getDb()` avant `getStorage()` sur `onVoiceNoteUploaded` (déploiement réussi).
 - **2026-05-28 — CLÔTURE SPRINT MAJOR (Conseil d’administration)** : statut plateforme **[PRODUCTION IMMUABLE LIVE]** — URL certifiée https://primexpert-app-v2.web.app . **Périmètre clos :** (1) Cœur CRM spécialisé RPA ; (2) Workspace analyse comparative de marché (ACM) + médianes territoriales ; (3) Hub omnicanal unifié (SMS Twilio, courriels, notes vocales → `email_threads/messages`, canaux `sms` / `voice_call`) ; (4) Dictionnaire de distribution Centris RESO — [`CENTRIS_RESO_MAPPING_DRAFT.md`](./CENTRIS_RESO_MAPPING_DRAFT.md) (OData v4, `listings_cache`, déduplication `ListingId` → `marketDeduplication.ts`, feuille de route https://docs.datadistributionqc.centris.ca/fr/ ). **Hors périmètre sprint (été 2026) :** connecteur OData Centris exécutable ; promotion automatique `listings_cache` → `residences`. **Suivi ops notes vocales :** repli STT Vertex (`gemini-2.0-flash-001` 404) — lier `OPENAI_API_KEY` (Whisper) ou aligner modèle sur `gemini-2.5-flash` pour certification bout-en-bout message `voice_call`.
+- **2026-05-28 — STATUT OFFICIEL SUITE V2.6** (conseil d’administration) :
+
+| Volet | Statut certifié |
+|-------|-----------------|
+| Cœur CRM spécialisé RPA | **[OPÉRATIONNEL — LIVE]** |
+| Workspace d'évaluation ACM | **[OPÉRATIONNEL — LIVE]** |
+| Hub omnicanal (SMS, notes vocales, courriels) | **[OPÉRATIONNEL — LIVE]** |
+| Copilote de négociation & clauses OACIQ / LOI | **[CÂBLÉ — PROD ACTIVE]** |
+
+**Copilote V2.6 — SSOT :** `packages/core/src/ai/oaciqSpecsTypes.ts`, `negotiationEngine.ts`, `negotiationPrompts.ts` ; LLM via `packages/core/src/services/gemini.ts` (navigateur : `src/services/gemini.ts` + `VITE_GEMINI_API_KEY`) ; Vertex : `functions/src/ai/negotiationWithVertex.ts`. HITL : `pending_human_review` sur `manualVerifications`. Modes : `OACIQ_FORM`, `CUSTOM_CONTRACT`, `LETTER_OF_INTENT`.
+
+- **2026-05-28 — STATUT DE PRODUCTION ACTIF V2.7** (`primexpert-app-v2`) :
+
+| # | Volet | Statut certifié |
+|---|-------|-----------------|
+| 1 | Cœur CRM & fiches RPA | **[OPÉRATIONNEL — LIVE]** |
+| 2 | Workspace évaluation ACM | **[OPÉRATIONNEL — LIVE]** |
+| 3 | Hub omnicanal (SMS / Nylas) | **[OPÉRATIONNEL — LIVE]** |
+| 4 | Moteur de clauses OACIQ / LOI | **[CÂBLÉ — PROD ACTIVE (Gemini JSON)]** |
+| 5 | Après-vente & conformité Loi 25 | **[CÂBLÉ — PROD ACTIVE (ClosingEngine + types)]** |
+
+**Après-vente V2.7 — SSOT :** `packages/core/src/market/closingEngine.ts` (`generateClosingSequenceTasks`, port `configureClosingEnginePort`) ; Loi 25 — `QuebecLaw25Consent` + `validateLaw25Compliance` dans `packages/core/src/crm/contactTypes.ts` ; conception [`CLOSING_AND_COMPLIANCE_DRAFT.md`](./CLOSING_AND_COMPLIANCE_DRAFT.md). **Prochain branchement prod :** trigger `onPromiseAcceptedTrigger` + garde-fous SMS/courriel sur `law25Consent`.
+
+**URL production :** https://primexpert-app-v2.web.app
 
 **Repo :** https://github.com/alain-blip/primexpert-v2-core.git — branche `main`.
 
 ---
 
-*Journal mis à jour : 2026-05-28 — Clôture sprint major : PRODUCTION IMMUABLE LIVE sur https://primexpert-app-v2.web.app (CRM RPA, ACM, Hub omnicanal, cartographie Centris RESO). Voir [`CENTRIS_RESO_MAPPING_DRAFT.md`](./CENTRIS_RESO_MAPPING_DRAFT.md), [`DATA_MAPPING_LEGACY_V2.md`](./DATA_MAPPING_LEGACY_V2.md).*
+*Journal mis à jour : 2026-05-28 — Production active V2.7 (5 volets) sur https://primexpert-app-v2.web.app. Voir [`CLOSING_AND_COMPLIANCE_DRAFT.md`](./CLOSING_AND_COMPLIANCE_DRAFT.md), [`CENTRIS_RESO_MAPPING_DRAFT.md`](./CENTRIS_RESO_MAPPING_DRAFT.md), [`DATA_MAPPING_LEGACY_V2.md`](./DATA_MAPPING_LEGACY_V2.md).*

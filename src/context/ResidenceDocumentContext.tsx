@@ -12,6 +12,7 @@ import React, {
 } from 'react';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { patchVendorPortalResidence } from '../services/vendorPortalAccessService';
 
 export type ResidenceFirestoreDoc = Record<string, unknown>;
 
@@ -45,11 +46,14 @@ const DEFAULT_OUTSIDE_PROVIDER: ResidenceDocumentContextValue = {
 
 export interface ResidenceDocumentProviderProps {
   residenceId: string | null | undefined;
+  /** Jeton portail vendeur — écritures via Cloud Function patchVendorPortalResidence. */
+  vendorPortalToken?: string | null;
   children: ReactNode;
 }
 
 export function ResidenceDocumentProvider({
   residenceId,
+  vendorPortalToken,
   children,
 }: ResidenceDocumentProviderProps) {
   const [residenceDoc, setResidenceDoc] = useState<ResidenceFirestoreDoc | null>(null);
@@ -96,7 +100,15 @@ export function ResidenceDocumentProvider({
       setSaving(true);
       setSaveError(null);
       try {
-        await updateDoc(doc(db, 'residences', residenceId), patch);
+        if (vendorPortalToken) {
+          await patchVendorPortalResidence({
+            residenceId,
+            patch,
+            token: vendorPortalToken,
+          });
+        } else {
+          await updateDoc(doc(db, 'residences', residenceId), patch);
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setSaveError(message);
@@ -105,7 +117,7 @@ export function ResidenceDocumentProvider({
         setSaving(false);
       }
     },
-    [residenceId]
+    [residenceId, vendorPortalToken]
   );
 
   const value: ResidenceDocumentContextValue = {

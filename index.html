@@ -1,22 +1,83 @@
 <!doctype html>
-<html lang="fr-CA" class="dark">
+<html lang="fr-CA" class="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/logo-primexpert-noir.png" />
     <link rel="shortcut icon" href="/favicon.ico" />
     <title>PRIMEXPERT | GPS Immobilier</title>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      body { margin: 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+      .px-header {
+        position: sticky; top: 0; z-index: 50;
+        border-bottom: 1px solid #e5e5e5; background: rgba(255,255,255,.95);
+        backdrop-filter: blur(8px);
+      }
+      .px-wrap { max-width: 72rem; margin: 0 auto; padding: 1rem 1.25rem; }
+      .px-header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+      .px-logo { height: 2.25rem; width: auto; }
+      .px-nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .5rem; }
+      .px-lang { display: flex; border: 1px solid #d4d4d4; border-radius: .5rem; padding: 2px; }
+      .px-lang button {
+        border: 0; background: transparent; border-radius: .375rem;
+        padding: .375rem .75rem; font-size: .875rem; font-weight: 600; cursor: pointer;
+      }
+      .px-lang button.px-lang-active { background: #171717; color: #fff; }
+      .px-btn-ghost, .px-btn-primary, .px-cta-primary, .px-cta-secondary {
+        display: inline-block; text-decoration: none; text-align: center;
+      }
+      .px-btn-ghost {
+        border: 0; background: transparent; border-radius: .5rem;
+        padding: .5rem .75rem; font-size: .875rem; font-weight: 600; color: #262626;
+      }
+      .px-btn-primary {
+        border: 1px solid #171717; background: #171717; color: #fff; border-radius: .5rem;
+        padding: .5rem 1rem; font-size: .875rem; font-weight: 600;
+      }
+      .px-hero {
+        border-bottom: 1px solid #e5e5e5; background: #fafafa;
+        padding: 4rem 1.25rem 5rem;
+      }
+      .px-hero-inner { max-width: 56rem; margin: 0 auto; text-align: center; }
+      .px-hero-logo { height: 8rem; width: auto; max-width: 100%; margin: 0 auto 3rem; display: block; }
+      .px-h1 {
+        font-size: clamp(1.75rem, 5vw, 2.75rem); font-weight: 900; line-height: 1.15;
+        color: #0a0a0a; margin: 0 0 1.5rem;
+      }
+      .px-lead { font-size: 1.125rem; line-height: 1.6; color: #525252; margin: 0 auto 2rem; max-width: 42rem; }
+      .px-cta { display: flex; flex-direction: column; gap: 1rem; align-items: stretch; justify-content: center; }
+      @media (min-width: 640px) {
+        .px-cta { flex-direction: row; flex-wrap: wrap; align-items: center; }
+      }
+      .px-cta-primary, .px-cta-secondary {
+        min-height: 3rem; padding: .75rem 2rem; font-size: 1rem; font-weight: 600;
+        border-radius: .5rem; cursor: pointer;
+      }
+      .px-cta-primary { background: #171717; color: #fff; border: 0; }
+      .px-cta-secondary { background: transparent; color: #171717; border: 2px solid #171717; }
+      .px-footer { border-top: 1px solid #e5e5e5; background: #fafafa; padding: 2.5rem 1.25rem; text-align: center; color: #737373; font-size: .875rem; }
+      #root { display: none; }
+      #primexpert-static-landing { display: block; }
+      body.px-spa #primexpert-static-landing { display: none; }
+      body.px-spa #root { display: block; }
+    </style>
     <script>
-      // Anti-flash : applique le thème AVANT le rendu React.
-      // Source unique de vérité : localStorage.theme ('dark' | 'light').
       (function () {
-        try {
-          var t = localStorage.getItem('theme');
-          if (t !== 'light' && t !== 'dark') t = 'dark';
-          var r = document.documentElement;
-          r.classList.remove('dark', 'light');
-          r.classList.add(t);
-        } catch (_) { /* mode privé : on garde la classe par défaut */ }
+        var path = location.pathname;
+        if (path === '/workhub' || path.indexOf('/workhub/') === 0 ||
+            path === '/acces-vendeur' || path.indexOf('/acces-vendeur/') === 0) {
+          document.documentElement.classList.add('px-spa');
+          try {
+            var t = localStorage.getItem('theme');
+            if (t !== 'light' && t !== 'dark') t = 'dark';
+            document.documentElement.classList.remove('light');
+            document.documentElement.classList.add(t);
+          } catch (_) { document.documentElement.classList.add('dark'); }
+          return;
+        }
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
       })();
     </script>
     <script>
@@ -29,8 +90,96 @@
     </script>
   </head>
   <body>
+    <div id="primexpert-static-landing">
+      <header class="px-header">
+        <div class="px-wrap px-header-inner">
+          <a href="/" aria-label="Primexpert — accueil">
+            <img class="px-logo" src="/logo-primexpert-noir.png" alt="Primexpert" />
+          </a>
+          <nav class="px-nav" aria-label="Navigation et connexion">
+            <div class="px-lang" role="group" aria-label="Choix de la langue" id="px-lang-group">
+              <button type="button" class="px-lang-active" data-px-lang="fr">FR</button>
+              <button type="button" data-px-lang="en">EN</button>
+            </div>
+            <a class="px-btn-ghost" href="/workhub?signin=1"
+              data-i18n-fr="GPS" data-i18n-en="GPS">GPS</a>
+            <a class="px-btn-primary" href="/workhub?signin=1"
+              data-i18n-fr="Connexion" data-i18n-en="Sign in">Connexion</a>
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <section class="px-hero" aria-labelledby="hero-heading">
+          <div class="px-hero-inner">
+            <img class="px-hero-logo" src="/logo-primexpert-noir.png" alt="Primexpert" />
+            <h1 id="hero-heading" class="px-h1"
+              data-i18n-fr="Devenez l'expert, devenez Primexpert."
+              data-i18n-en="Become the expert, become Primexpert.">
+              Devenez l'expert, devenez Primexpert.
+            </h1>
+            <p class="px-lead"
+              data-i18n-fr="Signer, c'est bien. Au juste prix, c'est mieux."
+              data-i18n-en="Signing is good. At the right price is better.">
+              Signer, c'est bien. Au juste prix, c'est mieux.
+            </p>
+            <div class="px-cta">
+              <a class="px-cta-primary" href="/workhub?signin=1"
+                data-i18n-fr="Initialiser la session"
+                data-i18n-en="Initialize session">Initialiser la session</a>
+              <a class="px-cta-secondary" href="/workhub?signin=1"
+                data-i18n-fr="Voir la démo de l'analyse comparative de marché (ACM)"
+                data-i18n-en="View the comparative market analysis (CMA) demo">
+                Voir la démo de l'analyse comparative de marché (ACM)
+              </a>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="px-footer">
+        <p data-i18n-fr="Primexpert accompagne le courtier, sans remplacer sa validation professionnelle."
+           data-i18n-en="Primexpert supports the broker without replacing professional validation.">
+          Primexpert accompagne le courtier, sans remplacer sa validation professionnelle.
+        </p>
+        <p style="margin-top:1rem;font-weight:500;color:#404040"
+           data-i18n-fr="© 2026 Primexpert. Tous droits réservés."
+           data-i18n-en="© 2026 Primexpert. All rights reserved.">
+          © 2026 Primexpert. Tous droits réservés.
+        </p>
+      </footer>
+    </div>
+
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+
+    <!-- i18n statique (vanilla, < 1 Ko) — aucun React / vendor au paint de `/` -->
+    <script>
+      (function () {
+        function applyLang(lang) {
+          document.documentElement.lang = lang === 'en' ? 'en-CA' : 'fr-CA';
+          document.querySelectorAll('[data-i18n-fr]').forEach(function (node) {
+            var fr = node.getAttribute('data-i18n-fr') || '';
+            var en = node.getAttribute('data-i18n-en') || '';
+            node.textContent = lang === 'en' ? en : fr;
+          });
+          document.querySelectorAll('[data-px-lang]').forEach(function (btn) {
+            btn.classList.toggle('px-lang-active', btn.getAttribute('data-px-lang') === lang);
+          });
+        }
+        try {
+          if (localStorage.getItem('primexpert-language') === 'en') applyLang('en');
+        } catch (_) {}
+        document.getElementById('px-lang-group').addEventListener('click', function (e) {
+          var btn = e.target;
+          if (!btn || !btn.getAttribute || !btn.getAttribute('data-px-lang')) return;
+          var lang = btn.getAttribute('data-px-lang');
+          try { localStorage.setItem('primexpert-language', lang); } catch (_) {}
+          applyLang(lang);
+        });
+      })();
+    </script>
+
+    <!-- Chargeur statique : zéro vendor sur `/` (voir scripts/write-px-loader.mjs) -->
+    <script src="/px-loader.js" defer></script>
   </body>
 </html>
-

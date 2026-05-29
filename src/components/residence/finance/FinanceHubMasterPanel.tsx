@@ -11,9 +11,10 @@ import {
   normalizeFinancialData,
 } from '@primexpert/core/financial';
 import { useFinancialData } from '../../../context/FinancialDataContext';
+import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { useAuth } from '../../../lib/auth';
 import { useLanguage } from '../../../lib/i18n';
-import { formatCurrency } from '../../../lib/utils';
+import { cn, formatCurrency } from '../../../lib/utils';
 import {
   buildBrokerFooterFromProfile,
   downloadCertifiableFinancialReportPdf,
@@ -27,16 +28,49 @@ const GOLD_BTN =
 export interface FinanceHubMasterPanelProps {
   onOpenAnalyse360: () => void;
   residence: Residence;
+  /** Portail vendeur — masque exports PDF et actions sensibles. */
+  readOnly?: boolean;
 }
 
-export function FinanceHubMasterPanel({ onOpenAnalyse360, residence }: FinanceHubMasterPanelProps) {
+export function FinanceHubMasterPanel({
+  onOpenAnalyse360,
+  residence,
+  readOnly = false,
+}: FinanceHubMasterPanelProps) {
   const { t, language } = useLanguage();
   const { profile } = useAuth();
-  const { financialData, loading, error: financialLoadError } = useFinancialData();
+  const { financialData, loading, error: financialLoadError, residenceId: financeResidenceId } =
+    useFinancialData();
+  const { residenceId: documentResidenceId } = useResidenceDocument();
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [pdfPending, setPdfPending] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [detailPdfPending, setDetailPdfPending] = useState(false);
+
+  const activeResidenceId = documentResidenceId ?? financeResidenceId ?? residence.id;
+
+  const exportResidence = useMemo(
+    () => ({
+      id: activeResidenceId,
+      address: residence.address,
+      city: residence.city,
+      residenceName: residence.residenceName,
+      nomCommercial: residence.nomCommercial,
+      name: residence.name,
+      price: residence.price,
+      prixDemande: residence.price,
+      askingPrice: residence.price,
+    }),
+    [
+      activeResidenceId,
+      residence.address,
+      residence.city,
+      residence.residenceName,
+      residence.nomCommercial,
+      residence.name,
+      residence.price,
+    ]
+  );
 
   const residenceHints = useMemo(
     () => ({
@@ -102,16 +136,7 @@ export function FinanceHubMasterPanel({ onOpenAnalyse360, residence }: FinanceHu
     try {
       downloadCertifiableFinancialReportPdf({
         financialData: exportFinancialData,
-        residence: {
-          id: residence.id,
-          address: residence.address,
-          city: residence.city,
-          residenceName: residence.residenceName,
-          nomCommercial: residence.nomCommercial,
-          name: residence.name,
-          prixDemande: residence.price,
-          askingPrice: residence.price,
-        },
+        residence: exportResidence,
         broker: buildBrokerFooterFromProfile(profile),
         locale: language === 'fr' ? 'fr' : 'en',
       });
@@ -126,7 +151,7 @@ export function FinanceHubMasterPanel({ onOpenAnalyse360, residence }: FinanceHu
     } finally {
       setPdfPending(false);
     }
-  }, [exportFinancialData, residence, profile, language, t]);
+  }, [exportFinancialData, exportResidence, profile, language, t]);
 
   const handleDetailedPdf = useCallback(async () => {
     setPdfError(null);
@@ -144,12 +169,7 @@ export function FinanceHubMasterPanel({ onOpenAnalyse360, residence }: FinanceHu
       await downloadBuyerReportPdf(
         {
           financialData: exportFinancialData,
-          residence: {
-            ...residence,
-            price: residence.price,
-            prixDemande: residence.price,
-            askingPrice: residence.price,
-          },
+          residence: exportResidence,
           broker: buildBrokerFooterFromProfile(profile),
           locale: language === 'fr' ? 'fr' : 'en',
         },
@@ -167,10 +187,15 @@ export function FinanceHubMasterPanel({ onOpenAnalyse360, residence }: FinanceHu
     } finally {
       setDetailPdfPending(false);
     }
-  }, [exportFinancialData, residence, profile, language, t]);
+  }, [exportFinancialData, exportResidence, profile, language, t]);
 
   return (
-    <section className="space-y-4 border-b border-[#142c6a]/15 bg-[#f8fafc] px-5 py-6">
+    <section
+      className={cn(
+        'space-y-4 border-b border-[#142c6a]/15 px-5 py-6',
+        readOnly ? 'bg-white dark:bg-primexpert-cardDark' : 'bg-[#f8fafc]'
+      )}
+    >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <FinanceKpiTile
           label={t('Revenu net d’exploitation (RNE)', 'Net operating income (NOI)')}
@@ -202,6 +227,8 @@ export function FinanceHubMasterPanel({ onOpenAnalyse360, residence }: FinanceHu
         <button type="button" className={GOLD_BTN} onClick={onOpenAnalyse360}>
           📊 {t('Analyse financière complète', 'Full financial analysis')}
         </button>
+        {!readOnly ? (
+          <>
         <button
           type="button"
           className={GOLD_BTN}
@@ -246,6 +273,8 @@ export function FinanceHubMasterPanel({ onOpenAnalyse360, residence }: FinanceHu
         >
           ❤️ {t('Ajouter à mes favoris', 'Add to my favourites')}
         </button>
+          </>
+        ) : null}
       </div>
 
       {financialLoadError ? (
@@ -303,7 +332,7 @@ export function FinanceHubMasterPanel({ onOpenAnalyse360, residence }: FinanceHu
 
 function FinanceKpiTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border-2 border-[#142c6a] bg-white px-4 py-4 text-center min-w-0 shadow-sm">
+    <div className="rounded-xl border-2 border-[#142c6a] bg-white dark:bg-primexpert-cardDark px-4 py-4 text-center min-w-0 shadow-sm">
       <p className="text-[11px] sm:text-[12px] font-black uppercase tracking-wide text-[#142c6a] leading-snug">
         {label}
       </p>

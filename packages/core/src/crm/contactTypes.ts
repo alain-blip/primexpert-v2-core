@@ -115,10 +115,74 @@ export const BUYER_ACQUISITION_TIMELINES = [
 ] as const;
 export type BuyerAcquisitionTimeline = (typeof BUYER_ACQUISITION_TIMELINES)[number];
 
+/** Consentement explicite Loi 25 (Québec) — preuve de collecte et rétention. */
+export interface QuebecLaw25Consent {
+  smsOptIn: boolean;
+  emailOptIn: boolean;
+  consentGrantedTimestamp: number;
+  collectedFromIpAddress: string;
+  /** Ex. RpaEvaluationRequestForm, VendorPortalSignup */
+  consentSourceForm: string;
+  /** 6 ans après la collecte — règle de conservation dossier courtage (OACIQ). */
+  dataRetentionExpiryTimestamp: number;
+  /** Révocation optionnelle (phase ultérieure). */
+  consentRevokedTimestamp?: number;
+}
+
+const LAW25_RETENTION_MS = Math.round(6 * 365.25 * 24 * 60 * 60 * 1000);
+
+/** Horodatage d'expiration — six ans après le consentement. */
+export function computeLaw25DataRetentionExpiryMillis(
+  consentGrantedTimestamp: number
+): number {
+  if (!Number.isFinite(consentGrantedTimestamp) || consentGrantedTimestamp <= 0) {
+    return 0;
+  }
+  return consentGrantedTimestamp + LAW25_RETENTION_MS;
+}
+
+/**
+ * Validation d'adéquation de conformité légale (Loi 25) — champs requis si opt-in actif.
+ */
+export function validateLaw25Compliance(
+  consent: QuebecLaw25Consent | null | undefined
+): { ok: true } | { ok: false; issues: string[] } {
+  if (!consent) {
+    return { ok: false, issues: ['law25Consent absent'] };
+  }
+  const issues: string[] = [];
+  if (!consent.smsOptIn && !consent.emailOptIn) {
+    issues.push('Au moins un canal (smsOptIn ou emailOptIn) doit être true');
+  }
+  if (!Number.isFinite(consent.consentGrantedTimestamp) || consent.consentGrantedTimestamp <= 0) {
+    issues.push('consentGrantedTimestamp invalide');
+  }
+  if (!consent.collectedFromIpAddress?.trim()) {
+    issues.push('collectedFromIpAddress requis');
+  }
+  if (!consent.consentSourceForm?.trim()) {
+    issues.push('consentSourceForm requis');
+  }
+  if (
+    !Number.isFinite(consent.dataRetentionExpiryTimestamp) ||
+    consent.dataRetentionExpiryTimestamp <= consent.consentGrantedTimestamp
+  ) {
+    issues.push('dataRetentionExpiryTimestamp invalide (attendu ≥ 6 ans après collecte)');
+  }
+  if (consent.consentRevokedTimestamp != null && consent.consentRevokedTimestamp > 0) {
+    if (consent.smsOptIn || consent.emailOptIn) {
+      issues.push('Révocation enregistrée — smsOptIn et emailOptIn doivent être false');
+    }
+  }
+  return issues.length === 0 ? { ok: true } : { ok: false, issues };
+}
+
 /** Préférences de communication — Loi 25 / LCAP (consentements et exclusions). */
 export interface ContactCommunicationPreferences {
   unsubscribedFromEmails: boolean;
   excludedFromMassMailing: boolean;
+  /** Preuve affirmative Loi 25 — SMS / courriel marketing. */
+  law25Consent?: QuebecLaw25Consent;
 }
 
 /** Référence Firebase Storage d’une pièce justificative (acheteur / vendeur). */

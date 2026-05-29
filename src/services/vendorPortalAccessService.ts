@@ -8,6 +8,12 @@ import { app, auth } from '../lib/firebase';
 const functionsRegion = import.meta.env.VITE_FIREBASE_FUNCTIONS_REGION || 'us-central1';
 const functions = getFunctions(app, functionsRegion);
 
+export interface VendorBrokerContact {
+  displayName: string;
+  email?: string;
+  phone?: string;
+}
+
 export interface VendorPortalClientSession {
   orgId: string;
   contactId: string;
@@ -16,6 +22,7 @@ export interface VendorPortalClientSession {
   contactName: string;
   propertyLabel: string;
   token: string;
+  brokerContact?: VendorBrokerContact;
 }
 
 export async function createVendorPortalInviteLink(input: {
@@ -43,6 +50,10 @@ export async function redeemVendorPortalToken(
   if (data.customToken) {
     await signInWithCustomToken(auth, data.customToken);
   }
+  const brokerDisplayName = String(data.brokerDisplayName ?? '').trim();
+  const brokerEmail = String(data.brokerEmail ?? '').trim();
+  const brokerPhone = String(data.brokerPhone ?? '').trim();
+
   return {
     orgId: data.orgId,
     contactId: data.contactId,
@@ -51,6 +62,13 @@ export async function redeemVendorPortalToken(
     contactName: data.contactName,
     propertyLabel: data.propertyLabel,
     token,
+    brokerContact: brokerDisplayName
+      ? {
+          displayName: brokerDisplayName,
+          email: brokerEmail || undefined,
+          phone: brokerPhone || undefined,
+        }
+      : undefined,
   };
 }
 
@@ -69,5 +87,18 @@ export async function notifyVendorPortalDocumentUpload(input: {
   token?: string;
 }): Promise<void> {
   const callable = httpsCallable(functions, 'notifyVendorPortalDocumentUpload');
+  await callable(input);
+}
+
+/** Patch résidence depuis le portail vendeur (déclaration, identité). */
+export async function patchVendorPortalResidence(input: {
+  residenceId: string;
+  patch: Record<string, unknown>;
+  token?: string;
+}): Promise<void> {
+  const callable = httpsCallable<
+    typeof input,
+    { ok: boolean }
+  >(functions, 'patchVendorPortalResidence');
   await callable(input);
 }

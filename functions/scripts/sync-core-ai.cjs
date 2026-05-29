@@ -13,6 +13,7 @@ const REPO_ROOT = path.resolve(FUNCTIONS_DIR, '..');
 const CORE_AI = path.join(REPO_ROOT, 'packages', 'core', 'src', 'ai');
 const CORE_AUDIO = path.join(REPO_ROOT, 'packages', 'core', 'src', 'audio');
 const VENDORED_DIR = path.join(FUNCTIONS_DIR, 'src', 'audio', '_vendored');
+const AI_VENDORED_DIR = path.join(FUNCTIONS_DIR, 'src', 'ai', '_vendored');
 
 const HEADER = [
   '/* eslint-disable */',
@@ -38,4 +39,25 @@ const index = [
   '',
 ].join('\n');
 fs.writeFileSync(path.join(VENDORED_DIR, 'index.ts'), HEADER + index, 'utf-8');
-console.info('[sync-core-ai] OK →', VENDORED_DIR);
+
+function writeAiVendored(name, fromPath) {
+  let src = fs.readFileSync(fromPath, 'utf-8');
+  src = src.replace(
+    "from '../audio/transcriber'",
+    "from '../../audio/_vendored/transcriber'"
+  );
+  fs.mkdirSync(AI_VENDORED_DIR, { recursive: true });
+  fs.writeFileSync(path.join(AI_VENDORED_DIR, name), HEADER + src, 'utf-8');
+}
+
+writeAiVendored('oaciqSpecsTypes.ts', path.join(CORE_AI, 'oaciqSpecsTypes.ts'));
+writeAiVendored('negotiationPrompts.ts', path.join(CORE_AI, 'negotiationPrompts.ts'));
+
+const aiIndex = [
+  "export * from './oaciqSpecsTypes';",
+  "export * from './negotiationPrompts';",
+  '',
+].join('\n');
+fs.writeFileSync(path.join(AI_VENDORED_DIR, 'index.ts'), HEADER + aiIndex, 'utf-8');
+
+console.info('[sync-core-ai] OK →', VENDORED_DIR, '+', AI_VENDORED_DIR);

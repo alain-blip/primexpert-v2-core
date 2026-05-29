@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Mail,
   Pencil,
+  Phone,
   ShieldCheck,
   Sparkles,
   Users,
@@ -13,8 +14,10 @@ import {
   Database,
 } from 'lucide-react';
 import {
+  buildContactDisplayName,
   buildRaphaelResidenceSnapshot,
   rankRaphaelMatches,
+  type OrganizationContact,
   type RaphaelMatchCandidate,
 } from '@primexpert/core/crm';
 import { listOrganizationContacts, type ContactServiceContext } from '../../../services/contacts';
@@ -48,6 +51,117 @@ import {
 
 type ResidenceLoose = Residence & Record<string, unknown>;
 type BusinessStatus = 'complet' | 'attention' | 'a_completer';
+
+/** Deeplink natif Hub Omnicanal — identique au Softphone (tel:). */
+function buildTelHref(raw: string): string {
+  return `tel:${raw.replace(/[^0-9+*#]/g, '')}`;
+}
+
+/** Carte contact lié — appel (tel:) + courriel (mailto:) intégrés. */
+function ContactCallCard({
+  contact,
+  onOpenContact,
+  t,
+}: {
+  contact: OrganizationContact;
+  onOpenContact?: (contactId: string) => void;
+  t: (fr: string, en: string) => string;
+}) {
+  const name = buildContactDisplayName(contact);
+  const phone = contact.telephone?.trim();
+  const email = contact.email?.trim();
+  const canNavigate = Boolean(contact.id && onOpenContact);
+
+  return (
+    <div className="rounded-lg border border-[#142c6a]/15 bg-white p-3 dark:border-white/20 dark:bg-primexpert-blueDeep">
+      {canNavigate ? (
+        <button
+          type="button"
+          onClick={() => onOpenContact?.(contact.id)}
+          title={t('Ouvrir la fiche contact (CRM)', 'Open contact file (CRM)')}
+          className="block w-full cursor-pointer truncate text-left text-[13px] font-black text-slate-900 hover:text-[#142c6a] hover:underline dark:text-[#daeefa] dark:hover:text-white"
+        >
+          {name}
+        </button>
+      ) : (
+        <p className="truncate text-[13px] font-black text-slate-900 dark:text-[#daeefa]">{name}</p>
+      )}
+      {contact.entreprise ? (
+        <p className="mt-0.5 truncate text-[11px] font-semibold text-slate-600">{contact.entreprise}</p>
+      ) : null}
+      <div className="mt-2 flex items-center gap-2">
+        <a
+          href={phone ? buildTelHref(phone) : undefined}
+          aria-disabled={!phone}
+          onClick={(e) => {
+            if (!phone) e.preventDefault();
+          }}
+          title={phone ? t('Appeler', 'Call') : t('Téléphone non renseigné', 'No phone number')}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-black uppercase tracking-wider',
+            phone
+              ? 'border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100'
+              : 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
+          )}
+        >
+          <Phone className="h-3.5 w-3.5" aria-hidden />
+          {t('Appeler', 'Call')}
+        </a>
+        <a
+          href={email ? `mailto:${email}` : undefined}
+          aria-disabled={!email}
+          onClick={(e) => {
+            if (!email) e.preventDefault();
+          }}
+          title={email ? t('Écrire', 'Email') : t('Courriel non renseigné', 'No email')}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-black uppercase tracking-wider',
+            email
+              ? 'border-[#142c6a]/30 bg-[#eef2fb] text-[#142c6a] hover:bg-[#dde6f7]'
+              : 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
+          )}
+        >
+          <Mail className="h-3.5 w-3.5" aria-hidden />
+          {t('Écrire', 'Email')}
+        </a>
+      </div>
+    </div>
+  );
+}
+
+/** Colonne 1/3 — contacts liés à la résidence avec appel et courriel intégrés. */
+function ResidenceContactsPanel({
+  contacts,
+  loading,
+  onOpenContact,
+  t,
+}: {
+  contacts: OrganizationContact[];
+  loading: boolean;
+  onOpenContact?: (contactId: string) => void;
+  t: (fr: string, en: string) => string;
+}) {
+  return (
+    <aside className="rounded-xl border-2 border-[#142c6a]/20 bg-[#f8fafc] p-4 lg:w-1/3 lg:shrink-0">
+      <h4 className="mb-3 text-[12px] font-black uppercase tracking-wider text-[#142c6a]">
+        {t('Contacts liés', 'Linked contacts')}
+      </h4>
+      {loading && contacts.length === 0 ? (
+        <p className="text-[12px] font-semibold text-slate-500">{t('Chargement…', 'Loading…')}</p>
+      ) : contacts.length === 0 ? (
+        <p className="text-[12px] font-semibold text-slate-500">
+          {t('Aucun contact lié à cette résidence.', 'No contact linked to this residence.')}
+        </p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {contacts.map((contact) => (
+            <ContactCallCard key={contact.id} contact={contact} onOpenContact={onOpenContact} t={t} />
+          ))}
+        </div>
+      )}
+    </aside>
+  );
+}
 
 interface Synthese360TabProps {
   residence: Residence;
@@ -1202,6 +1316,7 @@ function PaperSection({
 export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) {
   const { t, language } = useLanguage();
   const { user, profile } = useAuth();
+  const workhubNav = useWorkhubNav();
   const { residenceDoc, updateResidence, saving: savingResidence } = useResidenceDocument();
   const { financialData, loading: financialLoading, error: financialError } = useFinancialData();
   const mergedResidence = useMemo(
@@ -1210,6 +1325,9 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
   );
   const loose = mergedResidence;
   const businessStatus = useMemo(() => calculateBusinessStatus(loose), [loose]);
+  const declarationNeedsReview =
+    typeof residenceDoc?.declarationStatus === 'string' &&
+    residenceDoc.declarationStatus === 'A_REVISER';
   const retribution = useMemo(() => resolveRetribution(loose), [loose]);
   const residenceName = pickText(loose, ['residenceName', 'commercialName', 'nomCommercial', 'nom_commercial', 'name'], 'RPA À NOMMER');
   const askingPrice = getListingPrice(loose);
@@ -1241,6 +1359,7 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
   const [editingNoteText, setEditingNoteText] = useState('');
   const [raphaelMatches, setRaphaelMatches] = useState<RaphaelMatchCandidate[]>([]);
   const [raphaelLoading, setRaphaelLoading] = useState(false);
+  const [linkedContacts, setLinkedContacts] = useState<OrganizationContact[]>([]);
   const [extractedDocsState, setExtractedDocsState] = useState<BilanExtractedDocsState>({
     docs: [],
     hasData: false,
@@ -1469,6 +1588,7 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
   useEffect(() => {
     if (!contactCtx) {
       setRaphaelMatches([]);
+      setLinkedContacts([]);
       return;
     }
     let cancelled = false;
@@ -1477,9 +1597,17 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
       .then((contacts) => {
         if (cancelled) return;
         setRaphaelMatches(rankRaphaelMatches(raphaelSnapshot, contacts, 12));
+        setLinkedContacts(
+          residenceId
+            ? contacts.filter((c) => c.residenceIds?.includes(residenceId))
+            : []
+        );
       })
       .catch(() => {
-        if (!cancelled) setRaphaelMatches([]);
+        if (!cancelled) {
+          setRaphaelMatches([]);
+          setLinkedContacts([]);
+        }
       })
       .finally(() => {
         if (!cancelled) setRaphaelLoading(false);
@@ -1487,7 +1615,7 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
     return () => {
       cancelled = true;
     };
-  }, [contactCtx, raphaelSnapshot]);
+  }, [contactCtx, raphaelSnapshot, residenceId]);
 
   const safePage = Math.max(1, parseInt(String(notesPage), 10) || 1);
   const visibleNotes = notes.slice((safePage - 1) * notesPerPage, safePage * notesPerPage);
@@ -1498,6 +1626,25 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
       <div className="space-y-3">
         <GuardrailBanner status={businessStatus} />
         <BusinessStatusBadge status={businessStatus} />
+        {declarationNeedsReview ? (
+          <div
+            role="status"
+            className="flex items-start gap-3 rounded-xl border-2 border-amber-500 bg-amber-100 px-4 py-3 text-amber-950"
+          >
+            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-widest">
+                {t('Déclaration vendeur — à réviser', 'Seller disclosure — to review')}
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed">
+                {t(
+                  'Le vendeur a soumis sa déclaration via le portail sécurisé. Vérifiez les réponses avant diffusion.',
+                  'The seller submitted their disclosure via the secure portal. Verify answers before release.'
+                )}
+              </p>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <PaperSection title={t('Bilan exécutif 360°', '360° executive summary')}>
@@ -1524,40 +1671,49 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
           </div>
         ) : null}
         <div className="w-full">
-          <div>
-            <p className="block truncate text-[18px] font-black uppercase tracking-wide text-[#142c6a]">{residenceName}</p>
-            <AskingPriceEditor
-              value={askingPrice}
-              onSave={saveAskingPrice}
-              saving={savingResidence}
+          <div className="flex flex-col gap-4 border-b border-slate-200 pb-4 lg:flex-row lg:items-start">
+            <div className="min-w-0 flex-1">
+              <p className="block truncate text-[18px] font-black uppercase tracking-wide text-[#142c6a]">{residenceName}</p>
+              <AskingPriceEditor
+                value={askingPrice}
+                onSave={saveAskingPrice}
+                saving={savingResidence}
+                t={t}
+              />
+              <p className="mt-1 block truncate text-[14px] font-medium text-slate-700">{address || 'Adresse à confirmer'}</p>
+              <div className="mt-4 flex flex-col gap-2 text-[15px] font-semibold text-slate-800">
+                <div>
+                  MUNICIPALITÉ :{' '}
+                  <span className="font-black text-black">{municipalite || '—'}</span>
+                </div>
+                <div>
+                  UNITÉS TOTALES :{' '}
+                  <span className="font-black text-black">
+                    {totalUnits > 0 ? `${totalUnits} unités` : '—'}
+                  </span>
+                </div>
+                <div>
+                  PRIX PAR UNITÉ :{' '}
+                  <span className="font-black text-black">
+                    {prixParPorte > 0 ? `${formatCurrency(prixParPorte)} / unité` : '—'}
+                  </span>
+                </div>
+                <div>
+                  TAUX D&apos;OCCUPATION :{' '}
+                  <span className="font-black text-black">
+                    {occupancyRate > 0 ? `${occupancyRate} %` : '—'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <ResidenceContactsPanel
+              contacts={linkedContacts}
+              loading={raphaelLoading}
+              onOpenContact={workhubNav ? () => workhubNav.setActiveTab('crm') : undefined}
               t={t}
             />
-            <p className="mt-1 block truncate text-[14px] font-medium text-slate-700">{address || 'Adresse à confirmer'}</p>
           </div>
-          <div className="grid grid-cols-2 gap-4 my-4 text-[15px] text-slate-800 font-semibold border-b border-slate-200 pb-4">
-            <div>
-              MUNICIPALITÉ :{' '}
-              <span className="font-black text-black">{municipalite || '—'}</span>
-            </div>
-            <div>
-              UNITÉS TOTALES :{' '}
-              <span className="font-black text-black">
-                {totalUnits > 0 ? `${totalUnits} unités` : '—'}
-              </span>
-            </div>
-            <div>
-              PRIX PAR UNITÉ :{' '}
-              <span className="font-black text-black">
-                {prixParPorte > 0 ? `${formatCurrency(prixParPorte)} / unité` : '—'}
-              </span>
-            </div>
-            <div>
-              TAUX D&apos;OCCUPATION :{' '}
-              <span className="font-black text-black">
-                {occupancyRate > 0 ? `${occupancyRate} %` : '—'}
-              </span>
-            </div>
-          </div>
+          <div className="my-4" />
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <button
               type="button"

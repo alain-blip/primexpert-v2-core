@@ -39,6 +39,9 @@ export function normalizeDeclarationVendeur(
 
   return {
     status,
+    submittedForReviewAt:
+      typeof r.submittedForReviewAt === 'string' ? r.submittedForReviewAt : undefined,
+    submittedBy: typeof r.submittedBy === 'string' ? r.submittedBy : undefined,
     certifiedAt: typeof r.certifiedAt === 'string' ? r.certifiedAt : undefined,
     certifiedBy: typeof r.certifiedBy === 'string' ? r.certifiedBy : undefined,
     confirmationTag:

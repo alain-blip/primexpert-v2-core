@@ -34,6 +34,8 @@ export interface DeclarationQuestionnaireProps {
   declaration: DeclarationVendeurDoc;
   locked: boolean;
   saving: boolean;
+  /** Charte portail vendeur — cartes bleu pâle / texte noir intense. */
+  vendorPortalTheme?: boolean;
   onResponse: (questionId: string, response: DeclarationResponse) => Promise<void>;
   onNotes: (questionId: string, notes: string) => Promise<void>;
   onValue: (questionId: string, value: string) => Promise<void>;
@@ -43,6 +45,7 @@ export function DeclarationQuestionnaire({
   declaration,
   locked,
   saving,
+  vendorPortalTheme = false,
   onResponse,
   onNotes,
   onValue,
@@ -69,18 +72,32 @@ export function DeclarationQuestionnaire({
                 className={cn(
                   'rounded-lg border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider',
                   section.category === 'rpa'
-                    ? 'border-[#D4AF37]/40 bg-amber-50 text-[#142c6a]'
-                    : 'border-slate-200 bg-slate-50 text-slate-600'
+                    ? 'border-[#D4AF37]/40 bg-amber-50 text-[#142c6a] dark:bg-amber-100'
+                    : vendorPortalTheme
+                      ? 'border-primexpert-dark/25 bg-white text-slate-900 dark:bg-primexpert-cardDark dark:text-slate-900'
+                      : 'border-slate-200 bg-slate-50 text-slate-600'
                 )}
               >
                 {categoryLabel}
               </span>
               {section.sectionOptional ? (
-                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">
+                <span
+                  className={cn(
+                    'text-[9px] font-bold uppercase tracking-wider',
+                    vendorPortalTheme
+                      ? 'text-slate-900 dark:font-bold'
+                      : 'text-slate-500'
+                  )}
+                >
                   {t('Section facultative', 'Optional section')}
                 </span>
               ) : null}
-              <span className="text-[9px] text-slate-500 font-mono ml-auto">
+              <span
+                className={cn(
+                  'text-[9px] font-mono ml-auto',
+                  vendorPortalTheme ? 'text-slate-900 dark:font-bold' : 'text-slate-500'
+                )}
+              >
                 {section.questions.length}{' '}
                 {t('champs', 'fields')}
               </span>
@@ -94,6 +111,7 @@ export function DeclarationQuestionnaire({
                   answer={declaration.answers[q.id]}
                   locked={locked}
                   saving={saving}
+                  vendorPortalTheme={vendorPortalTheme}
                   lang={lang}
                   t={t}
                   onResponse={onResponse}
@@ -114,6 +132,7 @@ function DeclarationQuestionCard({
   answer,
   locked,
   saving,
+  vendorPortalTheme,
   lang,
   t,
   onResponse,
@@ -124,6 +143,7 @@ function DeclarationQuestionCard({
   answer: DeclarationVendeurDoc['answers'][string] | undefined;
   locked: boolean;
   saving: boolean;
+  vendorPortalTheme?: boolean;
   lang: 'fr' | 'en';
   t: (fr: string, en: string) => string;
   onResponse: (questionId: string, response: DeclarationResponse) => Promise<void>;
@@ -138,7 +158,14 @@ function DeclarationQuestionCard({
   const useNspLabel = question.fieldType === 'yesno_nsp';
 
   return (
-    <li className="rounded-xl border border-slate-200 bg-white px-4 py-4">
+    <li
+      className={cn(
+        'rounded-xl border px-4 py-4',
+        vendorPortalTheme
+          ? 'border-primexpert-dark/25 bg-white dark:border-primexpert-dark/30 dark:bg-primexpert-cardDark'
+          : 'border-slate-200 bg-white'
+      )}
+    >
       {question.subSection ? (
         <p className="text-[10px] font-bold uppercase tracking-wider text-[#D4AF37] mb-2">
           {question.subSection}
@@ -148,17 +175,27 @@ function DeclarationQuestionCard({
       <p className="text-sm font-bold text-slate-900 leading-snug mb-3">
         {label}
         {question.optional ? (
-          <span className="ml-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+          <span
+            className={cn(
+              'ml-2 text-[9px] font-bold uppercase tracking-wider',
+              vendorPortalTheme ? 'text-slate-900 dark:font-bold' : 'text-slate-400'
+            )}
+          >
             {t('Facultatif', 'Optional')}
           </span>
         ) : null}
       </p>
 
       {needsValue ? (
-        <div className="mb-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-            {t('Valeur', 'Value')}
-          </p>
+      <div className="mb-3">
+        <p
+          className={cn(
+            'text-[10px] font-bold uppercase tracking-wider mb-1',
+            vendorPortalTheme ? 'text-slate-900 dark:font-bold' : 'text-slate-500'
+          )}
+        >
+          {t('Valeur', 'Value')}
+        </p>
           {locked ? (
             <p className="text-sm font-semibold text-slate-900 whitespace-pre-wrap leading-relaxed">
               {value || '—'}
@@ -175,7 +212,12 @@ function DeclarationQuestionCard({
       ) : null}
 
       <div className="mb-3">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+        <p
+          className={cn(
+            'text-[10px] font-bold uppercase tracking-wider mb-2',
+            vendorPortalTheme ? 'text-slate-900 dark:font-bold' : 'text-slate-500'
+          )}
+        >
           {t('Réponse', 'Answer')}
         </p>
         {locked ? (
@@ -201,8 +243,10 @@ function DeclarationQuestionCard({
                   className={cn(
                     'rounded-xl border px-4 py-2 text-[10px] font-black uppercase tracking-wider transition',
                     active
-                      ? 'border-[#D4AF37]/60 bg-amber-50 text-[#142c6a]'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
+                      ? 'border-[#D4AF37]/60 bg-amber-50 text-[#142c6a] dark:bg-amber-100 dark:text-slate-900 font-bold'
+                      : vendorPortalTheme
+                        ? 'border-primexpert-dark/20 bg-white text-slate-900 hover:border-primexpert-dark/40 dark:bg-primexpert-cardDark dark:text-slate-900 font-bold'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
                     saving && 'cursor-wait'
                   )}
                 >
@@ -215,7 +259,12 @@ function DeclarationQuestionCard({
       </div>
 
       <div>
-        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+        <p
+          className={cn(
+            'text-[10px] font-bold uppercase tracking-wider mb-1',
+            vendorPortalTheme ? 'text-slate-900 dark:font-bold' : 'text-slate-500'
+          )}
+        >
           {t('Notes de vérification', 'Verification notes')}
         </p>
         {locked ? (

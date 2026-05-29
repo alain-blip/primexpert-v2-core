@@ -7,6 +7,7 @@ import { Loader2, Shield } from 'lucide-react';
 import {
   buildDeclarationAnswerPatch,
   buildDeclarationCertifyPatch,
+  buildDeclarationSubmitForReviewPatch,
   computeDeclarationProgress,
   normalizeDeclarationVendeur,
 } from '@primexpert/core/declaration';
@@ -25,7 +26,20 @@ import {
   institutionalListingsPanelClass,
 } from '../../../lib/institutionalTheme';
 
-export function DeclarationVendeurTab() {
+export interface DeclarationVendeurTabProps {
+  /** broker = courtier (certification) ; vendor = portail vendeur (soumission révision). */
+  variant?: 'broker' | 'vendor';
+  /** Identifiant ou libellé vendeur pour submittedBy (mode vendor). */
+  vendorSubmittedBy?: string;
+  /** Charte visuelle portail — indépendante du variant (aperçu courtier). */
+  vendorPortalTheme?: boolean;
+}
+
+export function DeclarationVendeurTab({
+  variant = 'broker',
+  vendorSubmittedBy,
+  vendorPortalTheme = false,
+}: DeclarationVendeurTabProps) {
   const { t, language } = useLanguage();
   const { profile } = useAuth();
   const {
@@ -124,6 +138,52 @@ export function DeclarationVendeurTab() {
     [residenceDoc, locked, updateResidence]
   );
 
+  const isVendorMode = variant === 'vendor';
+  const usePortalTheme = vendorPortalTheme || isVendorMode;
+  const submittedForReview =
+    typeof residenceDoc?.declarationStatus === 'string' &&
+    residenceDoc.declarationStatus === 'A_REVISER';
+
+  const handleSubmitForReview = useCallback(async () => {
+    if (!residenceDoc || locked || !isVendorMode) return;
+    const submittedBy = vendorSubmittedBy?.trim() || 'vendor_portal';
+    if (!progress.isComplete) {
+      const criticalMsg =
+        language === 'fr'
+          ? progress.criticalLockMessageFr
+          : progress.criticalLockMessageEn;
+      setLocalError(
+        criticalMsg ??
+          t(
+            'Complétez tous les champs obligatoires (Oui / Non / Ne sait pas) avant de soumettre.',
+            'Complete all required fields (Yes / No / Unknown) before submitting.'
+          )
+      );
+      return;
+    }
+    setCertifying(true);
+    setLocalError(null);
+    try {
+      const patch = buildDeclarationSubmitForReviewPatch(residenceDoc, submittedBy);
+      await updateResidence(patch);
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCertifying(false);
+    }
+  }, [
+    residenceDoc,
+    locked,
+    isVendorMode,
+    vendorSubmittedBy,
+    progress.isComplete,
+    progress.criticalLockMessageFr,
+    progress.criticalLockMessageEn,
+    language,
+    updateResidence,
+    t,
+  ]);
+
   const handleCertify = useCallback(async () => {
     if (!residenceDoc || !profile?.uid || !residenceId || locked) return;
     if (!progress.isComplete) {
@@ -210,6 +270,19 @@ export function DeclarationVendeurTab() {
           progress={progress}
           certifiedByLabel={certifiedByLabel}
         />
+        {saving ? (
+          <p className="border-t-2 border-primexpert-dark/15 px-5 py-2 text-[10px] font-black uppercase tracking-widest text-primexpert-dark">
+            {t('Enregistrement…', 'Saving…')}
+          </p>
+        ) : null}
+        {isVendorMode && submittedForReview ? (
+          <p className="border-t-2 border-amber-400/60 bg-amber-50 px-5 py-3 text-xs font-bold text-amber-950 dark:bg-amber-100">
+            {t(
+              'Soumis pour révision — votre courtier sera avisé.',
+              'Submitted for review — your broker will be notified.'
+            )}
+          </p>
+        ) : null}
       </div>
 
       {(localError || saveError) && (
@@ -224,6 +297,7 @@ export function DeclarationVendeurTab() {
             declaration={declaration}
             locked={progress.isLocked}
             saving={saving}
+            vendorPortalTheme={usePortalTheme}
             onResponse={handleResponse}
             onNotes={handleNotes}
             onValue={handleValue}
@@ -231,7 +305,37 @@ export function DeclarationVendeurTab() {
         </div>
       ) : null}
 
-      {!isUploaded && !progress.isLocked ? (
+      {!isUploaded && !progress.isLocked && isVendorMode ? (
+        <div className={cn(institutionalListingsCardShellClass, 'flex flex-col items-center justify-between gap-4 px-6 py-6 pointer-events-auto sm:flex-row')}>
+          <p className="max-w-md text-xs font-semibold text-slate-900">
+            {t(
+              'En soumettant, vous transmettez vos réponses à votre courtier pour vérification.',
+              'By submitting, you send your answers to your broker for verification.'
+            )}
+          </p>
+          <button
+            type="button"
+            disabled={certifying || saving || !progress.isComplete || !progress.criticalLocksMet || submittedForReview}
+            onClick={() => void handleSubmitForReview()}
+            className={cn(
+              institutionalListingsActionButtonClass,
+              'inline-flex items-center gap-2 px-6 py-3 text-[10px] tracking-[0.16em]',
+              'transition hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed'
+            )}
+          >
+            {certifying || saving ? (
+              <Loader2 className="h-4 w-4 animate-spin text-[#D4AF37]" />
+            ) : (
+              <Shield className="h-4 w-4 text-[#D4AF37]" />
+            )}
+            {submittedForReview
+              ? t('Soumis — en révision', 'Submitted — under review')
+              : t('Soumettre pour révision', 'Submit for review')}
+          </button>
+        </div>
+      ) : null}
+
+      {!isUploaded && !progress.isLocked && !isVendorMode ? (
         <div className={cn(institutionalListingsCardShellClass, 'flex flex-col items-center justify-between gap-4 px-6 py-6 pointer-events-auto sm:flex-row')}>
           <p className="max-w-md text-xs text-slate-700">
             {t(

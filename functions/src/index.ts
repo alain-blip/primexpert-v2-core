@@ -731,6 +731,7 @@ export {
   createVendorPortalInvite,
   validateVendorPortalToken,
   notifyVendorPortalDocumentUpload,
+  patchVendorPortalResidence,
 } from './vendor/vendorPortalAccess';
 
 /** Notes vocales mobile — Whisper + intention Gemini → notes / tâches (Montréal). */

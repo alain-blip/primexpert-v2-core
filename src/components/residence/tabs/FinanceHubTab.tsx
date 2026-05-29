@@ -57,6 +57,8 @@ const SUB_TABS: {
 
 export interface FinanceHubTabProps {
   residence: Residence;
+  /** Portail vendeur — lecture seule intégrale. */
+  isVendorMode?: boolean;
 }
 
 function resolveFinanceLockInput(
@@ -81,15 +83,17 @@ function resolveFinanceLockInput(
   };
 }
 
-export function FinanceHubTab({ residence }: FinanceHubTabProps) {
+export function FinanceHubTab({ residence, isVendorMode = false }: FinanceHubTabProps) {
   const { language, t } = useLanguage();
   const [subTab, setSubTab] = useState<FinanceSubTab>('bilan');
   const { financialData, loading } = useFinancialData();
   const { residenceDoc } = useResidenceDocument();
 
   const inputsLocked = useMemo(
-    () => isFinanceHubSealed(resolveFinanceLockInput(residenceDoc ?? undefined)),
-    [residenceDoc]
+    () =>
+      isVendorMode ||
+      isFinanceHubSealed(resolveFinanceLockInput(residenceDoc ?? undefined)),
+    [isVendorMode, residenceDoc]
   );
 
   const hasFinancials = useMemo(() => {
@@ -122,7 +126,7 @@ export function FinanceHubTab({ residence }: FinanceHubTabProps) {
 
   return (
     <FinanceHubLockProvider inputsLocked={inputsLocked}>
-      {inputsLocked ? (
+      {inputsLocked && !isVendorMode ? (
         <div
           role="status"
           className="flex items-start gap-3 border-b-4 border-amber-500 bg-amber-100 px-5 py-4 text-amber-950"
@@ -137,9 +141,13 @@ export function FinanceHubTab({ residence }: FinanceHubTabProps) {
         </div>
       ) : null}
 
-      <FinanceHubMasterPanel onOpenAnalyse360={openAnalyse360} residence={residence} />
+      <FinanceHubMasterPanel
+        onOpenAnalyse360={openAnalyse360}
+        residence={residence}
+        readOnly={isVendorMode}
+      />
 
-      {!loading && (
+      {!loading && !isVendorMode && (
         <>
         <FinanceManualEntryPanel residence={residence} defaultExpanded={!hasFinancials} />
         <div className="flex flex-wrap items-center justify-end gap-3 border-b border-[#142c6a]/15 bg-white px-5 py-3">
@@ -161,7 +169,10 @@ export function FinanceHubTab({ residence }: FinanceHubTabProps) {
 
       <motion.div
         role="tablist"
-        className="flex gap-2 overflow-x-auto border-b border-[#142c6a]/15 bg-white px-4 py-3"
+        className={cn(
+          'flex gap-2 overflow-x-auto border-b border-[#142c6a]/15 px-4 py-3',
+          isVendorMode ? 'bg-white dark:bg-primexpert-cardDark' : 'bg-white'
+        )}
         aria-label={t('Sous-onglets finance', 'Finance sub-tabs')}
       >
         {SUB_TABS.map((tab) => {
@@ -189,7 +200,14 @@ export function FinanceHubTab({ residence }: FinanceHubTabProps) {
         })}
       </motion.div>
 
-      <motion.div key={subTab} role="tabpanel" className="p-5 min-h-[320px] bg-white">
+      <motion.div
+        key={subTab}
+        role="tabpanel"
+        className={cn(
+          'p-5 min-h-[320px]',
+          isVendorMode ? 'bg-white dark:bg-primexpert-cardDark' : 'bg-white'
+        )}
+      >
         {panel}
       </motion.div>
     </FinanceHubLockProvider>

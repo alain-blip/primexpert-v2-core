@@ -38,6 +38,8 @@ import { PartiesIntervenantsSection } from '../identity/PartiesIntervenantsSecti
 
 export interface IdentiteImmeubleTabProps {
   residence: Residence;
+  /** Portail vendeur — masque CRM courtier, conserve édition identité. */
+  isVendorMode?: boolean;
 }
 
 type TernaryBool = boolean | null;
@@ -286,19 +288,50 @@ function resolveUnitsComfortSnapshot(
   };
 }
 
+/** Tokens charte portail vendeur — remplace slate-* legacy quand isVendorMode. */
+function identityVendorPortalClasses(vendor: boolean) {
+  if (!vendor) return null;
+  return {
+    shell: 'rounded-xl border-2 border-primexpert-dark/25 bg-white dark:bg-primexpert-cardDark',
+    panelAmber:
+      'rounded-2xl border-2 border-primexpert-dark/25 border-l-[8px] border-l-amber-500 bg-white dark:bg-primexpert-cardDark p-5 shadow-sm',
+    panelBlue:
+      'rounded-2xl border-2 border-primexpert-dark/25 bg-white dark:bg-primexpert-cardDark p-5 shadow-sm',
+    metaLabel: 'text-[10px] font-black uppercase tracking-[0.22em] text-slate-900 dark:font-bold',
+    metaSub: 'text-[10px] font-mono text-slate-900 dark:font-bold',
+    body: 'text-sm font-semibold text-slate-900 leading-relaxed dark:font-medium',
+    subtitle: 'mt-1 text-[15px] font-semibold leading-relaxed text-slate-900 dark:font-bold',
+    comfortRow: 'rounded-2xl border-2 border-primexpert-dark/15 bg-white dark:bg-primexpert-cardDark p-4',
+    toggleIdle:
+      'border-primexpert-dark/30 bg-white text-slate-900 hover:border-primexpert-dark/50 dark:bg-primexpert-cardDark dark:font-bold',
+    tableRow: (idx: number) =>
+      idx % 2 === 0
+        ? 'bg-white dark:bg-primexpert-cardDark'
+        : 'bg-primexpert-light/80 dark:bg-primexpert-cardDark',
+    metricTrack: 'bg-primexpert-light dark:bg-primexpert-dark/10',
+    metricMeta: 'text-xs font-mono font-bold text-slate-900',
+    occBarUnknown: 'bg-primexpert-dark/25',
+    occBadgeUnknown:
+      'bg-white text-slate-900 border-primexpert-dark/30 dark:bg-primexpert-cardDark dark:font-bold',
+  };
+}
+
 function TernaryToggle({
   value,
   onChange,
   disabled,
   language,
   ariaLabel,
+  isVendorMode = false,
 }: {
   value: TernaryBool;
   onChange: (next: TernaryBool) => void;
   disabled: boolean;
   language: 'fr' | 'en';
   ariaLabel: string;
+  isVendorMode?: boolean;
 }) {
+  const vpc = identityVendorPortalClasses(isVendorMode);
   const items: Array<{ key: string; tile: TernaryBool; label: string }> = [
     { key: 'yes', tile: true, label: language === 'fr' ? 'OUI' : 'YES' },
     { key: 'no', tile: false, label: language === 'fr' ? 'NON' : 'NO' },
@@ -324,7 +357,8 @@ function TernaryToggle({
               'min-w-[68px] rounded-xl border-2 px-4 py-2 text-[16px] font-black uppercase tracking-wider transition-colors',
               active
                 ? 'border-black bg-black text-white shadow-sm'
-                : 'border-black bg-white text-black hover:bg-slate-50',
+                : vpc?.toggleIdle ??
+                  'border-black bg-white text-black hover:bg-slate-50',
               disabled && 'cursor-not-allowed opacity-60'
             )}
           >
@@ -344,6 +378,7 @@ function ComfortRow({
   detail,
   placeholderFr,
   placeholderEn,
+  isVendorMode = false,
 }: {
   icon: React.ReactNode;
   label: { fr: string; en: string };
@@ -352,9 +387,15 @@ function ComfortRow({
   detail: React.ReactNode;
   placeholderFr: string;
   placeholderEn: string;
+  isVendorMode?: boolean;
 }) {
+  const vpc = identityVendorPortalClasses(isVendorMode);
   return (
-    <div className="rounded-2xl border-2 border-black/10 bg-[#fafaf6] p-4">
+    <div
+      className={
+        vpc?.comfortRow ?? 'rounded-2xl border-2 border-black/10 bg-[#fafaf6] p-4'
+      }
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
           <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-black">
@@ -463,12 +504,15 @@ function RpaUnitsComfortPanel({
   language,
   onToggleBinary,
   disabled,
+  isVendorMode = false,
 }: {
   snapshot: UnitsComfortSnapshot;
   language: 'fr' | 'en';
   onToggleBinary: (field: UnitsBinaryKey, value: TernaryBool) => void;
   disabled: boolean;
+  isVendorMode?: boolean;
 }) {
+  const vpc = identityVendorPortalClasses(isVendorMode);
   const bathDetail =
     snapshot.salleDeBainPrivee === true && snapshot.detailsSalleDeBainPrivee
       ? `${language === 'fr' ? 'Privées' : 'Private'} — ${snapshot.detailsSalleDeBainPrivee}`
@@ -533,7 +577,12 @@ function RpaUnitsComfortPanel({
       : null;
 
   return (
-    <section className="rounded-2xl border-2 border-black/10 border-l-[8px] border-l-amber-500 bg-white p-5 shadow-sm">
+    <section
+      className={
+        vpc?.panelAmber ??
+        'rounded-2xl border-2 border-black/10 border-l-[8px] border-l-amber-500 bg-white p-5 shadow-sm'
+      }
+    >
       <header className="mb-5 flex items-start gap-3">
         <BedDouble className="h-6 w-6 shrink-0 text-amber-600" aria-hidden />
         <div>
@@ -542,7 +591,7 @@ function RpaUnitsComfortPanel({
               ? '[ UNITÉS — CONFORT & ACCESSIBILITÉ ]'
               : '[ UNITS — COMFORT & ACCESSIBILITY ]'}
           </p>
-          <p className="mt-1 text-[15px] font-semibold leading-relaxed text-slate-800">
+          <p className={vpc?.subtitle ?? 'mt-1 text-[15px] font-semibold leading-relaxed text-slate-800'}>
             {language === 'fr'
               ? 'Caractéristiques physiques visibles par l’acheteur et critiques pour la diligence raisonnable RPA.'
               : 'Physical features visible to the buyer and critical for RPA due diligence.'}
@@ -562,12 +611,14 @@ function RpaUnitsComfortPanel({
               en: 'Private bathroom',
             }}
             language={language}
+            isVendorMode={isVendorMode}
             toggle={
               <TernaryToggle
                 value={snapshot.salleDeBainPrivee}
                 onChange={(next) => onToggleBinary('salleDeBainPrivee', next)}
                 disabled={disabled}
                 language={language}
+                isVendorMode={isVendorMode}
                 ariaLabel={
                   language === 'fr' ? 'Salle de bain privée' : 'Private bathroom'
                 }
@@ -588,12 +639,14 @@ function RpaUnitsComfortPanel({
               icon={<Utensils className="h-5 w-5" aria-hidden />}
               label={{ fr: 'Cuisinette', en: 'Kitchenette' }}
               language={language}
+              isVendorMode={isVendorMode}
               toggle={
                 <TernaryToggle
                   value={snapshot.cuisinette}
                   onChange={(next) => onToggleBinary('cuisinette', next)}
                   disabled={disabled}
                   language={language}
+                  isVendorMode={isVendorMode}
                   ariaLabel={language === 'fr' ? 'Cuisinette' : 'Kitchenette'}
                 />
               }
@@ -605,12 +658,14 @@ function RpaUnitsComfortPanel({
               icon={<BedDouble className="h-5 w-5" aria-hidden />}
               label={{ fr: 'Balcon / patio', en: 'Balcony / patio' }}
               language={language}
+              isVendorMode={isVendorMode}
               toggle={
                 <TernaryToggle
                   value={snapshot.balconPatio}
                   onChange={(next) => onToggleBinary('balconPatio', next)}
                   disabled={disabled}
                   language={language}
+                  isVendorMode={isVendorMode}
                   ariaLabel={language === 'fr' ? 'Balcon ou patio' : 'Balcony or patio'}
                 />
               }
@@ -622,12 +677,14 @@ function RpaUnitsComfortPanel({
               icon={<BedDouble className="h-5 w-5" aria-hidden />}
               label={{ fr: 'Meublement', en: 'Furnishing' }}
               language={language}
+              isVendorMode={isVendorMode}
               toggle={
                 <TernaryToggle
                   value={snapshot.meuble}
                   onChange={(next) => onToggleBinary('meuble', next)}
                   disabled={disabled}
                   language={language}
+                  isVendorMode={isVendorMode}
                   ariaLabel={language === 'fr' ? 'Unités meublées' : 'Furnished units'}
                 />
               }
@@ -793,16 +850,20 @@ function resolveSpacesAndParkingSnapshot(
   return { occupancyPct, commonSpaces, parking, totalParking };
 }
 
-function occupancyPalette(pct: number | null): {
+function occupancyPalette(
+  pct: number | null,
+  isVendorMode = false
+): {
   bar: string;
   badge: string;
   badgeFr: string;
   badgeEn: string;
 } {
+  const vpc = identityVendorPortalClasses(isVendorMode);
   if (pct == null) {
     return {
-      bar: 'bg-slate-300',
-      badge: 'bg-slate-200 text-slate-900 border-slate-700',
+      bar: vpc?.occBarUnknown ?? 'bg-slate-300',
+      badge: vpc?.occBadgeUnknown ?? 'bg-slate-200 text-slate-900 border-slate-700',
       badgeFr: 'À VALIDER',
       badgeEn: 'TO VALIDATE',
     };
@@ -834,11 +895,14 @@ function occupancyPalette(pct: number | null): {
 function RpaSpacesAndParkingPanel({
   snapshot,
   language,
+  isVendorMode = false,
 }: {
   snapshot: SpacesAndParkingSnapshot;
   language: 'fr' | 'en';
+  isVendorMode?: boolean;
 }) {
-  const palette = occupancyPalette(snapshot.occupancyPct);
+  const vpc = identityVendorPortalClasses(isVendorMode);
+  const palette = occupancyPalette(snapshot.occupancyPct, isVendorMode);
   const placeholder = language === 'fr' ? '—' : '—';
   const naLabel = language === 'fr' ? 'NON RENSEIGNÉ' : 'NOT PROVIDED';
   const occupancyLabel =
@@ -850,7 +914,10 @@ function RpaSpacesAndParkingPanel({
 
   return (
     <section
-      className="rounded-2xl border-2 border-[#142c6a] bg-white p-5 shadow-sm"
+      className={
+        vpc?.panelBlue ??
+        'rounded-2xl border-2 border-[#142c6a] bg-white p-5 shadow-sm'
+      }
       aria-labelledby="spaces-parking-title"
     >
       <header className="mb-5 flex items-start gap-3">
@@ -864,7 +931,7 @@ function RpaSpacesAndParkingPanel({
               ? '[ OCCUPATION, ESPACES COMMUNS & STATIONNEMENT ]'
               : '[ OCCUPANCY, COMMON SPACES & PARKING ]'}
           </p>
-          <p className="mt-1 text-[15px] font-semibold leading-relaxed text-slate-800">
+          <p className={vpc?.subtitle ?? 'mt-1 text-[15px] font-semibold leading-relaxed text-slate-800'}>
             {language === 'fr'
               ? 'Indicateur d’occupation, capacité des espaces communs et offre de stationnement — données critiques de visite.'
               : 'Occupancy indicator, common space capacity and parking offer — critical on-site data.'}
@@ -873,7 +940,14 @@ function RpaSpacesAndParkingPanel({
       </header>
 
       <div className="space-y-5">
-        <div className="rounded-2xl border-2 border-black/10 bg-[#f1f5f9] p-4">
+        <div
+          className={cn(
+            'rounded-2xl border-2 p-4',
+            isVendorMode
+              ? 'border-primexpert-dark/15 bg-white dark:bg-primexpert-cardDark'
+              : 'border-black/10 bg-[#f1f5f9]'
+          )}
+        >
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-[15px] font-black uppercase tracking-wide text-[#142c6a]">
@@ -893,7 +967,10 @@ function RpaSpacesAndParkingPanel({
             </span>
           </div>
           <div
-            className="mt-4 h-3 w-full rounded-none border border-black/30 bg-white"
+            className={cn(
+              'mt-4 h-3 w-full rounded-none border border-black/30',
+              isVendorMode ? 'bg-white dark:bg-primexpert-cardDark' : 'bg-white'
+            )}
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={100}
@@ -904,7 +981,12 @@ function RpaSpacesAndParkingPanel({
               style={{ width: `${fillWidth}%` }}
             />
           </div>
-          <div className="mt-2 flex items-center justify-between text-[12px] font-black uppercase tracking-wider text-slate-700">
+          <div
+            className={cn(
+              'mt-2 flex items-center justify-between text-[12px] font-black uppercase tracking-wider',
+              isVendorMode ? 'text-slate-900 dark:font-bold' : 'text-slate-700'
+            )}
+          >
             <span>0 %</span>
             <span className="text-red-700">75 %</span>
             <span className="text-amber-700">90 %</span>
@@ -953,7 +1035,7 @@ function RpaSpacesAndParkingPanel({
                   return (
                     <tr
                       key={row.key}
-                      className={idx % 2 === 0 ? 'bg-white' : 'bg-[#fafaf6]'}
+                      className={vpc?.tableRow(idx) ?? (idx % 2 === 0 ? 'bg-white' : 'bg-[#fafaf6]')}
                     >
                       <td className="border-t border-black/10 px-4 py-3">
                         <span className="inline-flex items-center gap-2 text-[15px] font-semibold text-black">
@@ -1005,7 +1087,7 @@ function RpaSpacesAndParkingPanel({
                 {snapshot.parking.map((row, idx) => (
                   <tr
                     key={row.key}
-                    className={idx % 2 === 0 ? 'bg-white' : 'bg-[#fafaf6]'}
+                    className={vpc?.tableRow(idx) ?? (idx % 2 === 0 ? 'bg-white' : 'bg-[#fafaf6]')}
                   >
                     <td className="border-t border-black/10 px-4 py-3">
                       <span className="inline-flex items-center gap-2 text-[15px] font-semibold text-black">
@@ -1043,7 +1125,7 @@ function RpaSpacesAndParkingPanel({
   );
 }
 
-export function IdentiteImmeubleTab({ residence }: IdentiteImmeubleTabProps) {
+export function IdentiteImmeubleTab({ residence, isVendorMode = false }: IdentiteImmeubleTabProps) {
   const { language, t } = useLanguage();
   const { profile } = useAuth();
   const {
@@ -1102,6 +1184,8 @@ export function IdentiteImmeubleTab({ residence }: IdentiteImmeubleTabProps) {
       ? residenceDoc.courtiersResponsables
       : residence.courtiersResponsables;
 
+  const vpc = identityVendorPortalClasses(isVendorMode);
+
   if (!isInProvider) {
     return (
       <div className="rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">
@@ -1115,8 +1199,13 @@ export function IdentiteImmeubleTab({ residence }: IdentiteImmeubleTabProps) {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white px-8 py-16 text-center">
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
+      <div
+        className={
+          vpc?.shell ??
+          'rounded-xl border border-slate-200 bg-white px-8 py-16 text-center'
+        }
+      >
+        <p className={vpc?.metaLabel ?? 'text-[10px] font-black uppercase tracking-[0.22em] text-slate-500'}>
           {t('Chargement de l’identité…', 'Loading identity…')}
         </p>
       </div>
@@ -1133,14 +1222,14 @@ export function IdentiteImmeubleTab({ residence }: IdentiteImmeubleTabProps) {
 
   if (!view.hasDocument) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white px-8 py-10">
+      <div className={vpc?.shell ?? 'rounded-xl border border-slate-200 bg-white px-8 py-10'}>
         <div className="flex items-start gap-3">
           <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-700">
               {t('Identité & immeuble', 'Identity & building')}
             </p>
-            <p className="mt-2 text-sm text-slate-700 leading-relaxed">
+            <p className={vpc?.body ?? 'mt-2 text-sm text-slate-700 leading-relaxed'}>
               {t(
                 'Document résidence introuvable ou vide.',
                 'Residence document not found or empty.'
@@ -1159,10 +1248,10 @@ export function IdentiteImmeubleTab({ residence }: IdentiteImmeubleTabProps) {
         <div className="flex items-center gap-2">
           <Building2 className="h-5 w-5 text-[#D4AF37]" />
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
+            <p className={vpc?.metaLabel ?? 'text-[10px] font-black uppercase tracking-[0.22em] text-slate-500'}>
               {t('Identité fusionnée', 'Unified identity')}
             </p>
-            <p className="text-[10px] text-slate-400 font-mono">
+            <p className={vpc?.metaSub ?? 'text-[10px] text-slate-400 font-mono'}>
               {t('Édition par section', 'Section editing')} · ID {residence.id}
               {saving ? ` · ${t('Enregistrement…', 'Saving…')}` : ''}
             </p>
@@ -1177,7 +1266,7 @@ export function IdentiteImmeubleTab({ residence }: IdentiteImmeubleTabProps) {
       ) : null}
 
       {/* Parties CRM — liaisons contacts ↔ fiche résidence (bloc prioritaire haut de fiche) */}
-      <PartiesIntervenantsSection />
+      {!isVendorMode ? <PartiesIntervenantsSection /> : null}
 
       {/* Bannière contextuelle d'enrichissement MSSS depuis Copilote */}
       <MsssEnrichmentBanner show={view.showMsssBanner} msss={view.msss} language={lang} />
@@ -1186,16 +1275,18 @@ export function IdentiteImmeubleTab({ residence }: IdentiteImmeubleTabProps) {
       <IdentityOverviewStrip overview={view.overview} language={lang} />
 
       {/* A · Identification de l'établissement (nom, contacts, dates) */}
-      {establishmentSection && profile?.uid ? (
+      {establishmentSection && (profile?.uid || isVendorMode) ? (
         <EditableIdentitySection
           section={establishmentSection}
           language={lang}
           leadingContent={
-            <ResponsibleBrokerCard
-              brokerId={profile.uid}
-              brokerDisplayName={profile.displayName}
-              courtiersResponsables={courtiersResponsables}
-            />
+            !isVendorMode && profile?.uid ? (
+              <ResponsibleBrokerCard
+                brokerId={profile.uid}
+                brokerDisplayName={profile.displayName}
+                courtiersResponsables={courtiersResponsables}
+              />
+            ) : undefined
           }
         />
       ) : null}
@@ -1212,16 +1303,20 @@ export function IdentiteImmeubleTab({ residence }: IdentiteImmeubleTabProps) {
         language={lang}
         onToggleBinary={handleUnitsBinaryToggle}
         disabled={saving}
+        isVendorMode={isVendorMode}
       />
 
       {/* E · Occupation, espaces communs & stationnement (Sprint 3.3) */}
       <RpaSpacesAndParkingPanel
         snapshot={spacesAndParkingSnapshot}
         language={lang}
+        isVendorMode={isVendorMode}
       />
 
-      {/* F · Vérification du bâtiment & cadastre (JLR) */}
-      <BuildingAuditPanel blocks={view.buildingAudit} language={lang} />
+      {/* F · Vérification du bâtiment & cadastre (JLR) — courtier uniquement */}
+      {!isVendorMode ? (
+        <BuildingAuditPanel blocks={view.buildingAudit} language={lang} />
+      ) : null}
 
       {/* Compléments — tarification des loyers et capacité fine */}
       <RentPricingTableSection rentPricing={view.rentPricing} language={lang} />
@@ -1239,13 +1334,23 @@ export function IdentiteImmeubleTab({ residence }: IdentiteImmeubleTabProps) {
                 <span className="w-28 shrink-0 text-xs font-semibold text-[#142c6a]">
                   {row.label}
                 </span>
-                <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                <div
+                  className={cn(
+                    'flex-1 h-2 rounded-full overflow-hidden',
+                    vpc?.metricTrack ?? 'bg-slate-100'
+                  )}
+                >
                   <div
                     className="h-full rounded-full bg-emerald-500/80"
                     style={{ width: `${Math.min(100, row.pct)}%` }}
                   />
                 </div>
-                <span className="w-20 text-right text-xs font-mono text-slate-600">
+                <span
+                  className={cn(
+                    'w-20 text-right text-xs font-mono',
+                    vpc?.metricMeta ?? 'text-slate-600'
+                  )}
+                >
                   {row.count} ({row.pct.toFixed(0)}%)
                 </span>
               </div>

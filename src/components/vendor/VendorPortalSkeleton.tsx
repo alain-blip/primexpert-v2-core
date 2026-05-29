@@ -1,13 +1,17 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { institutionalListingsCardShellClass } from '../../lib/institutionalTheme';
+import {
+  institutionalListingsCardShellClass,
+  vendorPortalLayoutShellClass,
+} from '../../lib/institutionalTheme';
+import { cn } from '../../lib/utils';
 
 export function VendorPortalSkeleton() {
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="mx-auto max-w-3xl space-y-4 px-4 py-8"
+      className={cn('space-y-4 py-8', vendorPortalLayoutShellClass)}
     >
       <div className="h-8 w-48 animate-pulse rounded-lg bg-white dark:bg-primexpert-cardDark" />
       <div
