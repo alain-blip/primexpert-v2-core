@@ -1,8 +1,10 @@
 # Primexpert — mémoire de décisions (journal)
 
+> **Index documentation :** [`README.md`](./README.md)  
 > **Emplacement canonique (code + doc jumeaux) :**  
 > `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`  
-> Miroir possible : `00_PRIMEXPERT_SYSTEME_APP/docs/` sur le disque de sauvegarde.
+> Miroir possible : `00_PRIMEXPERT_SYSTEME_APP/docs/` sur le disque de sauvegarde.  
+> **Gouvernance PO :** [`CHARTE SUPRÊME & GOUVERNANCE PRIMEXPERT .rtf`](./CHARTE%20SUPR%C3%8AME%20%26%20GOUVERNANCE%20PRIMEXPERT%20.rtf) (v2026.2) · [`Primexpert Normes d'implantation.rtf`](./Primexpert%20Normes%20d'implantation.rtf)
 
 ---
 
@@ -555,4 +557,127 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 ---
 
-*Journal mis à jour : 2026-05-28 — Production active V2.7 (5 volets) sur https://primexpert-app-v2.web.app. Voir [`CLOSING_AND_COMPLIANCE_DRAFT.md`](./CLOSING_AND_COMPLIANCE_DRAFT.md), [`CENTRIS_RESO_MAPPING_DRAFT.md`](./CENTRIS_RESO_MAPPING_DRAFT.md), [`DATA_MAPPING_LEGACY_V2.md`](./DATA_MAPPING_LEGACY_V2.md).*
+## Journal de conformité — Algorithme de souscription validé (2026-05-29)
+
+**Statut :** **[MISE EN PRODUCTION — HOSTING LIVE]**
+
+| Élément | Détail |
+|---------|--------|
+| **Décision PO** | Alain (Product Owner) — principe de réalité métier : l'emprunt maximum autorisé est bridé par le **critère le plus restrictif** (souscription commerciale / SCHL). |
+| **Règle #0** | Enrichissement SSOT — `packages/core/src/financial/bankingSubscriptionLimits.ts` (`resolveEmpruntMaximumAutorise`) ; pas de moteur parallèle en UI. |
+| **Formule** | Emprunt maximum autorisé = **min** (capacité ratio de couverture de la dette (DSCR), plafond ratio prêt-valeur (RPV)) ; mise de fonds requise (MFR) recalculée sur l'emprunt restrictif. |
+| **Surfaces unifiées** | Hub Finance · onglet Finançabilité · Bilan exécutif · rapports PDF certifiables · aperçu acheteur diffusion · ACM présentation vendeur. |
+| **Libellé UI** | « Emprunt maximum autorisé (le plus bas des critères) » — abréviations développées (DSCR, RPV) conformément à la charte Québec. |
+| **Git** | PR [#2](https://github.com/alain-blip/primexpert-v2-core/pull/2) — merge `20ed8dd` (`fix/finance-emprunt-maximum-plus-bas-criteres` → `main`) ; commit métier `d970196`. |
+| **Déploiement** | `npm run build` (predeploy hosting) + `firebase deploy --only hosting` sur `primexpert-app-v2` — **2026-05-29**. |
+| **URL production** | https://primexpert-app-v2.web.app |
+| **Référence chiffrée PO** | Cas dossier validé — **1 899 993 $** unifié sur l'ensemble des rapports et fiches finançabilité (hard refresh recommandé post-déploiement). |
+
+**HITL :** l'algorithme calcule et affiche ; le courtier demeure responsable de la diligence et de la validation des hypothèses de souscription avant toute recommandation à un client.
+
+---
+
+## Session 2026-05-29 — Portail vendeur autonome, briefing matin, radar off-market, SPA (`c407c60` → `f9a4f23` → `194a5ea`)
+
+### Accès Vendeur V2.8 — portail client autonome
+
+| Élément | Détail |
+|---------|--------|
+| **Catalogue SSOT** | `packages/core/src/residence/vendorPortalCatalogue.ts` — **82 types canoniques + 3 « Hors liste » = 85 exigences UI** |
+| **Conformité** | `vendorPortalCompliance.ts` — `assessVendorPortalCatalogueCompliance()` ; jauge % types requis reçus |
+| **3 catégories parentes** | Documents à partager · Contrat/mandat/titres · Promesse d'achat |
+| **Invitation** | Callable `createVendorPortalInvite` — `vendor_portal_invites/{token}` ; TTL **30 jours** |
+| **Session client** | `/acces-vendeur?token=…` → `validateVendorPortalToken` + `signInWithCustomToken` |
+| **UI** | `AccesVendeurPage.tsx` — onglets overview / documents / timeline / promesse ; `VendorPortalSkeleton` |
+| **Téléversement** | `uploadSource: 'vendor_portal' \| 'broker'` ; alerte courtier `notifyVendorPortalDocumentUpload` |
+| **Routage SPA** | `App.tsx` → lazy `AuthenticatedApp.tsx` ; `AccesVendeurRoute` détecte `?token=` |
+
+### Briefing du matin & Radar à opportunités (off-market)
+
+| Élément | Détail |
+|---------|--------|
+| **Core** | `morningBriefing.ts`, `radarOpportunitesEngine.ts`, `hotLeadsEngine.ts` (`@primexpert/core/crm`) |
+| **Cron** | `morningBriefingGenerator` — **06:00 America/Toronto** |
+| **Persistance** | `organizations/{orgId}/morning_briefings/{brokerId}` ; `organizations/{orgId}/prospects_radar/{id}` |
+| **Signaux radar** | `occupancy_drop` ; `certification_expiry` (CIUSSS/MSSS ≤ 60 j) |
+| **UI** | `Dashboard.tsx` + `morningBriefingService.ts` |
+| **Prebuild** | `sync-core-crm.cjs` → `functions/src/cron/_vendored/` |
+
+### Bilan 360° & CRM — enrichissements
+
+| Élément | Détail |
+|---------|--------|
+| **Synthèse** | Prix demandé et commissions éditables ; nœuds canoniques HITL ; import extractions |
+| **Recherche CRM** | `contactSearch.ts` — haystack normalisé |
+| **Inscriptions** | Recherche multi-critères villes/municipités |
+| **Contacts multi-canaux** | `partyQuickCommunications.ts` — SMS/courriel/VoIP depuis parties |
+
+### Statut production V2.8 (2026-05-29)
+
+| # | Volet | Statut |
+|---|-------|--------|
+| 1–5 | Volets V2.5–V2.7 (CRM, ACM, omnicanal, négociation, closing) | **[LIVE / CÂBLÉ]** — inchangé |
+| 6 | **Portail vendeur autonome (85 pièces)** | **[OPÉRATIONNEL — LIVE]** |
+| 7 | **Briefing matin + radar off-market** | **[OPÉRATIONNEL — LIVE]** |
+
+**Documentation Bible alignée :** `README.md`, `arborescence.md`, `project_canonical_fields.md`, `project_pipeline_gps.md`, RTF v2026.2.
+
+---
+
+## Sprint V2.9 — Vault WORM & journal de conformité légale (core types)
+
+**Statut infrastructure core compilée — 2026-05-29**
+
+| Volet | Statut |
+|-------|--------|
+| Coffre-fort immuable WORM (`LegalVaultDocument`) | **[OPÉRATIONNEL — INTÉGRÉ AU CORE]** |
+| Registre d'adéquation scellé SHA-256 (`LegalComplianceLogEntry`) | **[OPÉRATIONNEL — INTÉGRÉ AU CORE]** |
+| Validateur chronologique profil (`brokerProfileCompliance`) | **[OPÉRATIONNEL — INTÉGRÉ AU CORE]** |
+| Lexique réglementaire — zéro occurrence mot banni | **[CONFORME]** |
+
+**SSOT :** `packages/core/src/security/` — export `@primexpert/core/security`.
+
+| Fichier | Rôle |
+|---------|------|
+| `vaultSpecsTypes.ts` | Types WORM, rétention 2190 j, chaînage SHA-256, `applyLegalVaultWormLock`, `validateLegalVaultDocument` |
+| `brokerProfileCompliance.ts` | `profilePhotoUploadedAtMillis`, `isProfilePhotoExpired` (> 1826 j), `validateBrokerProfilePhotoForPublication` |
+| `index.ts` | Barrel |
+
+**Hors périmètre sprint (branchement prod planifié) :** collections Firestore `legal_vault` + `compliance_log`, `firestore.rules` deny update/delete si `isFinalWormLocked`, Function Montréal append journal sur READ/WRITE/LOCK/EXPORT_ZIP, extension `UserProfile` côté `users/{uid}`.
+
+---
+
+## Registre global de la suite logicielle — mai 2026
+
+Statut officiel consolidé (conseil d'administration) :
+
+| Volet | Statut certifié |
+|-------|-----------------|
+| Cœur CRM & fiches parties | **[OPÉRATIONNEL — PRODUCTION LIVE]** |
+| Analyse de mise en marché (ACM) & benchmark taux de capitalisation (TGA) | **[OPÉRATIONNEL — PRODUCTION LIVE]** |
+| Hub omnicanal (SMS / Nylas) | **[OPÉRATIONNEL — PRODUCTION LIVE]** |
+| Clauses négociation Gemini | **[CÂBLÉ — MOTEUR DYNAMIQUE ACTIF]** |
+| Coffre-fort WORM & sécurité | **[CÂBLÉ — INTÉGRATION CORE CERTIFIÉE]** |
+
+**URL production :** https://primexpert-app-v2.web.app  
+**Modules V2.8 complémentaires (hors registre exécutif) :** portail vendeur autonome (85 pièces), briefing matin, radar off-market — voir section session 2026-05-29 ci-dessus.
+
+---
+
+## Fin de cycle technique V2.9 — projet configuré et stable (mai 2026)
+
+Clôture officielle du cycle de développement V2.9 :
+
+| Élément | Statut |
+|---------|--------|
+| **URL officielle** | https://primexpert-app-v2.web.app |
+| **Monorepo** | **Archivé, validé, zéro dérive** — `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2` |
+| **Mode sécurisation** | **Cockpit technique en attente d'ordres opérationnels** |
+
+**Interprétation ops :** aucun déploiement ni refactor non mandaté ; prochaines actions = ordres PO explicites (ex. branchement Firestore Vault WORM, `firestore.rules`, Functions Montréal journal de conformité).
+
+**Repo :** https://github.com/alain-blip/primexpert-v2-core.git — branche `main`.
+
+---
+
+*Journal mis à jour : 2026-05-29 — Fin de cycle V2.9. Registre global mai 2026 certifié. Cockpit en attente d'ordres opérationnels.*
