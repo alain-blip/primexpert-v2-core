@@ -5,6 +5,7 @@ export * from './visitorRegistry';
 export * from './zonePenetration';
 export * from './demographics';
 export * from './marketDeduplication';
+export * from './marketPdfSemanticAnchors';
 export * from './closingEngine';
 export * from './marketGpsViewModel';
 export * from './marketGpsDashboardMetrics';

@@ -121,8 +121,18 @@ Retourne documentCategory = "MARKET_REPORT" et remplis TOUTES les sections perti
     "montantParPorte": 18500,
     "montantAnnuel": null,
     "categorie": "exploitation"
-  }]
+  }],
+  "tgaPct": 6.25,
+  "population75_plus": 125000,
+  "monthsOfInventory": 8.5,
+  "sellingPriceListingPriceRatio": 0.98
 }
+
+Variables canoniques OBLIGATOIRES (racine JSON — omettre si absentes du PDF) :
+- tgaPct : taux de capitalisation (TGA) en pourcentage — volet commercial / RPA
+- population75_plus : population 75 ans et plus (bassin démographique MSSS) — volet commercial / RPA
+- monthsOfInventory : indice de liquidité / mois d'inventaire (MOI) — volet résidentiel SCHL
+- sellingPriceListingPriceRatio : ratio prix de vente / prix affiché (SP/LP) — volet résidentiel SCHL
 
 Règles :
 - macroTrends : grilles régionales, pénétration 75+, coûts Altus, chantier RPA

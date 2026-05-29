@@ -21,6 +21,7 @@ const SNAPSHOT_DOC_ID = 'v1';
 export interface InjectMasterMarketPayload {
   documentId: string;
   brokerId: string;
+  orgId?: string;
   siloType?: string;
   selectedRegions: Array<Record<string, unknown>>;
   selectedTransactions: Array<Record<string, unknown>>;
@@ -90,12 +91,21 @@ function appendSnapshotRows<T extends Record<string, unknown>>(
   return merged;
 }
 
+async function resolveOrgId(brokerId: string, orgIdHint?: string): Promise<string> {
+  const hinted = String(orgIdHint ?? '').trim();
+  if (hinted) return hinted;
+  const db = getDb();
+  const userSnap = await db.collection('users').doc(brokerId).get();
+  return String(userSnap.data()?.orgId ?? '').trim();
+}
+
 export async function injectMasterMarketExtractionServer(
   payload: InjectMasterMarketPayload
 ): Promise<InjectMasterMarketResult> {
   const {
     documentId,
     brokerId,
+    orgId: orgIdHint,
     siloType = 'rpa_ri_chsld',
     selectedRegions,
     selectedTransactions,
@@ -110,6 +120,11 @@ export async function injectMasterMarketExtractionServer(
     throw new Error('Sélectionnez au moins une donnée à conserver.');
   }
 
+  const orgId = await resolveOrgId(brokerId, orgIdHint);
+  if (!orgId) {
+    throw new Error('Identifiant d\'organisation (orgId) requis pour l\'injection multi-tenant.');
+  }
+
   const db = getDb();
   const docRef = db.collection(MARKET_DOCUMENTS).doc(documentId);
   const docSnap = await docRef.get();
@@ -118,6 +133,10 @@ export async function injectMasterMarketExtractionServer(
   const data = docSnap.data() ?? {};
   if (String(data.uploadedBy ?? '') !== brokerId) {
     throw new Error('Accès refusé.');
+  }
+  const docOrgId = String(data.orgId ?? '').trim();
+  if (docOrgId && docOrgId !== orgId) {
+    throw new Error('Accès refusé : document hors organisation.');
   }
 
   const extracted = (data.extractedData ?? {}) as Record<string, unknown>;
@@ -188,6 +207,7 @@ export async function injectMasterMarketExtractionServer(
       entryRef,
       {
         dedupeFingerprint: fingerprint,
+        orgId,
         regionAdministrative,
         regionDisplayName: String(region.regionDisplayName ?? regionAdministrative),
         documentType,
@@ -207,6 +227,7 @@ export async function injectMasterMarketExtractionServer(
     macroEntryIds.push(fingerprint);
     snapshotMacroRows.push({
       ...region,
+      orgId,
       dedupeFingerprint: fingerprint,
       documentType,
       sourcePublisher,
@@ -235,6 +256,7 @@ export async function injectMasterMarketExtractionServer(
       entryRef,
       {
         dedupeFingerprint: fingerprint,
+        orgId,
         siloType,
         regionAdministrative,
         regionDisplayName: city,
@@ -267,6 +289,7 @@ export async function injectMasterMarketExtractionServer(
     );
     analyticsEntryIds.push(fingerprint);
     snapshotTxRows.push({
+      orgId,
       dedupeFingerprint: fingerprint,
       ville: tx.ville,
       adresse: tx.adresse,
@@ -315,6 +338,7 @@ export async function injectMasterMarketExtractionServer(
       entryRef,
       {
         dedupeFingerprint: fingerprint,
+        orgId,
         siloType,
         regionAdministrative,
         regionDisplayName: regionAdministrative,
@@ -336,6 +360,7 @@ export async function injectMasterMarketExtractionServer(
     analyticsEntryIds.push(fingerprint);
     snapshotBenchRows.push({
       ...bench,
+      orgId,
       dedupeFingerprint: fingerprint,
       marketDocumentId: documentId,
       validatedAtMillis: now,
