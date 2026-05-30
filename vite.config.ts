@@ -38,6 +38,7 @@ export default defineConfig(({mode}) => {
         { find: /^@primexpert\/core\/documents$/, replacement: path.resolve(__dirname, 'packages/core/src/documents/index.ts') },
         { find: /^@primexpert\/core\/telephony$/, replacement: path.resolve(__dirname, 'packages/core/src/telephony/index.ts') },
         { find: /^@primexpert\/core\/security$/, replacement: path.resolve(__dirname, 'packages/core/src/security/index.ts') },
+        { find: /^@primexpert\/core\/forms$/, replacement: path.resolve(__dirname, 'packages/core/src/forms/index.ts') },
         { find: /^@primexpert\/core\/utils\/formatting$/, replacement: path.resolve(__dirname, 'packages/core/src/utils/formatting.ts') },
         { find: /^@primexpert\/core\/services\/aiNarrativeService$/, replacement: path.resolve(__dirname, 'packages/core/src/services/aiNarrativeService.ts') },
         { find: /^@primexpert\/core$/, replacement: path.resolve(__dirname, 'packages/core/src/index.ts') },
