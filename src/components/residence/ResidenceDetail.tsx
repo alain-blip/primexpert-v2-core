@@ -3,7 +3,7 @@
  * Les onglets métier (Hub CFO, Identité fusionnée, etc.) arrivent en phases suivantes.
  */
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ArrowLeft,
   Building2,
@@ -21,6 +21,10 @@ import { cn, formatCurrency } from '../../lib/utils';
 import { useLanguage } from '../../lib/i18n';
 import type { Residence } from '../../services/residences';
 import { ResidenceIntelligencePanel } from '../ResidenceIntelligencePanel';
+import {
+  ResidenceDataProvider,
+  useResidenceData,
+} from '../../context/ResidenceDataContext';
 import { FinancialDataProvider } from '../../context/FinancialDataContext';
 import { FinancialHubDraftProvider } from '../../context/FinancialHubDraftContext';
 import { FinanceHubTab } from './tabs/FinanceHubTab';
@@ -180,17 +184,12 @@ export interface ResidenceDetailProps {
 
 function ResidenceDetailContent({
   brokerId,
-  residence: residenceProp,
   onClose,
   initialTab,
-}: ResidenceDetailProps & { initialTab: ResidenceDetailTab }) {
+}: Omit<ResidenceDetailProps, 'residence'> & { initialTab: ResidenceDetailTab }) {
   const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<ResidenceDetailTab>(initialTab);
-  const [residence, setResidence] = useState(residenceProp);
-
-  useEffect(() => {
-    setResidence(residenceProp);
-  }, [residenceProp]);
+  const { residence, listingPrice, applyOptimisticPatch } = useResidenceData();
 
   const addrTitle = residence.city
     ? `${residence.address}, ${residence.city}`
@@ -235,7 +234,7 @@ function ResidenceDetailContent({
             residenceRegionHint={residence.city}
             assetNiche={residence.assetNiche}
             propertyType={residence.propertyType}
-            contractPrice={residence.price}
+            contractPrice={listingPrice}
           />
         );
       case 'promesse':
@@ -276,13 +275,13 @@ function ResidenceDetailContent({
                 <ResidenceTransactionBanner />
               </div>
               <p className="text-[11px] font-bold text-slate-600 mt-1 font-mono">
-                <span className="text-[#142c6a]">{formatCurrency(residence.price)}</span> · ID{' '}
+                <span className="text-[#142c6a]">{formatCurrency(listingPrice)}</span> · ID{' '}
                 {residence.id}
               </p>
               <div className="mt-2">
                 <InscriptionStatusDropdown
                   residence={residence}
-                  onUpdated={(patch) => setResidence((prev) => ({ ...prev, ...patch }))}
+                  onUpdated={(patch) => applyOptimisticPatch(patch)}
                 />
               </div>
             </div>
@@ -344,12 +343,13 @@ export function ResidenceDetail({
 }: ResidenceDetailProps) {
   return (
     <ResidenceDocumentProvider residenceId={residence.id}>
-      <ResidenceDetailContent
-        brokerId={brokerId}
-        residence={residence}
-        onClose={onClose}
-        initialTab={initialTab}
-      />
+      <ResidenceDataProvider baseResidence={residence}>
+        <ResidenceDetailContent
+          brokerId={brokerId}
+          onClose={onClose}
+          initialTab={initialTab}
+        />
+      </ResidenceDataProvider>
     </ResidenceDocumentProvider>
   );
 }

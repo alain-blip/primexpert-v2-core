@@ -59,10 +59,6 @@ function main() {
 
   let body = fs.readFileSync(SOURCE, 'utf-8');
   body = body.replace(
-    /import \{ calculateComparableCapRate \} from '\.\/centrisComparableCapRate';\n/,
-    `${CAP_RATE_FN}\n`
-  );
-  body = body.replace(
     "import { internalFlywheelFingerprint } from './marketDeduplication';",
     "import { internalFlywheelFingerprint } from '../../documents/_vendored/marketDeduplication';"
   );

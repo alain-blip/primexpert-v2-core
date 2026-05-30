@@ -30,7 +30,8 @@ import { cn, formatCurrency } from '../../../lib/utils';
 import { getListingPrice } from '@primexpert/core/residence';
 import { readCalculatedResultsDisplayMirror, type CalculatedResultsDisplayMirror } from '@primexpert/core/financial';
 import { bootstrapResidenceAcm } from '@primexpert/core/valuation';
-import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
+import { useUnifiedResidence } from '../../../context/ResidenceDataContext';
+import { useUnifiedResidence } from '../../../context/ResidenceDataContext';
 import { useFinancialData } from '../../../context/FinancialDataContext';
 import type { Residence } from '../../../services/residences';
 import { buildCommissionFirestorePatch, buildListingPriceFirestorePatch } from '../../../services/residences';
@@ -1313,24 +1314,26 @@ function PaperSection({
   );
 }
 
-export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) {
+export function Synthese360Tab({ residence: residenceProp, residenceId }: Synthese360TabProps) {
   const { t, language } = useLanguage();
   const { user, profile } = useAuth();
   const workhubNav = useWorkhubNav();
-  const { residenceDoc, updateResidence, saving: savingResidence } = useResidenceDocument();
+  const {
+    residence,
+    listingPrice,
+    pricePerUnit,
+    totalUnits,
+    updateResidence,
+    saving: savingResidence,
+  } = useUnifiedResidence(residenceProp);
   const { financialData, loading: financialLoading, error: financialError } = useFinancialData();
-  const mergedResidence = useMemo(
-    () => ({ ...residence, ...(residenceDoc ?? {}) }) as ResidenceLoose,
-    [residence, residenceDoc]
-  );
-  const loose = mergedResidence;
+  const loose = residence as ResidenceLoose;
   const businessStatus = useMemo(() => calculateBusinessStatus(loose), [loose]);
   const declarationNeedsReview =
-    typeof residenceDoc?.declarationStatus === 'string' &&
-    residenceDoc.declarationStatus === 'A_REVISER';
+    typeof (residence as Record<string, unknown>).declarationStatus === 'string' &&
+    (residence as Record<string, unknown>).declarationStatus === 'A_REVISER';
   const retribution = useMemo(() => resolveRetribution(loose), [loose]);
   const residenceName = pickText(loose, ['residenceName', 'commercialName', 'nomCommercial', 'nom_commercial', 'name'], 'RPA À NOMMER');
-  const askingPrice = getListingPrice(loose);
   const financialMirror = useMemo(
     () => readCalculatedResultsDisplayMirror(financialData),
     [financialData]
@@ -1338,11 +1341,11 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
   const acmBootstrap = useMemo(
     () =>
       bootstrapResidenceAcm(
-        mergedResidence,
-        residenceDoc ?? null,
+        residence,
+        residence as Record<string, unknown>,
         (financialData as Record<string, unknown> | null | undefined) ?? null
       ),
-    [mergedResidence, residenceDoc, financialData]
+    [residence, financialData]
   );
   const financeIncomplete = useMemo(
     () => hasFinanceIncompleteStatus(loose) || !financialMirror.hasCalculatedResults,
@@ -1371,21 +1374,12 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
     .filter(Boolean)
     .join(', ');
   const municipalite = pickText(loose, ['municipalite', 'ville', 'city'], '');
-  const totalUnits = pickNumber(loose, [
-    'nombreUnitesTotal',
-    'unitsCount',
-    'nombreUnites',
-    'nombreUnitesRPA',
-    'totalUnits',
-    'unites',
-  ]);
   const occupancyRate = pickNumber(loose, [
     'occupancyRate',
     'tauxOccupation',
     'tauxOccupationPct',
     'occupation',
   ]);
-  const prixParPorte = totalUnits > 0 && askingPrice > 0 ? askingPrice / totalUnits : 0;
 
   const saveAskingPrice = useCallback(
     async (amount: number) => {
@@ -1577,10 +1571,10 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
     () =>
       buildRaphaelResidenceSnapshot({
         financialMirror,
-        askingPrice,
+        askingPrice: listingPrice,
         residence: loose as Record<string, unknown>,
       }),
-    [financialMirror, askingPrice, loose]
+    [financialMirror, listingPrice, loose]
   );
 
   const raphaelTgaPercent = raphaelSnapshot.tgaPercent;
@@ -1675,7 +1669,7 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
             <div className="min-w-0 flex-1">
               <p className="block truncate text-[18px] font-black uppercase tracking-wide text-[#142c6a]">{residenceName}</p>
               <AskingPriceEditor
-                value={askingPrice}
+                value={listingPrice}
                 onSave={saveAskingPrice}
                 saving={savingResidence}
                 t={t}
@@ -1695,7 +1689,9 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
                 <div>
                   PRIX PAR UNITÉ :{' '}
                   <span className="font-black text-black">
-                    {prixParPorte > 0 ? `${formatCurrency(prixParPorte)} / unité` : '—'}
+                    {pricePerUnit != null
+                      ? `${formatCurrency(pricePerUnit, { maxDecimals: 2 })} / unité`
+                      : '—'}
                   </span>
                 </div>
                 <div>
@@ -1981,7 +1977,7 @@ export function Synthese360Tab({ residence, residenceId }: Synthese360TabProps) 
           <RaphaelMatchmakerPanel
             candidates={raphaelMatches}
             loading={raphaelLoading}
-            askingPrice={askingPrice}
+            askingPrice={listingPrice}
             residenceLabel={residenceName}
             residenceId={residenceId}
             ville={municipalite}

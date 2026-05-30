@@ -649,6 +649,23 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 ---
 
+## Évaluation d'infrastructure moderne — Recalage et unification des états financiers inter-onglets (SSOT Fix) (2026-05-30)
+
+**Statut :** **[VALIDÉ PO — Build Global et Functions Exit 0 — Éradication des coquilles d'états inter-onglets]**
+
+| Élément | Détail |
+|---------|--------|
+| **Règle #0** | `ResidenceDataContext` — fusion prop liste + listener Firestore ; enrichit `ResidenceDocumentContext` existant. |
+| **Prix SSOT** | `getListingPrice()` — champ `price` prime sur `prixAnnonce` legacy ; normalisation inter-onglets. |
+| **Calcul pur** | `getListingPricePerUnit()` — prix demandé ÷ unités totales (ex. 2 558 000 $ ÷ 23 → 111 217,39 $ / unité). |
+| **Onglets alignés** | Synthèse, Identité, Finances, Déclaration, Marché, Promesse, Diffusion — consommation `useUnifiedResidence()`. |
+| **Flywheel** | `internalMarketFlywheel.ts` — `computeFlywheelCapRatePct()` ; correction portée `closedAtMillis` (build functions exit 0). |
+| **En-tête** | `ResidenceDetail` — prix unique via contexte ; mutation crayon → Firestore global + rafraîchissement en-tête. |
+
+**HITL :** toute modification du prix demandé demeure validée par le courtier titulaire de permis avant diffusion ou conclusion.
+
+---
+
 ## Intégration du protocole de gestion des inscriptions hors marché (Off-Market) (2026-05-29)
 
 **Statut :** **[EN REVUE HITL — sans commit]**

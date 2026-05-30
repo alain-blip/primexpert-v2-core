@@ -6,7 +6,7 @@
 import React, { useMemo } from 'react';
 import { useLanguage } from '../../../lib/i18n';
 import type { Residence } from '../../../services/residences';
-import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
+import { useUnifiedResidence } from '../../../context/ResidenceDataContext';
 import { inst } from '../institutional/InstitutionalUi';
 import { CompetitorZoneSection } from '../market/CompetitorZoneSection';
 import { MarketPenetrationSection } from '../market/MarketPenetrationSection';
@@ -30,28 +30,25 @@ export interface MarcheConcurrenceTabProps {
   residence: Residence;
 }
 
-export function MarcheConcurrenceTab({ residence }: MarcheConcurrenceTabProps) {
+export function MarcheConcurrenceTab({ residence: residenceProp }: MarcheConcurrenceTabProps) {
   const { t } = useLanguage();
-  const { residenceDoc, loading, error, isInProvider, saveError } = useResidenceDocument();
+  const { residence, residenceRecord, loading, error, isInProvider, saveError } =
+    useUnifiedResidence(residenceProp);
 
   const regionAdministrative = useMemo(() => {
     const raw = String(
-      residenceDoc?.regionAdministrative ??
-        (residence as { region?: string }).region ??
+      residenceRecord.regionAdministrative ??
+        residence.region ??
         residence.city ??
         ''
     ).trim();
     if (!raw) return '';
     return normalizeAdministrativeRegion(raw, residence.city ?? undefined);
-  }, [residenceDoc, residence]);
+  }, [residenceRecord, residence]);
 
   const classeImmeuble = useMemo(
-    () =>
-      resolveResidenceRpaBuildingClass(
-        (residenceDoc ?? undefined) as Record<string, unknown> | undefined,
-        residence
-      ),
-    [residenceDoc, residence]
+    () => resolveResidenceRpaBuildingClass(residenceRecord, residence),
+    [residenceRecord, residence]
   );
 
   const territorialCompetition = useTerritorialCompetition({

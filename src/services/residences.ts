@@ -218,6 +218,15 @@ function mapLegacyPrice(data: DocumentData): number {
   return 0;
 }
 
+/** Fusion temps réel — prop liste + document Firestore `residences/{id}` (SSOT inter-onglets). */
+export function mergeResidenceWithFirestoreDoc(
+  base: Residence,
+  doc: Record<string, unknown> | null | undefined
+): Residence {
+  if (!doc) return base;
+  return { ...base, ...doc, id: base.id } as Residence;
+}
+
 /** Patch Firestore canonique — prix d'inscription (SSOT fiche résidence). */
 export function buildListingPriceFirestorePatch(amount: number): {
   price: number;

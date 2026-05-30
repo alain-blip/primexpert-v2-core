@@ -3,8 +3,22 @@
  * SSOT : alimentation provinciale `market_analytics_raw` sans PII.
  */
 
-import { calculateComparableCapRate } from './centrisComparableCapRate';
 import { internalFlywheelFingerprint } from './marketDeduplication';
+
+function computeFlywheelCapRatePct(input: {
+  soldPrice: number;
+  revenuBrutEffectif: number;
+  depensesExploitation: number;
+  netOperatingIncome: number;
+}): number {
+  if (!input.soldPrice || input.soldPrice <= 0) return 0;
+  const rne =
+    input.netOperatingIncome > 0
+      ? input.netOperatingIncome
+      : input.revenuBrutEffectif - input.depensesExploitation;
+  if (!Number.isFinite(rne) || rne <= 0) return 0;
+  return Number(((rne / input.soldPrice) * 100).toFixed(2));
+}
 
 export const INTERNAL_FLYWHEEL_DATA_SOURCE = 'internal_flywheel' as const;
 
@@ -268,20 +282,16 @@ export function buildAnonymizedFlywheelAnalyticsDoc(
   const soldPrice = resolveFlywheelSoldPrice(residenceData, transition.kind);
   if (!soldPrice || soldPrice <= 0) return null;
 
+  const closedAtMillis = input.closedAtMillis ?? Date.now();
   const financials = extractFlywheelFinancialSnapshot(financialData, residenceData);
-  const capRatePct = calculateComparableCapRate({
-    mlsNumber: 'internal-flywheel',
+  const capRatePct = computeFlywheelCapRatePct({
     soldPrice,
     revenuBrutEffectif: financials.revenuBrutEffectif,
-    densesExploitation: financials.depensesExploitation,
+    depensesExploitation: financials.depensesExploitation,
     netOperatingIncome: financials.netOperatingIncome,
-    closedAtMillis,
-    regionAdministrative,
-    classeImmeuble: assetClassLabel,
   });
   if (capRatePct <= 0) return null;
 
-  const closedAtMillis = input.closedAtMillis ?? Date.now();
   const anneeDonnees = new Date(closedAtMillis).getUTCFullYear();
   const units = resolveUnits(residenceData);
   const superficiePi2 = resolveSuperficiePi2(residenceData);
