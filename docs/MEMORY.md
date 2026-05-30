@@ -615,6 +615,40 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 ---
 
+## Mise en place du pipeline d'auto-alimentation décentralisé (Data Flywheel) et protocole d'anonymisation (V3.5 — 2026-05-29)
+
+**Statut :** **[EN REVUE HITL — sans commit]**
+
+| Élément | Détail |
+|---------|--------|
+| **Règle #0** | SSOT `@primexpert/core/market/internalMarketFlywheel.ts` — enrichit le pipeline Big Data existant (`market_analytics_raw`, `marketSnapshots/v1`). |
+| **Déclencheur** | Cloud Function `onTransactionConcludedFlywheel` — `onDocumentUpdated` sur `residences/{residenceId}`. |
+| **Conditions** | Transition vers **promesse d'achat acceptée** (`promise` / `pa-acceptee`) ou **vendu** (`sold` / `vendue`) depuis un statut non terminal. |
+| **Anonymisation** | Variables de performance seulement : classe d'actif, prix réel, taux de capitalisation global (TGA) via `calculateComparableCapRate`, prix au pi², région, ville, FSALDU-3. Purge : noms, UID, orgId, adresses exactes, cadastre, numéro d'inscription lié. |
+| **Injection** | Collection `market_analytics_raw` — `dataSource: 'internal_flywheel'`, empreinte `internalFlywheelFingerprint`. |
+| **Snapshot** | `refreshRegionalMarketSnapshotForFlywheel()` dans `injectMarketMacroStats.ts` — recalcul immédiat `marketSnapshots/v1` pour la région. |
+| **Idempotence** | Marqueur `internalFlywheelIngestion` sur la fiche résidence (`promiseAtMillis` / `soldAtMillis`). |
+
+**HITL :** l'alimentation provinciale est automatique et anonyme ; la fiche CRM résidence demeure sous contrôle du courtier titulaire de permis — aucune diffusion publique des données identifiantes.
+
+---
+
+## Intégration du module d'évaluation du ratio dépenses/revenus (OER) et benchmarks automatisés par classe d'actif (V3.7 — 2026-05-29)
+
+**Statut :** **[LIVRÉ — scellé V3.7]**
+
+| Élément | Détail |
+|---------|--------|
+| **Règle #0** | SSOT `@primexpert/core/analytics/marketMetrics.ts` — enrichit extraction IA, snapshots et workspace ACM existants. |
+| **Modèle** | `operatingExpenseRatio` (%) — ratio des dépenses d'exploitation (RDE) = dépenses normalisées ÷ revenu brut effectif (RBE) × 100. |
+| **Extraction IA** | `geminiExtract.ts` — prompt Vertex + validation par classe (`rpa`, `plex`, `commercial_pure`, `industrial`). |
+| **Snapshots** | `injectMarketMacroStats.ts` — `provincialOerAggregates.operatingExpenseRatioMedian` par région / silo. |
+| **UI ACM** | `AcmValuationWorkspace` — bannière jaune HITL si écart > 7 points vs médiane régionale `market_analytics_raw`. |
+
+**HITL :** l'alerte recommande une révision des charges ; le courtier titulaire de permis valide avant toute conclusion de bancabilité.
+
+---
+
 ## Intégration du protocole de gestion des inscriptions hors marché (Off-Market) (2026-05-29)
 
 **Statut :** **[EN REVUE HITL — sans commit]**

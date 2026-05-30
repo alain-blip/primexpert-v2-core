@@ -55,6 +55,11 @@ import {
   type PipelineColumnId,
   type ResidenceStatus,
 } from '../config/pipelineStages';
+import {
+  DEFAULT_LISTING_SOURCE,
+  resolveListingSource,
+  type ListingSource,
+} from '@primexpert/core/residence';
 
 function parseRadarPropertyType(raw: unknown): RadarPropertyType | undefined {
   if (typeof raw !== 'string') return undefined;
@@ -84,6 +89,7 @@ export function excludeCatalogReferenceResidences(rows: Residence[]): Residence[
 }
 
 export type { ResidenceStatus } from '../config/pipelineStages';
+export type { ListingSource } from '@primexpert/core/residence';
 
 /**
  * Forme minimale d'une résidence côté UI V2.
@@ -107,6 +113,8 @@ export interface Residence {
   commissionRate?: number;
   potentialRevenue?: number;
   status: ResidenceStatus;
+  /** Miroir legacy Copilote / Centris. */
+  statut?: string;
   date: string;
   /** Multi-tenant : doit toujours contenir le brokerId du propriétaire de la fiche. */
   courtiersResponsables?: string;
@@ -135,8 +143,13 @@ export interface Residence {
   propertyType?: RadarPropertyType;
   nicheMetadata?: AssetNicheMetadata;
   syndication?: AssetSyndication;
-  /** Inventaire référence Copilote (ex-`archive`) — exclu du pipeline chaud et du tableau de bord. */
+  /** Inventaire référence Copilote (`archive`, `sans status`, etc.). */
   catalogReference?: boolean;
+  /** Source d'inscription — Centris (MLS) ou hors marché (Off-Market). */
+  listingSource?: ListingSource;
+  /** Verrou anti-sync MLS lorsque le courtier a modifié le statut manuellement. */
+  isManuallyOverridden?: boolean;
+  lastManualStatusUpdateAt?: number;
   /** SSOT Bilan 360 — nœuds canoniques enrichis. */
   legal?: ResidenceLegalNode;
   building?: ResidenceBuildingNode;
@@ -470,6 +483,7 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
     contratCourtage,
     prixAccepte,
     status: resolveResidenceStatus(extractPipelineStatusRaw(data as Record<string, unknown>)),
+    statut: typeof data.statut === 'string' ? data.statut : undefined,
     date: String(data.date ?? data.updatedAt ?? ''),
     courtiersResponsables: data[TENANT_FIELD],
     assetNiche: parseAssetNiche(data.assetNiche ?? data.niche),
@@ -477,6 +491,12 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
     nicheMetadata: meta,
     syndication,
     catalogReference: catalogReference || undefined,
+    listingSource: resolveListingSource(data.listingSource),
+    isManuallyOverridden: data.isManuallyOverridden === true,
+    lastManualStatusUpdateAt:
+      typeof data.lastManualStatusUpdateAt === 'number'
+        ? data.lastManualStatusUpdateAt
+        : undefined,
     legal: legalRaw,
     building: buildingRaw,
     operations: operationsRaw,

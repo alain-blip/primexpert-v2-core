@@ -11,6 +11,11 @@ import {
   marketOperationalBenchmarkFingerprint,
   marketTransactionFingerprint,
 } from './_vendored/marketDeduplication';
+import {
+  computeProvincialOperatingExpenseRatioAggregates,
+  normalizeOperatingExpenseRatioPct,
+  resolveAssetBenchmarkClass,
+} from './_vendored/marketMetrics';
 
 const MARKET_MACRO_STATS = 'market_macro_stats';
 const MARKET_ANALYTICS_RAW = 'market_analytics_raw';
@@ -89,6 +94,31 @@ function appendSnapshotRows<T extends Record<string, unknown>>(
     existing.add(fp);
   }
   return merged;
+}
+
+/** Rafraîchit `marketSnapshots/v1` après ingestion flywheel interne (V3.5). */
+export async function refreshRegionalMarketSnapshotForFlywheel(
+  snapshotRow: Record<string, unknown>
+): Promise<boolean> {
+  const db = getDb();
+  const snapshotRef = db.collection(MARKET_SNAPSHOTS).doc(SNAPSHOT_DOC_ID);
+  const snapshotSnap = await snapshotRef.get();
+  const prev = snapshotSnap.data() ?? {};
+  const prevTx = Array.isArray(prev.marketTransactions) ? prev.marketTransactions : [];
+
+  await snapshotRef.set(
+    {
+      marketTransactions: appendSnapshotRows(
+        prevTx,
+        [snapshotRow],
+        'dedupeFingerprint'
+      ),
+      lastFlywheelInjectionAt: FieldValue.serverTimestamp(),
+      lastFlywheelRegion: snapshotRow.regionAdministrative ?? null,
+    },
+    { merge: true }
+  );
+  return true;
 }
 
 async function resolveOrgId(brokerId: string, orgIdHint?: string): Promise<string> {
@@ -332,6 +362,12 @@ export async function injectMasterMarketExtractionServer(
         : typeof bench.nbUnites === 'number'
           ? bench.nbUnites
           : null;
+    const operatingExpenseRatio =
+      normalizeOperatingExpenseRatioPct(bench.operatingExpenseRatio) ??
+      normalizeOperatingExpenseRatioPct(bench.ratioPct);
+    const assetClassBenchmark = resolveAssetBenchmarkClass(
+      bench.assetClassHint ?? bench.typeImmeuble ?? siloType
+    );
 
     const entryRef = db.collection(MARKET_ANALYTICS_RAW).doc(fingerprint);
     batch.set(
@@ -345,6 +381,8 @@ export async function injectMasterMarketExtractionServer(
         anneeDonnees,
         provenance: 'market_report',
         validatedAmounts: amounts,
+        ...(operatingExpenseRatio != null ? { operatingExpenseRatio } : {}),
+        assetClassBenchmark,
         operationalBenchmarkMeta: {
           rowId: String(bench.rowId ?? ''),
           categorie: bench.categorie ?? null,
@@ -364,12 +402,23 @@ export async function injectMasterMarketExtractionServer(
       dedupeFingerprint: fingerprint,
       marketDocumentId: documentId,
       validatedAtMillis: now,
+      operatingExpenseRatio: operatingExpenseRatio ?? null,
+      assetClassBenchmark,
     });
   }
 
   const snapshotRef = db.collection(MARKET_SNAPSHOTS).doc(SNAPSHOT_DOC_ID);
   const snapshotSnap = await snapshotRef.get();
   const prev = snapshotSnap.data() ?? {};
+  const mergedOperationalBenchmarks = appendSnapshotRows(
+    Array.isArray(prev.operationalBenchmarks) ? prev.operationalBenchmarks : [],
+    snapshotBenchRows,
+    'dedupeFingerprint'
+  );
+  const provincialOerAggregates = computeProvincialOperatingExpenseRatioAggregates(
+    mergedOperationalBenchmarks as Array<Record<string, unknown>>,
+    now
+  );
 
   batch.set(
     snapshotRef,
@@ -384,11 +433,8 @@ export async function injectMasterMarketExtractionServer(
         snapshotTxRows,
         'dedupeFingerprint'
       ),
-      operationalBenchmarks: appendSnapshotRows(
-        Array.isArray(prev.operationalBenchmarks) ? prev.operationalBenchmarks : [],
-        snapshotBenchRows,
-        'dedupeFingerprint'
-      ),
+      operationalBenchmarks: mergedOperationalBenchmarks,
+      provincialOerAggregates,
       lastMacroInjectionAt: FieldValue.serverTimestamp(),
       lastMacroDocumentType: documentType,
     },

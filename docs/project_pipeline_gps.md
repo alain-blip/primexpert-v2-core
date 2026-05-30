@@ -1,7 +1,8 @@
 # Pipeline GPS — abonnements, essai 45 j, facturation & fiche résidence
 
-Vision produit Primexpert V2.5.  
-**Hosting prod :** https://primexpert-app-v2.web.app
+Vision produit Primexpert **V2.8**.  
+**Hosting prod :** https://primexpert-app-v2.web.app  
+**Journal détaillé :** [`MEMORY.md`](./MEMORY.md) — source primaire des statuts de chantier.
 
 ---
 
@@ -85,14 +86,16 @@ Fiche V2 (Listings → ResidenceDetail)
     └─ Promesse          [✅ PromesseAchatTab — offre SSOT + conditions & délais RPA + clôture]
 ```
 
-**Accès Vendeur (portail externe) :**
+**Accès Vendeur (portail autonome V2.8) :**
 
 ```text
-ResidenceDetail — « Ouvrir l'Accès Vendeur » (ResidenceAccesVendeurButton)
-    ↓ contact VENDEUR dans partiesImpliquees
-Route /acces-vendeur (AccesVendeurPage)
-    ↓ vendorPortalService — onSnapshot contact + résidence liée
-Core vendorPortalTimeline + mandateCompleteness (preuves de conformité mandat)
+ResidenceDetail — « Ouvrir l'Accès Vendeur » ou « Copier le lien invité »
+    ↓ createVendorPortalInvite → vendor_portal_invites/{token} (30 j)
+Route /acces-vendeur?token=… (mode client — customToken Firebase)
+    ↓ validateVendorPortalToken
+AccesVendeurPage — catalogue 85 pièces, jauge conformité, téléversement
+    ↓ uploadSource: vendor_portal → notifyVendorPortalDocumentUpload → tâche org courtier
+Core vendorPortalCatalogue + vendorPortalCompliance + vendorPortalTimeline
 ```
 
 **Inscriptions :** vue **pipeline** en **4 colonnes** (prospect · mandat · promesse · vendu) ; statut `expired` conservé en données mais **hors** colonnes actives (`PIPELINE_ACTIVE_STATUSES`). **Phase 2 (2026-05-24)** : totaux $ + commissions par colonne, badge conformité mandat, **drag-and-drop** (`@hello-pangea/dnd`), filtres **régions Québec** (portal), blocage DnD vers `promise` sans `prixAccepte`.
@@ -169,7 +172,11 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 | Diffusion Web — vendor prebuild + `tsc` | ✅ `sync-core-diffusion` + `financialCalcTypes` |
 | Promesse d'achat — persistance `offre` / DRY | ✅ `serializeOffreForFirestore`, merge objet complet |
 | CRM — répertoire contacts LCI | ✅ `organizations/{orgId}/contacts` — tiers, documents, coacheteurs/covendeurs |
-| **Accès Vendeur** | ✅ `/acces-vendeur` + `ResidenceAccesVendeurButton` — timeline, jauge mandat, service temps réel |
+| **Accès Vendeur** | ✅ Portail autonome — catalogue 85 pièces, jeton 30 j, alertes téléversement (`f9a4f23`) |
+| **Briefing du matin** | ✅ `morningBriefingGenerator` cron 06:00 + `Dashboard.tsx` (`194a5ea`) |
+| **Radar off-market** | ✅ `prospects_radar` — signaux occupation / certification CIUSSS (`194a5ea`) |
+| **Recherche CRM / inscriptions** | ✅ `contactSearch.ts` + filtres villes (`0b2a1c5`, `4aca59c`) |
+| **Routage SPA** | ✅ `AuthenticatedApp.tsx` — lazy chunks, `/acces-vendeur?token=` (`c407c60`) |
 | **Migration contacts Maillon 1** | ✅ `legacyContactImport.ts` + dry-run ; qualification stricte ; **`--execute` sur approbation PO** |
 | Parties résidence ↔ CRM | ✅ `partiesImpliquees` + `linkContactToResidence` (writeBatch) |
 | Identité — courtier responsable | ✅ `ResponsibleBrokerCard` → `courtiersResponsables` |
@@ -180,6 +187,23 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 | **Statistiques du marché (Big Data)** | ✅ `MarketLibraryDashboard`, parse Vertex massif (2 GiB / 540 s), injection HITL idempotente |
 | **Benchmark finance global** | ✅ `getGlobalFinancialBenchmark`, hook `useGlobalFinancialBenchmark` |
 | **Anti-doublons Big Data** | ✅ `marketDeduplication.ts` — merge par empreinte sur `market_analytics_raw` / `market_macro_stats` |
+| **Copilote négociation V2.6** | ✅ core `negotiationEngine` + Vertex `negotiationWithVertex` — HITL `manualVerifications` |
+| **Après-vente closing V2.7** | ✅ core `closingEngine.ts` — trigger `onPromiseAcceptedTrigger` **planifié** |
+| **Loi 25 consentement CRM** | ✅ `QuebecLaw25Consent` + `validateLaw25Compliance` — garde-fous SMS/courriel **planifiés** |
+| **Rédacteur IA Centris** | ✅ `ContentGen.tsx` + lint `@primexpert/core/narrative` |
+| **VoIP Twilio** | ⏳ parallèle — non déployé prod |
+
+### Statut production certifié (conseil d’administration — 2026-05-28)
+
+| # | Volet | Statut |
+|---|-------|--------|
+| 1 | Cœur CRM & fiches RPA | **OPÉRATIONNEL — LIVE** |
+| 2 | Workspace évaluation ACM | **OPÉRATIONNEL — LIVE** |
+| 3 | Hub omnicanal (SMS / Nylas / notes vocales) | **OPÉRATIONNEL — LIVE** |
+| 4 | Moteur clauses OACIQ / LOI (V2.6) | **CÂBLÉ — PROD ACTIVE** |
+| 5 | Après-vente & conformité Loi 25 (V2.7) | **CÂBLÉ — trigger prod planifié** |
+| 6 | Portail vendeur autonome — 85 pièces (V2.8) | **OPÉRATIONNEL — LIVE** |
+| 7 | Briefing matin + radar off-market (V2.8) | **OPÉRATIONNEL — LIVE** |
 
 ---
 
@@ -316,7 +340,7 @@ Fiche résidence → Onglet Marché
 | **CRM Storage** | `migrateLegacyContacts.ts` — 90 contacts → `organizations/…/contacts` ; 87 `QUALIFIED` (Matchmaker) |
 | **Matchmaker** | `raphaelEngine.ts` — panneau pleine largeur sous notes Bilan 360° |
 | **Notes vocales** | `voice_notes/` Storage → `onVoiceNoteUploaded` (us-east1) → `residences/…/notes` + `tasks` |
-| **Hub omnicanal** | `email_threads` enrichi (`channel`, urgence) ; webhooks Twilio/Meta Montréal — **déploiement webhooks en attente** |
+| **Hub omnicanal** | `email_threads` enrichi (`channel`, urgence) ; webhooks Twilio/Meta Montréal — **ACTIVE prod** |
 | **VoIP / finance** | Twilio token + saisie manuelle Hub — parallèle, non prod |
 
 ```text
@@ -332,6 +356,91 @@ SMS entrant (Twilio)
 
 ---
 
+## H. Session 2026-05-28 — GO-LIVE V2.5 → V2.7
+
+| Jalon | Détail |
+|-------|--------|
+| **GO-LIVE V2.5** | Conseil **[GO]** — CRM RPA, ACM+HITL, hub omnicanal V1 déployés |
+| **Copilote V2.6** | `oaciqSpecsTypes`, `negotiationEngine`, `negotiationWithVertex` — modes OACIQ / LOI |
+| **Après-vente V2.7** | `closingEngine.ts`, `QuebecLaw25Consent` — voir [`CLOSING_AND_COMPLIANCE_DRAFT.md`](./CLOSING_AND_COMPLIANCE_DRAFT.md) |
+| **Centris RESO** | Draft mapping OData — [`CENTRIS_RESO_MAPPING_DRAFT.md`](./CENTRIS_RESO_MAPPING_DRAFT.md) |
+| **URL prod** | https://primexpert-app-v2.web.app |
+
+### Pipeline copilote négociation (V2.6)
+
+```text
+Courtier — contexte clause (fiche / promesse / contact)
+    → buildNegotiationSystemPrompt + buildNegotiationUserPrompt
+    → Gemini JSON (navigateur VITE_GEMINI_API_KEY ou Vertex negotiationWithVertex)
+    → parseNegotiationLlmJson + validateNegotiationOutput (negotiationEngine)
+    → brouillon HITL manualVerifications (kind: commercial_negotiation_clause)
+    → validation humaine obligatoire avant insertion contrat / envoi
+```
+
+Modes : `OACIQ_FORM` · `CUSTOM_CONTRACT` · `LETTER_OF_INTENT`.
+
+### Pipeline après-vente closing (V2.7 — conception)
+
+```text
+promesseAchat.statut → accepted (+ prixAccepte validé)
+    → onPromiseAcceptedTrigger (northamerica-northeast1) [planifié]
+    → generateClosingSequenceTasks (closingEngine.ts)
+    → residences/{id}/tasks (source: closing_pipeline, closingPackId idempotent)
+    → J+1 dossier hypothèque · J+2 inspection · J−10 notaire
+```
+
+Garde-fou Loi 25 : `validateLaw25Compliance(contact.communicationPreferences.law25Consent)` avant SMS/courriel sortant.
+
+### Cloud Functions — régions canoniques
+
+| Fonction / groupe | Région | Secrets / notes | Statut |
+|-------------------|--------|-----------------|--------|
+| Nylas, documents parse, benchmark, diffusion | `us-central1` | Nylas, Vertex ADC | DEPLOYE |
+| `twilioSmsWebhook`, `metaMessagingWebhook` | `northamerica-northeast1` | TWILIO_AUTH_TOKEN, META_VERIFY_TOKEN | DEPLOYE |
+| `onVoiceNoteUploaded` | `us-east1` | OPENAI_API_KEY ou Gemini STT | DEPLOYE |
+| `negotiationWithVertex` | `us-central1` | Vertex ADC | CABLE |
+| `onPromiseAcceptedTrigger` | `northamerica-northeast1` | — | PLANIFIE |
+| `morningBriefingGenerator` | `us-central1` (scheduler) | — | DEPLOYE |
+| `createVendorPortalInvite`, `validateVendorPortalToken` | `us-central1` | — | DEPLOYE |
+| VoIP `getTwilioToken`, `twilioVoiceResponse` | `us-central1` | Twilio | PARALLELE |
+
+---
+
+## I. Session 2026-05-29 — Portail vendeur V2.8, briefing, radar (`c407c60` → `194a5ea`)
+
+| Jalon | Détail |
+|-------|--------|
+| **Portail vendeur autonome** | Catalogue 85 pièces ; lien invité 30 j ; mode client sans Google courtier |
+| **Briefing matin** | Cron 06:00 Toronto ; tâches critiques + RDV + hot leads top 3 |
+| **Radar off-market** | `occupancy_drop` + `certification_expiry` → `prospects_radar` |
+| **Bilan 360°** | Prix demandé / commissions éditables ; nœuds canoniques HITL |
+| **SPA** | Split `App.tsx` / `AuthenticatedApp.tsx` ; lazy loading Workhub |
+
+### Pipeline briefing du matin
+
+```text
+Cron morningBriefingGenerator (06:00 America/Toronto)
+    → scan organizations/{orgId}/tasks (ownerId, a_faire)
+    → scan contacts QUALIFIED + messages email_threads récents (hot leads)
+    → buildMorningBriefing (@primexpert/core/crm)
+    → set organizations/{orgId}/morning_briefings/{brokerId}
+    ↓
+Dashboard.tsx — loadMorningBriefingDashboardData (persisté ou recalcul client)
+```
+
+### Pipeline radar off-market
+
+```text
+Cron (même batch briefing)
+    → scan residences (courtiersResponsables) — tauxOccupation, certificationDueMillis
+    → scoreRadarOpportunities (radarOpportunitesEngine.ts)
+    → merge organizations/{orgId}/prospects_radar/{residenceId}__{signalType}
+    ↓
+Dashboard — fetchProspectsRadar — tri par score
+```
+
+---
+
 ## E. Prochaines priorités (au choix du PO — prochaine session)
 
 | Option | Thème |
@@ -341,8 +450,10 @@ SMS entrant (Twilio)
 | **B** | Module ACM — **base résidence livrée** ; suite : ingestion Centris/Matrix, comparables liés fiche |
 | **C** | Coffre-fort WORM OACIQ — règles Firestore verrouillage 6 ans (documents « Final ») |
 | **D** | Mes inscriptions Phase 3 — actions bulk, export pipeline, alertes stagnation |
-| **F** | Déployer webhooks SMS/Meta + secrets Twilio ; activer VoIP prod |
+| **F** | Brancher `onPromiseAcceptedTrigger` + garde-fous Loi 25 sur messagerie sortante |
 | **G** | Migration maillons 2+ — résidences, finance, documents Storage |
+| **H** | Coffre WORM 6 ans + validateur photo profil > 5 ans (exigences charte RTF) |
+| **I** | Connecteur OData Centris exécutable (`listings_cache` → `residences`) |
 
 ### Backlog technique (inchangé)
 
@@ -354,4 +465,4 @@ SMS entrant (Twilio)
 
 ---
 
-*Dernière mise à jour : 2026-05-28 — CRM Storage, notes vocales, hub omnicanal, Matchmaker Raphaël.*
+*Dernière mise à jour : 2026-05-29 — Production V2.8 : portail vendeur autonome, briefing matin, radar off-market, routage SPA.*

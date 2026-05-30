@@ -3,7 +3,7 @@
  * Les onglets métier (Hub CFO, Identité fusionnée, etc.) arrivent en phases suivantes.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Building2,
@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { cn, formatCurrency } from '../../lib/utils';
 import { useLanguage } from '../../lib/i18n';
-import type { Residence, ResidenceStatus } from '../../services/residences';
+import type { Residence } from '../../services/residences';
 import { ResidenceIntelligencePanel } from '../ResidenceIntelligencePanel';
 import { FinancialDataProvider } from '../../context/FinancialDataContext';
 import { FinancialHubDraftProvider } from '../../context/FinancialHubDraftContext';
@@ -37,6 +37,7 @@ import { Synthese360Tab } from './tabs/Synthese360Tab';
 import { DiffusionWebTab } from './diffusion/DiffusionWebTab';
 import { ResidenceTransactionBanner } from './ResidenceTransactionBanner';
 import { ResidenceAccesVendeurButton } from './ResidenceAccesVendeurButton';
+import { InscriptionStatusDropdown } from '../inscriptions/InscriptionStatusDropdown';
 
 export type ResidenceDetailTab =
   | 'synthese'
@@ -48,15 +49,6 @@ export type ResidenceDetailTab =
   | 'intelligence'
   | 'promesse'
   | 'diffusion';
-
-const STATUS_LABELS: Record<ResidenceStatus, { fr: string; en: string }> = {
-  prospect: { fr: 'Prospection', en: 'Prospecting' },
-  mandate: { fr: 'En mandat', en: 'Listed' },
-  promise: { fr: 'En promesse', en: 'Under promise' },
-  expired: { fr: 'Expiré', en: 'Expired' },
-  unsigned: { fr: 'Non signé', en: 'Unsigned' },
-  sold: { fr: 'Vendu', en: 'Sold' },
-};
 
 const TABS: {
   id: ResidenceDetailTab;
@@ -188,21 +180,21 @@ export interface ResidenceDetailProps {
 
 function ResidenceDetailContent({
   brokerId,
-  residence,
+  residence: residenceProp,
   onClose,
   initialTab,
 }: ResidenceDetailProps & { initialTab: ResidenceDetailTab }) {
   const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<ResidenceDetailTab>(initialTab);
+  const [residence, setResidence] = useState(residenceProp);
+
+  useEffect(() => {
+    setResidence(residenceProp);
+  }, [residenceProp]);
 
   const addrTitle = residence.city
     ? `${residence.address}, ${residence.city}`
     : residence.address;
-
-  const statusLabel = useMemo(() => {
-    const row = STATUS_LABELS[residence.status];
-    return language === 'fr' ? row.fr : row.en;
-  }, [residence.status, language]);
 
   const tabContent = useMemo(() => {
     switch (activeTab) {
@@ -284,9 +276,15 @@ function ResidenceDetailContent({
                 <ResidenceTransactionBanner />
               </div>
               <p className="text-[11px] font-bold text-slate-600 mt-1 font-mono">
-                <span className="text-[#142c6a]">{formatCurrency(residence.price)}</span> · {statusLabel} · ID{' '}
+                <span className="text-[#142c6a]">{formatCurrency(residence.price)}</span> · ID{' '}
                 {residence.id}
               </p>
+              <div className="mt-2">
+                <InscriptionStatusDropdown
+                  residence={residence}
+                  onUpdated={(patch) => setResidence((prev) => ({ ...prev, ...patch }))}
+                />
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 shrink-0">

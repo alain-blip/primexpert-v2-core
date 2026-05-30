@@ -20,7 +20,10 @@
     "./intelligence": "./src/intelligence/index.ts",
     "./diffusion": "./src/diffusion/index.ts",
     "./documents": "./src/documents/index.ts",
-    "./security": "./src/security/index.ts"
+    "./analytics": "./src/analytics/index.ts",
+    "./security": "./src/security/index.ts",
+    "./forms": "./src/forms/index.ts",
+    "./transaction": "./src/transaction/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

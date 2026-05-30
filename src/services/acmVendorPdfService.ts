@@ -15,7 +15,7 @@ import {
   type ResidenceFinancialHints,
 } from '@primexpert/core/financial';
 import type { ResidenceAcmBootstrap, ValuationOutputs } from '@primexpert/core/valuation';
-import { getListingPrice } from '@primexpert/core/residence';
+import { getListingPrice, isOffMarketListing, resolveListingSource, resolveOffMarketConfidentialBanner } from '@primexpert/core/residence';
 import { requestCraftMyPdfBlob, triggerBrowserDownload } from './craftMyPdfClient';
 import {
   buildGrilleDepenses,
@@ -84,6 +84,8 @@ export interface AcmVendorCraftMyPdfPayload
   dscr: string;
   prix_recommande: string;
   lecture_vendeur: string;
+  /** En-tête confidentialité hors marché (CraftMyPDF). */
+  document_confidentiel?: string;
 }
 
 export interface BuildAcmVendorCraftMyPdfPayloadInput {
@@ -281,6 +283,12 @@ export function buildAcmVendorCraftMyPdfPayload(
   const tgaFormatted = fmtBuyerPercent(capPct);
 
   const prixDemandeAffiche = getListingPrice(residence) || bootstrap.askingPrice;
+  const listingSource = resolveListingSource(
+    (residence as { listingSource?: string }).listingSource
+  );
+  const confidentialBanner = isOffMarketListing(listingSource)
+    ? resolveOffMarketConfidentialBanner(locale)
+    : '';
 
   const payload: AcmVendorCraftMyPdfPayload = {
     Nom_Residence: nomResidence,
@@ -317,6 +325,7 @@ export function buildAcmVendorCraftMyPdfPayload(
     dscr: fmtBuyerDscr(banking.rcd),
     prix_recommande: fmtBuyerCad(prixSuggere),
     lecture_vendeur: textOrDash(input.sellerNarrative ?? undefined),
+    document_confidentiel: confidentialBanner,
   };
 
   console.log('PAYLOAD ENVOYÉ À CRAFTMYPDF (ACM vendeur) :', payload);

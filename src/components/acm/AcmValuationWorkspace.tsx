@@ -44,6 +44,10 @@ import {
   type MarketGpsRatioSample,
   type MarketGpsTransaction,
 } from '@primexpert/core/market';
+import {
+  assessOperatingExpenseRatioVsRegionalMedian,
+  computeOperatingExpenseRatioPct,
+} from '@primexpert/core/analytics';
 import { AcmHistoricalTrendsSection } from './AcmHistoricalTrendsSection';
 import type {
   CertifiableReportBrokerFooter,
@@ -144,6 +148,8 @@ export interface AcmValuationWorkspaceProps {
   territorialMedians?: TerritorialAcmMedians;
   /** Comparables Centris / GPS liés dynamiquement au territoire. */
   territorialCompetition?: TerritorialCompetitionSnapshot;
+  /** Médiane régionale ratio des dépenses d'exploitation (RDE) — `market_analytics_raw`. */
+  regionalOperatingExpenseRatioMedian?: number | null;
   /** Contexte export CraftMyPDF — rapport vendeur (ACM). */
   pdfExport?: AcmValuationPdfExportContext;
 }
@@ -157,6 +163,7 @@ export function AcmValuationWorkspace({
   subjectExpenses,
   territorialMedians,
   territorialCompetition,
+  regionalOperatingExpenseRatioMedian,
   pdfExport,
 }: AcmValuationWorkspaceProps) {
   const { t, language } = useLanguage();
@@ -561,6 +568,23 @@ export function AcmValuationWorkspace({
     ];
   }, [result, t]);
 
+  const subjectOperatingExpenseRatioPct = useMemo(
+    () =>
+      computeOperatingExpenseRatioPct({
+        revenuBrutEffectif: bootstrap.revenuBrutEffectif,
+        revenuNetExploitation: bootstrap.revenuNetExploitation,
+      }),
+    [bootstrap.revenuBrutEffectif, bootstrap.revenuNetExploitation]
+  );
+
+  const operatingExpenseRatioAssessment = useMemo(() => {
+    if (subjectOperatingExpenseRatioPct == null) return null;
+    return assessOperatingExpenseRatioVsRegionalMedian(
+      subjectOperatingExpenseRatioPct,
+      regionalOperatingExpenseRatioMedian
+    );
+  }, [subjectOperatingExpenseRatioPct, regionalOperatingExpenseRatioMedian]);
+
   const lockedFields = [
     { label: t('Propriété sujet', 'Subject property'), value: bootstrap.residenceLabel },
     { label: t('Région administrative', 'Administrative region'), value: bootstrap.regionLabel ?? '—' },
@@ -605,6 +629,35 @@ export function AcmValuationWorkspace({
           </div>
         </div>
       )}
+
+      {operatingExpenseRatioAssessment?.exceedsAlertThreshold ? (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-xl border-2 border-amber-400 bg-amber-50 px-5 py-4 text-amber-950"
+        >
+          <BadgeAlert className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
+          <div className="space-y-2">
+            <p className="text-[11px] font-black uppercase tracking-[0.16em]">
+              {t(
+                'Validation financière — ratio des dépenses d’exploitation (RDE)',
+                'Financial validation — operating expense ratio (OER)'
+              )}
+            </p>
+            <p className="text-[14px] leading-relaxed">
+              {t(
+                `Le ratio des dépenses d’exploitation (RDE) de l’immeuble (${operatingExpenseRatioAssessment.subjectRatioPct.toFixed(1)} %) s’écarte de plus de ${operatingExpenseRatioAssessment.alertThresholdPct} points du médian régional (${operatingExpenseRatioAssessment.regionalMedianPct.toFixed(1)} %). Révision des charges recommandée avant conclusion de la bancabilité.`,
+                `The property operating expense ratio (OER) (${operatingExpenseRatioAssessment.subjectRatioPct.toFixed(1)}%) deviates by more than ${operatingExpenseRatioAssessment.alertThresholdPct} percentage points from the regional median (${operatingExpenseRatioAssessment.regionalMedianPct.toFixed(1)}%). Expense review recommended before bankability conclusion.`
+              )}
+            </p>
+            <p className="text-[11px] font-semibold text-amber-900">
+              {t(
+                'Décision courtier requise (HITL) — diligence raisonnable sur les postes de dépenses.',
+                'Broker decision required (HITL) — due diligence on expense line items.'
+              )}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {bootstrap.rneBlocksValuation && (
         <div

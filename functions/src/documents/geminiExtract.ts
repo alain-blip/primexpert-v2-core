@@ -17,6 +17,11 @@ import {
 } from './documentTaxonomy';
 import { enrichExtractedDataWithOperatingBenchmarks } from './_vendored/extractionSchemas';
 import {
+  normalizeOperatingExpenseRatioPct,
+  resolveAssetBenchmarkClass,
+  validateOperatingExpenseRatioForAssetClass,
+} from './_vendored/marketMetrics';
+import {
   marketReportLabelsForPrompt,
 } from './_vendored/marketReportTypes';
 import { normalizeMasterMarketExtract } from './_vendored/marketReportNormalize';
@@ -59,6 +64,9 @@ const PNL_BLOCK = `
 - total OPEX : ligne « Total des charges » / « Total des dépenses d'exploitation » — somme de tous les postes admissibles
 - NE PAS utiliser le bénéfice net comme revenu net d'exploitation (RNE)
 - RNE = Produits totaux (RBE) MOINS total des dépenses d'exploitation admissibles UNIQUEMENT
+- operatingExpenseRatio (OBLIGATOIRE si RBE et dépenses disponibles) : ratio des dépenses d'exploitation (RDE) en % = (total dépenses d'exploitation normalisées ÷ revenu brut effectif (RBE)) × 100 — ex. 42,5
+- assetClassHint : "rpa" | "plex" | "commercial_pure" | "industrial" selon le type d'immeuble détecté
+- Plages de validation RDE par classe : RPA 55–92 % · Plex 28–55 % · Commercial pur 20–45 % · Industriel 12–35 %
 - IGNORER bilan, actif, passif, notes comptables
 - nbPortes : nombre de portes, lits ou unités locatives si indiqué
 - Libellés clairs en français québécois`;
@@ -118,6 +126,8 @@ Retourne documentCategory = "MARKET_REPORT" et remplis TOUTES les sections perti
     "label": "Ratio des dépenses d'exploitation (RDE)",
     "regionAdministrative": "Montréal",
     "ratioPct": 62.5,
+    "operatingExpenseRatio": 62.5,
+    "assetClassHint": "rpa",
     "montantParPorte": 18500,
     "montantAnnuel": null,
     "categorie": "exploitation"
@@ -137,7 +147,9 @@ Variables canoniques OBLIGATOIRES (racine JSON — omettre si absentes du PDF) :
 Règles :
 - macroTrends : grilles régionales, pénétration 75+, coûts Altus, chantier RPA
 - comparableTransactions : CHAQUE vente / comparable du document (rapports évaluateur, ACM, registres)
-- operationalBenchmarks : ratios financiers, dépenses moyennes/porte, RDE, RBE, RNE
+- operationalBenchmarks : ratios financiers, dépenses moyennes/porte, ratio des dépenses d'exploitation (RDE)
+- operatingExpenseRatio : toujours calculer ratioPct = (dépenses d'exploitation ÷ revenu brut effectif (RBE)) × 100 lorsque les deux montants sont présents
+- assetClassHint sur chaque benchmark et transaction selon le type d'actif (rpa, plex, commercial_pure, industrial)
 - rowId unique par ligne (tx-1, tx-2… ou bench-1…)
 - Libellés documentType (copie exacte si applicable) :
 ${marketReportLabelsForPrompt()}`;
@@ -369,6 +381,28 @@ function normalizeCL(raw: Record<string, unknown>, documentTypeLabel: string): R
   return extracted;
 }
 
+function applyOperatingExpenseRatioValidation(
+  extracted: Record<string, unknown>,
+  assetClassHint?: unknown
+): Record<string, unknown> {
+  const operatingBenchmarks = extracted.operatingBenchmarks as
+    | Record<string, unknown>
+    | undefined;
+  const ratioRaw =
+    extracted.operatingExpenseRatio ??
+    operatingBenchmarks?.ratioFraisExploitation ??
+    operatingBenchmarks?.operatingExpenseRatio;
+  const assetClass = resolveAssetBenchmarkClass(
+    assetClassHint ?? extracted.assetClassHint ?? extracted.siloType ?? 'rpa'
+  );
+  const validation = validateOperatingExpenseRatioForAssetClass(ratioRaw, assetClass);
+  if (validation.normalizedRatio != null) {
+    extracted.operatingExpenseRatio = validation.normalizedRatio;
+  }
+  extracted.operatingExpenseRatioValidation = validation;
+  return extracted;
+}
+
 function normalizeFinancial(raw: Record<string, unknown>, documentTypeLabel: string): Record<string, unknown> {
   const merged: { label: string; value: number; currency: string }[] = [];
   const sources = [
@@ -393,8 +427,13 @@ function normalizeFinancial(raw: Record<string, unknown>, documentTypeLabel: str
   }
   const nbPortes = coerceNumber(raw.nbPortes ?? raw.nombreUnites);
   if (nbPortes != null && nbPortes > 0) extracted.nbPortes = Math.round(nbPortes);
+  if (raw.assetClassHint != null) extracted.assetClassHint = String(raw.assetClassHint);
+  if (raw.operatingExpenseRatio != null) {
+    extracted.operatingExpenseRatio = normalizeOperatingExpenseRatioPct(raw.operatingExpenseRatio);
+  }
 
-  return enrichExtractedDataWithOperatingBenchmarks(extracted);
+  const enriched = enrichExtractedDataWithOperatingBenchmarks(extracted);
+  return applyOperatingExpenseRatioValidation(enriched, raw.assetClassHint);
 }
 
 function normalizeEvaluation(raw: Record<string, unknown>, documentTypeLabel: string): Record<string, unknown> {

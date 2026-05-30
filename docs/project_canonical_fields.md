@@ -8,7 +8,9 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 **Promesse d'achat (PA)** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`.  
 **Messagerie (Hub omnicanal)** : **SSOT unique** `users/{uid}/email_threads` (alias canonique `communication_threads` dans `@primexpert/core/mail`) + `messages` — Nylas, SMS Twilio, Meta ; analyse `@primexpert/core/mail` à l’écriture serveur.  
 **Diffusion Web** : `packages/core/src/diffusion/` — vendoré dans `functions/src/diffusion/_vendored/` au prebuild.  
-**CRM Contacts** : `packages/core/src/crm/` — fiche `organizations/{orgId}/contacts` ; liaisons `coBuyerIds` / `coSellerIds` ; typologie acheteur `deriveBuyerTier`.
+**CRM Contacts** : `packages/core/src/crm/` — fiche `organizations/{orgId}/contacts` ; liaisons `coBuyerIds` / `coSellerIds` ; typologie acheteur `deriveBuyerTier` ; **Loi 25** — `QuebecLaw25Consent` + `validateLaw25Compliance()`.  
+**Après-vente (V2.7)** : `packages/core/src/market/closingEngine.ts` — tâches `source: 'closing_pipeline'` dans `residences/{id}/tasks`.  
+**Copilote négociation (V2.6)** : `packages/core/src/ai/` — brouillons HITL `manualVerifications` (`kind: 'commercial_negotiation_clause'`).
 
 ---
 
@@ -36,7 +38,7 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 | **`buyerQualificationStatus`** | string \| null | État pipeline acheteur **aplati** (pas de collection `buyerPipeline/` en V2). Valeurs : `PENDING_NDA`, `NDA_SIGNED`, `FUNDS_VERIFIED`, `QUALIFIED`. Import legacy : voir règle ci-dessous. |
 | **`buyerCriteria`** | map | Critères acheteur — voir ci-dessous |
 | **`sellerCriteria`** | map | Critères vendeur — voir ci-dessous |
-| **`communicationPreferences`** | map | `unsubscribedFromEmails`, `excludedFromMassMailing` (Loi 25 / LCAP) |
+| **`communicationPreferences`** | map | `unsubscribedFromEmails`, `excludedFromMassMailing` (Loi 25 / LCAP) ; voir **`law25Consent`** ci-dessous |
 | `legalVerification` | map | OACIQ art. 30 — identité / sollicitation |
 | **`importMeta`** | map | Import legacy — voir ci-dessous |
 | `notes` | string | Notes libres |
@@ -92,6 +94,84 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 | `primexpert/{orgId}/contacts/{contactId}/id_proofs/…` | Pièce d’identité LCI |
 | `primexpert/{orgId}/contacts/{contactId}/buyer_documents/{kind}/…` | Pièces acheteur |
 | `primexpert/{orgId}/contacts/{contactId}/seller_documents/{kind}/…` | Pièces vendeur |
+
+### Objet `communicationPreferences.law25Consent` (`QuebecLaw25Consent`)
+
+Preuve affirmative Loi 25 — requis avant envois SMS/courriel marketing omnicanal (garde-fou `ingestOmnichannelMessage` planifié).
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `smsOptIn` | bool | Consentement SMS |
+| `emailOptIn` | bool | Consentement courriel |
+| `consentGrantedTimestamp` | number | Horodatage collecte (ms) |
+| `collectedFromIpAddress` | string | Adresse IP formulaire |
+| `consentSourceForm` | string | ex. `RpaEvaluationRequestForm`, `VendorPortalSignup` |
+| `dataRetentionExpiryTimestamp` | number | Fin rétention — **6 ans** après collecte (`computeLaw25DataRetentionExpiryMillis`) |
+| `consentRevokedTimestamp` | number | optionnel — révocation |
+
+Validation : `validateLaw25Compliance(consent)` dans `contactTypes.ts`.
+
+---
+
+## Sous-collection `organizations/{orgId}/tasks/{taskId}`
+
+Tâches courtier (CRM, SMS critique, téléversement portail vendeur).
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `title` | string | Intitulé |
+| `description` | string | Détail |
+| `dueAtMillis` | number | Échéance (ms) |
+| `ownerId` | string | UID courtier assigné |
+| `status` | string | `a_faire` \| `fait` |
+| `priority` | string | optionnel |
+| `source` | string | `voice_intent`, `vendor_portal_upload`, … |
+| `residenceId` | string | optionnel |
+
+---
+
+## Document `organizations/{orgId}/morning_briefings/{brokerId}`
+
+Briefing du matin — cron `morningBriefingGenerator` (06:00 Toronto) ou recalcul client.
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `dateKey` | string | Jour `yyyy-mm-dd` |
+| `generatedAtMillis` | number | Horodatage génération |
+| `brokerId`, `orgId` | string | Contexte |
+| `criticalTasks` | array | Tâches critiques |
+| `appointments` | array | Rendez-vous |
+| `hotLeadsTop3` | array | Top 3 contacts chauds |
+
+---
+
+## Document `organizations/{orgId}/prospects_radar/{prospectId}`
+
+Radar off-market — signaux faibles (`radarOpportunitesEngine.ts`).
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `brokerId`, `orgId`, `residenceId` | string | Contexte |
+| `signalType` | string | `occupancy_drop` \| `certification_expiry` |
+| `score` | number | 0–100 |
+| `propertyLabel`, `titleFr`, `titleEn`, `summaryFr`, `summaryEn` | string | Affichage |
+| `detectedAtMillis` | number | Détection |
+
+> ID : `{residenceId}__{signalType}`.
+
+---
+
+## Collection `vendor_portal_invites/{token}`
+
+Jetons portail vendeur autonome (TTL 30 j).
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `token`, `orgId`, `contactId`, `residenceId`, `brokerId` | string | Contexte |
+| `createdAtMillis`, `expiresAtMillis` | number | Validité |
+| `active` | bool | Révoqué si `false` |
+
+**Callables :** `createVendorPortalInvite` · `validateVendorPortalToken` (+ `customToken` Auth).
 
 ---
 
@@ -509,6 +589,9 @@ Normalisation : `normalizeFinancialData()` → source `calculatedResults` | `der
 | **`extractedData`** | map | — | JSON structuré Vertex : `amounts`, `dates`, `taxes`, `revenus`, `depenses`, `annee` |
 | `parsedAtMillis` | number | optionnel | Fin d’analyse IA |
 | **`parsingError`** | string | optionnel | Message d’échec (tronqué 500 car.) si `failed` |
+| **`uploadSource`** | string | optionnel | `vendor_portal` \| `broker` |
+| **`vendorPortalTypeId`** | string | optionnel | ID catalogue `vendorPortalCatalogue.ts` |
+| **`vendorPortalLabelFr`** | string | optionnel | Libellé portail vendeur |
 
 #### Chemins Storage
 
@@ -549,6 +632,10 @@ Téléchargement client : autorisé **uniquement** si `virusScanStatus === 'clea
 | `drive_documents/{id}` | `courtiersResponsables` | Drive OACIQ — **delete interdit** |
 | `organizations/{orgId}` | `orgId` | Agence |
 | **`organizations/{orgId}/contacts`** | `ownerId` + `visibility` | Répertoire CRM LCI (SSOT parties) |
+| **`organizations/{orgId}/morning_briefings/{brokerId}`** | `brokerId` | Briefing du matin (cron 06:00 Toronto) |
+| **`organizations/{orgId}/prospects_radar/{id}`** | `brokerId` | Radar off-market — signaux faibles |
+| **`organizations/{orgId}/tasks`** | `ownerId` | Tâches courtier (org-wide) |
+| **`vendor_portal_invites/{token}`** | `brokerId` | Jetons portail vendeur autonome (30 j) |
 | **`market_documents/{docId}`** | `uploadedBy` | Vault rapports marché (Statistiques du marché — Workhub) |
 | **`market_macro_stats/{fingerprint}`** | — | Stats macro validées (écriture serveur `injectMarketMacroStats`) |
 | **`market_analytics_raw/{fingerprint}`** | — | Transactions comparables & ratios anonymisés (écriture serveur) |
@@ -649,6 +736,12 @@ Collection **top-level** (pas sous `organizations/`).
 | Webhooks SMS / Meta | `twilioSmsWebhook`, `metaMessagingWebhook` (`northamerica-northeast1`) |
 | Note vocale — Functions | `onVoiceNoteUploaded` (trigger Storage ; STT Whisper ou Gemini) |
 | Matchmaker Raphaël | `packages/core/src/crm/raphaelEngine.ts` + `Synthese360Tab` |
+| Portail vendeur — catalogue 85 pièces | `vendorPortalCatalogue.ts`, `vendorPortalCompliance.ts`, `vendorPortalAccess.ts` |
+| Briefing matin & radar | `morningBriefing.ts`, `radarOpportunitesEngine.ts`, `morningBriefingService.ts`, `morningBriefingGenerator.ts` |
+| Recherche CRM multi-critères | `contactSearch.ts`, `filterContactsBySearchQuery` |
+| Loi 25 consentement contact | `QuebecLaw25Consent`, `validateLaw25Compliance`, `communicationPreferences.law25Consent` |
+| Après-vente closing | `closingEngine.ts`, `CLOSING_TASK_CODES` |
+| Copilote négociation | `negotiationEngine.ts`, `oaciqSpecsTypes.ts`, `generateNegotiationClauseWithGemini` |
 | Courtier responsable inscription | `ResponsibleBrokerCard.tsx`, `courtiersResponsables` |
 | Liaison messagerie ↔ CRM | `matchedContactId`, `linkEmailThreadToContact`, `contactMatch.ts`, `MailContactLinkBar.tsx` |
 | Inscriptions Kanban DnD | `ListingsPipelineKanban.tsx`, `pipelineDragRules.ts`, `updateResidencePipelineStatus` |
@@ -739,7 +832,7 @@ Lors de l’ajout d’une note : mise à jour document racine `lastCommunication
 
 ### Sous-collection `residences/{id}/tasks/{taskId}`
 
-Tâches et rendez-vous courtier (Synthèse 360°) ; création auto depuis note vocale si intention détectée.
+Tâches et rendez-vous courtier (Synthèse 360°) ; création auto depuis note vocale ou pipeline closing V2.7.
 
 | Champ | Type | Description |
 |--------|------|-------------|
@@ -748,8 +841,12 @@ Tâches et rendez-vous courtier (Synthèse 360°) ; création auto depuis note v
 | `dueAtMillis` | number | Échéance (ms) |
 | `kind` | string | `task` \| `appointment` |
 | `status` | string | `a_faire` \| `fait` |
-| **`source`** | string | `voice_intent` si créée par pipeline note vocale |
+| **`source`** | string | `voice_intent` \| **`closing_pipeline`** |
 | **`voiceUploadId`** | string | Lien note vocale source |
+| **`closingPackId`** | string | Idempotence pack closing (`closingRunId`) — V2.7 |
+| **`closingTaskCode`** | string | `CLOSING_RPA_DOSSIER_HYPOTHEQUE` \| `CLOSING_SUIVI_INSPECTION` \| `CLOSING_ENVOI_NOTAIRE` |
+| **`priority`** | string | `high` \| `normal` |
+| **`orgId`** | string | Organisation |
 
 ### Storage — notes vocales & documents contact
 
@@ -791,6 +888,17 @@ Tâches et rendez-vous courtier (Synthèse 360°) ; création auto depuis note v
 
 **UI éditable (non persisté automatiquement sur le doc)** : TGA cible (%) et pénétration RPA 75+ (%) dans `AcmValuationWorkspace` — recalcul client uniquement jusqu’à action d’enregistrement explicite future.
 
+### Brouillons HITL — `manualVerifications` (UI ACM / négociation)
+
+État client éphémère ou persisté sur fiche — validation humaine avant application.
+
+| Contexte | `kind` | SSOT |
+|----------|--------|------|
+| Suggestions prix ACM | `pricingSuggestions[]` | `AcmValuationWorkspace.tsx` — statut `pending_human_review` |
+| Copilote négociation V2.6 | `commercial_negotiation_clause` | `negotiationEngine.ts`, `oaciqSpecsTypes.ts` |
+
+Modes négociation : `OACIQ_FORM`, `CUSTOM_CONTRACT`, `LETTER_OF_INTENT`.
+
 ---
 
-*Dernière mise à jour : 2026-05-28 — Hub omnicanal (`email_threads` + `channel`), notes vocales, Matchmaker Raphaël, migration CRM Storage, VOIP Twilio (parallèle).*
+*Dernière mise à jour : 2026-05-29 — V2.8 : portail vendeur (85 pièces, jetons), briefing matin, radar off-market ; Loi 25, closing V2.7, copilote négociation.*

@@ -728,6 +728,12 @@ export { getGlobalFinancialBenchmark } from './benchmark/getGlobalFinancialBench
 /** Briefing du matin + Radar opportunités (06:00 America/Toronto). */
 export { morningBriefingGenerator } from './cron/morningBriefingGenerator';
 
+/** Sync nocturne Centris — ignore les inscriptions hors marché (Off-Market). */
+export { centrisListingsSyncNightly } from './centris/centrisListingsSyncNightly';
+
+/** Data Flywheel V3.5 — alimentation anonymisée du Big Data provincial. */
+export { onTransactionConcludedFlywheel } from './analytics/onTransactionConcludedTrigger';
+
 /** Portail vendeur — jeton d'invitation et notification téléversement. */
 export {
   createVendorPortalInvite,

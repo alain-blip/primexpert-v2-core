@@ -13,6 +13,7 @@ import { useFinancialData } from '../../../context/FinancialDataContext';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { useMarketData } from '../../../hooks/useMarketData';
 import { useGlobalFinancialBenchmark } from '../../../hooks/useGlobalFinancialBenchmark';
+import { resolveRegionalOerMedianFromRatioSamples } from '@primexpert/core/analytics';
 import { getListingPrice } from '@primexpert/core/residence';
 import type { Residence } from '../../../services/residences';
 import {
@@ -86,6 +87,11 @@ export function ResidenceAcmValuationPanel({
     regionAdministrative: bootstrap?.regionLabel ?? null,
     assetClassLabel: bootstrap?.assetClassLabel ?? null,
   });
+
+  const regionalOperatingExpenseRatioMedian = useMemo(() => {
+    if (!bootstrap?.regionLabel) return null;
+    return resolveRegionalOerMedianFromRatioSamples(ratioSamples, bootstrap.regionLabel);
+  }, [ratioSamples, bootstrap?.regionLabel]);
 
   const competitionSnapshot = useMemo((): TerritorialCompetitionSnapshot | undefined => {
     if (territorialCompetition.sampleCount <= 0 && territorialCompetition.medianTgaPct == null) {
@@ -178,6 +184,7 @@ export function ResidenceAcmValuationPanel({
             pdfExport={pdfExport}
             territorialMedians={benchmarkState.territorialMedians ?? undefined}
             territorialCompetition={competitionSnapshot}
+            regionalOperatingExpenseRatioMedian={regionalOperatingExpenseRatioMedian}
           />
         </div>
       </section>

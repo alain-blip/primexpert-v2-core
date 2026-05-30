@@ -60,6 +60,7 @@ export function FinanceHubMasterPanel({
       price: residence.price,
       prixDemande: residence.price,
       askingPrice: residence.price,
+      listingSource: residence.listingSource,
     }),
     [
       activeResidenceId,
@@ -69,6 +70,7 @@ export function FinanceHubMasterPanel({
       residence.nomCommercial,
       residence.name,
       residence.price,
+      residence.listingSource,
     ]
   );
 
