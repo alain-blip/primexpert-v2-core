@@ -77,7 +77,7 @@ Fiche V2 (Listings → ResidenceDetail)
     ├─ Synthèse          [✅ Synthese360Tab — rétribution affichée, C-73.2, notes]
     ├─ Identité          [✅ doc racine + core/identity + courtier responsable `courtiersResponsables`]
     ├─ Parties           [✅ PartiesIntervenantsSection ↔ organizations/…/contacts]
-    ├─ Hub Finance       [✅ dataV2 + 5 sous-onglets + master panel PDF]
+    ├─ Hub Finance       [✅ dataV2 + 5 sous-onglets + master panel PDF — SSOT prix/RNE `d232673`]
     ├─ Déclaration       [✅ DeclarationVendeurTab — OACIQ]
     ├─ Marché            [✅ MarcheConcurrenceTab]
     ├─ Documents         [✅ Espace Documents + scan + parse IA Vertex + distribution / courriel]
@@ -233,13 +233,14 @@ Commits poussés sur `main` : `b9fe455`, `0e64e83`, `1c4f3c6`, `9b8a70c`, `da105
 | **Unification SSOT Email** | Suppression `Mailbox.tsx` (UI morte) ; `MailboxContainer` seul ; analyse sur `messages` à l’ingestion |
 | **Diffusion Web (prebuild)** | Vendoring `@primexpert/core/diffusion` + stub `financialCalcTypes` ; build Functions `tsc` propre |
 
-### Chantier 3 — Fiche résidence & finance (`0e64e83`, `b9fe455`)
+### Chantier 3 — Fiche résidence & finance (`0e64e83`, `b9fe455`, `955410e`, `d232673`)
 
 | Jalon | Détail |
 |-------|--------|
 | **Courtier responsable** | `ResponsibleBrokerCard` dans Identité — `courtiersResponsables` |
 | **Parties intervenants** | `PartiesIntervenantsSection` — rôles VENDEUR/ACHETEUR/NOTAIRE/COLLABORATEUR |
-| **Hub Finance** | Master panel, verrouillage contexte, rapports PDF certifiables |
+| **SSOT inter-onglets** | `ResidenceDataContext` — prix, unités, hints finance (`955410e`) |
+| **Hub Finance** | Master panel, verrouillage contexte, rapports PDF certifiables ; cohérence RNE/prix/emprunt+MFR (`d232673`) |
 | **Diffusion (front)** | Divulgations acheteur, bannière transaction, modal aperçu brouillon |
 
 ### Pipeline CRM — répertoire & liaisons

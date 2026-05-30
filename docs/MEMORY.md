@@ -669,15 +669,17 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 ## Évaluation d'infrastructure moderne — Redressement complet de la cohérence financière inter-onglets et élimination des données fantômes (2026-05-30)
 
-**Statut :** **[EN REVUE HITL — sans commit]**
+**Statut :** **[VALIDÉ PO — commit `d232673` — build + hosting deploy 2026-05-30]**
 
 | Élément | Détail |
 |---------|--------|
 | **Prix SSOT** | `resolvePrixDemande()` — interdit le `calc.prixDemande` legacy (3,5 M$) ; force `getListingPrice()` (2 558 000 $). |
-| **RNE** | `resolveAdmissibleOpex()` — grille déclarée prioritaire ; RNE = RBE − dépenses (529 489 $ = 1 129 749 $ − 600 260 $). |
+| **RNE** | `resolveAdmissibleOpex()` — `depensesTotales` déclaré prioritaire si grille Firestore incomplète ; RNE = RBE − dépenses (**529 489 $** = 1 129 749 $ − 600 260 $). |
 | **TGA réel** | Recalculé : 529 489 $ ÷ 2 558 000 $ = **20,70 %** (`syncCalcWithCanonicalListingPrice`). |
-| **Hub Finance** | Emprunt max + mise de fonds requise (MFR) rebasés sur prix canonique via `useResidenceFinancialHints()`. |
-| **Onglets** | Hub, Bilan, Finançabilité, Revenus & Dépenses, Ratios, Synthèse — hints unifiés. |
+| **Emprunt + MFR** | Réalignement automatique quand le prix canonique diffère du `calculatedResults` figé ; somme = prix demandé. |
+| **Hub Finance** | `useResidenceFinancialHints()` + `buildResidenceFinancialHints()` — hints unifiés sur tous les sous-onglets. |
+| **Crash UI** | `ResidenceTabErrorBoundary` ; contextes `ResidenceDocument` / `FinancialData` mémoïsés ; gardes `ResidenceDetail`. |
+| **Onglets** | Hub, Bilan, Finançabilité, Revenus & Dépenses, Ratios, Synthèse, Analyse 360° — consommation hints SSOT. |
 
 **HITL :** le courtier valide les montants avant toute conclusion de bancabilité ou diffusion ACM.
 
@@ -899,7 +901,19 @@ Cible : https://primexpert-app-v2.web.app
 | `955410e` | Câblage `PromesseAchatTab` + unification SSOT onglets résidence |
 | `63286dc` | V3.5 — `ContractAssemblerPanel`, schémas parenthèses, rendu HTML assembleur |
 
-**Hors périmètre scellé (local non commité) :** redressement finance inter-onglets, onglets Hub/Bilan/Finançabilité, docs PDF RPA.
+**Hors périmètre scellé (local non commité) :** docs PDF RPA (dossiers investissement).
+
+---
+
+## Déploiement production — redressement finance fiche résidence (2026-05-30)
+
+| Point | Détail |
+|-------|--------|
+| **Commit** | `d232673` — `fix(finance): cohérence SSOT RNE et prix canonique sur toute la fiche résidence` |
+| **Branche** | `feature/v2.8-market-stats-optimization` |
+| **Build** | `npm run build` — exit 0 |
+| **Hosting** | `firebase deploy --only hosting` → https://primexpert-app-v2.web.app |
+| **Référence étalon** | 198 chemin du Roy — prix 2 558 000 $, RNE 529 489 $, TGA 20,70 % |
 
 ---
 
@@ -909,10 +923,11 @@ Cible : https://primexpert-app-v2.web.app
 |-------------------|--------|
 | Jalon moteur de contrat | **[NATIVEMENT INTÉGRÉ AU CORE — ÉTANCHE]** |
 | Gestion des parenthèses `( )` | **[SCHÉMAS TYPÉS & RENDU COMPILÉ]** |
-| Synchronisation Git distante | **[PROPULSÉE — HEAD = origin = `63286dc`]** |
+| Synchronisation Git distante | **[PROPULSÉE — `d232673` sur `feature/v2.8-market-stats-optimization`]** |
 | Build production racine | **[SUCCESS — exit 0]** |
+| Hosting prod finance SSOT | **[DÉPLOYÉ — 2026-05-30]** |
 | UI polish été 2026 | **[EN ATTENTE]** — PDF-A CraftMyPDF, persistance Firestore assembleur, gabarits annexes complets depuis `gabarits-v3` |
 
 ---
 
-*Journal mis à jour : 2026-05-30 — Sprint V3.5 scellé (assembleur de mandats natif). Hosting prod inchangé — déploiement hosting à planifier si validation PO.*
+*Journal mis à jour : 2026-05-30 — Redressement finance SSOT fiche résidence (`d232673`) + hosting prod déployé.*

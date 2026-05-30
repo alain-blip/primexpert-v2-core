@@ -284,7 +284,8 @@ Document racine — **SSOT onglet Identité** (`ResidenceDocumentContext`) + Rad
 |--------|------|-------------|
 | **`courtiersResponsables`** | string | **UID courtier propriétaire** (clé multi-tenant) |
 | `address`, `city` | string | Adresse affichée |
-| `price` / `prixDemande` | number | Prix demandé (priorité finance V2) |
+| `price` / `prixDemande` | number | Prix demandé — **SSOT lecture** : `getListingPrice()` (`price` prime sur `prixAnnonce` legacy) via `ResidenceDataContext` |
+| `prixAnnonce` | number | Miroir legacy Copilote — **ne pas utiliser seul** pour Hub Finance si `price` présent |
 | `askingPrice` | number | Alias / miroir prix demandé (cartes inscriptions, Synthèse) |
 | **`residenceName`**, `commercialName`, `nomCommercial`, `nom_commercial`, `name` | string | Nom commercial affiché (cartes inscriptions, mapping `mapCommercialName`) |
 | **`commissionRate`**, `tauxCommission`, `commissionPct` | number | Taux commission (%) — lecture UI rétribution / inscriptions |
@@ -569,6 +570,15 @@ Effet : `shouldShowRaphaelForField()` retourne `false` pour ce `fieldId` précis
 | `lastUpdated` | Timestamp (provenance UI `ProvenanceStrip`) |
 
 Normalisation : `normalizeFinancialData()` → source `calculatedResults` | `derivedData` | `none`, avec **fail-safe RBE** depuis `tarificationLoyers` si revenus absents.
+
+**Règles SSOT lecture (`d232673`) — ne pas recalculer dans React :**
+
+| Règle | Module core |
+|-------|-------------|
+| Prix affiché / emprunt / MFR | `getListingPrice()` + `syncCalcWithCanonicalListingPrice()` — ignore `calculatedResults.prixDemande` figé (ex. 3,5 M$) |
+| RNE canonique | `resolveAdmissibleOpex()` — **`depensesTotales` déclaré** prioritaire ; RNE = RBE − OPEX déclaré (pas le normalisé seul) |
+| Hints UI inter-onglets | `ResidenceDataContext` → `useResidenceFinancialHints()` → `buildResidenceFinancialHints()` |
+| Étalon QA | 198 chemin du Roy : 2 558 000 $ · RBE 1 129 749 $ · dépenses 600 260 $ · **RNE 529 489 $** · **TGA 20,70 %** |
 
 ### Sous-collection `residences/{id}/documents/{documentId}`
 

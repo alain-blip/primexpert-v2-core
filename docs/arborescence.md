@@ -170,7 +170,8 @@
     │   │   ├── VendorDocumentDropzone.tsx
     │   │   └── VendorOfferPanel.tsx
     │   ├── residence/
-    │   │   ├── ResidenceDetail.tsx  # Coquille fiche — 8 onglets + InstitutionalResidenceTabShell
+    │   │   ├── ResidenceDetail.tsx  # Coquille fiche — 9 onglets + InstitutionalResidenceTabShell + ErrorBoundary
+    │   │   ├── ResidenceTabErrorBoundary.tsx  # Attrape crash rendu par onglet (évite écran noir)
     │   │   ├── ResidenceAccesVendeurButton.tsx  # Lien portail vendeur (parties VENDEUR)
     │   │   ├── institutional/
     │   │   │   └── InstitutionalUi.tsx   # Kit UI institutionnel (coquilles, KPI, sections)
@@ -244,8 +245,9 @@
     │   └── UpsellModal.tsx, RadarLockBadge.tsx
     ├── context/
     │   ├── SiloContext.tsx
-    │   ├── FinancialDataContext.tsx      # onSnapshot residences/{id}/financial/dataV2
-    │   └── ResidenceDocumentContext.tsx  # onSnapshot residences/{id}
+    │   ├── FinancialDataContext.tsx      # onSnapshot residences/{id}/financial/dataV2 (value mémoïsée)
+    │   ├── ResidenceDocumentContext.tsx  # onSnapshot residences/{id} (value mémoïsée)
+    │   └── ResidenceDataContext.tsx      # SSOT inter-onglets : prix, unités, hints finance (`useUnifiedResidence`, `useResidenceFinancialHints`)
     ├── hooks/
     │   ├── useResidences.ts
     │   ├── useGlobalFinancialBenchmark.ts
@@ -327,6 +329,8 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Revenus & Dépenses | `RevenusDepensesTab` | `buildRevenusDepensesGrid()` |
 | Finançabilité | `FinancabiliteTab` | `computeFinancabilite()` |
 | Ratios performance | `PerformanceRatiosTab` | `computePerformanceRatiosViewModel()` |
+
+**SSOT prix & hints finance (`d232673`) :** `ResidenceDataProvider` normalise `price` / `prixAnnonce` / `prixDemande` ; `useResidenceFinancialHints()` injecte le prix canonique dans tous les sous-onglets ; core `resolveAdmissibleOpex()` — RNE = RBE − dépenses **déclarées** (pas le normalisé seul).
 | Vérification performance | `Analyse360FinanceTab` | `computePerformanceAudit360()` |
 
 **Règle #0 :** le Hub Finance et l’identité consomment `@primexpert/core` — pas de moteur financier dupliqué dans l’UI. L’onglet **Synthèse** affiche une **lecture** rétribution / jalons (cascade sur champs `residences` + formatage), distincte du SSOT `financial/dataV2`.

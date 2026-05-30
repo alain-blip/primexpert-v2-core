@@ -2,7 +2,7 @@
 
 **Source unique avec le code :** `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`  
 **URL officielle :** https://primexpert-app-v2.web.app  
-**Cycle technique :** **V3.5 — assembleur de mandats natif scellé** (mai 2026) · architectures sécurisées V3.0 en production
+**Cycle technique :** **V3.5 — assembleur de mandats natif scellé** + **redressement finance SSOT fiche résidence (`d232673`)** (mai 2026) · architectures sécurisées V3.0 en production
 
 ## Registre global des architectures sécurisées — mai 2026
 
@@ -23,6 +23,7 @@
 | Clauses négociation Gemini | **CÂBLÉ — MOTEUR DYNAMIQUE ACTIF** |
 | Coffre-fort WORM & sécurité | **OPÉRATIONNEL — PRODUCTION LIVE** |
 | Assembleur contrat & annexes (V3.5) | **SCELLÉ — commit `63286dc`** (HTML natif, sans docxtemplater) |
+| Hub Finance — cohérence RNE / prix inter-onglets | **DÉPLOYÉ PROD — commit `d232673`** (hosting 2026-05-30) |
 
 > Détail technique et historique : [`MEMORY.md`](./MEMORY.md)
 
@@ -75,8 +76,8 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 
 1. **Règle #0** — Calculs métier dans `packages/core/`, pas dans React.
 2. **Multi-tenant** — `courtiersResponsables` sur `residences` ; filtre `@primexpert/core/tenant` + `firestore.rules`.
-3. **Finance** — Document unique `residences/{id}/financial/dataV2` ; contexte `FinancialDataProvider`.
-4. **Identité** — Document racine `residences/{id}` ; contexte `ResidenceDocumentProvider`.
+3. **Finance** — Document unique `residences/{id}/financial/dataV2` ; contexte `FinancialDataProvider` ; prix/RNE via `@primexpert/core/financial` + `ResidenceDataContext`.
+4. **Identité** — Document racine `residences/{id}` ; contexte `ResidenceDocumentProvider` + **`ResidenceDataProvider`** (fusion liste + Firestore).
 5. **Documents** — Sous-collection `residences/{id}/documents/` ; scan + parse IA via Cloud Functions (Vertex ADC).
 6. **UI fiche & inscriptions** — Tokens **`primexpert-*`** ; coquilles `InstitutionalResidenceTabShell` ; cartes **Mes inscriptions** (Kanban DnD, filtres régions QC).
 7. **Langage Québec** — Pas de « audit » à l’écran ; abréviations toujours développées (voir [MEMORY.md](./MEMORY.md)).
