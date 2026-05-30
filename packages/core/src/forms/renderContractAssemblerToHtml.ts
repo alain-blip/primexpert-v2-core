@@ -1,61 +1,45 @@
 /**
- * Rendu HTML — contrat de courtage + annexes (zones entre parenthèses stylisées).
+ * Compilateur HTML unifié — documents maîtres (contrats / promesse d'achat) et
+ * annexes cochées fusionnés dans un seul flux épuré, prêt pour l'export PDF-A.
+ *
+ * Garantie : l'ordre du catalogue place les documents maîtres en tête, suivis des
+ * annexes sélectionnées. Aucune fusion OpenXML; substitution native des variables ( ).
  */
 
-import type { ContractAssemblerFieldState } from './annexeFieldSchema';
-import type { PaActifsRenderData } from './paActifsTypes';
-import { PA_ACTIFS_HTML_STYLES } from './renderPaActifsToHtml';
-import { renderPaActifsToHtml } from './renderPaActifsToHtml';
 import {
-  DYNAMIC_PARENTHESIS_CSS,
-  renderCcvReference,
-  renderParenthesisMoney,
-  renderParenthesisPercent,
-} from './renderDynamicParenthesis';
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+  CONTRACT_DOCUMENT_CATALOG,
+  type ContractAnnexeId,
+  type ContractAssemblerFieldState,
+  type ContractRenderContext,
+} from './annexeFieldSchema';
+import type { PaActifsRenderData } from './paActifsTypes';
+import { PA_ACTIFS_HTML_STYLES, renderPaActifsToHtml } from './renderPaActifsToHtml';
+import { DYNAMIC_PARENTHESIS_CSS, escapeHtml } from './renderDynamicParenthesis';
+import { renderContratCourtageRpaSection } from './templates/contratCourtageRpaTemplate';
+import { renderContratCourtageAchatSection } from './templates/contratCourtageAchatTemplate';
+import { renderAnnexeModificationSection } from './templates/annexesModificationTemplate';
+import { renderAnnexeProtectionSection } from './templates/annexesProtectionTemplate';
+import { renderAnnexeCoordinationSection } from './templates/annexesCoordinationTemplate';
 
 function extractBody(html: string): string {
   const match = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
   return match ? match[1]! : html;
 }
 
-function annexePrixSection(state: ContractAssemblerFieldState, locale: 'fr' | 'en'): string {
-  const slot = renderParenthesisMoney(state.annexePrix.nouveauPrixNumerique);
-  const intro =
-    locale === 'fr'
-      ? `Les parties conviennent de modifier le prix de vente convenu au contrat de courtage exclusif pour le porter à ${slot}, taxes en sus selon les modalités du contrat principal.`
-      : `The parties agree to amend the sale price under the exclusive brokerage contract to ${slot}, plus applicable taxes.`;
-  return `<section class="annexe-block"><h2>${locale === 'fr' ? 'Annexe — modification de prix' : 'Schedule — price amendment'}</h2><p>${intro}</p></section>`;
-}
-
-function annexeGSection(state: ContractAssemblerFieldState, locale: 'fr' | 'en'): string {
-  const ref = renderCcvReference(state.annexeG.ccvReference);
-  const intro =
-    locale === 'fr'
-      ? `Annexe G — confidentialité des coordonnées. Référence contrat : ${ref}. Le vendeur autorise la diffusion restreinte des coordonnées conformément aux dispositions de l'organisme.`
-      : `Schedule G — contact confidentiality. Contract reference: ${ref}.`;
-  return `<section class="annexe-block"><h2>${locale === 'fr' ? 'Annexe G' : 'Schedule G'}</h2><p>${intro}</p></section>`;
-}
-
-function annexeRSection(state: ContractAssemblerFieldState, locale: 'fr' | 'en'): string {
-  const slot = renderParenthesisPercent(state.annexeR.retributionPct);
-  const intro =
-    locale === 'fr'
-      ? `Annexe R — réduction de rétribution. Taux de commission réduit à ${slot} du prix de vente convenu, sous réserve de l'approbation écrite des parties.`
-      : `Schedule R — commission reduction. Reduced brokerage fee: ${slot} of the agreed sale price.`;
-  return `<section class="annexe-block"><h2>${locale === 'fr' ? 'Annexe R' : 'Schedule R'}</h2><p>${intro}</p></section>`;
-}
-
-function contratCourtageStub(locale: 'fr' | 'en'): string {
-  return `<section class="annexe-block"><h2>${locale === 'fr' ? 'Contrat de courtage RPA' : 'RPA brokerage contract'}</h2><p>${locale === 'fr' ? 'Corps du mandat exclusif — généré nativement (sans fusion OpenXML). Les annexes cochées ci-dessous complètent le dossier.' : 'Exclusive mandate body — native generation.'}</p></section>`;
-}
+/** Table d'aiguillage : un document indexé → un gabarit du Core. */
+const SECTION_RENDERERS: Record<ContractAnnexeId, (ctx: ContractRenderContext) => string> = {
+  contratCourtage: renderContratCourtageRpaSection,
+  contratCourtageAchat: renderContratCourtageAchatSection,
+  promesseActifs: (ctx) => extractBody(renderPaActifsToHtml(ctx.paData)),
+  annexeG: (ctx) => renderAnnexeProtectionSection('annexeG', ctx),
+  annexeE: (ctx) => renderAnnexeProtectionSection('annexeE', ctx),
+  annexePR: (ctx) => renderAnnexeProtectionSection('annexePR', ctx),
+  annexeC: renderAnnexeCoordinationSection,
+  annexeR: (ctx) => renderAnnexeModificationSection('annexeR', ctx),
+  annexePrix: (ctx) => renderAnnexeModificationSection('annexePrix', ctx),
+  annexeMiseHorsMarche: (ctx) => renderAnnexeModificationSection('annexeMiseHorsMarche', ctx),
+  annexeRimouski: (ctx) => renderAnnexeModificationSection('annexeRimouski', ctx),
+};
 
 export interface RenderContractAssemblerHtmlInput {
   locale?: 'fr' | 'en';
@@ -64,31 +48,29 @@ export interface RenderContractAssemblerHtmlInput {
   residenceLabel?: string;
 }
 
-/** Document HTML complet : contrat + annexes sélectionnées + promesse actifs optionnelle. */
+/**
+ * Document HTML complet : documents maîtres sélectionnés + annexes cochées,
+ * compilés dans l'ordre canonique du catalogue.
+ */
 export function renderContractAssemblerToHtml(input: RenderContractAssemblerHtmlInput): string {
   const locale = input.locale ?? input.paData.locale ?? 'fr';
-  const { selection, ...fields } = input.assembler;
-  const state: ContractAssemblerFieldState = { selection, ...fields };
+  const ctx: ContractRenderContext = {
+    locale,
+    values: input.assembler.values,
+    paData: input.paData,
+    residenceLabel: input.residenceLabel,
+  };
 
-  const parts: string[] = [];
-  parts.push(
-    `<p class="meta">${escapeHtml(input.residenceLabel ?? input.paData.residence.commercialName)} · ${escapeHtml(input.paData.generatedAtIso)}</p>`
-  );
+  const parts: string[] = [
+    `<p class="meta">${escapeHtml(
+      input.residenceLabel ?? input.paData.residence.commercialName
+    )} · ${escapeHtml(input.paData.generatedAtIso)}</p>`,
+  ];
 
-  if (selection.contratCourtage) {
-    parts.push(contratCourtageStub(locale));
-  }
-  if (selection.annexePrix) {
-    parts.push(annexePrixSection(state, locale));
-  }
-  if (selection.annexeG) {
-    parts.push(annexeGSection(state, locale));
-  }
-  if (selection.annexeR) {
-    parts.push(annexeRSection(state, locale));
-  }
-  if (selection.promesseActifs) {
-    parts.push(extractBody(renderPaActifsToHtml(input.paData)));
+  for (const doc of CONTRACT_DOCUMENT_CATALOG) {
+    if (!input.assembler.selection[doc.id]) continue;
+    const render = SECTION_RENDERERS[doc.id];
+    if (render) parts.push(render(ctx));
   }
 
   const title =
@@ -102,7 +84,8 @@ export function renderContractAssemblerToHtml(input: RenderContractAssemblerHtml
 <style>
 ${PA_ACTIFS_HTML_STYLES}
 ${DYNAMIC_PARENTHESIS_CSS}
-.annexe-block { margin-top: 1.5rem; page-break-inside: avoid; }
+.contract-doc, .annexe-block { margin-top: 1.5rem; page-break-inside: avoid; }
+.contract-doc + .contract-doc, .annexe-block { border-top: 1px solid #e2e8f0; padding-top: 1rem; }
 </style>
 </head>
 <body class="pa-actifs">

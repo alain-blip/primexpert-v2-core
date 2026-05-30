@@ -1,16 +1,19 @@
 /**
- * Panneau d'assemblage — contrat de courtage et annexes (champs entre parenthèses).
+ * Panneau d'assemblage — documents maîtres (contrats / promesse d'achat) et annexes.
+ * Toutes les variables entre parenthèses ( ) sont reliées à l'état local réactif.
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FileDown, Loader2 } from 'lucide-react';
 import {
-  CONTRACT_ANNEXE_CATALOG,
+  CONTRACT_DOCUMENT_CATALOG,
   buildContractAssemblerDefaults,
   buildPaActifsRenderData,
   renderContractAssemblerToHtml,
   type ContractAnnexeId,
   type ContractAssemblerFieldState,
+  type ParenthesisFieldDef,
+  type ParenthesisFieldKind,
 } from '@primexpert/core/forms';
 import {
   normalizeAdministrativeRegion,
@@ -22,8 +25,16 @@ import {
   institutionalListingsInlineInputClass,
   institutionalListingsSecondaryButtonClass,
 } from '../../../lib/institutionalTheme';
+import { useLanguage } from '../../../lib/i18n';
+import { useAuth } from '../../../lib/auth';
+import { useFinancialData } from '../../../context/FinancialDataContext';
+import { useTerritorialCompetition } from '../../../hooks/useTerritorialCompetition';
 
 const fieldClass = `${institutionalListingsInlineInputClass} text-sm disabled:bg-slate-50`;
+
+function inputTypeFor(kind: ParenthesisFieldKind): 'number' | 'text' {
+  return kind === 'money' || kind === 'percent' || kind === 'days' ? 'number' : 'text';
+}
 
 export interface ContractAssemblerPanelProps {
   residence: Residence;
@@ -75,6 +86,21 @@ export function ContractAssemblerPanel({
     [profile]
   );
 
+  const territorial = useMemo(
+    () => ({
+      medianTgaPct: territorialCompetition.medianTgaPct,
+      sampleCount: territorialCompetition.sampleCount,
+      regionAdministrative: territorialCompetition.regionAdministrative,
+      classeImmeuble: territorialCompetition.classeImmeuble,
+    }),
+    [
+      territorialCompetition.medianTgaPct,
+      territorialCompetition.sampleCount,
+      territorialCompetition.regionAdministrative,
+      territorialCompetition.classeImmeuble,
+    ]
+  );
+
   const defaultState = useMemo(
     () =>
       buildContractAssemblerDefaults({
@@ -84,40 +110,27 @@ export function ContractAssemblerPanel({
         financialData: financialData as Record<string, unknown> | null,
         promesseDoc: residenceDoc ?? undefined,
         broker,
-        territorial: {
-          medianTgaPct: territorialCompetition.medianTgaPct,
-          sampleCount: territorialCompetition.sampleCount,
-          regionAdministrative: territorialCompetition.regionAdministrative,
-          classeImmeuble: territorialCompetition.classeImmeuble,
-        },
+        territorial,
       }),
-    [
-      locale,
-      residence,
-      residenceDoc,
-      financialData,
-      broker,
-      territorialCompetition.medianTgaPct,
-      territorialCompetition.sampleCount,
-      territorialCompetition.regionAdministrative,
-      territorialCompetition.classeImmeuble,
-    ]
+    [locale, residence, residenceDoc, financialData, broker, territorial]
   );
 
   const [assembler, setAssembler] = useState<ContractAssemblerFieldState>(defaultState);
+
   const [generating, setGenerating] = useState(false);
+
+  const suggestedPrix = defaultState.values['annexePrix.nouveauPrix'];
 
   useEffect(() => {
     setAssembler((prev) => ({
       ...prev,
-      annexePrix: {
-        ...prev.annexePrix,
-        nouveauPrixNumerique:
-          prev.annexePrix.nouveauPrixNumerique ??
-          defaultState.annexePrix.nouveauPrixNumerique,
+      values: {
+        ...prev.values,
+        'annexePrix.nouveauPrix':
+          prev.values['annexePrix.nouveauPrix'] ?? suggestedPrix,
       },
     }));
-  }, [defaultState.annexePrix.nouveauPrixNumerique]);
+  }, [suggestedPrix]);
 
   const toggleAnnexe = useCallback((id: ContractAnnexeId, checked: boolean) => {
     setAssembler((prev) => ({
@@ -125,6 +138,22 @@ export function ContractAssemblerPanel({
       selection: { ...prev.selection, [id]: checked },
     }));
   }, []);
+
+  const setFieldValue = useCallback(
+    (field: ParenthesisFieldDef, raw: string) => {
+      const next =
+        raw === ''
+          ? undefined
+          : inputTypeFor(field.kind) === 'number'
+            ? Number(raw)
+            : raw;
+      setAssembler((prev) => ({
+        ...prev,
+        values: { ...prev.values, [field.key]: next },
+      }));
+    },
+    []
+  );
 
   const paData = useMemo(
     () =>
@@ -135,32 +164,21 @@ export function ContractAssemblerPanel({
         financialData: financialData as Record<string, unknown> | null,
         promesseDoc: residenceDoc ?? undefined,
         broker,
-        territorial: {
-          medianTgaPct: territorialCompetition.medianTgaPct,
-          sampleCount: territorialCompetition.sampleCount,
-          regionAdministrative: territorialCompetition.regionAdministrative,
-          classeImmeuble: territorialCompetition.classeImmeuble,
-        },
+        territorial,
       }),
-    [
-      locale,
-      residence,
-      residenceDoc,
-      financialData,
-      broker,
-      territorialCompetition,
-    ]
+    [locale, residence, residenceDoc, financialData, broker, territorial]
   );
 
   const suggestedPrixLabel = useMemo(() => {
-    const v = defaultState.annexePrix.nouveauPrixNumerique;
-    if (v == null || !Number.isFinite(v)) return null;
+    if (suggestedPrix == null || typeof suggestedPrix !== 'number' || !Number.isFinite(suggestedPrix)) {
+      return null;
+    }
     return new Intl.NumberFormat(locale === 'fr' ? 'fr-CA' : 'en-CA', {
       style: 'currency',
       currency: 'CAD',
       maximumFractionDigits: 0,
-    }).format(v);
-  }, [defaultState.annexePrix.nouveauPrixNumerique, locale]);
+    }).format(suggestedPrix);
+  }, [suggestedPrix, locale]);
 
   const handleExportHtml = useCallback(() => {
     setGenerating(true);
@@ -192,13 +210,13 @@ export function ContractAssemblerPanel({
     >
       <p className="text-sm text-slate-600 leading-relaxed mb-4">
         {t(
-          'Cochez les pièces à inclure. Les champs entre parenthèses des annexes sont paramétrés ci-dessous — validation de conformité de structure sans fusion Word.',
-          'Select documents to include. Parenthesis fields for schedules are configured below — structural compliance validation without Word merge.'
+          'Cochez les pièces à inclure. Les variables entre parenthèses des documents et annexes sont paramétrées ci-dessous — revue de conformité du graphe contractuel sans fusion Word.',
+          'Select documents to include. Parenthesis variables for documents and schedules are configured below — contract graph compliance review without Word merge.'
         )}
       </p>
 
       <div className="space-y-3 mb-6">
-        {CONTRACT_ANNEXE_CATALOG.map((item) => {
+        {CONTRACT_DOCUMENT_CATALOG.map((item) => {
           const checked = assembler.selection[item.id];
           return (
             <div
@@ -214,97 +232,43 @@ export function ContractAssemblerPanel({
                   onChange={(e) => toggleAnnexe(item.id, e.target.checked)}
                 />
                 <span>
+                  <span className="inline-block mb-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500 border border-slate-200 rounded px-1.5 py-0.5">
+                    {item.codeFr}
+                  </span>
                   <span className="block text-sm font-bold text-slate-900">
                     {language === 'fr' ? item.labelFr : item.labelEn}
                   </span>
-                  {item.parenthesisHintFr && language === 'fr' ? (
-                    <span className="block text-[11px] text-slate-500 mt-0.5">
-                      {item.parenthesisHintFr}
-                    </span>
-                  ) : null}
                 </span>
               </label>
 
-              {checked && item.id === 'annexePrix' ? (
-                <label className="mt-3 block space-y-1 pl-7">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">
-                    {t('Nouveau prix ( $ )', 'New price ( $ )')}
-                  </span>
-                  <input
-                    type="number"
-                    className={fieldClass}
-                    disabled={locked}
-                    value={assembler.annexePrix.nouveauPrixNumerique ?? ''}
-                    onChange={(e) =>
-                      setAssembler((prev) => ({
-                        ...prev,
-                        annexePrix: {
-                          nouveauPrixNumerique:
-                            e.target.value === '' ? undefined : Number(e.target.value),
-                        },
-                      }))
-                    }
-                  />
-                  {suggestedPrixLabel ? (
-                    <p className="text-[11px] text-slate-600">
-                      {t(
-                        'Suggestion ACM (revenu net d’exploitation (RNE) ÷ taux de capitalisation global (TGA) ajusté)',
-                        'ACM suggestion (net operating income (NOI) ÷ adjusted global cap rate)'
-                      )}
-                      : {suggestedPrixLabel}
-                    </p>
-                  ) : null}
-                </label>
-              ) : null}
-
-              {checked && item.id === 'annexeR' ? (
-                <label className="mt-3 block space-y-1 pl-7">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">
-                    {t(
-                      'Rétribution réduite ( % )',
-                      'Reduced remuneration ( % )'
-                    )}
-                  </span>
-                  <input
-                    type="number"
-                    step={0.05}
-                    min={0}
-                    max={100}
-                    className={fieldClass}
-                    disabled={locked}
-                    value={assembler.annexeR.retributionPct ?? ''}
-                    onChange={(e) =>
-                      setAssembler((prev) => ({
-                        ...prev,
-                        annexeR: {
-                          retributionPct:
-                            e.target.value === '' ? undefined : Number(e.target.value),
-                        },
-                      }))
-                    }
-                  />
-                </label>
-              ) : null}
-
-              {checked && item.id === 'annexeG' ? (
-                <label className="mt-3 block space-y-1 pl-7">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">
-                    {t('Référence CCV-', 'CCV- reference')}
-                  </span>
-                  <input
-                    type="text"
-                    className={fieldClass}
-                    disabled={locked}
-                    placeholder="12345"
-                    value={assembler.annexeG.ccvReference ?? ''}
-                    onChange={(e) =>
-                      setAssembler((prev) => ({
-                        ...prev,
-                        annexeG: { ccvReference: e.target.value || undefined },
-                      }))
-                    }
-                  />
-                </label>
+              {checked && item.fields.length > 0 ? (
+                <div className="mt-3 grid gap-3 pl-7 sm:grid-cols-2">
+                  {item.fields.map((field) => (
+                    <label key={field.key} className="block space-y-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">
+                        {language === 'fr' ? field.labelFr : field.labelEn}
+                      </span>
+                      <input
+                        type={inputTypeFor(field.kind)}
+                        step={field.kind === 'percent' ? 0.05 : undefined}
+                        min={field.kind === 'percent' || field.kind === 'days' ? 0 : undefined}
+                        className={fieldClass}
+                        disabled={locked}
+                        value={assembler.values[field.key] ?? ''}
+                        onChange={(e) => setFieldValue(field, e.target.value)}
+                      />
+                      {field.key === 'annexePrix.nouveauPrix' && suggestedPrixLabel ? (
+                        <p className="text-[11px] text-slate-600">
+                          {t(
+                            'Suggestion ACM (revenu net d’exploitation (RNE) ÷ taux de capitalisation global (TGA) ajusté)',
+                            'ACM suggestion (net operating income (NOI) ÷ adjusted global cap rate)'
+                          )}
+                          : {suggestedPrixLabel}
+                        </p>
+                      ) : null}
+                    </label>
+                  ))}
+                </div>
               ) : null}
             </div>
           );

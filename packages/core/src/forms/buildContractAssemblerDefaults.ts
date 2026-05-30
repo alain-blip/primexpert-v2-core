@@ -26,8 +26,8 @@ export function buildContractAssemblerDefaults(
     undefined;
 
   return createDefaultContractAssemblerState({
-    annexePrix: {
-      nouveauPrixNumerique:
+    values: {
+      'annexePrix.nouveauPrix':
         suggested != null && Number.isFinite(suggested) ? Math.round(suggested) : undefined,
     },
   });

@@ -10,6 +10,11 @@ import { useLanguage } from '../lib/i18n';
 export function BrokerPhotoComplianceBanner() {
   const { t } = useLanguage();
 
+  const message = t(
+    '💡 Notification de conformité : Votre photo d\'identification de permis a atteint la limite indicative de 5 ans recommandée par l\'OACIQ. Pensez à la rafraîchir dans vos paramètres pour optimiser vos fiches descriptives.',
+    '💡 Compliance notice: Your license identification photo has reached the 5-year indicative limit recommended by OACIQ. Consider refreshing it in your settings to optimize your listing sheets.'
+  );
+
   return (
     <div
       role="status"
@@ -17,12 +22,7 @@ export function BrokerPhotoComplianceBanner() {
     >
       <p className="mx-auto flex max-w-5xl items-start justify-center gap-2 text-center text-[11px] font-medium leading-snug sm:text-[12px] sm:leading-relaxed">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" aria-hidden />
-        <span>
-          {t(
-            '💡 Notification de conformité : Votre photo d\'identification de permis a atteint la limite indicative de 5 ans recommandée par l\'OACIQ. Pensez à la rafraîchir dans vos paramètres pour optimiser vos fiches descriptives.',
-            '💡 Compliance notice: Your license identification photo has reached the 5-year indicative limit recommended by OACIQ. Consider refreshing it in your settings to optimize your listing sheets.'
-          )}
-        </span>
+        <span>{message}</span>
       </p>
     </div>
   );

@@ -126,11 +126,30 @@ Données : sous-collection **`residences/{id}/financial/dataV2`** (migration dep
 - Boutons : rapport vendeur / mise à jour → `contentGenPrefill` + onglet ContentGen.
 - Thème institutionnel (`InstitutionalResidenceTabShell` + tokens `primexpert-*`, 2026-05-19)
 
-### Authentification — développement local (2026-05-19)
+### Authentification — connexion Google (2026-05-19, recalé 2026-05-30)
 
-- En **`import.meta.env.DEV`**, connexion Google via **`signInWithPopup`** (évite les boucles `signInWithRedirect` sur localhost).
-- Production : **`signInWithRedirect`** inchangé.
+- **Production et développement : utilisation stricte et exclusive de `signInWithPopup`** afin de préserver l'intégrité des sessions face aux restrictions d'ITP / cookies tiers sur Firebase Hosting (le retour `signInWithRedirect` perdait la session).
+- En-tête `Cross-Origin-Opener-Policy: same-origin-allow-popups` déjà posé sur tous les chemins dans `firebase.json` pour autoriser les fenêtres (popups) OAuth.
+- Points d'entrée du popup : `src/lib/auth.tsx` (hook `useAuth`), `src/auth-signin.ts`, `src/lib/publicEntryAuth.ts`.
 - `App.tsx` : navigation vers `/workhub` après session effective ; garde courte si `auth.currentUser` est défini avant le contexte React.
+- Garde de chargement `/workhub` déjà en place (`ProtectedWorkhub` → `if (loading)`, `Suspense` racine, *timeout* de démarrage 15 s dans `onAuthStateChanged`).
+- Correctif 2026-05-30 : l'ancienne note « Production : `signInWithRedirect` inchangé » était discordante avec le code et a été remplacée.
+
+### Évaluation d'infrastructure moderne — Diagnostic de distribution réseau et isolation des comportements de cache CDN (exit 0) (2026-05-30)
+
+- **Symptôme** : écran noir persistant sur la production `/workhub`, sans erreur console, build `exit 0`.
+- **Cause racine (réseau, pas applicatif)** : les en-têtes Firebase Hosting s'évaluent sur le **chemin de requête entrant, avant les `rewrites`**. Les routes SPA sans extension (`/workhub`, `/acces-vendeur`) ne correspondaient à aucune règle `no-cache` (qui ne ciblaient que `/index.html` et `**/*.html`) et ne matchaient que le `**` global (COOP seul). Le HTML de ces routes pouvait donc être mis en cache → après redéploiement, références de *chunks* hachés obsolètes → import dynamique en 404 → `Suspense` racine figé sur fond `#0a0a0a` (écran noir).
+- **Correctif (config seule, `firebase.json`)** : ajout de blocs d'en-têtes `Cache-Control: no-cache, no-store, must-revalidate` (+ COOP) pour `"/workhub{,/**}"` et `"/acces-vendeur{,/**}"`, placés avant le `**` global.
+- **Déploiement** : `firebase deploy --only hosting` (publication atomique — invalide automatiquement le CDN Firebase ; aucun purge manuel requis). Le correctif d'en-tête traite le cache **navigateur** qui survivait au redéploiement.
+- **Point latent (cosmétique, non bloquant)** : le script *pré-paint* d'`index.html` pose `px-spa` sur `document.documentElement` (`<html>`) alors que les règles CSS ciblent `body.px-spa`. La bascule de visibilité fonctionne quand même car `bootstrap-spa.tsx` applique des styles *inline* sur `#root`, mais l'anti-flash de la page statique sur `/workhub` est inopérant. Non corrigé ici (hors écran noir).
+
+### Évaluation d'infrastructure moderne — Stabilisation des composants de conformité et protocole de surveillance réseau (2026-05-30)
+
+- **Contexte** : écran noir prod `/workhub` toujours présent après *hard refresh* ; hypothèses testées sur la bannière OACIQ (`BrokerPhotoComplianceBanner`).
+- **Réfutation** : le système i18n n'a **aucun dictionnaire** — `t(fr, en)` est un simple ternaire renvoyant l'un des deux littéraux passés en ligne (`src/lib/i18n.tsx`). Donc « clé manquante », « chaîne vide » et « `t()` qui plante » sont impossibles ici ; `useLanguage()` ne lève que hors `LanguageProvider`, qui enveloppe toute l'app (`App.tsx`).
+- **Garde-fou ajouté (défensif, sans effet fonctionnel attendu)** : `BrokerPhotoComplianceBanner` calcule `message` puis `if (!message) return null;` — pas de `try/catch` autour d'un *hook* (règles des *hooks*). Le composant ne peut pas bloquer le rendu du `Layout`.
+- **Limite** : ce garde-fou par composant **ne corrige pas** un échec de chargement de *chunk* (404). Si le *chunk* `Layout`/vendor tombe, c'est tout le sous-arbre qui échoue, pas seulement la bannière — relève alors du correctif de cache (déjà déployé) ou d'une `ErrorBoundary` racine (non encore en place).
+- **Protocole de surveillance** : le PO (Alain) extrait l'onglet **Réseau** de la prod pour isoler le fichier `.js`/locale en 404 ou échec. Diagnostic réel en attente de cette preuve.
 
 ### Tableau de bord — Priorités de suivi KISS (2026-05-17)
 
