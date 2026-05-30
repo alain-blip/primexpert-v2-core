@@ -30,6 +30,7 @@ import {
   InstitutionalPageHeader,
 } from '../institutional/InstitutionalUi';
 import type { Residence } from '../../../services/residences';
+import { useResidenceFinancialHints } from '../../../context/ResidenceDataContext';
 
 export interface Analyse360FinanceTabProps {
   residence: Residence;
@@ -39,15 +40,8 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
   const { t, language } = useLanguage();
   const { financialData, loading, error, isInProvider } = useFinancialData();
 
-  const residenceHints = useMemo(
-    () =>
-      ({
-        ...residence,
-        prixDemande: residence.price,
-        askingPrice: residence.price,
-      }) as Record<string, unknown>,
-    [residence]
-  );
+  const residenceHints = useResidenceFinancialHints(residence) as Record<string, unknown>;
+  const listingPrice = (residenceHints.prixDemande as number | undefined) ?? residence.price;
 
   const fmt = (n: number | null) =>
     n != null && Number.isFinite(n) ? formatCurrencyCore(n, { fallback: '—' }) : '—';
@@ -66,10 +60,10 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
         residence: residenceHints,
         calc,
         baseData,
-        prixDemande: residence.price,
+        prixDemande: listingPrice,
         portfolioCtx: marketSnapshot,
       }),
-    [residenceHints, calc, baseData, residence.price, marketSnapshot]
+    [residenceHints, calc, baseData, listingPrice, marketSnapshot]
   );
 
   if (!isInProvider) {

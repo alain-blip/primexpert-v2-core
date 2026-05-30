@@ -30,8 +30,7 @@ import { cn, formatCurrency } from '../../../lib/utils';
 import { getListingPrice } from '@primexpert/core/residence';
 import { readCalculatedResultsDisplayMirror, type CalculatedResultsDisplayMirror } from '@primexpert/core/financial';
 import { bootstrapResidenceAcm } from '@primexpert/core/valuation';
-import { useUnifiedResidence } from '../../../context/ResidenceDataContext';
-import { useUnifiedResidence } from '../../../context/ResidenceDataContext';
+import { useUnifiedResidence, useResidenceFinancialHints } from '../../../context/ResidenceDataContext';
 import { useFinancialData } from '../../../context/FinancialDataContext';
 import type { Residence } from '../../../services/residences';
 import { buildCommissionFirestorePatch, buildListingPriceFirestorePatch } from '../../../services/residences';
@@ -1326,6 +1325,7 @@ export function Synthese360Tab({ residence: residenceProp, residenceId }: Synthe
     updateResidence,
     saving: savingResidence,
   } = useUnifiedResidence(residenceProp);
+  const financialHints = useResidenceFinancialHints(residenceProp);
   const { financialData, loading: financialLoading, error: financialError } = useFinancialData();
   const loose = residence as ResidenceLoose;
   const businessStatus = useMemo(() => calculateBusinessStatus(loose), [loose]);
@@ -1335,8 +1335,8 @@ export function Synthese360Tab({ residence: residenceProp, residenceId }: Synthe
   const retribution = useMemo(() => resolveRetribution(loose), [loose]);
   const residenceName = pickText(loose, ['residenceName', 'commercialName', 'nomCommercial', 'nom_commercial', 'name'], 'RPA À NOMMER');
   const financialMirror = useMemo(
-    () => readCalculatedResultsDisplayMirror(financialData),
-    [financialData]
+    () => readCalculatedResultsDisplayMirror(financialData, financialHints),
+    [financialData, financialHints]
   );
   const acmBootstrap = useMemo(
     () =>

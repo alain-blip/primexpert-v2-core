@@ -74,6 +74,13 @@ export interface PromesseAchatTabProps {
   brokerId: string;
 }
 
+function promesseDocRevision(doc: Record<string, unknown>): string {
+  const updated = doc.updatedAt ?? doc.updatedAtMillis ?? doc.lastModified ?? '';
+  return typeof updated === 'object' && updated !== null && 'seconds' in updated
+    ? String((updated as { seconds: number }).seconds)
+    : String(updated ?? '');
+}
+
 export function PromesseAchatTab({ residence: residenceProp, brokerId }: PromesseAchatTabProps) {
   const { t, language } = useLanguage();
   const locale = language === 'fr' ? 'fr-CA' : 'en-CA';
@@ -155,7 +162,7 @@ export function PromesseAchatTab({ residence: residenceProp, brokerId }: Promess
     setOffreCloture(cloture);
     setForm(parsePromesseAchatFromDoc(residenceRecord));
     setOffers(parsePromesseOffersFromDoc(residenceRecord));
-  }, [residenceRecord]);
+  }, [residence.id, promesseDocRevision(residenceRecord)]);
 
   useEffect(() => {
     const unsub = subscribePromesseDocuments(

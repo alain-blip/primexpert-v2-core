@@ -3,7 +3,7 @@
  * Les onglets métier (Hub CFO, Identité fusionnée, etc.) arrivent en phases suivantes.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   Building2,
@@ -42,6 +42,7 @@ import { DiffusionWebTab } from './diffusion/DiffusionWebTab';
 import { ResidenceTransactionBanner } from './ResidenceTransactionBanner';
 import { ResidenceAccesVendeurButton } from './ResidenceAccesVendeurButton';
 import { InscriptionStatusDropdown } from '../inscriptions/InscriptionStatusDropdown';
+import { ResidenceTabErrorBoundary } from './ResidenceTabErrorBoundary';
 
 export type ResidenceDetailTab =
   | 'synthese'
@@ -191,11 +192,15 @@ function ResidenceDetailContent({
   const [activeTab, setActiveTab] = useState<ResidenceDetailTab>(initialTab);
   const { residence, listingPrice, applyOptimisticPatch } = useResidenceData();
 
-  const addrTitle = residence.city
+  const openFinanceTab = useCallback(() => setActiveTab('finances'), []);
+  const residenceId = residence?.id ?? '';
+
+  const addrTitle = residence?.city
     ? `${residence.address}, ${residence.city}`
-    : residence.address;
+    : residence?.address ?? '';
 
   const tabContent = useMemo(() => {
+    if (!residenceId || !residence) return null;
     switch (activeTab) {
       case 'intelligence':
         return (
@@ -244,15 +249,34 @@ function ResidenceDetailContent({
       default:
         return null;
     }
-  }, [activeTab, brokerId, residence, onClose, t]);
+  }, [activeTab, brokerId, residence, residenceId, listingPrice, onClose, language]);
 
   const panelContent = useMemo(
-    () => wrapInstitutionalTab(activeTab, tabContent, residence, language === 'fr' ? 'fr' : 'en'),
+    () =>
+      residence
+        ? wrapInstitutionalTab(activeTab, tabContent, residence, language === 'fr' ? 'fr' : 'en')
+        : tabContent,
     [activeTab, tabContent, residence, language]
   );
 
+  const activeTabLabel =
+    language === 'fr'
+      ? TABS.find((t) => t.id === activeTab)?.labelFr ?? activeTab
+      : TABS.find((t) => t.id === activeTab)?.labelEn ?? activeTab;
+
+  if (!residenceId) {
+    return (
+      <div className="rounded-xl border border-amber-300 bg-amber-50 px-6 py-8 text-sm text-amber-900">
+        {t(
+          'Fiche résidence indisponible — identifiant manquant.',
+          'Residence file unavailable — missing identifier.'
+        )}
+      </div>
+    );
+  }
+
   return (
-    <FinancialHubDraftProvider onOpenFinanceTab={() => setActiveTab('finances')}>
+    <FinancialHubDraftProvider onOpenFinanceTab={openFinanceTab}>
     <div className="space-y-6 min-h-[70vh] font-sans">
       {/* En-tête institutionnel */}
       <div className="rounded-xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
@@ -328,7 +352,9 @@ function ResidenceDetailContent({
       </div>
 
       <div key={activeTab} role="tabpanel">
-        {panelContent}
+        <ResidenceTabErrorBoundary tabLabel={activeTabLabel}>
+          {panelContent}
+        </ResidenceTabErrorBoundary>
       </div>
     </div>
     </FinancialHubDraftProvider>
@@ -341,6 +367,10 @@ export function ResidenceDetail({
   onClose,
   initialTab = 'synthese',
 }: ResidenceDetailProps) {
+  if (!residence?.id) {
+    return null;
+  }
+
   return (
     <ResidenceDocumentProvider residenceId={residence.id}>
       <ResidenceDataProvider baseResidence={residence}>

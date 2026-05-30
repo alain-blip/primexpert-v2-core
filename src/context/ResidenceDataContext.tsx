@@ -16,6 +16,10 @@ import {
   getListingPricePerUnit,
   getResidenceTotalUnits,
 } from '@primexpert/core/residence';
+import {
+  buildResidenceFinancialHints,
+  type ResidenceFinancialHints,
+} from '@primexpert/core/financial';
 import type { Residence } from '../services/residences';
 import { mergeResidenceWithFirestoreDoc } from '../services/residences';
 import { useResidenceDocument } from './ResidenceDocumentContext';
@@ -37,6 +41,19 @@ export interface ResidenceDataContextValue {
 }
 
 const ResidenceDataContext = createContext<ResidenceDataContextValue | null>(null);
+
+function firestoreDocRevision(doc: Record<string, unknown> | null): string {
+  if (!doc) return '';
+  const updated =
+    doc.updatedAt ??
+    doc.updatedAtMillis ??
+    doc.lastModified ??
+    doc.lastUpdated ??
+    '';
+  return typeof updated === 'object' && updated !== null && 'seconds' in updated
+    ? String((updated as { seconds: number }).seconds)
+    : String(updated ?? '');
+}
 
 function buildResidenceDataValue(input: {
   baseResidence: Residence;
@@ -139,8 +156,24 @@ export function useUnifiedResidence(fallbackResidence: Residence): ResidenceData
   const ctx = useContext(ResidenceDataContext);
   const docCtx = useResidenceDocument();
 
+  const docRevision = firestoreDocRevision(docCtx.residenceDoc as Record<string, unknown> | null);
+
   return useMemo(() => {
     if (ctx) return ctx;
+    if (!fallbackResidence?.id) {
+      return buildResidenceDataValue({
+        baseResidence: { ...fallbackResidence, id: '' } as Residence,
+        residenceDoc: null,
+        optimisticPatch: {},
+        loading: docCtx.loading,
+        saving: docCtx.saving,
+        saveError: docCtx.saveError,
+        error: docCtx.error,
+        isInProvider: docCtx.isInProvider,
+        updateResidence: docCtx.updateResidence,
+        applyOptimisticPatch: () => {},
+      });
+    }
     return buildResidenceDataValue({
       baseResidence: fallbackResidence,
       residenceDoc: docCtx.residenceDoc as Record<string, unknown> | null,
@@ -156,7 +189,9 @@ export function useUnifiedResidence(fallbackResidence: Residence): ResidenceData
   }, [
     ctx,
     fallbackResidence,
-    docCtx.residenceDoc,
+    fallbackResidence?.id,
+    fallbackResidence?.price,
+    docRevision,
     docCtx.loading,
     docCtx.saving,
     docCtx.saveError,
@@ -175,6 +210,16 @@ export function useResidenceData(): ResidenceDataContextValue {
     );
   }
   return ctx;
+}
+
+/** Hints Finances — prix canonique SSOT pour Hub / Finançabilité / Bilan. */
+export function useResidenceFinancialHints(fallbackResidence: Residence): ResidenceFinancialHints {
+  const unified = useUnifiedResidence(fallbackResidence);
+  const { residence, listingPrice } = unified;
+  return useMemo(
+    () => buildResidenceFinancialHints(residence),
+    [residence, listingPrice]
+  );
 }
 
 export default ResidenceDataContext;

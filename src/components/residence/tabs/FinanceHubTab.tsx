@@ -8,8 +8,8 @@ import { BarChart3, Coins, Landmark, Microscope, Percent, ShieldAlert } from 'lu
 import { motion } from 'motion/react';
 import { cn } from '../../../lib/utils';
 import { useLanguage } from '../../../lib/i18n';
+import { useUnifiedResidence, useResidenceFinancialHints } from '../../../context/ResidenceDataContext';
 import { useFinancialData } from '../../../context/FinancialDataContext';
-import { useUnifiedResidence } from '../../../context/ResidenceDataContext';
 import { FinanceHubLockProvider } from '../../../context/FinanceHubLockContext';
 import { normalizeFinancialData } from '@primexpert/core/financial';
 import { isFinanceHubSealed } from '@primexpert/core/diffusion';
@@ -87,7 +87,8 @@ export function FinanceHubTab({ residence: residenceProp, isVendorMode = false }
   const { language, t } = useLanguage();
   const [subTab, setSubTab] = useState<FinanceSubTab>('bilan');
   const { financialData, loading } = useFinancialData();
-  const { residence, residenceRecord, listingPrice } = useUnifiedResidence(residenceProp);
+  const { residence, residenceRecord } = useUnifiedResidence(residenceProp);
+  const financialHints = useResidenceFinancialHints(residenceProp);
 
   const inputsLocked = useMemo(
     () =>
@@ -97,9 +98,9 @@ export function FinanceHubTab({ residence: residenceProp, isVendorMode = false }
   );
 
   const hasFinancials = useMemo(() => {
-    const hints = { prixDemande: listingPrice, askingPrice: listingPrice };
+    const hints = financialHints;
     return normalizeFinancialData(financialData, hints).hasFinancials;
-  }, [financialData, listingPrice]);
+  }, [financialData, financialHints]);
 
   const panel = useMemo(() => {
     switch (subTab) {
