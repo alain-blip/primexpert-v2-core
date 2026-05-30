@@ -2,7 +2,7 @@
 
 **Source unique avec le code :** `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`  
 **URL officielle :** https://primexpert-app-v2.web.app  
-**Cycle technique :** **V3.0 — architectures sécurisées en production** (mai 2026)
+**Cycle technique :** **V3.5 — assembleur de mandats natif scellé** (mai 2026) · architectures sécurisées V3.0 en production
 
 ## Registre global des architectures sécurisées — mai 2026
 
@@ -22,6 +22,7 @@
 | Hub omnicanal (SMS / Nylas) | **OPÉRATIONNEL — PRODUCTION LIVE** |
 | Clauses négociation Gemini | **CÂBLÉ — MOTEUR DYNAMIQUE ACTIF** |
 | Coffre-fort WORM & sécurité | **OPÉRATIONNEL — PRODUCTION LIVE** |
+| Assembleur contrat & annexes (V3.5) | **SCELLÉ — commit `63286dc`** (HTML natif, sans docxtemplater) |
 
 > Détail technique et historique : [`MEMORY.md`](./MEMORY.md)
 
@@ -94,6 +95,7 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 20. **Briefing du matin & Radar off-market (V2.8)** — Cron `morningBriefingGenerator` (06:00 Toronto) ; `organizations/{orgId}/morning_briefings` + `prospects_radar` ; tableau de bord.
 21. **Routage SPA (V2.8)** — `App.tsx` → lazy `AuthenticatedApp.tsx` ; routes `/workhub`, `/acces-vendeur` (jeton = session client sans Google).
 22. **Recherche multi-critères** — CRM (`contactSearch.ts`) et inscriptions (villes, municipalités).
+23. **Assembleur de mandats (V3.5)** — `@primexpert/core/forms` ; champs entre parenthèses typés ; `ContractAssemblerPanel` onglet Promesse ; export HTML natif (legacy docxtemplater expulsé).
 
 ---
 
@@ -164,7 +166,7 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | Documents | ✅ Scan + parse Vertex + distribution + Verrouillage WORM/OACIQ client (V3.1) |
 | Intelligence | ✅ Chronologie + **`CommunicationHub`** (SMS / Meta / courriel) |
 | Accès Vendeur (depuis fiche) | ✅ Portail autonome — catalogue 85 pièces, lien invité 30 j, alertes téléversement |
-| Promesse | ✅ Cockpit PA (`offre` SSOT) |
+| Promesse | ✅ Cockpit PA (`offre` SSOT) + **assembleur contrat V3.5** (`ContractAssemblerPanel`, export HTML) |
 
 **Tableau de bord :** briefing du matin (tâches critiques, rendez-vous, hot leads), radar à opportunités off-market, priorités KISS (J+3 / J+5 / J+7).
 
@@ -178,4 +180,4 @@ Copie possible sur disque de sauvegarde (`00_PRIMEXPERT_SYSTEME_APP/docs/` ou vo
 
 ---
 
-*Index mis à jour : 2026-05-29 — Sprint V3.1 consigné (Verrouillage WORM/OACIQ client, onglet Documents). Déploiement hosting recommandé.*
+*Index mis à jour : 2026-05-30 — Sprint V3.5 scellé (assembleur de mandats natif, commit `63286dc`).*

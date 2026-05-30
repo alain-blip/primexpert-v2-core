@@ -32,6 +32,16 @@
 │           │   ├── offreConditions.ts
 │           │   ├── offreCloture.ts
 │           │   └── promesseAchatEngine.ts
+│           ├── forms/                 # Générateur natif contrats / PA — sans OpenXML (V3.4–V3.5)
+│           │   ├── annexeFieldSchema.ts       # Schéma champs entre parenthèses ( $ ) ( % ) CCV-
+│           │   ├── renderDynamicParenthesis.ts
+│           │   ├── buildContractAssemblerDefaults.ts
+│           │   ├── renderContractAssemblerToHtml.ts
+│           │   ├── paActifsTypes.ts
+│           │   ├── buildPaActifsRenderData.ts
+│           │   ├── renderPaActifsToHtml.ts
+│           │   ├── templates/paActifsTemplate.ts
+│           │   └── index.ts
 │           ├── crm/                   # Contacts CRM — organizations/{orgId}/contacts
 │           │   ├── contactTypes.ts    # LCI, buyerCriteria, sellerCriteria, deriveBuyerTier
 │           │   ├── contactSearch.ts   # Recherche multi-critères LCI (haystack normalisé)
@@ -122,7 +132,7 @@
 ├── storage.rules
 ├── index.html
 ├── package.json
-├── vite.config.ts                   # Alias @primexpert/core/* + code-splitting
+├── vite.config.ts                   # Alias @primexpert/core/* + @primexpert/core/forms + code-splitting
 ├── public/                          # Logos silo, Primexpert…
 ├── src/
 │   ├── App.tsx                      # Entrée publique — BrowserRouter + lazy AuthenticatedApp
@@ -179,7 +189,8 @@
     │   │   │   ├── OffreClotureRetributionSection.tsx
     │   │   │   ├── PromesseDelaisPaSection.tsx
     │   │   │   ├── PromesseCommissionPaSection.tsx
-    │   │   │   └── PaConfortPanel.tsx
+    │   │   │   ├── PaConfortPanel.tsx
+    │   │   │   └── ContractAssemblerPanel.tsx   # V3.5 — assemblage contrat + annexes (export HTML)
     │   │   ├── documents/           # Espace Documents — diligence 3 colonnes
     │   │   │   ├── DocumentsDiligenceTab.tsx
     │   │   │   ├── DocumentCategorySidebar.tsx
@@ -306,7 +317,7 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Marché | `MarcheConcurrenceTab` | ✅ **Analyse de mise en marché (ACM)** en tête + pénétration / comparables / diagnostic territorial |
 | Documents | `DocumentsDiligenceTab` | ✅ Financier / Technique / Légal + scan + parse IA + onglets / distribution / courriel |
 | Intelligence | `ResidenceIntelligencePanel` + `IntelligenceChronologie` | ✅ Appels E-3 + courriels `email_threads/messages` + rapport vendeur |
-| Promesse | `PromesseAchatTab` + `residence/promesse/*` | ✅ Cockpit PA — `offre` + `promesseAchat` (core/transaction) |
+| Promesse | `PromesseAchatTab` + `residence/promesse/*` | ✅ Cockpit PA — `offre` + `promesseAchat` (core/transaction) + assembleur contrat V3.5 |
 
 ### Hub Finance — sous-onglets (`FinanceHubTab.tsx`)
 
@@ -344,7 +355,7 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Multi-tenant résidences | `src/services/residences.ts`, `packages/core/src/tenant/`, `firestore.rules` |
 | Données financières | `src/context/FinancialDataContext.tsx`, `packages/core/src/financial/` |
 | Identité immeuble | `src/context/ResidenceDocumentContext.tsx`, `packages/core/src/identity/`, `IdentiteImmeubleTab` |
-| Promesse d'achat | `PromesseAchatTab.tsx`, `src/components/residence/promesse/`, `packages/core/src/transaction/` |
+| Promesse d'achat | `PromesseAchatTab.tsx`, `src/components/residence/promesse/`, `packages/core/src/transaction/`, **`packages/core/src/forms/`** (V3.4–V3.5) |
 | Charte UI institutionnelle | `tailwind.config.js`, `src/index.css` (`@theme` / `@config`), `src/lib/institutionalTheme.ts`, `InstitutionalUi.tsx` |
 | Inscriptions (cartes, view model, Kanban DnD) | `Listings.tsx`, `listings/ListingsPipelineKanban.tsx`, `ListingInstitutionalCard.tsx`, `listingCardViewModel.ts`, `packages/core/src/residence/listingCommission.ts`, `mandateCompleteness.ts`, `quebecRegions.ts` |
 | Messagerie ↔ CRM (Phase 2) | `MailContactLinkBar.tsx`, `emailSyncService.linkEmailThreadToContact`, `packages/core/src/mail/contactMatch.ts`, `matchedContactId` |
@@ -397,5 +408,6 @@ Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only func
 ---
 
 | Analyse de mise en marché (ACM) | `AcmValuationWorkspace`, `ResidenceAcmValuationPanel`, `residenceAcmBootstrap.ts`, `gpsCapRateByRegionClass.ts` |
+| Assembleur contrat / PA (V3.5) | `ContractAssemblerPanel.tsx`, `annexeFieldSchema.ts`, `renderContractAssemblerToHtml.ts`, `@primexpert/core/forms` |
 
-*Dernière mise à jour : 2026-05-29 — V2.8 : portail vendeur autonome (85 pièces), briefing matin, radar off-market, routage SPA.*
+*Dernière mise à jour : 2026-05-30 — V3.5 : assembleur de mandats natif (commit `63286dc`), module `packages/core/src/forms/`.*

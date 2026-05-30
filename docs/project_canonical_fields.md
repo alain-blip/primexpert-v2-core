@@ -6,6 +6,7 @@ Les champs **serveur** (`billingStatus`, `gracePeriodStartedAt`) ne sont **pas**
 Référence alias / provenance : `packages/core/src/canonical/`.  
 **Identité Phase 4 (lecture + écriture)** : `packages/core/src/identity/` — définitions UI dans `identitySections.ts`, `buildingAuditSections.ts`, `servicesRecognition.ts`, `rentPricingGrid.ts`.  
 **Promesse d'achat (PA)** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`.  
+**Assembleur contrat / formulaires natifs (V3.4–V3.5)** : `packages/core/src/forms/` — HTML sans OpenXML ; schéma parenthèses `annexeFieldSchema.ts` ; PA Actifs `paActifsTypes.ts`, `renderPaActifsToHtml.ts`.  
 **Messagerie (Hub omnicanal)** : **SSOT unique** `users/{uid}/email_threads` (alias canonique `communication_threads` dans `@primexpert/core/mail`) + `messages` — Nylas, SMS Twilio, Meta ; analyse `@primexpert/core/mail` à l’écriture serveur.  
 **Diffusion Web** : `packages/core/src/diffusion/` — vendoré dans `functions/src/diffusion/_vendored/` au prebuild.  
 **CRM Contacts** : `packages/core/src/crm/` — fiche `organizations/{orgId}/contacts` ; liaisons `coBuyerIds` / `coSellerIds` ; typologie acheteur `deriveBuyerTier` ; **Loi 25** — `QuebecLaw25Consent` + `validateLaw25Compliance()`.  
@@ -747,6 +748,7 @@ Collection **top-level** (pas sous `organizations/`).
 | Inscriptions Kanban DnD | `ListingsPipelineKanban.tsx`, `pipelineDragRules.ts`, `updateResidencePipelineStatus` |
 | Bibliothèque marché | `marketDocumentsService.ts`, `parseMarketDocument.ts`, `injectMarketMacroStats.ts`, `MarketLibraryDashboard.tsx`, `marketDeduplication.ts` |
 | Anti-doublons Big Data | `marketTransactionFingerprint`, `marketMacroRegionFingerprint`, empreintes Firestore merge |
+| Assembleur contrat V3.5 | `annexeFieldSchema.ts`, `renderContractAssemblerToHtml.ts`, `ContractAssemblerPanel.tsx` |
 
 ---
 
@@ -810,6 +812,27 @@ SSOT moteur : `promesseAchatEngine.ts` — dates limites dérivées de `dateAcce
 | `promesseAchat.collaborateur` | map | `nom`, `telephone`, `courriel`, `partCommissionPct` |
 
 Sous-collection documents PA : `residences/{id}/documents` (filtre type promesse ; règles `canReadResidenceSubcollection`).
+
+---
+
+## Assembleur de contrat — état UI (V3.5 — éphémère client)
+
+**SSOT rendu :** `@primexpert/core/forms` — **non persisté Firestore en V3.5** (export HTML navigateur uniquement).
+
+### Objet `ContractAssemblerFieldState` (TypeScript — panneau)
+
+| Bloc | Champs | Description |
+|------|--------|-------------|
+| `selection` | `contratCourtage`, `annexePrix`, `annexeG`, `annexeR`, `promesseActifs` | bool — pièces incluses dans le dossier HTML |
+| `annexePrix` | `nouveauPrixNumerique` | number — zone `(       $ )` |
+| `annexeR` | `retributionPct` | number — zone `(       % )` |
+| `annexeG` | `ccvReference` | string — zone `CCV-     ` |
+
+**Defaults :** `buildContractAssemblerDefaults()` — prix annexe depuis revenu net d'exploitation (RNE) ÷ taux de capitalisation global (TGA) ACM (`resolveCanonicalRne`, `bootstrapResidenceAcm`).
+
+**UI :** `ContractAssemblerPanel.tsx` dans onglet Promesse — consomme `residence`, `residenceDoc`, `financial/dataV2`.
+
+**Persistance planifiée (été 2026) :** sous-objet optionnel `residences/{id}.contractAssembler` ou doc dédié — hors scope commit `63286dc`.
 
 ---
 
@@ -901,4 +924,4 @@ Modes négociation : `OACIQ_FORM`, `CUSTOM_CONTRACT`, `LETTER_OF_INTENT`.
 
 ---
 
-*Dernière mise à jour : 2026-05-29 — V2.8 : portail vendeur (85 pièces, jetons), briefing matin, radar off-market ; Loi 25, closing V2.7, copilote négociation.*
+*Dernière mise à jour : 2026-05-30 — V3.5 assembleur de mandats (champs parenthèses, export HTML natif ; commit `63286dc`).*

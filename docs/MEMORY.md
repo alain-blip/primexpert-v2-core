@@ -111,7 +111,8 @@ Données : sous-collection **`residences/{id}/financial/dataV2`** (migration dep
 - **Promesse** : `PromesseAchatTab` — cockpit promesse d'achat (Sprints 5.1–5.4)
   - **SSOT** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`
   - **Firestore** : objet racine `offre` (tronc financier + conditions + clôture) ; bloc `promesseAchat` (statut, dates, délais en jours, commission, collaborateurs, documents)
-  - **UI** (`src/components/residence/promesse/`) : `OffreTroncFinancierSection`, `OffreConditionsLegalesSection`, `OffreClotureRetributionSection`, `PromesseDelaisPaSection` (jours éditables → dates calculées), `PromesseCommissionPaSection`, `PaConfortPanel` ; `TernaryToggle` partagé
+  - **UI** (`src/components/residence/promesse/`) : `OffreTroncFinancierSection`, `OffreConditionsLegalesSection`, `OffreClotureRetributionSection`, `PromesseDelaisPaSection` (jours éditables → dates calculées), `PromesseCommissionPaSection`, `PaConfortPanel`, **`ContractAssemblerPanel`** (V3.5 — assemblage contrat + annexes) ; `TernaryToggle` partagé
+  - **Générateur natif (V3.4–V3.5)** : `packages/core/src/forms/` — HTML sans OpenXML ; legacy Copilote `docxtemplater` / PizZip **non réintroduit**
   - **Épuration OACIQ (5.4)** : champs retirés de l’UI (Annexe 6, clause RNE/TGA, transfert fiducie, prorata MSSS) — clés core conservées pour migrations
   - **Sérialisation Firestore** : `undefined` → `null` sur `promesseAchat.delais.*` et commission (évite `Unsupported field value: undefined`)
   - **Écriture `offre`** : toujours envoyer l’objet `offre` complet via `serializeOffreForFirestore` (merge contexte = shallow ; un partial efface les autres clés)
@@ -615,9 +616,9 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 ---
 
-## Mise en place du pipeline d'auto-alimentation décentralisé (Data Flywheel) et protocole d'anonymisation (V3.5 — 2026-05-29)
+## Mise en place du pipeline d'auto-alimentation décentralisé (Data Flywheel) et protocole d'anonymisation (chantier parallèle — 2026-05-29)
 
-**Statut :** **[EN REVUE HITL — sans commit]**
+**Statut :** **[EN REVUE HITL — sans commit]** *(numéro de version distinct du jalon assembleur V3.5 scellé ci-dessous)*
 
 | Élément | Détail |
 |---------|--------|
@@ -663,6 +664,22 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 | **En-tête** | `ResidenceDetail` — prix unique via contexte ; mutation crayon → Firestore global + rafraîchissement en-tête. |
 
 **HITL :** toute modification du prix demandé demeure validée par le courtier titulaire de permis avant diffusion ou conclusion.
+
+---
+
+## Évaluation d'infrastructure moderne — Redressement complet de la cohérence financière inter-onglets et élimination des données fantômes (2026-05-30)
+
+**Statut :** **[EN REVUE HITL — sans commit]**
+
+| Élément | Détail |
+|---------|--------|
+| **Prix SSOT** | `resolvePrixDemande()` — interdit le `calc.prixDemande` legacy (3,5 M$) ; force `getListingPrice()` (2 558 000 $). |
+| **RNE** | `resolveAdmissibleOpex()` — grille déclarée prioritaire ; RNE = RBE − dépenses (529 489 $ = 1 129 749 $ − 600 260 $). |
+| **TGA réel** | Recalculé : 529 489 $ ÷ 2 558 000 $ = **20,70 %** (`syncCalcWithCanonicalListingPrice`). |
+| **Hub Finance** | Emprunt max + mise de fonds requise (MFR) rebasés sur prix canonique via `useResidenceFinancialHints()`. |
+| **Onglets** | Hub, Bilan, Finançabilité, Revenus & Dépenses, Ratios, Synthèse — hints unifiés. |
+
+**HITL :** le courtier valide les montants avant toute conclusion de bancabilité ou diffusion ACM.
 
 ---
 
@@ -854,4 +871,48 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
-*Journal mis à jour : 2026-05-29 — Sprint V3.1 consigné (raccordement UI WORM/OACIQ). Hosting en attente de déploiement.*
+---
+
+## Assembleur de mandats — moteur de contrat natif & champs entre parenthèses (V3.5 — 2026-05-30)
+
+**Statut :** **[SCELLÉ — commit `63286dc` — branche `feature/v2.8-market-stats-optimization` — HEAD = origin]**
+
+| Élément | Détail |
+|---------|--------|
+| **Règle #0** | SSOT `@primexpert/core/forms/` — zéro docxtemplater ; export HTML natif (print / PDF navigateur). |
+| **Legacy expulsée** | Copilote-RPA : `docxGenerator.js` (docxtemplater + PizZip) — **identifiée, non portée en V2**. Gabarit référence : `00_RPA_SYSTEME_APP/…/gabarits-v3/Promesse d'achat ACTIFS.docx`. |
+| **Schéma parenthèses** | `annexeFieldSchema.ts` — `AnnexePrixFields.nouveauPrixNumerique` `( $ )`, `AnnexeRFields.retributionPct` `( % )`, `AnnexeGFields.ccvReference` `CCV-…` ; `ContractAssemblerFieldState`. |
+| **Rendu dynamique** | `renderDynamicParenthesis.ts` — `.dynamic-value` / `.is-empty` ; `renderParenthesisMoney`, `renderParenthesisPercent`, `renderCcvReference`. |
+| **Defaults ACM** | `buildContractAssemblerDefaults.ts` — prix annexe depuis RNE ÷ taux de capitalisation global (TGA) ajusté (`resolveCanonicalRne`, bootstrap ACM). |
+| **Dossier HTML** | `renderContractAssemblerToHtml.ts` — contrat courtage + annexes cochées + promesse d'achat actifs (V3.4 `renderPaActifsToHtml`). |
+| **UI** | `ContractAssemblerPanel.tsx` — checkboxes annexes, champs conditionnels, export HTML ; câblé dans `PromesseAchatTab` (`955410e` + `63286dc`). |
+| **Alias build** | `@primexpert/core/forms` — `vite.config.ts` + `tsconfig.json`. |
+| **Build racine** | `npm run build` — **SUCCESS exit 0** (validé avant propulsion). |
+
+**HITL :** l'assembleur produit un brouillon HTML ; le courtier titulaire de permis valide le contenu juridique avant signature ou remise au client. Persistance Firestore de l'état assembleur — **hors périmètre V3.5** (été 2026).
+
+**Commits de référence :**
+
+| Commit | Contenu |
+|--------|---------|
+| `7ee43cb` | PA Actifs V3.4 — `paActifsTypes`, `renderPaActifsToHtml`, couplage ACM |
+| `955410e` | Câblage `PromesseAchatTab` + unification SSOT onglets résidence |
+| `63286dc` | V3.5 — `ContractAssemblerPanel`, schémas parenthèses, rendu HTML assembleur |
+
+**Hors périmètre scellé (local non commité) :** redressement finance inter-onglets, onglets Hub/Bilan/Finançabilité, docs PDF RPA.
+
+---
+
+## Verrouillage technique fin de sprint — Primexpert V3.5 (2026-05-30)
+
+| Point de contrôle | Statut |
+|-------------------|--------|
+| Jalon moteur de contrat | **[NATIVEMENT INTÉGRÉ AU CORE — ÉTANCHE]** |
+| Gestion des parenthèses `( )` | **[SCHÉMAS TYPÉS & RENDU COMPILÉ]** |
+| Synchronisation Git distante | **[PROPULSÉE — HEAD = origin = `63286dc`]** |
+| Build production racine | **[SUCCESS — exit 0]** |
+| UI polish été 2026 | **[EN ATTENTE]** — PDF-A CraftMyPDF, persistance Firestore assembleur, gabarits annexes complets depuis `gabarits-v3` |
+
+---
+
+*Journal mis à jour : 2026-05-30 — Sprint V3.5 scellé (assembleur de mandats natif). Hosting prod inchangé — déploiement hosting à planifier si validation PO.*

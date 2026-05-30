@@ -83,7 +83,7 @@ Fiche V2 (Listings → ResidenceDetail)
     ├─ Documents         [✅ Espace Documents + scan + parse IA Vertex + distribution / courriel]
     ├─ Intelligence      [✅ call_analyses + courriels email_threads/messages (ex-mailbox_analyses)]
     ├─ Accès Vendeur     [✅ bouton fiche → /acces-vendeur — timeline + jauge mandat + docs]
-    └─ Promesse          [✅ PromesseAchatTab — offre SSOT + conditions & délais RPA + clôture]
+    └─ Promesse          [✅ PromesseAchatTab — offre SSOT + conditions & délais RPA + clôture + assembleur contrat V3.5]
 ```
 
 **Accès Vendeur (portail autonome V2.8) :**
@@ -192,6 +192,7 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 | **Loi 25 consentement CRM** | ✅ `QuebecLaw25Consent` + `validateLaw25Compliance` — garde-fous SMS/courriel **planifiés** |
 | **Rédacteur IA Centris** | ✅ `ContentGen.tsx` + lint `@primexpert/core/narrative` |
 | **VoIP Twilio** | ⏳ parallèle — non déployé prod |
+| **Assembleur contrat V3.5** | ✅ `@primexpert/core/forms` + `ContractAssemblerPanel` — export HTML natif ; commit `63286dc` |
 
 ### Statut production certifié (conseil d’administration — 2026-05-28)
 
@@ -391,6 +392,19 @@ promesseAchat.statut → accepted (+ prixAccepte validé)
 
 Garde-fou Loi 25 : `validateLaw25Compliance(contact.communicationPreferences.law25Consent)` avant SMS/courriel sortant.
 
+### Pipeline assembleur de mandats (V3.5 — scellé `63286dc`)
+
+```text
+Onglet Promesse → ContractAssemblerPanel
+    → buildContractAssemblerDefaults (RNE ÷ TGA ACM, resolveCanonicalRne)
+    → saisie champs entre parenthèses : ( $ ) ( % ) CCV-
+    → sélection annexes : contrat courtage · annexe prix · G · R · promesse actifs
+    → renderContractAssemblerToHtml (+ renderPaActifsToHtml si coché)
+    → export HTML navigateur (print / PDF local)
+```
+
+**Règle #0 :** aucun docxtemplater ; legacy Copilote `docxGenerator.js` non réintroduit. Persistance Firestore état assembleur — planifiée été 2026.
+
 ### Cloud Functions — régions canoniques
 
 | Fonction / groupe | Région | Secrets / notes | Statut |
@@ -465,4 +479,19 @@ Dashboard — fetchProspectsRadar — tri par score
 
 ---
 
-*Dernière mise à jour : 2026-05-29 — Production V2.8 : portail vendeur autonome, briefing matin, radar off-market, routage SPA.*
+---
+
+## J. Session 2026-05-30 — Assembleur de mandats V3.5 (`63286dc`)
+
+| Jalon | Détail |
+|-------|--------|
+| **Moteur natif** | `packages/core/src/forms/` — HTML sans OpenXML ; alias `@primexpert/core/forms` |
+| **Parenthèses typées** | `annexeFieldSchema.ts` — prix `( $ )`, commission `( % )`, référence `CCV-` |
+| **UI** | `ContractAssemblerPanel.tsx` — onglet Promesse ; export dossier HTML |
+| **Couplage ACM** | Defaults prix annexe depuis RNE ÷ taux de capitalisation global (TGA) territorial |
+| **Legacy** | docxtemplater Copilote identifié et expulsé — zéro duplication V2 |
+| **Git** | `63286dc` → `origin/feature/v2.8-market-stats-optimization` ; build racine exit 0 |
+
+---
+
+*Dernière mise à jour : 2026-05-30 — V3.5 assembleur de mandats scellé ; branche feature `63286dc`.*
