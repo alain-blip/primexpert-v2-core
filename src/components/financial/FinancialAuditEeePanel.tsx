@@ -4,7 +4,10 @@
 
 import React, { useMemo } from 'react';
 import { Landmark, Info } from 'lucide-react';
-import { computeFinancialAuditEee } from '@primexpert/core/financial';
+import {
+  computeFinancialAuditEee,
+  normalizeCapitalizationRatePct,
+} from '@primexpert/core/financial';
 import { useFinancialData } from '../../context/FinancialDataContext';
 import { useLanguage } from '../../lib/i18n';
 import { formatCurrency } from '../../lib/utils';
@@ -48,7 +51,9 @@ export function FinancialAuditEeePanel({
   const L = language === 'fr';
   const fmt = (n: number) => formatCurrency(n, { maxDecimals: 0 });
   const fmtPct = (x: number | null) =>
-    x != null && Number.isFinite(x) ? `${(x * 100).toFixed(2)} %` : '—';
+    x != null && Number.isFinite(x)
+      ? `${(normalizeCapitalizationRatePct(x) ?? 0).toFixed(2)} %`
+      : '—';
   const fmtX = (x: number | null) =>
     x != null && Number.isFinite(x) ? `${x.toFixed(2)}×` : '—';
 
