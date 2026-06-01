@@ -6,7 +6,8 @@ Les champs **serveur** (`billingStatus`, `gracePeriodStartedAt`) ne sont **pas**
 Référence alias / provenance : `packages/core/src/canonical/`.  
 **Identité Phase 4 (lecture + écriture)** : `packages/core/src/identity/` — définitions UI dans `identitySections.ts`, `buildingAuditSections.ts`, `servicesRecognition.ts`, `rentPricingGrid.ts`.  
 **Promesse d'achat (PA)** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`.  
-**Assembleur contrat / formulaires natifs (V3.4–V3.5)** : `packages/core/src/forms/` — HTML sans OpenXML ; schéma parenthèses `annexeFieldSchema.ts` ; PA Actifs `paActifsTypes.ts`, `renderPaActifsToHtml.ts`.  
+**Assembleur contrat / formulaires natifs (V3.4–V3.5+)** : `packages/core/src/forms/` — HTML sans OpenXML ; catalogue `CONTRACT_DOCUMENT_CATALOG` ; schéma parenthèses `annexeFieldSchema.ts` ; PA Actifs `paActifsTypes.ts`, `renderPaActifsToHtml.ts`.
+**Capitalisation financière (RNE/TGA)** : `packages/core/src/financial/capitalization.ts` — conversions centralisées revenu net d'exploitation (RNE) ↔ valeur ↔ taux de capitalisation (TGA).
 **Messagerie (Hub omnicanal)** : **SSOT unique** `users/{uid}/email_threads` (alias canonique `communication_threads` dans `@primexpert/core/mail`) + `messages` — Nylas, SMS Twilio, Meta ; analyse `@primexpert/core/mail` à l’écriture serveur.  
 **Diffusion Web** : `packages/core/src/diffusion/` — vendoré dans `functions/src/diffusion/_vendored/` au prebuild.  
 **CRM Contacts** : `packages/core/src/crm/` — fiche `organizations/{orgId}/contacts` ; liaisons `coBuyerIds` / `coSellerIds` ; typologie acheteur `deriveBuyerTier` ; **Loi 25** — `QuebecLaw25Consent` + `validateLaw25Compliance()`.  
@@ -577,6 +578,7 @@ Normalisation : `normalizeFinancialData()` → source `calculatedResults` | `der
 |-------|-------------|
 | Prix affiché / emprunt / MFR | `getListingPrice()` + `syncCalcWithCanonicalListingPrice()` — ignore `calculatedResults.prixDemande` figé (ex. 3,5 M$) |
 | RNE canonique | `resolveAdmissibleOpex()` — **`depensesTotales` déclaré** prioritaire ; RNE = RBE − OPEX déclaré (pas le normalisé seul) |
+| Capitalisation RNE/TGA | `capitalization.ts` — `resolveNetOperatingIncome()`, `computeCapitalizationRatePct()`, `computeCapitalizationRateDecimal()`, `capitalizeNoiAtCapRatePct()` |
 | Hints UI inter-onglets | `ResidenceDataContext` → `useResidenceFinancialHints()` → `buildResidenceFinancialHints()` |
 | Étalon QA | 198 chemin du Roy : 2 558 000 $ · RBE 1 129 749 $ · dépenses 600 260 $ · **RNE 529 489 $** · **TGA 20,70 %** |
 
@@ -756,9 +758,11 @@ Collection **top-level** (pas sous `organizations/`).
 | Courtier responsable inscription | `ResponsibleBrokerCard.tsx`, `courtiersResponsables` |
 | Liaison messagerie ↔ CRM | `matchedContactId`, `linkEmailThreadToContact`, `contactMatch.ts`, `MailContactLinkBar.tsx` |
 | Inscriptions Kanban DnD | `ListingsPipelineKanban.tsx`, `pipelineDragRules.ts`, `updateResidencePipelineStatus` |
+| Protection Kanban / PA acceptée | `pipelineStages.ts`, `resolveColumnId.test.ts`, `paAccepteeCriticalDeadlines.test.ts`, `test:rpa-coverage` |
 | Bibliothèque marché | `marketDocumentsService.ts`, `parseMarketDocument.ts`, `injectMarketMacroStats.ts`, `MarketLibraryDashboard.tsx`, `marketDeduplication.ts` |
 | Anti-doublons Big Data | `marketTransactionFingerprint`, `marketMacroRegionFingerprint`, empreintes Firestore merge |
-| Assembleur contrat V3.5 | `annexeFieldSchema.ts`, `renderContractAssemblerToHtml.ts`, `ContractAssemblerPanel.tsx` |
+| Assembleur contrat V3.5+ | `annexeFieldSchema.ts`, `renderContractAssemblerToHtml.ts`, `templates/*`, `ContractAssemblerPanel.tsx` |
+| Capitalisation RNE / TGA | `capitalization.ts`, `revenusDepensesPreview.ts`, `centrisComparableCapRate.ts`, `sync-core-analytics-flywheel.cjs` |
 
 ---
 
@@ -804,7 +808,7 @@ SSOT moteur : `promesseAchatEngine.ts` — dates limites dérivées de `dateAcce
 
 ### Constante SSOT — `PA_ACCEPTEE_CRITICAL_DEADLINE_KEYS` (7 échéances)
 
-Exportée par `packages/core/src/transaction/promesseAchatEngine.ts`. Dès que `promesseAchat.statut === 'accepted'` (Kanban `pa-acceptee` → colonne `promise` via `resolveColumnId()`), le moteur **doit** produire les 7 dates ci-dessous. Validation stricte : `validatePaAccepteeCriticalDeadlines()`. Couverture tests : `paAccepteeCriticalDeadlines.test.ts`.
+Exportée par `packages/core/src/transaction/promesseAchatEngine.ts`. Dès que `promesseAchat.statut === 'accepted'` (Kanban `pa-acceptee` → colonne `promise` via `resolveColumnId()`), le moteur **doit** produire les 7 dates ci-dessous. Validation stricte : `validatePaAccepteeCriticalDeadlines()`. Couverture tests : `paAccepteeCriticalDeadlines.test.ts` + workflow `.github/workflows/rpa-transaction-test-coverage.yml`.
 
 | Clé SSOT | Champ Firestore / VM | Origine du calcul |
 |----------|----------------------|-------------------|
@@ -841,24 +845,38 @@ Sous-collection documents PA : `residences/{id}/documents` (filtre type promesse
 
 ---
 
-## Assembleur de contrat — état UI (V3.5 — éphémère client)
+## Assembleur de contrat — état UI (V3.5+ — éphémère client)
 
-**SSOT rendu :** `@primexpert/core/forms` — **non persisté Firestore en V3.5** (export HTML navigateur uniquement).
+**SSOT rendu :** `@primexpert/core/forms` — **non persisté Firestore en V3.5+** (export HTML navigateur uniquement).
+
+### Catalogue `CONTRACT_DOCUMENT_CATALOG`
+
+| ID | Catégorie | Rôle |
+|----|-----------|------|
+| `contratCourtage` | `master` | Contrat de courtage exclusif — vente résidence pour aînés (RPA) |
+| `contratCourtageAchat` | `master` | Contrat de courtage exclusif — recherche d'achat commercial |
+| `promesseActifs` | `master` | Promesse d'achat d'actifs |
+| `annexeG` | `annexe` | Confidentialité des coordonnées |
+| `annexeR` | `annexe` | Réduction de rétribution |
+| `annexeE` | `annexe` | Exclusion d'acheteur |
+| `annexePR` | `annexe` | Droit de préemption |
+| `annexeC` | `annexe` | Coordination des intervenants professionnels |
+| `annexePrix` | `annexe` | Modification — prix de vente |
+| `annexeMiseHorsMarche` | `annexe` | Modification — mise hors marché |
+| `annexeRimouski` | `annexe` | Modification — avenant modèle Rimouski |
 
 ### Objet `ContractAssemblerFieldState` (TypeScript — panneau)
 
 | Bloc | Champs | Description |
 |------|--------|-------------|
-| `selection` | `contratCourtage`, `annexePrix`, `annexeG`, `annexeR`, `promesseActifs` | bool — pièces incluses dans le dossier HTML |
-| `annexePrix` | `nouveauPrixNumerique` | number — zone `(       $ )` |
-| `annexeR` | `retributionPct` | number — zone `(       % )` |
-| `annexeG` | `ccvReference` | string — zone `CCV-     ` |
+| `selection` | clés `ContractAnnexeId` | bool — pièces incluses dans le dossier HTML |
+| `values` | `ParenthesisValueMap` | valeurs plates des variables entre parenthèses, ex. `annexePrix.nouveauPrix`, `annexeR.retributionPct`, `annexeG.ccvReference` |
 
 **Defaults :** `buildContractAssemblerDefaults()` — prix annexe depuis revenu net d'exploitation (RNE) ÷ taux de capitalisation global (TGA) ACM (`resolveCanonicalRne`, `bootstrapResidenceAcm`).
 
 **UI :** `ContractAssemblerPanel.tsx` dans onglet Promesse — consomme `residence`, `residenceDoc`, `financial/dataV2`.
 
-**Persistance planifiée (été 2026) :** sous-objet optionnel `residences/{id}.contractAssembler` ou doc dédié — hors scope commit `63286dc`.
+**Persistance planifiée (été 2026) :** sous-objet optionnel `residences/{id}.contractAssembler` ou doc dédié — hors scope V3.5+ ; ne pas créer de collection parallèle avant décision PO.
 
 ---
 
@@ -950,4 +968,4 @@ Modes négociation : `OACIQ_FORM`, `CUSTOM_CONTRACT`, `LETTER_OF_INTENT`.
 
 ---
 
-*Dernière mise à jour : 2026-05-30 — V3.5 assembleur de mandats (champs parenthèses, export HTML natif ; commit `63286dc`).*
+*Dernière mise à jour : 2026-06-01 — RNE/TGA centralisés (`c33c109`) + PA acceptée / Kanban certifiés (`38a7779`).*

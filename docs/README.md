@@ -2,7 +2,7 @@
 
 **Source unique avec le code :** `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`  
 **URL officielle :** https://primexpert-app-v2.web.app  
-**Cycle technique :** **V3.5 — assembleur de mandats natif scellé** + **redressement finance SSOT fiche résidence (`d232673`)** (mai 2026) · architectures sécurisées V3.0 en production
+**Cycle technique :** **V3.8 — clôture RNE/TGA & protection transaction RPA** (2026-06-01) · V3.5 assembleur natif élargi · architectures sécurisées V3.0 en production
 
 ## Registre global des architectures sécurisées — mai 2026
 
@@ -24,6 +24,8 @@
 | Coffre-fort WORM & sécurité | **OPÉRATIONNEL — PRODUCTION LIVE** |
 | Assembleur contrat & annexes (V3.5) | **SCELLÉ — commit `63286dc`** (HTML natif, sans docxtemplater) |
 | Hub Finance — cohérence RNE / prix inter-onglets | **DÉPLOYÉ PROD — commit `d232673`** (hosting 2026-05-30) |
+| Capitalisation financière — RNE / TGA | **CERTIFIÉ — commit `c33c109`** (`@primexpert/core/financial/capitalization.ts`) |
+| Protection transaction RPA — Kanban + PA acceptée | **CERTIFIÉ CI — commit `38a7779`** (`npm run test:rpa-coverage`) |
 
 > Détail technique et historique : [`MEMORY.md`](./MEMORY.md)
 
@@ -96,11 +98,13 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 20. **Briefing du matin & Radar off-market (V2.8)** — Cron `morningBriefingGenerator` (06:00 Toronto) ; `organizations/{orgId}/morning_briefings` + `prospects_radar` ; tableau de bord.
 21. **Routage SPA (V2.8)** — `App.tsx` → lazy `AuthenticatedApp.tsx` ; routes `/workhub`, `/acces-vendeur` (jeton = session client sans Google).
 22. **Recherche multi-critères** — CRM (`contactSearch.ts`) et inscriptions (villes, municipalités).
-23. **Assembleur de mandats (V3.5)** — `@primexpert/core/forms` ; champs entre parenthèses typés ; `ContractAssemblerPanel` onglet Promesse ; export HTML natif (legacy docxtemplater expulsé).
+23. **Assembleur de mandats (V3.5+)** — `@primexpert/core/forms` ; champs entre parenthèses typés ; `ContractAssemblerPanel` onglet Promesse ; export HTML natif ; catalogue élargi contrat vente RPA, contrat achat commercial, promesse actifs, annexes G/R/E/PR/C/MO/Rimouski (legacy docxtemplater expulsé).
+24. **Capitalisation RNE / TGA (V3.8)** — conversions revenu net d'exploitation (RNE) ↔ valeur ↔ taux de capitalisation (TGA) centralisées dans `@primexpert/core/financial/capitalization.ts`, consommées par Hub Finance, ACM, comparables Centris et flywheel analytique.
+25. **Protection transaction RPA (2026-06-01)** — `resolveColumnId()` couvert à 100 % et constante `PA_ACCEPTEE_CRITICAL_DEADLINE_KEYS` validée par `npm run test:rpa-coverage`.
 
 ---
 
-## Scripts npm — ops & tests (2026-05-29)
+## Scripts npm — ops & tests (2026-06-01)
 
 | Script | Usage |
 |--------|--------|
@@ -109,6 +113,7 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | `npm run test:voice-note` | Pipeline note vocale (Whisper si clé OpenAI) |
 | `npm run test:voice-note:gemini` | Pipeline note vocale — STT Gemini uniquement |
 | `npm run test:incoming-sms` | Injection SMS test → fil `crm_{contactId}` |
+| `npm run test:rpa-coverage` | Tests bloquants Kanban (`resolveColumnId` 100 %) + 7 délais PA acceptée |
 
 ---
 
@@ -161,13 +166,13 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 |--------|--------|
 | Synthèse | ✅ Bilan, rétribution éditable, prix demandé éditable, C-73.2, notes, **note vocale**, **Matchmaker Raphaël**, nœuds canoniques HITL |
 | Identité | ✅ Édition inline Confort 66+ ; courtier responsable |
-| Finances (Hub 5 sous-onglets) | ✅ + benchmark global |
+| Finances (Hub 5 sous-onglets) | ✅ + benchmark global + RNE/TGA centralisés (`capitalization.ts`) |
 | Déclaration | ✅ Questionnaire OACIQ |
-| Marché | ✅ **Analyse de mise en marché (ACM)** (SSOT finances + TGA GPS) + concurrence territoriale |
+| Marché | ✅ **Analyse de mise en marché (ACM)** (SSOT finances + TGA GPS) + concurrence territoriale + calcul TGA via module capitalisation |
 | Documents | ✅ Scan + parse Vertex + distribution + Verrouillage WORM/OACIQ client (V3.1) |
 | Intelligence | ✅ Chronologie + **`CommunicationHub`** (SMS / Meta / courriel) |
 | Accès Vendeur (depuis fiche) | ✅ Portail autonome — catalogue 85 pièces, lien invité 30 j, alertes téléversement |
-| Promesse | ✅ Cockpit PA (`offre` SSOT) + **assembleur contrat V3.5** (`ContractAssemblerPanel`, export HTML) |
+| Promesse | ✅ Cockpit PA (`offre` SSOT) + **assembleur contrat V3.5+** (`ContractAssemblerPanel`, export HTML) + 7 délais PA acceptée certifiés |
 
 **Tableau de bord :** briefing du matin (tâches critiques, rendez-vous, hot leads), radar à opportunités off-market, priorités KISS (J+3 / J+5 / J+7).
 
@@ -181,4 +186,4 @@ Copie possible sur disque de sauvegarde (`00_PRIMEXPERT_SYSTEME_APP/docs/` ou vo
 
 ---
 
-*Index mis à jour : 2026-05-30 — Sprint V3.5 scellé (assembleur de mandats natif, commit `63286dc`).*
+*Index mis à jour : 2026-06-01 — V3.8 RNE/TGA centralisés (`c33c109`) + protection transaction RPA CI (`38a7779`).*
