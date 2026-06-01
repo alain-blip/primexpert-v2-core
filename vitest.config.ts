@@ -6,11 +6,23 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, '.'),
       '@primexpert/core': path.resolve(__dirname, 'packages/core/src/index.ts'),
+      '@primexpert/core/financial': path.resolve(
+        __dirname,
+        'packages/core/src/financial/index.ts'
+      ),
+      '@primexpert/core/residence': path.resolve(
+        __dirname,
+        'packages/core/src/residence/index.ts'
+      ),
       '@primexpert/core/transaction': path.resolve(
         __dirname,
         'packages/core/src/transaction/index.ts'
       ),
       '@primexpert/core/market': path.resolve(__dirname, 'packages/core/src/market/index.ts'),
+      '@primexpert/core/utils/formatting': path.resolve(
+        __dirname,
+        'packages/core/src/utils/formatting.ts'
+      ),
       '@primexpert/core/canonical': path.resolve(
         __dirname,
         'packages/core/src/canonical/index.ts'

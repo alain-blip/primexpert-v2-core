@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  assessNoiEvidence,
   formatDecimalTgaPct,
   isManualTgaOverride,
   percentToDecimal,
   resolveAppliedTgaPct,
   resolveDynamicMarketTgaPct,
-} from '../index';
+} from '../acmTgaControls';
+import { assessNoiEvidence } from '../noiEvidenceAssessment';
 
 describe('financial QA guards', () => {
   it('résout le TGA de marché selon la priorité SSOT', () => {
