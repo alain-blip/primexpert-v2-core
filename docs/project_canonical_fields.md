@@ -12,6 +12,9 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 **CRM Contacts** : `packages/core/src/crm/` — fiche `organizations/{orgId}/contacts` ; liaisons `coBuyerIds` / `coSellerIds` ; typologie acheteur `deriveBuyerTier` ; **Loi 25** — `QuebecLaw25Consent` + `validateLaw25Compliance()`.  
 **Après-vente (V2.7)** : `packages/core/src/market/closingEngine.ts` — tâches `source: 'closing_pipeline'` dans `residences/{id}/tasks`.  
 **Copilote négociation (V2.6)** : `packages/core/src/ai/` — brouillons HITL `manualVerifications` (`kind: 'commercial_negotiation_clause'`).
+**Analytics marché (V3.x)** : `packages/core/src/analytics/marketMetrics.ts` — ratio des dépenses d'exploitation (RDE/OER) et benchmarks par classe d'actif.  
+**Capitalisation RNE/TGA (QA 2026-06-01)** : `packages/core/src/financial/capitalization.ts` — SSOT revenu net d'exploitation (RNE) et taux de capitalisation global (TGA).  
+**Sécurité WORM** : `packages/core/src/security/` — `LegalVaultDocument`, journal SHA-256, conformité photo courtier.
 
 ---
 
@@ -131,6 +134,39 @@ Tâches courtier (CRM, SMS critique, téléversement portail vendeur).
 
 ---
 
+## Collection `organizations/{orgId}/legal_vault/{documentId}`
+
+Coffre-fort légal WORM — verrouillage définitif OACIQ, retention 2190 jours, journal append-only via `onVaultDocumentWrite` (`northamerica-northeast1`).
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `documentId` | string | ID déterministe du document légal |
+| `documentType` | string | `CONTRAT_COURTAGE` \| `PROMESSE_ACHAT` \| `FICHE_DESCRIPTIVE` \| `ACM_REPORT` |
+| `orgId`, `brokerId` | string | Organisation et courtier responsable |
+| `propertyId` | string | Fiche résidence liée |
+| `propertyDocumentId` | string | Document diligence lié (`residences/{id}/documents`) |
+| `storageUrl` | string | URL / chemin du document conservé |
+| `isFinalWormLocked` | bool | Verrou WORM final — transition client autorisée uniquement `false → true` |
+| `createdAtMillis`, `lockedAtMillis` | number | Création et verrouillage |
+| `oaciqRetentionExpiryTimestamp` | number | Expiration de conservation réglementaire (6 ans / 2190 j) |
+| `metadataFieldsCrossChecked` | map | `{ contractPrice, validatedLicenseName, licenseType }` validés avant verrouillage |
+| `lastWriteClientIp` | string | Adresse IP consignée au verrouillage |
+
+### Sous-collection `organizations/{orgId}/legal_vault/{documentId}/compliance_logs/{entryId}`
+
+Journal de conformité scellé, écrit par Admin SDK ; aucune écriture client directe.
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `entryId` | string | ID entrée |
+| `userId`, `userRole` | string | Acteur et rôle |
+| `actionType` | string | `READ` \| `WRITE` \| `LOCK` \| `EXPORT_ZIP` |
+| `timestampMillis` | number | Horodatage |
+| `clientIpAddress` | string | Adresse IP |
+| `integrityHash`, `previousHash` | string | Chaînage SHA-256 du journal |
+
+---
+
 ## Document `organizations/{orgId}/morning_briefings/{brokerId}`
 
 Briefing du matin — cron `morningBriefingGenerator` (06:00 Toronto) ou recalcul client.
@@ -192,6 +228,7 @@ Jetons portail vendeur autonome (TTL 30 j).
 | **`lastEmailSent`** | string \| null | `J7` \| `J21` \| `J30` \| `J40` \| null | Relance onboarding |
 | `accessibleSilos` | array | `RPA`, `CPE`, `PLEX` | RBAC silos Radar |
 | `licenseName`, `title`, `agency` | string | optionnel | Profil OACIQ |
+| **`profilePhotoUploadedAtMillis`** | number | ms | Date photo permis — conformité OACIQ (> 1826 j = alerte non bloquante) |
 | `firstName`, `lastName`, `phone` | string | optionnel | Profil |
 | **`telephony`** | map | — | VOIP — attribution admin (Phase 0–1) |
 | **`telephony.twilioNumber`** | string | E.164 | Numéro Twilio assigné — **obligatoire** pour `getTwilioToken` |
@@ -291,9 +328,13 @@ Document racine — **SSOT onglet Identité** (`ResidenceDocumentContext`) + Rad
 | **`commissionRate`**, `tauxCommission`, `commissionPct` | number | Taux commission (%) — lecture UI rétribution / inscriptions |
 | **`potentialRevenue`**, `revenuPotentiel`, … | number | Revenu potentiel affiché si présent ; sinon dérivé `prix × taux` côté affichage |
 | **`status`** | string | `prospect`, `mandate`, `promise`, `expired`, `unsigned`, `sold` — **ne pas renommer** |
+| **`statut`** | string | Statut courtage Québec / MLS (`actif`, `suspendue`, `vendue`, …) — synchronisé par `inscriptionBrokerageStatus.ts` |
+| **`listingSource`** | string | `centris` \| `off_market` — défaut historique `centris` ; hors marché exclu de la sync Centris |
+| **`isManuallyOverridden`** | bool | Override manuel du statut Centris par le courtier |
 | **`region`** | string | Région administrative Québec (filtre inscriptions — `QUEBEC_REGIONS`) |
 | **`prixAccepte`** | number | Prix accepté (promesse) — requis pour glisser vers colonne `promise` (DnD Kanban) |
 | **`contratCourtage`** | map | Mandat courtage — complétude OACIQ (`mandateCompleteness.ts`) |
+| **`internalFlywheelIngestion`** | map | Marqueur d'idempotence Data Flywheel — voir ci-dessous |
 | `assetNiche` | string | `RPA` \| `CPE` \| `PLEX` |
 | `propertyType` | string | `rpa`, `cpe`, `plex`, `commercial` |
 | `date` | string | Date inscription / mandat (UI) |
@@ -364,6 +405,18 @@ Items RPA de base (SSOT `RPA_DILIGENCE_CHECKLIST_ITEMS`) : certification CIUSSS,
 > Lecture UI : priorité `administrateursREQ` racine, puis `structureJuridique.administrateursREQ`, alias `administrateurs` / `administrateursRegistre`.
 
 > Le type Firestore inclut encore `expired` pour l’héritage et les filtres ; le **pipeline Kanban « chaud »** (`PIPELINE_ACTIVE_STATUSES` côté app) exclut `expired` des quatre colonnes actives.
+
+#### Objet `internalFlywheelIngestion`
+
+Marqueur serveur posé après anonymisation d'une transaction conclue (`onTransactionConcludedFlywheel`) pour éviter toute double injection dans `market_analytics_raw`.
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `promiseAtMillis` | number | Transition promesse acceptée injectée |
+| `soldAtMillis` | number | Transition vendu injectée |
+| `lastAnalyticsDocId` | string | ID `market_analytics_raw/{fingerprint}` créé / fusionné |
+| `lastTransitionKind` | string | `promise` \| `sold` |
+| `updatedAtMillis` | number | Dernier marquage |
 
 ### Bâtiment — 5 silos de vérification identité (sous-objets Firestore)
 
@@ -576,9 +629,17 @@ Normalisation : `normalizeFinancialData()` → source `calculatedResults` | `der
 | Règle | Module core |
 |-------|-------------|
 | Prix affiché / emprunt / MFR | `getListingPrice()` + `syncCalcWithCanonicalListingPrice()` — ignore `calculatedResults.prixDemande` figé (ex. 3,5 M$) |
-| RNE canonique | `resolveAdmissibleOpex()` — **`depensesTotales` déclaré** prioritaire ; RNE = RBE − OPEX déclaré (pas le normalisé seul) |
+| RNE canonique | `resolveAdmissibleOpex()` + `resolveNetOperatingIncome()` — **`depensesTotales` déclaré** prioritaire ; RNE = RBE − OPEX déclaré (pas le normalisé seul) |
+| Taux de capitalisation global (TGA) | `computeCapitalizationRatePct()` dans `capitalization.ts` — pas de formule UI / service parallèle |
 | Hints UI inter-onglets | `ResidenceDataContext` → `useResidenceFinancialHints()` → `buildResidenceFinancialHints()` |
 | Étalon QA | 198 chemin du Roy : 2 558 000 $ · RBE 1 129 749 $ · dépenses 600 260 $ · **RNE 529 489 $** · **TGA 20,70 %** |
+
+### Extensions `calculatedResults` / benchmarks
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| **`operatingExpenseRatio`** | number | Ratio des dépenses d'exploitation (RDE/OER) = dépenses normalisées ÷ RBE × 100 |
+| `tauxCapitalisation` / `capRatePct` | number | Taux de capitalisation global (TGA), calculé par `capitalization.ts` |
 
 ### Sous-collection `residences/{id}/documents/{documentId}`
 
@@ -646,12 +707,14 @@ Téléchargement client : autorisé **uniquement** si `virusScanStatus === 'clea
 | **`organizations/{orgId}/morning_briefings/{brokerId}`** | `brokerId` | Briefing du matin (cron 06:00 Toronto) |
 | **`organizations/{orgId}/prospects_radar/{id}`** | `brokerId` | Radar off-market — signaux faibles |
 | **`organizations/{orgId}/tasks`** | `ownerId` | Tâches courtier (org-wide) |
+| **`organizations/{orgId}/legal_vault`** | `brokerId` / `orgId` | Coffre-fort WORM OACIQ + sous-journal `compliance_logs` |
 | **`vendor_portal_invites/{token}`** | `brokerId` | Jetons portail vendeur autonome (30 j) |
 | **`market_documents/{docId}`** | `uploadedBy` | Vault rapports marché (Statistiques du marché — Workhub) |
 | **`market_macro_stats/{fingerprint}`** | — | Stats macro validées (écriture serveur `injectMarketMacroStats`) |
 | **`market_analytics_raw/{fingerprint}`** | — | Transactions comparables & ratios anonymisés (écriture serveur) |
 | **`marketSnapshots/v1`** | — | Agrégat lecture macro + transactions + benchmarks (merge dédupliqué) |
 | **`market_financial_benchmarks/{entryId}`** | — | Médianes régionales benchmark Hub Finance (lecture client, écriture serveur) |
+| **`listings_cache/{entryId}`** | — | Cache Centris RESO / Matrix — lecture utilisateurs authentifiés, écriture serveur |
 
 ### Document `market_documents/{docId}`
 
@@ -691,18 +754,37 @@ Collection **top-level** (pas sous `organizations/`).
 | Champ | Type | Description |
 |--------|------|-------------|
 | **`dedupeFingerprint`** | string | ID document = empreinte transaction ou benchmark |
+| **`dataSource`** | string | `market_report` \| `internal_flywheel` \| `centris_odata` selon provenance |
 | `siloType` | string | ex. `rpa_ri_chsld` |
 | `regionAdministrative` | string | Région |
+| **`regionDisplayName`** | string | Libellé région affichable |
 | `anneeDonnees` | number | Année |
-| `provenance` | string | `market_report` (injection serveur) \| `etats_financiers` \| `rapport_evaluation` (résidence) |
-| `comparableSnapshot` | map | `{ city, units, salePrice, capRatePct, netIncomePerUnit }` — **sans adresse civique** |
-| `marketTransactionMeta` | map | Métadonnées transaction (date, type immeuble, `marketDocumentId`) |
+| `provenance` | string | `market_report` (injection serveur) \| `etats_financiers` \| `rapport_evaluation` (résidence) \| `internal_flywheel` |
+| **`postalFsa3`** | string | FSALDU-3 anonymisé (flywheel interne) |
+| `comparableSnapshot` | map | `{ city, units, salePrice, capRatePct, netIncomePerUnit, prixParPi2?, assetClassLabel? }` — **sans adresse civique** |
+| `marketTransactionMeta` | map | Métadonnées transaction (date, type immeuble, `marketDocumentId`, `transactionKind?: promise \| sold`) |
 | `operationalBenchmarkMeta` | map | Ratios opérationnels (label, catégorie) |
 | `validatedAmounts` | array | Montants validés (ratios / dépenses) |
 | `injectedAtMillis` | number | Horodatage |
 | `validatedBy` | string | UID courtier |
 
 > **Anti-doublons :** réinjection du même PDF ou rapports chevauchants → `set(..., { merge: true })` sur l'ID empreinte ; pas de `add()` aveugle. Legacy : `packages/core/src/market/marketDeduplication.ts` (adresse normalisée + prix + date ±3 jours pour détection UI).
+
+### Document `listings_cache/{entryId}`
+
+Cache serveur des inscriptions Centris ; source de lecture pour la concurrence territoriale et les médianes du taux de capitalisation global (TGA). Les fiches `listingSource === 'off_market'` ne sont jamais écrites par la synchronisation Centris.
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `centrisListingId` | string | ID Centris / RESO |
+| `source` | string | `centris_odata` |
+| `resoPayload` | map | Payload RESO OData conservé pour traçabilité |
+| `ingestStatus` | string | État ingestion |
+| `mlsNumber` | string | Numéro d'inscription MLS |
+| `regionAdministrative`, `classeImmeuble` | string | Segmentation TGA territoriale |
+| `soldPrice`, `revenuBrutEffectif`, `netOperatingIncome` | number | Données financières comparables |
+| `capRatePct` | number | Taux de capitalisation global (TGA) calculé par `centrisComparableCapRate.ts` |
+| `closedAtMillis` | number | Date transaction comparable |
 
 ### ~~Document `organizations/…/market_documents`~~
 
@@ -720,6 +802,7 @@ Collection **top-level** (pas sous `organizations/`).
 | Bandeau 72 h | `src/components/GracePeriodBanner.tsx` |
 | Résidences multi-tenant | `src/services/residences.ts`, `@primexpert/core/tenant` |
 | Listener finance | `src/context/FinancialDataContext.tsx` |
+| Capitalisation RNE/TGA | `packages/core/src/financial/capitalization.ts`, `src/services/financialDataService.ts` |
 | Listener identité + écriture | `src/context/ResidenceDocumentContext.tsx` |
 | View model identité | `packages/core/src/identity/buildIdentityViewModel.ts` |
 | Sections juridique / établissement | `packages/core/src/identity/identitySections.ts` |
@@ -738,6 +821,7 @@ Collection **top-level** (pas sous `organizations/`).
 | Taxes + PDF | `src/lib/quebecInvoiceTax.ts`, `src/services/invoicePdfService.ts` |
 | Règles Firestore / Storage | `firestore.rules`, `storage.rules` |
 | Inscriptions & cartes | `src/components/Listings.tsx`, `ListingInstitutionalCard.tsx`, `listingCardViewModel.ts` |
+| Inscriptions Centris / hors marché | `CreateInscriptionForm.tsx`, `InscriptionStatusDropdown.tsx`, `inscriptionsService.ts`, `listingSource.ts`, `inscriptionBrokerageStatus.ts` |
 | Synthèse 360 | `src/components/residence/tabs/Synthese360Tab.tsx` |
 | CRM contacts | `packages/core/src/crm/`, `src/services/contacts.ts`, `src/components/contacts/` |
 | Liaisons coacheteurs/covendeurs | `coBuyers.ts`, `coSellers.ts`, `linkCoBuyer`, `linkCoSeller` |
@@ -757,7 +841,10 @@ Collection **top-level** (pas sous `organizations/`).
 | Liaison messagerie ↔ CRM | `matchedContactId`, `linkEmailThreadToContact`, `contactMatch.ts`, `MailContactLinkBar.tsx` |
 | Inscriptions Kanban DnD | `ListingsPipelineKanban.tsx`, `pipelineDragRules.ts`, `updateResidencePipelineStatus` |
 | Bibliothèque marché | `marketDocumentsService.ts`, `parseMarketDocument.ts`, `injectMarketMacroStats.ts`, `MarketLibraryDashboard.tsx`, `marketDeduplication.ts` |
+| Concurrence Centris | `listings_cache`, `marketAnalyticsService.ts`, `useTerritorialCompetition.ts`, `TerritorialCentrisCompetitionSection.tsx`, `centrisComparableCapRate.ts` |
 | Anti-doublons Big Data | `marketTransactionFingerprint`, `marketMacroRegionFingerprint`, empreintes Firestore merge |
+| Coffre WORM légal | `legalVaultService.ts`, `legalVaultDocumentMapping.ts`, `LegalVaultWormPanel.tsx`, `LegalVaultWormLockModal.tsx`, `onVaultDocumentWrite.ts` |
+| Analytics / sécurité core | `marketMetrics.ts`, `vaultSpecsTypes.ts`, `brokerProfileCompliance.ts`, `onTransactionConcludedFlywheel` |
 | Assembleur contrat V3.5 | `annexeFieldSchema.ts`, `renderContractAssemblerToHtml.ts`, `ContractAssemblerPanel.tsx` |
 
 ---
@@ -934,4 +1021,4 @@ Modes négociation : `OACIQ_FORM`, `CUSTOM_CONTRACT`, `LETTER_OF_INTENT`.
 
 ---
 
-*Dernière mise à jour : 2026-05-30 — V3.5 assembleur de mandats (champs parenthèses, export HTML natif ; commit `63286dc`).*
+*Dernière mise à jour : 2026-06-01 — ajout QA RPA RNE/TGA (`97b30f`), `legal_vault`, `listings_cache`, flywheel et RDE/OER sans duplication des sections existantes.*

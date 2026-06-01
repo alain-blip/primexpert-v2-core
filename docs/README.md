@@ -2,7 +2,7 @@
 
 **Source unique avec le code :** `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`  
 **URL officielle :** https://primexpert-app-v2.web.app  
-**Cycle technique :** **V3.5 — assembleur de mandats natif scellé** + **redressement finance SSOT fiche résidence (`d232673`)** (mai 2026) · architectures sécurisées V3.0 en production
+**Cycle technique :** **V3.5 — assembleur de mandats natif scellé** + **redressement finance SSOT fiche résidence (`d232673`)** + **assurance QA RPA RNE/TGA (`97b30f`)** (juin 2026) · architectures sécurisées V3.0 en production
 
 ## Registre global des architectures sécurisées — mai 2026
 
@@ -10,7 +10,7 @@
 |---------|--------|
 | **URL officielle** | https://primexpert-app-v2.web.app |
 | **Firestore** | Règles WORM actives & verrouillées en prod |
-| **Cloud Function** | `onVaultDocumentWrite` — **PROD LIVE — Montréal** (`northamerica-northeast1`) |
+| **Cloud Functions clés** | `onVaultDocumentWrite` — **PROD LIVE — Montréal** (`northamerica-northeast1`) ; `onTransactionConcludedFlywheel` ; `centrisListingsSyncNightly` |
 | **Registre exécutif** | 5 piliers d'élite majeurs certifiés et actifs |
 
 ## Registre global de la suite — mai 2026
@@ -24,6 +24,7 @@
 | Coffre-fort WORM & sécurité | **OPÉRATIONNEL — PRODUCTION LIVE** |
 | Assembleur contrat & annexes (V3.5) | **SCELLÉ — commit `63286dc`** (HTML natif, sans docxtemplater) |
 | Hub Finance — cohérence RNE / prix inter-onglets | **DÉPLOYÉ PROD — commit `d232673`** (hosting 2026-05-30) |
+| Assurance QA RPA — RNE/TGA, Kanban, délais PA | **COUVERTURE TEST — commit `97b30f`** (Vitest + CI) |
 
 > Détail technique et historique : [`MEMORY.md`](./MEMORY.md)
 
@@ -97,6 +98,8 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 21. **Routage SPA (V2.8)** — `App.tsx` → lazy `AuthenticatedApp.tsx` ; routes `/workhub`, `/acces-vendeur` (jeton = session client sans Google).
 22. **Recherche multi-critères** — CRM (`contactSearch.ts`) et inscriptions (villes, municipalités).
 23. **Assembleur de mandats (V3.5)** — `@primexpert/core/forms` ; champs entre parenthèses typés ; `ContractAssemblerPanel` onglet Promesse ; export HTML natif (legacy docxtemplater expulsé).
+24. **Analytics & sécurité (V3.x)** — `@primexpert/core/analytics` (ratio des dépenses d'exploitation (RDE), benchmarks) + `@primexpert/core/security` (coffre WORM, conformité photo).
+25. **Assurance QA RPA (2026-06-01)** — `@primexpert/core/financial/capitalization.ts` centralise revenu net d'exploitation (RNE) et taux de capitalisation global (TGA) ; Vitest couvre Kanban, délais PA acceptée et comparables Centris.
 
 ---
 
@@ -109,6 +112,8 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | `npm run test:voice-note` | Pipeline note vocale (Whisper si clé OpenAI) |
 | `npm run test:voice-note:gemini` | Pipeline note vocale — STT Gemini uniquement |
 | `npm run test:incoming-sms` | Injection SMS test → fil `crm_{contactId}` |
+| `npm test` | Suite Vitest (core + front) |
+| `npm run test:rpa-coverage` | Garde QA RPA : Kanban, délais PA, TGA Centris et couverture `resolveColumnId` |
 
 ---
 
@@ -117,11 +122,11 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | Module | Accès | SSOT | Statut |
 |--------|-------|------|--------|
 | **Tableau de bord** | `Dashboard.tsx` | Briefing matin, radar off-market, priorités KISS | LIVE |
-| **Mes inscriptions** | `Listings.tsx` | Pipeline Kanban 4 colonnes, DnD, filtres régions, recherche | LIVE |
+| **Mes inscriptions** | `Listings.tsx` | Pipeline Kanban 4 colonnes, DnD, filtres régions, recherche, création Centris / hors marché | LIVE |
 | **CRM** | `ContactsListPage` | `organizations/{orgId}/contacts` ; recherche LCI ; Matchmaker | LIVE |
 | **Accès Vendeur** | `/acces-vendeur` · lien invité · bouton fiche | Catalogue 85 pièces, `vendorPortalCompliance`, `vendor_portal_invites` | LIVE |
 | **Messagerie** | `MailboxContainer` + `CommunicationHub` | `email_threads` / `messages` — courriel, SMS, Meta | LIVE |
-| **Statistiques du marché** | `MarketLibraryDashboard` | `market_documents`, parse Vertex, injection HITL | LIVE |
+| **Statistiques du marché** | `MarketLibraryDashboard` | `market_documents`, parse Vertex, injection HITL, comparables Centris territoriaux | LIVE |
 | **Rédacteur IA** | `ContentGen.tsx` | `@primexpert/core/narrative` — lint OACIQ | LIVE |
 | **Copilote négociation** | core + Vertex | `negotiationEngine`, `oaciqSpecsTypes` | CÂBLÉ (core) |
 | **Après-vente closing** | core | `closingEngine.ts` → `residences/…/tasks` | CÂBLÉ — trigger prod planifié |
@@ -163,8 +168,8 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | Identité | ✅ Édition inline Confort 66+ ; courtier responsable |
 | Finances (Hub 5 sous-onglets) | ✅ + benchmark global |
 | Déclaration | ✅ Questionnaire OACIQ |
-| Marché | ✅ **Analyse de mise en marché (ACM)** (SSOT finances + TGA GPS) + concurrence territoriale |
-| Documents | ✅ Scan + parse Vertex + distribution + Verrouillage WORM/OACIQ client (V3.1) |
+| Marché | ✅ **Analyse de mise en marché (ACM)** (SSOT finances + TGA GPS) + concurrence territoriale Centris dédupliquée |
+| Documents | ✅ Scan + parse Vertex + distribution + Verrouillage WORM/OACIQ client (V3.1) + journal conformité |
 | Intelligence | ✅ Chronologie + **`CommunicationHub`** (SMS / Meta / courriel) |
 | Accès Vendeur (depuis fiche) | ✅ Portail autonome — catalogue 85 pièces, lien invité 30 j, alertes téléversement |
 | Promesse | ✅ Cockpit PA (`offre` SSOT) + **assembleur contrat V3.5** (`ContractAssemblerPanel`, export HTML) |
@@ -181,4 +186,4 @@ Copie possible sur disque de sauvegarde (`00_PRIMEXPERT_SYSTEME_APP/docs/` ou vo
 
 ---
 
-*Index mis à jour : 2026-05-30 — Sprint V3.5 scellé (assembleur de mandats natif, commit `63286dc`).*
+*Index mis à jour : 2026-06-01 — Assurance QA RPA RNE/TGA (`97b30f`) ajoutée au registre, sans duplication des jalons V3.5 / `d232673`.*

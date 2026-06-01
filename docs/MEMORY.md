@@ -949,4 +949,22 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
-*Journal mis à jour : 2026-05-30 — Redressement finance SSOT fiche résidence (`d232673`) + hosting prod déployé.*
+## Session 2026-06-01 — Assurance QA RPA, RNE/TGA et tests Centris
+
+**Statut :** **[PR DRAFT #17 — couverture QA intégrée — commit `97b30f`]**
+
+| Chantier | Livrables clés |
+|----------|----------------|
+| **Kanban inscriptions** | `resolveColumnId()` couvert à 100 % via `src/config/__tests__/resolveColumnId.test.ts` + garde `scripts/check-resolveColumnId-coverage.mjs`. |
+| **Délais PA acceptée** | `packages/core/src/transaction/__tests__/paAccepteeCriticalDeadlines.test.ts` verrouille les 7 échéances légales, dont le dédit Loi sur le courtage immobilier (C-73.2). |
+| **RNE / TGA SSOT** | `packages/core/src/financial/capitalization.ts` centralise revenu net d'exploitation (RNE) et taux de capitalisation global (TGA) ; `financialDataService` route les recalculs par ce core. |
+| **Comparables Centris** | `packages/core/src/market/centrisComparableCapRate.ts` + tests Vitest consolident le taux de capitalisation global (TGA) territorial et la déduplication de synchronisation. |
+| **CI** | `.github/workflows/rpa-transaction-test-coverage.yml` exécute `npm run test:rpa-coverage` avant acceptation. |
+
+**Décision de gouvernance :** les calculs RNE/TGA restent dans `@primexpert/core` ; l'UI et les services Firebase consomment les résultats, sans moteur parallèle ni formule locale.
+
+**HITL :** la couverture bloque les régressions techniques ; la validation métier finale demeure humaine avant fusion de la PR Draft.
+
+---
+
+*Journal mis à jour : 2026-06-01 — Assurance QA RPA RNE/TGA (`97b30f`) + rappel du redressement finance SSOT fiche résidence (`d232673`).*
