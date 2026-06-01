@@ -22,11 +22,7 @@ import { formatPopulationCount } from '@primexpert/core/market';
 import { useLanguage } from '../../lib/i18n';
 import { formatCurrency } from '../../lib/utils';
 import {
-  calculateValuation,
   DEFAULT_MARKET_BENCHMARKS,
-  computeTgaAdjustment,
-  runStressTests,
-  buildValuationInputsFromAcmBootstrap,
   type ResidenceAcmBootstrap,
   type ValuationOutputs,
   type TgaAdjustmentResult,
@@ -44,10 +40,13 @@ import {
   type MarketGpsTransaction,
 } from '@primexpert/core/market';
 import { AcmHistoricalTrendsSection } from './AcmHistoricalTrendsSection';
-import type {
-  CertifiableReportBrokerFooter,
-  FinancialDataV2Doc,
-  TerritorialAcmMedians,
+import {
+  computeAcmManualPricingSuggestionValues,
+  computeResidenceAcmValuationPresentation,
+  type CertifiableReportBrokerFooter,
+  type FinancialDataV2Doc,
+  type ResidenceFinancialHints,
+  type TerritorialAcmMedians,
 } from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
@@ -156,7 +155,7 @@ export function AcmValuationWorkspace({
   const [tgaInput, setTgaInput] = useState(() => String(suggestedCapRatePct));
   const [targetCapRatePct, setTargetCapRatePct] = useState(suggestedCapRatePct);
   /** TGA réellement appliqué au moteur (après ajustement pénétration). */
-  const [effectiveCapRate, setEffectiveCapRate] = useState(suggestedCapRatePct / 100);
+  const [effectiveCapRate, setEffectiveCapRate] = useState(0);
   const [penetrationRatePct, setPenetrationRatePct] = useState(bootstrap.penetrationRatePct);
   const [tgaManuallyAdjusted, setTgaManuallyAdjusted] = useState(false);
   const [result, setResult] = useState<ValuationOutputs | null>(null);
@@ -233,38 +232,16 @@ export function AcmValuationWorkspace({
       }
       setError(null);
       try {
-        let adjustedCap = capPct / 100;
-        let adj: TgaAdjustmentResult | null = null;
-        if (penPct > 0) {
-          adj = computeTgaAdjustment({
-            baseTga: adjustedCap,
-            tauxPenetrationRPA: penPct / 100,
-            nombreUnites: bootstrap.units,
-          });
-          adjustedCap = adj.finalTga;
-        }
-        setTgaAdjustment(adj);
-        setEffectiveCapRate(adjustedCap);
-
-        const inputs = buildValuationInputsFromAcmBootstrap(bootstrap, {
-          targetCapRate: adjustedCap,
+        const valuation = computeResidenceAcmValuationPresentation({
+          bootstrap,
+          targetCapRatePct: capPct,
           penetrationRatePct: penPct,
         });
-        const out = calculateValuation(inputs);
-        setResult(out);
-
-        const vacancyRate = bootstrap.valuationInputs.vacancyRate;
-        const occupancy = Math.max(0.01, 1 - vacancyRate);
-        const stress = runStressTests(out.noiAccounting, occupancy, adjustedCap, {
-          rbp: out.grossPotentialIncome,
-          operatingExpenses: out.operatingExpensesTotal,
-        });
-        setStressSummary({
-          occ85: stress.occ85.valueRange.min,
-          occ90: stress.occ90.valueRange.min,
-          occ100: stress.occ100.valueRange.min,
-        });
-        setRecommendedPrice(out.suggestedPrice);
+        setTgaAdjustment(valuation.tgaAdjustment);
+        setEffectiveCapRate(valuation.effectiveCapRate);
+        setResult(valuation.result);
+        setStressSummary(valuation.stressSummary);
+        setRecommendedPrice(valuation.recommendedPrice);
       } catch (e) {
         console.error('[AcmValuationWorkspace]', e);
         setError(e instanceof Error ? e.message : String(e));
@@ -393,7 +370,7 @@ export function AcmValuationWorkspace({
         residenceId: pdfExport.residenceId,
         residenceAddress: pdfExport.residenceAddress,
         financialData: pdfExport.financialData,
-        residence: pdfExport.residence,
+        residence: pdfExport.residence as unknown as ResidenceFinancialHints,
         effectiveCapRate,
         recommendedPrice,
         sellerNarrative: narrative?.signedReading ?? null,
@@ -422,18 +399,16 @@ export function AcmValuationWorkspace({
 
   const multiAngleSuggestions = useMemo(() => {
     if (!result) return [];
-    const marketAligned = territorialMedians?.prixParUnite
-      ? territorialMedians.prixParUnite * Math.max(1, bootstrap.units)
-      : null;
-    const performanceBased =
-      territorialMedians?.tgaPct && territorialMedians.tgaPct > 0
-        ? bootstrap.revenuNetExploitation / (territorialMedians.tgaPct / 100)
-        : null;
-    const maxPotential = stressSummary?.occ100 ?? null;
+    const suggestionValues = computeAcmManualPricingSuggestionValues({
+      units: bootstrap.units,
+      revenuNetExploitation: bootstrap.revenuNetExploitation,
+      territorialMedians,
+      maxPotential: stressSummary?.occ100 ?? null,
+    });
     const rows = [
       {
         label: t('Aligné marché', 'Market-aligned'),
-        value: marketAligned,
+        value: suggestionValues.marketAligned,
         rationale: t(
           'Basé sur la médiane territoriale prix/unité.',
           'Based on territorial median price per unit.'
@@ -441,7 +416,7 @@ export function AcmValuationWorkspace({
       },
       {
         label: t('Basé performance', 'Performance-based'),
-        value: performanceBased,
+        value: suggestionValues.performanceBased,
         rationale: t(
           'Basé sur le revenu net d’exploitation (RNE) et la médiane du taux de capitalisation global (TGA) territorial.',
           'Based on net operating income (NOI) and territorial median capitalization rate (cap rate).'
@@ -449,7 +424,7 @@ export function AcmValuationWorkspace({
       },
       {
         label: t('Potentiel maximum', 'Maximum potential'),
-        value: maxPotential,
+        value: suggestionValues.maxPotential,
         rationale: t(
           'Basé sur le scénario de pleine occupation (100%).',
           'Based on full occupancy scenario (100%).'
@@ -825,8 +800,8 @@ export function AcmValuationWorkspace({
               </p>
               <p className={`text-lg ${ACM_METRIC_VALUE_CLASS}`}>
                 {t(
-                  'Prix recommandé (revenu net d’exploitation (RNE) ÷ taux de capitalisation global (TGA) cible)',
-                  'Recommended price (net operating income (NOI) ÷ target global cap rate)'
+                  'Prix recommandé par le moteur financier SSOT',
+                  'Recommended price from the SSOT financial engine'
                 )}{' '}
                 : {formatCurrency(recommendedPrice)}
               </p>

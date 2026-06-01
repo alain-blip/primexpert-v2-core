@@ -51,6 +51,74 @@ import {
 import { safeDscrTarget, safeNum, safeRatePercent, safeRatioDecimal } from './safeNumbers';
 
 export type FinancingVerdict = 'financable' | 'financable_conditions' | 'insufficient_data';
+export type NoiVerificationChecklistStatus = 'ok' | 'warn' | 'fail' | 'unknown';
+
+export interface NoiVerificationChecklistAssessment {
+  status: NoiVerificationChecklistStatus;
+  noteFr: string;
+  noteEn: string;
+}
+
+export function assessNoiVerificationForFinancing(
+  noiVerified: number | null | undefined,
+  noiDeclared: number | null | undefined
+): NoiVerificationChecklistAssessment {
+  if (noiVerified != null && noiDeclared != null && noiVerified > 0 && noiDeclared > 0) {
+    const variance = Math.abs(noiVerified - noiDeclared) / Math.max(noiVerified, noiDeclared);
+
+    if (variance <= 0.05) {
+      return {
+        status: 'ok',
+        noteFr:
+          'RNE déclaré et RNE vérifié concordent (écart ≤ 5 %). Pièces justificatives en ordre côté prêteur.',
+        noteEn:
+          'Declared and verified NOI match (≤ 5% variance). Supporting evidence is aligned with lender expectations.',
+      };
+    }
+
+    if (variance <= 0.15) {
+      const variancePct = (variance * 100).toFixed(1);
+      return {
+        status: 'warn',
+        noteFr: `Écart de ${variancePct} % entre RNE déclaré et RNE vérifié — justifier la normalisation des dépenses.`,
+        noteEn: `${variancePct}% gap between declared and verified NOI — justify expense normalization.`,
+      };
+    }
+
+    const variancePct = (variance * 100).toFixed(1);
+    return {
+      status: 'fail',
+      noteFr: `Écart majeur de ${variancePct} % entre RNE déclaré et RNE vérifié — vérifier les sources avant présentation prêteur.`,
+      noteEn: `Major ${variancePct}% gap between declared and verified NOI — verify sources before lender submission.`,
+    };
+  }
+
+  if (noiVerified != null && noiVerified > 0) {
+    return {
+      status: 'warn',
+      noteFr:
+        'Seul le RNE vérifié (calculé) est disponible — manque la déclaration vendeur pour pleinement convaincre le prêteur.',
+      noteEn:
+        'Only verified NOI (computed) is available — missing seller statement to fully convince the lender.',
+    };
+  }
+
+  if (noiDeclared != null && noiDeclared > 0) {
+    return {
+      status: 'warn',
+      noteFr:
+        'Seul le RNE déclaré est disponible — recommander une normalisation par dépenses vérifiées.',
+      noteEn:
+        'Only declared NOI is available — recommend normalization with verified expenses.',
+    };
+  }
+
+  return {
+    status: 'unknown',
+    noteFr: 'Aucune donnée RNE disponible — compléter Revenus & Dépenses.',
+    noteEn: 'No NOI data available — complete Revenue & Expenses.',
+  };
+}
 
 export interface FinancabiliteScenarioRow {
   labelFr: string;
