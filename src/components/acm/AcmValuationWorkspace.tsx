@@ -50,6 +50,7 @@ import {
   normalizeCapitalizationRatePct,
   type CertifiableReportBrokerFooter,
   type FinancialDataV2Doc,
+  type ResidenceFinancialHints,
   type TerritorialAcmMedians,
 } from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
@@ -398,7 +399,7 @@ export function AcmValuationWorkspace({
         residenceId: pdfExport.residenceId,
         residenceAddress: pdfExport.residenceAddress,
         financialData: pdfExport.financialData,
-        residence: pdfExport.residence,
+        residence: pdfExport.residence as unknown as ResidenceFinancialHints,
         effectiveCapRate,
         recommendedPrice,
         sellerNarrative: narrative?.signedReading ?? null,

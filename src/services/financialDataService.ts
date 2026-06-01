@@ -287,7 +287,10 @@ export async function saveManualFinancialEntry(
   }
 
   const existingDep = (existing?.baseData?.depenses ?? {}) as Record<string, unknown>;
-  const mergedDepenses = { ...existingDep, ...depensesPatch };
+  const mergedDepenses = {
+    ...existingDep,
+    ...depensesPatch,
+  } as FinancialBaseData['depenses'];
 
   const existingFin = (existing?.baseData?.financement ?? {}) as Record<string, unknown>;
   const mergedFinancement = {

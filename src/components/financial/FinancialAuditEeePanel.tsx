@@ -34,8 +34,10 @@ export function FinancialAuditEeePanel({
       computeFinancialAuditEee({
         residence: {
           ...residence,
-          nombreUnitesTotal: residence.nicheMetadata?.nombreUnites,
-          nombreUnites: residence.nicheMetadata?.nombreUnites,
+          nombreUnitesTotal:
+            residence.nombreUnitesTotal ?? residence.nombreUnites ?? residence.unitsCount ?? residence.unitesRPA,
+          nombreUnites:
+            residence.nombreUnites ?? residence.nombreUnitesTotal ?? residence.unitsCount ?? residence.unitesRPA,
           prixDemande: prixDemande ?? residence.price,
         },
         calc,
