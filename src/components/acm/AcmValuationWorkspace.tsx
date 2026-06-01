@@ -49,6 +49,10 @@ import type {
   FinancialDataV2Doc,
   TerritorialAcmMedians,
 } from '@primexpert/core/financial';
+import {
+  computeCapitalizedValueFromNoi,
+  normalizeCapitalizationRate,
+} from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
 import {
@@ -156,7 +160,9 @@ export function AcmValuationWorkspace({
   const [tgaInput, setTgaInput] = useState(() => String(suggestedCapRatePct));
   const [targetCapRatePct, setTargetCapRatePct] = useState(suggestedCapRatePct);
   /** TGA réellement appliqué au moteur (après ajustement pénétration). */
-  const [effectiveCapRate, setEffectiveCapRate] = useState(suggestedCapRatePct / 100);
+  const [effectiveCapRate, setEffectiveCapRate] = useState(
+    normalizeCapitalizationRate(suggestedCapRatePct) ?? 0
+  );
   const [penetrationRatePct, setPenetrationRatePct] = useState(bootstrap.penetrationRatePct);
   const [tgaManuallyAdjusted, setTgaManuallyAdjusted] = useState(false);
   const [result, setResult] = useState<ValuationOutputs | null>(null);
@@ -233,7 +239,14 @@ export function AcmValuationWorkspace({
       }
       setError(null);
       try {
-        let adjustedCap = capPct / 100;
+        let adjustedCap = normalizeCapitalizationRate(capPct);
+        if (adjustedCap == null) {
+          setResult(null);
+          setTgaAdjustment(null);
+          setRecommendedPrice(null);
+          setStressSummary(null);
+          return;
+        }
         let adj: TgaAdjustmentResult | null = null;
         if (penPct > 0) {
           adj = computeTgaAdjustment({
@@ -427,7 +440,7 @@ export function AcmValuationWorkspace({
       : null;
     const performanceBased =
       territorialMedians?.tgaPct && territorialMedians.tgaPct > 0
-        ? bootstrap.revenuNetExploitation / (territorialMedians.tgaPct / 100)
+        ? computeCapitalizedValueFromNoi(bootstrap.revenuNetExploitation, territorialMedians.tgaPct)
         : null;
     const maxPotential = stressSummary?.occ100 ?? null;
     const rows = [
