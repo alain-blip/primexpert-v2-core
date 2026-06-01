@@ -13,10 +13,15 @@ import { useFinancialData } from '../../../context/FinancialDataContext';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { useMarketData } from '../../../hooks/useMarketData';
 import { useGlobalFinancialBenchmark } from '../../../hooks/useGlobalFinancialBenchmark';
+import { resolveRegionalOerMedianFromRatioSamples } from '@primexpert/core/analytics';
 import { getListingPrice } from '@primexpert/core/residence';
 import type { Residence } from '../../../services/residences';
-import { AcmValuationWorkspace } from '../../acm/AcmValuationWorkspace';
+import {
+  AcmValuationWorkspace,
+  type TerritorialCompetitionSnapshot,
+} from '../../acm/AcmValuationWorkspace';
 import { AcmTab } from './AcmTab';
+import type { useTerritorialCompetition } from '../../../hooks/useTerritorialCompetition';
 import {
   institutionalListingsCardHeaderClass,
   institutionalListingsCardShellClass,
@@ -27,17 +32,22 @@ import {
 export interface ResidenceAcmValuationPanelProps {
   residence: Residence;
   onOpenComparables?: () => void;
+  territorialCompetition: ReturnType<typeof useTerritorialCompetition>;
 }
 
 export function ResidenceAcmValuationPanel({
   residence,
   onOpenComparables,
+  territorialCompetition,
 }: ResidenceAcmValuationPanelProps) {
   const { t, language } = useLanguage();
   const { profile } = useAuth();
   const { financialData, loading, error } = useFinancialData();
   const { residenceDoc } = useResidenceDocument();
-  const { transactions: marketTransactions, ratioSamples } = useMarketData(language, profile?.uid ?? null);
+  const { transactions: marketTransactions, ratioSamples } = useMarketData(
+    language,
+    profile?.uid ?? null
+  );
 
   const residenceLive = useMemo((): Residence => {
     const merged = { ...residence, ...(residenceDoc ?? {}) } as Residence & Record<string, unknown>;
@@ -77,6 +87,24 @@ export function ResidenceAcmValuationPanel({
     regionAdministrative: bootstrap?.regionLabel ?? null,
     assetClassLabel: bootstrap?.assetClassLabel ?? null,
   });
+
+  const regionalOperatingExpenseRatioMedian = useMemo(() => {
+    if (!bootstrap?.regionLabel) return null;
+    return resolveRegionalOerMedianFromRatioSamples(ratioSamples, bootstrap.regionLabel);
+  }, [ratioSamples, bootstrap?.regionLabel]);
+
+  const competitionSnapshot = useMemo((): TerritorialCompetitionSnapshot | undefined => {
+    if (territorialCompetition.sampleCount <= 0 && territorialCompetition.medianTgaPct == null) {
+      return undefined;
+    }
+    return {
+      comparables: territorialCompetition.comparables,
+      medianTgaPct: territorialCompetition.medianTgaPct,
+      sampleCount: territorialCompetition.sampleCount,
+      regionAdministrative: territorialCompetition.regionAdministrative,
+      classeImmeuble: territorialCompetition.classeImmeuble,
+    };
+  }, [territorialCompetition]);
 
   const pdfExport = useMemo(() => {
     if (!financialData) return undefined;
@@ -155,6 +183,8 @@ export function ResidenceAcmValuationPanel({
             subjectExpenses={subjectExpenses}
             pdfExport={pdfExport}
             territorialMedians={benchmarkState.territorialMedians ?? undefined}
+            territorialCompetition={competitionSnapshot}
+            regionalOperatingExpenseRatioMedian={regionalOperatingExpenseRatioMedian}
           />
         </div>
       </section>

@@ -14,6 +14,7 @@ import { ProvenanceStrip } from '../../financial/ProvenanceStrip';
 import { TP70Card } from '../../financial/TP70Card';
 import { FinancialReportsSection } from '../../financial/FinancialReportsSection';
 import type { Residence } from '../../../services/residences';
+import { useResidenceFinancialHints } from '../../../context/ResidenceDataContext';
 
 /** Médiane sectorielle RPA — ratio employés / unités (référence interne). */
 const RPA_RH_RATIO_MEDIAN_LOW = 0.8;
@@ -322,15 +323,7 @@ export function BilanExecutifTab({ residence }: BilanExecutifTabProps) {
   const { t, language } = useLanguage();
   const { financialData, loading, error, isInProvider } = useFinancialData();
 
-  const residenceHints = useMemo(
-    () =>
-      ({
-        ...residence,
-        prixDemande: residence.price,
-        askingPrice: residence.price,
-      }) as Record<string, unknown>,
-    [residence]
-  );
+  const residenceHints = useResidenceFinancialHints(residence) as Record<string, unknown>;
 
   const cfo = useMemo(
     () => computeBilanCfoViewModel(financialData, residenceHints),

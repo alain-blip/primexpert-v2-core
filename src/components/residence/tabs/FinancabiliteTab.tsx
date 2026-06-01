@@ -6,6 +6,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Building2, CheckCircle2, Info, Landmark, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
 import {
+  assessNoiEvidence,
   computeFinancabilite,
   DSCR_RULES,
   getMinimumDscrForProgram,
@@ -24,6 +25,7 @@ import {
   InstitutionalSection,
 } from '../institutional/InstitutionalUi';
 import type { Residence } from '../../../services/residences';
+import { useResidenceFinancialHints } from '../../../context/ResidenceDataContext';
 
 export interface FinancabiliteTabProps {
   residence: Residence;
@@ -31,7 +33,7 @@ export interface FinancabiliteTabProps {
 
 /**
  * Toggle persistant (sessionStorage) — choix de la base RNE pour le scénario
- * bancaire. OFF : NOI Déclaré (brut vendeur). ON : NOI Audité (RBE enrichi
+ * bancaire. OFF : NOI Déclaré (brut vendeur). ON : NOI vérifié (RBE enrichi
  * Phase 2.1 − dépenses normalisées). Cascade automatique sur EM / DSCR / MFR.
  */
 const USE_AUDIT_RNE_STORAGE_KEY = 'primexpert-financabilite-useAuditRne';
@@ -153,7 +155,7 @@ function AuditRneToggle({
   const optionA = useAuditRne === false;
   const optionB = useAuditRne === true;
   const labelA = language === 'fr' ? 'A · Sur le RNE Déclaré' : 'A · Declared NOI basis';
-  const labelB = language === 'fr' ? 'B · Sur le RNE Audité (RPA enrichi)' : 'B · Audited NOI (RPA enriched)';
+  const labelB = language === 'fr' ? 'B · Sur le RNE vérifié (RPA enrichi)' : 'B · Verified NOI (RPA enriched)';
   const subA = language === 'fr' ? 'Brut du vendeur (RNE rapporté).' : 'Seller-reported NOI.';
   const subB =
     language === 'fr'
@@ -230,7 +232,7 @@ function AuditRneToggle({
         >
           <input
             type="radio"
-            id="finance-bank-noi-audited"
+            id="finance-bank-noi-verified"
             name="finance-bank-noi-basis"
             checked={optionB}
             disabled={disabled}
@@ -431,14 +433,7 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
     persistUseAuditRne(next);
   }, []);
 
-  const residenceHints = useMemo(
-    () => ({
-      ...residence,
-      prixDemande: residence.price,
-      askingPrice: residence.price,
-    }),
-    [residence]
-  );
+  const residenceHints = useResidenceFinancialHints(residence);
 
   const fmt = useCallback(
     (n: number | null) =>
@@ -520,39 +515,7 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
 
     const noiAudit = model.noiAudit;
     const noiDeclared = model.noiDeclare;
-    let noiStatus: ChecklistStatus = 'unknown';
-    let noiNoteFr = 'Aucune donnée RNE disponible — compléter Revenus & Dépenses.';
-    let noiNoteEn = 'No NOI data available — complete Revenue & Expenses.';
-    if (noiAudit != null && noiDeclared != null && noiAudit > 0 && noiDeclared > 0) {
-      const variance = Math.abs(noiAudit - noiDeclared) / Math.max(noiAudit, noiDeclared);
-      if (variance <= 0.05) {
-        noiStatus = 'ok';
-        noiNoteFr =
-          'RNE déclaré et RNE audité concordent (écart ≤ 5 %). Pièces justificatives en ordre côté prêteur.';
-        noiNoteEn =
-          'Declared and audited NOI match (≤ 5% variance). Supporting evidence is aligned with lender expectations.';
-      } else if (variance <= 0.15) {
-        noiStatus = 'warn';
-        noiNoteFr = `Écart de ${(variance * 100).toFixed(1)} % entre RNE déclaré et RNE audité — justifier la normalisation des dépenses.`;
-        noiNoteEn = `${(variance * 100).toFixed(1)}% gap between declared and audited NOI — justify expense normalization.`;
-      } else {
-        noiStatus = 'fail';
-        noiNoteFr = `Écart majeur de ${(variance * 100).toFixed(1)} % entre RNE déclaré et RNE audité — auditer les sources avant présentation prêteur.`;
-        noiNoteEn = `Major ${(variance * 100).toFixed(1)}% gap between declared and audited NOI — audit sources before lender submission.`;
-      }
-    } else if (noiAudit != null && noiAudit > 0) {
-      noiStatus = 'warn';
-      noiNoteFr =
-        'Seul le RNE audité (calculé) est disponible — manque la déclaration vendeur pour pleinement convaincre le prêteur.';
-      noiNoteEn =
-        'Only audited NOI (computed) is available — missing seller statement to fully convince the lender.';
-    } else if (noiDeclared != null && noiDeclared > 0) {
-      noiStatus = 'warn';
-      noiNoteFr =
-        'Seul le RNE déclaré est disponible — recommander une normalisation par dépenses auditées.';
-      noiNoteEn =
-        'Only declared NOI is available — recommend normalization with audited expenses.';
-    }
+    const noiEvidence = assessNoiEvidence(noiDeclared, noiAudit);
 
     return [
       {
@@ -599,11 +562,11 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
         id: 'noi_evidence',
         labelFr: 'Adéquation du RNE documenté',
         labelEn: 'Documented NOI adequacy',
-        status: noiStatus,
+        status: noiEvidence.status,
         valueFr: `${fmt(noiDeclared)} · ${fmt(noiAudit)}`,
         valueEn: `${fmt(noiDeclared)} · ${fmt(noiAudit)}`,
-        noteFr: noiNoteFr,
-        noteEn: noiNoteEn,
+        noteFr: noiEvidence.noteFr,
+        noteEn: noiEvidence.noteEn,
       },
     ];
   })();
@@ -668,7 +631,7 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
 
       <FinancialAuditEeePanel
         residence={residence}
-        prixDemande={model.prixDemande ?? residence.price}
+        prixDemande={model.prixDemande ?? residenceHints.prixDemande ?? residence.price}
         paiementAnnuelDette={model.paiementAnnuel ?? 0}
       />
 

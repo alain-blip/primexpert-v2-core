@@ -35,6 +35,7 @@ import { ListingsPipelineKanban } from './listings/ListingsPipelineKanban';
 import { ListingsRegionFilterPanel } from './listings/ListingsRegionFilterPanel';
 import { useInstitutionalToast } from '../hooks/useInstitutionalToast';
 import { InstitutionalToastBanner } from './residence/diffusion/InstitutionalToastBanner';
+import { CreateInscriptionForm } from './inscriptions/CreateInscriptionForm';
 
 const ResidenceDetailLazy = lazy(() =>
   import('./residence/ResidenceDetail').then((m) => ({ default: m.ResidenceDetail }))
@@ -166,6 +167,7 @@ export function Listings() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [pipelineUpdating, setPipelineUpdating] = useState(false);
+  const [createFormOpen, setCreateFormOpen] = useState(false);
   const [demoPipelineRows, setDemoPipelineRows] = useState<Residence[]>(() =>
     DEMO_LISTINGS.filter((l) => l.status !== 'unsigned')
   );
@@ -546,6 +548,7 @@ export function Listings() {
             </button>
             <button
               type="button"
+              onClick={() => setCreateFormOpen(true)}
               className="flex items-center gap-2 rounded-xl border-2 border-primexpert-dark bg-primexpert-dark px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-white hover:bg-primexpert-blue"
             >
               <Plus className="h-4 w-4" />
@@ -603,6 +606,16 @@ export function Listings() {
           if (selectedRegions.length > 0) setTab('inventory');
         }}
         t={t}
+      />
+
+      <CreateInscriptionForm
+        open={createFormOpen}
+        onClose={() => setCreateFormOpen(false)}
+        onCreated={async (inscriptionId) => {
+          if (!profile?.uid) return;
+          const row = await getResidenceById(buildResidenceTenantContext(profile), inscriptionId);
+          if (row) setSelectedResidence(row);
+        }}
       />
     </section>
   );

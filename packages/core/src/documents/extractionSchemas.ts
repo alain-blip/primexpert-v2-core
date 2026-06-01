@@ -11,6 +11,7 @@ import {
   normalizeFinancialLabel,
   type NonOpexExcludedTotals,
 } from '../financial/nonOpexFinancialLines';
+import { normalizeOperatingExpenseRatioPct } from '../analytics/marketMetrics';
 
 /** Clés dépenses alignées sur `expenseKeys` (SSOT financier). */
 export type BenchmarkExpenseKey =
@@ -443,5 +444,13 @@ export function enrichExtractedDataWithOperatingBenchmarks(
     return extracted;
   }
 
-  return { ...extracted, operatingBenchmarks };
+  const operatingExpenseRatio = normalizeOperatingExpenseRatioPct(
+    operatingBenchmarks.ratioFraisExploitation
+  );
+
+  return {
+    ...extracted,
+    operatingBenchmarks,
+    ...(operatingExpenseRatio != null ? { operatingExpenseRatio } : {}),
+  };
 }

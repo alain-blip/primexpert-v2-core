@@ -197,6 +197,26 @@ export function marketOperationalBenchmarkFingerprint(input: {
   );
 }
 
+/** Empreinte flywheel interne — sans adresse, UID ni identifiant de fiche. */
+export function internalFlywheelFingerprint(input: {
+  regionAdministrative: string;
+  postalFsa3: string;
+  prixVente: number;
+  anneeDonnees: number;
+  assetClassLabel: string;
+  transactionKind: 'promise' | 'sold';
+  siloType?: string;
+}): string {
+  const silo = slugifyForFirestoreId(input.siloType ?? 'rpa_ri_chsld', 32);
+  const region = slugifyForFirestoreId(input.regionAdministrative);
+  const fsa = slugifyForFirestoreId(input.postalFsa3 || 'fsa-xxx', 8);
+  const asset = slugifyForFirestoreId(input.assetClassLabel || 'actif', 40);
+  const prix = roundComparablePrice(input.prixVente) ?? 0;
+  return ensureFirestoreDocId(
+    `${silo}__flywheel__${region}__${fsa}__${asset}__${input.transactionKind}__${input.anneeDonnees}__${prix}`
+  );
+}
+
 /**
  * Correspondance legacy — adresse normalisée + prix exact + date ±3 jours.
  */

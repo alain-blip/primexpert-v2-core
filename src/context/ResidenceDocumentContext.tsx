@@ -7,6 +7,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from 'react';
@@ -120,16 +121,19 @@ export function ResidenceDocumentProvider({
     [residenceId, vendorPortalToken]
   );
 
-  const value: ResidenceDocumentContextValue = {
-    residenceDoc,
-    loading,
-    error,
-    residenceId: residenceId ?? null,
-    isInProvider: true,
-    saving,
-    saveError,
-    updateResidence,
-  };
+  const value = useMemo(
+    (): ResidenceDocumentContextValue => ({
+      residenceDoc,
+      loading,
+      error,
+      residenceId: residenceId ?? null,
+      isInProvider: true,
+      saving,
+      saveError,
+      updateResidence,
+    }),
+    [residenceDoc, loading, error, residenceId, saving, saveError, updateResidence]
+  );
 
   return (
     <ResidenceDocumentContext.Provider value={value}>{children}</ResidenceDocumentContext.Provider>
