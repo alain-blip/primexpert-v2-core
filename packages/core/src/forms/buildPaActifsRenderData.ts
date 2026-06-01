@@ -5,6 +5,7 @@
 
 import { normalizeFinancialData } from '../financial/normalizeFinancialData';
 import { resolveCanonicalFinancialMetrics } from '../financial/resolveCanonicalRne';
+import { noiGapToMarketValue } from '../financial/financialOptimization360';
 import { bootstrapResidenceAcm, type ResidenceAcmIdentity } from '../valuation/residenceAcmBootstrap';
 import { parsePromesseAchatFromDoc } from '../transaction/promesseAchatEngine';
 import { computeSoldeAFinancer, parseOffreTroncFromDoc } from '../transaction/offreTronc';
@@ -121,7 +122,7 @@ export function buildPaActifsRenderData(input: BuildPaActifsRenderDataInput): Pa
 
   const valeurIndicative =
     rne != null && rne > 0 && tgaApplique != null && tgaApplique > 0
-      ? Math.round(rne / (tgaApplique / 100))
+      ? Math.round(noiGapToMarketValue(rne, tgaApplique))
       : acmBootstrap?.valuationAngles.marketValue ?? null;
 
   const buyerName =

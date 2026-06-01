@@ -19,45 +19,36 @@ const SOURCE = path.join(
   'market',
   'internalMarketFlywheel.ts'
 );
+const CAPITALIZATION_SOURCE = path.join(
+  REPO_ROOT,
+  'packages',
+  'core',
+  'src',
+  'financial',
+  'capitalization.ts'
+);
 const VENDORED_DIR = path.join(FUNCTIONS_DIR, 'src', 'analytics', '_vendored');
 const TARGET = path.join(VENDORED_DIR, 'internalMarketFlywheel.ts');
+const CAPITALIZATION_TARGET = path.join(VENDORED_DIR, 'capitalization.ts');
 
-const HEADER_BANNER = [
-  '/* eslint-disable */',
-  '/**',
-  ' * AUTO-GÉNÉRÉ — NE PAS MODIFIER.',
-  ' * Source : packages/core/src/market/internalMarketFlywheel.ts',
-  ' * Régénéré : functions/scripts/sync-core-analytics-flywheel.cjs (prebuild)',
-  ' */',
-  '',
-].join('\n');
-
-const CAP_RATE_FN = `
-function calculateComparableCapRate(
-  listing: {
-    soldPrice: number;
-    revenuBrutEffectif: number;
-    densesExploitation: number;
-    netOperatingIncome: number;
-    mlsNumber?: string;
-    closedAtMillis?: number;
-    regionAdministrative?: string;
-    classeImmeuble?: string;
-  }
-): number {
-  if (!listing.soldPrice || listing.soldPrice <= 0) return 0;
-  const rne =
-    listing.netOperatingIncome > 0
-      ? listing.netOperatingIncome
-      : listing.revenuBrutEffectif - listing.densesExploitation;
-  if (!Number.isFinite(rne) || rne <= 0) return 0;
-  return Number(((rne / listing.soldPrice) * 100).toFixed(2));
+function headerBanner(sourceLabel) {
+  return [
+    '/* eslint-disable */',
+    '/**',
+    ' * AUTO-GÉNÉRÉ — NE PAS MODIFIER.',
+    ` * Source : ${sourceLabel}`,
+    ' * Régénéré : functions/scripts/sync-core-analytics-flywheel.cjs (prebuild)',
+    ' */',
+    '',
+  ].join('\n');
 }
-`;
 
 function main() {
   if (!fs.existsSync(SOURCE)) {
     throw new Error(`[sync-core-analytics-flywheel] Source manquante : ${SOURCE}`);
+  }
+  if (!fs.existsSync(CAPITALIZATION_SOURCE)) {
+    throw new Error(`[sync-core-analytics-flywheel] Source manquante : ${CAPITALIZATION_SOURCE}`);
   }
   fs.mkdirSync(VENDORED_DIR, { recursive: true });
 
@@ -67,13 +58,26 @@ function main() {
     "import { internalFlywheelFingerprint } from '../../documents/_vendored/marketDeduplication';"
   );
   body = body.replace(
-    "import { calculateComparableCapRate } from './centrisComparableCapRate';",
-    CAP_RATE_FN.trimStart()
+    "import {\n  computeCapitalizationRatePct,\n  resolveNetOperatingIncome,\n} from '../financial/capitalization';",
+    "import {\n  computeCapitalizationRatePct,\n  resolveNetOperatingIncome,\n} from './capitalization';"
   );
 
-  fs.writeFileSync(TARGET, HEADER_BANNER + body, 'utf-8');
+  const capitalizationBody = fs.readFileSync(CAPITALIZATION_SOURCE, 'utf-8');
+  fs.writeFileSync(
+    CAPITALIZATION_TARGET,
+    headerBanner('packages/core/src/financial/capitalization.ts') + capitalizationBody,
+    'utf-8'
+  );
+  fs.writeFileSync(
+    TARGET,
+    headerBanner('packages/core/src/market/internalMarketFlywheel.ts') + body,
+    'utf-8'
+  );
   process.stdout.write(
-    `[sync-core-analytics-flywheel] 1 fichier → ${path.relative(REPO_ROOT, TARGET)}\n`
+    `[sync-core-analytics-flywheel] 2 fichiers → ${path.relative(
+      REPO_ROOT,
+      TARGET
+    )}, ${path.relative(REPO_ROOT, CAPITALIZATION_TARGET)}\n`
   );
 }
 

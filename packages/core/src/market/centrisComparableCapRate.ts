@@ -2,6 +2,7 @@
  * Comparables Centris / Matrix — calcul TGA réel (RNE / prix de vente).
  */
 
+import { computeCapitalizationRatePct, resolveNetOperatingIncome } from '../financial/capitalization';
 import { normalizeAdministrativeRegion } from './marketRegionNormalize';
 import { normalizeRpaBuildingClass } from './gpsCapRateByRegionClass';
 
@@ -37,13 +38,13 @@ export interface TerritorialComparableMergeResult {
 export function calculateComparableCapRate(
   listing: Omit<CentrisComparableListing, 'calculatedCapRate'>
 ): number {
-  if (!listing.soldPrice || listing.soldPrice <= 0) return 0;
-  const rne =
-    listing.netOperatingIncome > 0
-      ? listing.netOperatingIncome
-      : listing.revenuBrutEffectif - listing.densesExploitation;
-  if (!Number.isFinite(rne) || rne <= 0) return 0;
-  return Number(((rne / listing.soldPrice) * 100).toFixed(2));
+  const rne = resolveNetOperatingIncome({
+    netOperatingIncome: listing.netOperatingIncome,
+    revenuBrutEffectif: listing.revenuBrutEffectif,
+    depensesExploitation: listing.densesExploitation,
+  });
+  if (rne == null) return 0;
+  return computeCapitalizationRatePct(rne, listing.soldPrice, 2) ?? 0;
 }
 
 function parseNum(v: unknown): number {
@@ -78,11 +79,11 @@ function buildComparable(
 ): CentrisComparableListing | null {
   if (!partial.mlsNumber || partial.soldPrice <= 0) return null;
   const netOperatingIncome =
-    partial.netOperatingIncome != null && partial.netOperatingIncome > 0
-      ? partial.netOperatingIncome
-      : partial.revenuBrutEffectif > 0
-        ? partial.revenuBrutEffectif - partial.densesExploitation
-        : 0;
+    resolveNetOperatingIncome({
+      netOperatingIncome: partial.netOperatingIncome,
+      revenuBrutEffectif: partial.revenuBrutEffectif,
+      depensesExploitation: partial.densesExploitation,
+    }) ?? 0;
   const row: Omit<CentrisComparableListing, 'calculatedCapRate'> = {
     ...partial,
     netOperatingIncome,
