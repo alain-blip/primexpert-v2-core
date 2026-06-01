@@ -3,7 +3,7 @@
  * Logique pure (SSOT locale documents ; pas de calcul CFO ici).
  */
 
-import { findRegion } from '@primexpert/core/financial';
+import { findRegion, normalizeTgaPct, normalizeTgaRatio } from '@primexpert/core/financial';
 import type { ExpenseKey } from '@primexpert/core/financial';
 import { EXPENSE_KEYS, isNonOpexExpenseLabel } from '@primexpert/core/financial';
 import type { AssetNiche } from '../types/residence';
@@ -306,8 +306,10 @@ export function formatComparableDisplayLabel(
     );
   }
   if (capRatePct != null && capRatePct > 0) {
-    const pct = capRatePct > 1 ? capRatePct : capRatePct * 100;
-    parts.push(locale === 'fr' ? `TGA ${pct.toFixed(2)} %` : `Cap rate ${pct.toFixed(2)}%`);
+    const pct = normalizeTgaPct(capRatePct);
+    if (pct != null) {
+      parts.push(locale === 'fr' ? `TGA ${pct.toFixed(2)} %` : `Cap rate ${pct.toFixed(2)}%`);
+    }
   }
   return parts.join(' - ');
 }
@@ -338,7 +340,7 @@ export function buildResidenceEvaluationSubjectPatch(
   }
   if (s.tgaRetenu != null) {
     patch.tgaRetenu = s.tgaRetenu;
-    patch.tauxCapitalisation = s.tgaRetenu > 1 ? s.tgaRetenu / 100 : s.tgaRetenu;
+    patch.tauxCapitalisation = normalizeTgaRatio(s.tgaRetenu);
   }
   if (s.valeurAvaluee != null) {
     patch.valeurAvaluee = s.valeurAvaluee;

@@ -49,6 +49,12 @@ import type {
   FinancialDataV2Doc,
   TerritorialAcmMedians,
 } from '@primexpert/core/financial';
+import {
+  computeCapitalizedValueFromRneAndTgaPct,
+  hasTgaPctMeaningfulDelta,
+  normalizeTgaPct,
+  normalizeTgaRatio,
+} from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
 import {
@@ -156,7 +162,9 @@ export function AcmValuationWorkspace({
   const [tgaInput, setTgaInput] = useState(() => String(suggestedCapRatePct));
   const [targetCapRatePct, setTargetCapRatePct] = useState(suggestedCapRatePct);
   /** TGA réellement appliqué au moteur (après ajustement pénétration). */
-  const [effectiveCapRate, setEffectiveCapRate] = useState(suggestedCapRatePct / 100);
+  const [effectiveCapRate, setEffectiveCapRate] = useState(
+    normalizeTgaRatio(suggestedCapRatePct) ?? 0
+  );
   const [penetrationRatePct, setPenetrationRatePct] = useState(bootstrap.penetrationRatePct);
   const [tgaManuallyAdjusted, setTgaManuallyAdjusted] = useState(false);
   const [result, setResult] = useState<ValuationOutputs | null>(null);
@@ -233,7 +241,7 @@ export function AcmValuationWorkspace({
       }
       setError(null);
       try {
-        let adjustedCap = capPct / 100;
+        let adjustedCap = normalizeTgaRatio(capPct) ?? 0;
         let adj: TgaAdjustmentResult | null = null;
         if (penPct > 0) {
           adj = computeTgaAdjustment({
@@ -354,7 +362,7 @@ export function AcmValuationWorkspace({
       return;
     }
     setTargetCapRatePct(parsed);
-    setTgaManuallyAdjusted(Math.abs(parsed - suggestedCapRatePct) > 0.04);
+    setTgaManuallyAdjusted(hasTgaPctMeaningfulDelta(parsed, suggestedCapRatePct));
   };
 
   const resetTgaToMarket = () => {
@@ -427,7 +435,10 @@ export function AcmValuationWorkspace({
       : null;
     const performanceBased =
       territorialMedians?.tgaPct && territorialMedians.tgaPct > 0
-        ? bootstrap.revenuNetExploitation / (territorialMedians.tgaPct / 100)
+        ? computeCapitalizedValueFromRneAndTgaPct(
+            bootstrap.revenuNetExploitation,
+            territorialMedians.tgaPct
+          )
         : null;
     const maxPotential = stressSummary?.occ100 ?? null;
     const rows = [
@@ -478,7 +489,7 @@ export function AcmValuationWorkspace({
         ),
         value:
           result.capRateImpliedAtAsking !== undefined
-            ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%`
+            ? `${normalizeTgaPct(result.capRateImpliedAtAsking)?.toFixed(2) ?? '—'}%`
             : '—',
       },
       {

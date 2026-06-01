@@ -223,6 +223,38 @@ export interface FinancingScenarioResult {
   mortgageOnRetainedLoan: MortgagePaymentBreakdown;
 }
 
+export type NoiDocumentationAssessmentCode =
+  | 'missing'
+  | 'aligned'
+  | 'moderate_gap'
+  | 'major_gap'
+  | 'normalized_only'
+  | 'declared_only';
+
+export interface NoiDocumentationAssessment {
+  code: NoiDocumentationAssessmentCode;
+  variancePct: number | null;
+}
+
+export function assessNoiDocumentation(
+  declaredNoi: unknown,
+  normalizedNoi: unknown
+): NoiDocumentationAssessment {
+  const declared = safeNum(declaredNoi);
+  const normalized = safeNum(normalizedNoi);
+
+  if (declared != null && normalized != null && declared > 0 && normalized > 0) {
+    const variancePct = (Math.abs(normalized - declared) / Math.max(normalized, declared)) * 100;
+    if (variancePct <= 5) return { code: 'aligned', variancePct };
+    if (variancePct <= 15) return { code: 'moderate_gap', variancePct };
+    return { code: 'major_gap', variancePct };
+  }
+
+  if (normalized != null && normalized > 0) return { code: 'normalized_only', variancePct: null };
+  if (declared != null && declared > 0) return { code: 'declared_only', variancePct: null };
+  return { code: 'missing', variancePct: null };
+}
+
 /**
  * Cœur du calcul bancaire — étapes commentées, sans lecture Firestore des agrégats dérivés.
  */

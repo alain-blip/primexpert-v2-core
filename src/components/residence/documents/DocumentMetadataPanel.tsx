@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { normalizeTgaPct } from '@primexpert/core/financial';
 import { Copy, Download, FileText, Loader2, Pencil, Shield, Trash2 } from 'lucide-react';
 import {
   ensureOriginalFileExtension,
@@ -1033,10 +1034,7 @@ function ExtractionVerificationSection({
                   <li>
                     TGA :{' '}
                     <span className="font-black text-[#142c6a]">
-                      {(evaluationSubject.tgaRetenu > 1
-                        ? evaluationSubject.tgaRetenu
-                        : evaluationSubject.tgaRetenu * 100
-                      ).toFixed(2)}
+                      {normalizeTgaPct(evaluationSubject.tgaRetenu)?.toFixed(2) ?? '—'}
                       %
                     </span>
                   </li>

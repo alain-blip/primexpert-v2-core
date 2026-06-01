@@ -6,6 +6,8 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import {
   EXPENSE_FIELDS,
   EXPENSE_KEYS,
+  computeRevenusDepensesLiveKpis,
+  computeTgaRatioFromRneAndPrice,
   mergeExtractedIntoFinancialDataV2,
   recomputeFinancialCalculatedResults,
   sumNormalizedOperatingExpenses,
@@ -78,18 +80,14 @@ export async function saveExpenseAdjustmentsToFinancial(
   const rbe =
     parseNum(financialData.calculatedResults?.revenuBrutEffectif) ||
     parseNum(financialData.baseData?.revenusAnnuels);
-  const revenuNetExploitation =
-    rbe > 0 ? Math.round(rbe - depensesTotalesNormalisees) : null;
-
   const prixDemande = parseNum(
     (financialData.calculatedResults as Record<string, unknown> | undefined)?.prixDemande
   );
+  const liveKpis = computeRevenusDepensesLiveKpis(rbe, depensesTotalesNormalisees, prixDemande);
+  const revenuNetExploitation =
+    liveKpis.rne != null ? Math.round(liveKpis.rne) : null;
   const tauxCapitalisation =
-    revenuNetExploitation != null &&
-    revenuNetExploitation > 0 &&
-    prixDemande > 0
-      ? revenuNetExploitation / prixDemande
-      : undefined;
+    computeTgaRatioFromRneAndPrice(revenuNetExploitation, prixDemande) ?? undefined;
 
   const docRef = doc(db, 'residences', residenceId, 'financial', 'dataV2');
   await setDoc(
@@ -314,9 +312,12 @@ export async function saveManualFinancialEntry(
       _confidence: options?.humanValidatedFromIa ? 'human_validated' : 'validation_required',
       ...(prix > 0 ? { prixDemande: prix } : {}),
     };
-    const rne = calculatedResults.revenuNetExploitation;
-    if (rne != null && rne > 0 && prix > 0) {
-      calculatedResults.tauxCapitalisation = rne / prix;
+    const tgaRatio = computeTgaRatioFromRneAndPrice(
+      calculatedResults.revenuNetExploitation,
+      prix
+    );
+    if (tgaRatio != null) {
+      calculatedResults.tauxCapitalisation = tgaRatio;
     }
     const mensuel = parseNum(draft.financement.paiementMensuel);
     if (mensuel > 0) {
