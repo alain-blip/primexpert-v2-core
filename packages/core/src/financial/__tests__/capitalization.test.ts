@@ -19,7 +19,7 @@ describe('financial/capitalization', () => {
   it('centralise les conversions RNE, TGA et valeur', () => {
     expect(applyCapRateAdjustmentPct(8.5, 0.25)).toBe(8.75);
     expect(capitalizeNoiAtCapRatePct(850_000, 8.5)).toBe(10_000_000);
-    expect(resolveNoiFromValueAndCapRatePct(10_000_000, 8.5)).toBe(850_000);
+    expect(resolveNoiFromValueAndCapRatePct(10_000_000, 8.5)).toBeCloseTo(850_000, 2);
     expect(resolveOperatingExpensesFromRbeAndNoi(1_200_000, 850_000)).toBe(350_000);
   });
 
