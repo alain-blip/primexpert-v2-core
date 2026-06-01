@@ -27,10 +27,12 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "test": "echo 'No test runner wired yet (TDD: ajouter vitest ou jest en Phase B)'",
+    "test": "vitest run --config ../../vitest.config.ts src/config/__tests__ packages/core/src/transaction/__tests__",
+    "test:rpa": "vitest run --config ../../vitest.config.ts src/config/__tests__/resolveColumnId.test.ts packages/core/src/transaction/__tests__/paAccepteeCriticalDeadlines.test.ts",
     "lint": "tsc --noEmit"
   },
   "devDependencies": {
-    "typescript": "~5.8.2"
+    "typescript": "~5.8.2",
+    "vitest": "^3.2.4"
   }
 }

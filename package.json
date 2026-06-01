@@ -27,7 +27,9 @@
     "migrate:contacts:execute": "npx tsx packages/core/src/scripts/migrateLegacyContacts.ts --execute",
     "test:voice-note": "npx tsx packages/core/src/scripts/testVoiceNotePipeline.ts",
     "test:voice-note:gemini": "npx tsx packages/core/src/scripts/testVoiceNotePipeline.ts --gemini",
-    "test:incoming-sms": "npx tsx packages/core/src/scripts/testIncomingSms.ts"
+    "test:incoming-sms": "npx tsx packages/core/src/scripts/testIncomingSms.ts",
+    "test:rpa-coverage": "vitest run --config vitest.config.ts --coverage src/config/__tests__/resolveColumnId.test.ts packages/core/src/transaction/__tests__/paAccepteeCriticalDeadlines.test.ts && node scripts/check-resolveColumnId-coverage.mjs",
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -60,11 +62,13 @@
     "@types/dompurify": "^3.0.5",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
+    "@vitest/coverage-v8": "^3.2.6",
     "autoprefixer": "^10.4.21",
     "playwright": "^1.60.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "vitest": "^3.2.6"
   }
 }
