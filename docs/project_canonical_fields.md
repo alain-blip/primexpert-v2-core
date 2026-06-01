@@ -20,7 +20,7 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 **Marché V3.7** : `packages/core/src/analytics/marketMetrics.ts` + `packages/core/src/market/internalMarketFlywheel.ts` — RDE/OER, flywheel anonymisé, comparables Centris.
 
 **QA finance/langage PR #19** : `packages/core/src/financial/acmValuationPresentation.ts` + `assessNoiVerificationForFinancing()` — enrichissement de présentation ACM et vérification RNE **sans nouvelle clé Firestore**.
-**Revue PR #33** : diff documentation-only de l'alignement PR #19 ; aucune nouvelle collection, sous-collection, règle ou clé persistée à ajouter au dictionnaire.
+**Revues PR #33 / PR #44** : diffs documentation-only de l'alignement PR #19 ; aucune nouvelle collection, sous-collection, règle ou clé persistée à ajouter au dictionnaire.
 
 ---
 
@@ -1065,4 +1065,4 @@ Modes négociation : `OACIQ_FORM`, `CUSTOM_CONTRACT`, `LETTER_OF_INTENT`.
 
 ---
 
-*Dernière mise à jour : 2026-06-01 — PR #19 / PR #33 : QA finance/langage, helpers ACM/RNE sans nouvelle structure Firestore ; PR #33 confirme un diff documentation-only.*
+*Dernière mise à jour : 2026-06-01 — PR #19 / PR #33 / PR #44 : QA finance/langage, helpers ACM/RNE sans nouvelle structure Firestore ; PR #33 et PR #44 confirment des diffs documentation-only.*

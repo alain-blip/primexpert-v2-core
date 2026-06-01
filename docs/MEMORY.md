@@ -981,21 +981,23 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
-## PR #33 — Revue du déclencheur documentation QA finance/langage (2026-06-01)
+## PR #33 / PR #44 — Revues du déclencheur documentation QA finance/langage (2026-06-01)
 
-**Déclencheur :** PR [#33](https://github.com/alain-blip/primexpert-v2-core/pull/33) — branche `cursor/alignement-docs-primexpert-a8ea` (`d13dadc` → `3975980`).
+**Déclencheurs :**
+- PR [#33](https://github.com/alain-blip/primexpert-v2-core/pull/33) — branche `cursor/alignement-docs-primexpert-a8ea` (`d13dadc` → `3975980`).
+- PR [#44](https://github.com/alain-blip/primexpert-v2-core/pull/44) — branche `cursor/alignement-docs-primexpert-cae3` (`d13dadc` → `0273842`) ; revue documentaire de #33, sans diff applicatif.
 
 **Statut :** **[BROUILLON — VALIDATION HUMAINE ALAIN REQUISE]**
 
 | Axe contrôlé | Résultat |
 |--------------|----------|
-| **Fichiers modifiés** | `docs/README.md`, `docs/MEMORY.md`, `docs/arborescence.md`, `docs/project_canonical_fields.md` uniquement. |
-| **Nouveaux modules / packages** | Aucun ajout code dans le diff PR #33 ; la documentation y référence le module PR #19 déjà consigné : `packages/core/src/financial/acmValuationPresentation.ts`. |
-| **Composants UI** | Aucun composant ajouté ou modifié dans le diff PR #33 ; impacts UI PR #19 déjà fusionnés dans les sections Finance / ACM existantes. |
+| **Fichiers modifiés** | `docs/README.md`, `docs/MEMORY.md`, `docs/arborescence.md`, `docs/project_canonical_fields.md` uniquement dans #33 et #44. |
+| **Nouveaux modules / packages** | Aucun ajout code dans les diffs PR #33 / #44 ; la documentation y référence le module PR #19 déjà consigné : `packages/core/src/financial/acmValuationPresentation.ts`. |
+| **Composants UI** | Aucun composant ajouté ou modifié dans les diffs PR #33 / #44 ; impacts UI PR #19 déjà fusionnés dans les sections Finance / ACM existantes. |
 | **Cloud Functions** | Aucune nouvelle route ni fonction ; `functions/src` absent du diff. |
 | **Schémas / Firestore** | Aucune clé, sous-collection, règle ou index nouveau ; `project_canonical_fields.md` reste un enrichissement explicatif sans mutation de schéma. |
 
-**Décision de secrétaire :** ne pas recréer les sections QA finance/langage déjà ouvertes pour PR #19 ; la PR #33 est notée comme revue documentaire du même périmètre, avec rejet de toute collection parallèle ou alias Firestore additionnel.
+**Décision de secrétaire :** ne pas recréer les sections QA finance/langage déjà ouvertes pour PR #19 ; les PR #33 / #44 sont notées dans cette section unique comme revues documentaires du même périmètre, avec rejet de toute collection parallèle ou alias Firestore additionnel.
 
 ---
 
@@ -1012,4 +1014,4 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
-*Journal mis à jour : 2026-06-01 — PR #19 documentée et PR #33 revue (QA finance/langage, orchestrateur ACM core, RNE vérifié, aucune dérive Firestore ni diff applicatif PR #33).*
+*Journal mis à jour : 2026-06-01 — PR #19 documentée et PR #33 / PR #44 revues (QA finance/langage, orchestrateur ACM core, RNE vérifié, aucune dérive Firestore ni diff applicatif PR #33 / #44).*
