@@ -9,6 +9,11 @@ import { deriveRevenusAnnuelsFromTarification } from '../identity/rentPricingGri
 import { applyCanonicalMetricsToCalc, resolveCanonicalFinancialMetrics } from './resolveCanonicalRne';
 import { getListingPrice, type ListingCommissionSource } from '../residence/listingCommission';
 import { resolveMiseDeFondsRequiseAcheteur } from './bankingSubscriptionLimits';
+import {
+  capitalizeNoiAtCapRatePct,
+  computeCapitalizationRateDecimal,
+  resolveNetOperatingIncome,
+} from './capitalization';
 
 const LEGACY_TAX_KEY = 'taxesMunicipalesScolaire';
 const CANONICAL_TAX_KEY = 'taxesPermis';
@@ -279,7 +284,9 @@ function syncCalcWithCanonicalListingPrice(
     ...calc,
     prixDemande: prix,
     tauxCapitalisation:
-      rne != null && rne > 0 ? rne / prix : calc.tauxCapitalisation,
+      rne != null && rne > 0
+        ? computeCapitalizationRateDecimal(rne, prix)
+        : calc.tauxCapitalisation,
     facteurRevenuNet:
       rne != null && rne > 0 ? prix / rne : calc.facteurRevenuNet,
     facteurRevenuBrut:
@@ -550,9 +557,13 @@ export function normalizeFinancialData(
     const noi =
       safeNum(derived?.noiOperationnel) ??
       safeNum(derived?.noi) ??
-      (revenusAnnuels != null && depensesTotales != null ? revenusAnnuels - depensesTotales : null);
+      resolveNetOperatingIncome({
+        revenuBrutEffectif: revenusAnnuels,
+        depensesExploitation: depensesTotales,
+      });
     const prixDemande = getListingPrice(residence as ListingCommissionSource) || null;
-    const tauxCap = noi != null && prixDemande ? noi / prixDemande : null;
+    const tauxCap =
+      noi != null && prixDemande ? computeCapitalizationRateDecimal(noi, prixDemande) : null;
 
     const calc: FinancialCalc = {
       revenusAnnuels,
@@ -576,7 +587,7 @@ export function normalizeFinancialData(
       cashFlow: null,
       valeurBanquable: null,
       valeurBanquableTransaction: null,
-      valeurCapitalisation: tauxCap && noi ? noi / tauxCap : null,
+      valeurCapitalisation: tauxCap && noi ? capitalizeNoiAtCapRatePct(noi, tauxCap) : null,
       valeurDSCRLTV: null,
       paiementAnnuel: null,
       paiementMensuel: null,
@@ -699,7 +710,9 @@ export function readCalculatedResultsDisplayMirror(
     mirrorFinite(calc.prixDemande) ||
     0;
   const tgaRatio =
-    rne != null && prix > 0 ? rne / prix : mirrorFinite(calc.tauxCapitalisation);
+    rne != null && prix > 0
+      ? computeCapitalizationRateDecimal(rne, prix)
+      : mirrorFinite(calc.tauxCapitalisation);
   const miseDeFonds =
     resolveMiseDeFondsRequiseAcheteur(calc, prix > 0 ? prix : null) ??
     mirrorFinite(calc.miseDeFondsRequise);

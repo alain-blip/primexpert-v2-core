@@ -2,7 +2,11 @@
  * Comparables Centris / Matrix — calcul TGA réel (RNE / prix de vente).
  */
 
-import { computeCapitalizationRatePct, resolveNetOperatingIncome } from '../financial/capitalization';
+import {
+  computeCapitalizationRatePct,
+  resolveNetOperatingIncome,
+  resolveNoiFromValueAndCapRatePct,
+} from '../financial/capitalization';
 import { normalizeAdministrativeRegion } from './marketRegionNormalize';
 import { normalizeRpaBuildingClass } from './gpsCapRateByRegionClass';
 
@@ -129,7 +133,7 @@ export function mapMarketAnalyticsRawToComparable(
     revenuBrutEffectif: rbe,
     densesExploitation: depenses,
     netOperatingIncome:
-      capRatePct > 0 && soldPrice > 0 ? (soldPrice * capRatePct) / 100 : 0,
+      resolveNoiFromValueAndCapRatePct(soldPrice, capRatePct) ?? 0,
     closedAtMillis,
     regionAdministrative: region,
     classeImmeuble: classe,

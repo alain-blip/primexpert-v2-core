@@ -21,6 +21,11 @@ import {
   type CertifiableReportBrokerFooter,
 } from './certifiableFinancialReport';
 import type { FinancialCalc, FinancialDataV2Doc, ResidenceFinancialHints } from './normalizeFinancialData';
+import {
+  computeCapitalizationRatePct,
+  normalizeCapRateToDecimal,
+  normalizeCapRateToPct,
+} from './capitalization';
 
 export interface SellerListingAnalysisModel {
   locale: 'fr' | 'en';
@@ -99,7 +104,9 @@ export function buildSellerListingAnalysisModel(
 
   const noi = kpis.revenuNetExploitation ?? calc?.revenuNetExploitation ?? 0;
   const capRateImpliedPct =
-    askingPrice != null && askingPrice > 0 && noi > 0 ? (noi / askingPrice) * 100 : null;
+    askingPrice != null && askingPrice > 0 && noi > 0
+      ? computeCapitalizationRatePct(noi, askingPrice, 2)
+      : null;
 
   const units =
     typeof residence.nombreUnitesTotal === 'number'
@@ -115,7 +122,7 @@ export function buildSellerListingAnalysisModel(
         : residence.tauxOccupation
       : 0.95;
 
-  const baseCap = capRateImpliedPct != null ? capRateImpliedPct / 100 : 0.085;
+  const baseCap = normalizeCapRateToDecimal(capRateImpliedPct, 0.085) ?? 0.085;
   const marketType = inferMarketType(String(residence.city ?? residence.region ?? ''));
   const marketTier =
     marketType === 'METRO' ? 'primaire' : marketType === 'SECONDARY' ? 'secondaire' : 'tertiaire';
@@ -129,15 +136,15 @@ export function buildSellerListingAnalysisModel(
       marketTier,
     });
     tgaAdjustment = {
-      basePct: adj.baseTga * 100,
-      adjustedPct: adj.finalTga * 100,
+      basePct: normalizeCapRateToPct(adj.baseTga, 0) ?? 0,
+      adjustedPct: normalizeCapRateToPct(adj.finalTga, 0) ?? 0,
       deltaBps: adj.penetrationDeltaBps + adj.sizeDeltaBps + adj.marketDeltaBps,
       rationale: adj.rationale,
     };
   }
 
   const capRange = capRateRangeFromMedian(
-    tgaAdjustment ? tgaAdjustment.adjustedPct / 100 : baseCap
+    tgaAdjustment ? normalizeCapRateToDecimal(tgaAdjustment.adjustedPct, baseCap) ?? baseCap : baseCap
   );
   const stress = runStressTests(noi, occupancy, capRange);
   const baseline = selectBaselineStressTest(occupancy, stress);

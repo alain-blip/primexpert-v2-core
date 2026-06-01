@@ -54,7 +54,11 @@ import type {
   FinancialDataV2Doc,
   TerritorialAcmMedians,
 } from '@primexpert/core/financial';
-import { noiGapToMarketValue } from '@primexpert/core/financial';
+import {
+  applyCapRateAdjustmentPct,
+  capitalizeNoiAtCapRatePct,
+  normalizeCapRateToDecimal,
+} from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
 import {
@@ -194,7 +198,9 @@ export function AcmValuationWorkspace({
   const [tgaInput, setTgaInput] = useState(() => String(dynamicMarketTgaPct));
   const [targetCapRatePct, setTargetCapRatePct] = useState(dynamicMarketTgaPct);
   /** TGA réellement appliqué au moteur (après ajustement pénétration). */
-  const [effectiveCapRate, setEffectiveCapRate] = useState(dynamicMarketTgaPct / 100);
+  const [effectiveCapRate, setEffectiveCapRate] = useState(
+    normalizeCapRateToDecimal(dynamicMarketTgaPct, 0) ?? 0
+  );
   const [penetrationRatePct, setPenetrationRatePct] = useState(bootstrap.penetrationRatePct);
   const [tgaManuallyAdjusted, setTgaManuallyAdjusted] = useState(false);
   const [result, setResult] = useState<ValuationOutputs | null>(null);
@@ -224,7 +230,7 @@ export function AcmValuationWorkspace({
 
   const appliedCapRatePct = useMemo(() => {
     if (tgaManuallyAdjusted) return targetCapRatePct;
-    return dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
+    return applyCapRateAdjustmentPct(dynamicMarketTgaPct, qualitativeTgaAdjustmentPct) ?? dynamicMarketTgaPct;
   }, [
     tgaManuallyAdjusted,
     targetCapRatePct,
@@ -255,7 +261,7 @@ export function AcmValuationWorkspace({
     if (lastBootstrapSyncRef.current === bootstrapSyncKey) return;
     lastBootstrapSyncRef.current = bootstrapSyncKey;
     if (!tgaManuallyAdjusted) {
-      const next = dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
+      const next = applyCapRateAdjustmentPct(dynamicMarketTgaPct, qualitativeTgaAdjustmentPct) ?? dynamicMarketTgaPct;
       setTgaInput(String(Number(next.toFixed(2))));
       setTargetCapRatePct(next);
     }
@@ -270,7 +276,7 @@ export function AcmValuationWorkspace({
 
   useEffect(() => {
     if (tgaManuallyAdjusted) return;
-    const next = dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
+    const next = applyCapRateAdjustmentPct(dynamicMarketTgaPct, qualitativeTgaAdjustmentPct) ?? dynamicMarketTgaPct;
     setTgaInput(String(Number(next.toFixed(2))));
     setTargetCapRatePct(next);
   }, [dynamicMarketTgaPct, qualitativeTgaAdjustmentPct, tgaManuallyAdjusted]);
@@ -298,7 +304,7 @@ export function AcmValuationWorkspace({
       }
       setError(null);
       try {
-        let adjustedCap = capPct / 100;
+        let adjustedCap = normalizeCapRateToDecimal(capPct, 0) ?? 0;
         let adj: TgaAdjustmentResult | null = null;
         if (penPct > 0) {
           adj = computeTgaAdjustment({
@@ -500,7 +506,7 @@ export function AcmValuationWorkspace({
       : null;
     const performanceBased =
       dynamicMarketTgaPct > 0
-        ? noiGapToMarketValue(bootstrap.revenuNetExploitation, dynamicMarketTgaPct)
+        ? capitalizeNoiAtCapRatePct(bootstrap.revenuNetExploitation, dynamicMarketTgaPct)
         : null;
     const maxPotential = stressSummary?.occ100 ?? null;
     const rows = [

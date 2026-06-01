@@ -34,6 +34,7 @@ import {
   type SellerNarrativeDecision,
   type ResidenceFinancials,
 } from '@primexpert/core/narrative';
+import { normalizeCapRateToDecimal } from '@primexpert/core/financial';
 
 interface SimpleForm {
   askingPrice: number;
@@ -67,7 +68,8 @@ function buildInputs(form: SimpleForm, targetCapRateOverride?: number): Valuatio
     vacancyRate: form.vacancyRate / 100,
     operatingExpenses: { total: form.operatingExpensesTotal },
     customExpenses: [],
-    targetCapRate: targetCapRateOverride ?? form.targetCapRate / 100,
+    targetCapRate:
+      targetCapRateOverride ?? normalizeCapRateToDecimal(form.targetCapRate, 0.08) ?? 0.08,
     valuationMode: 'acm_unified_cap',
     weights: { capRate: 1, mrb: 0, mrn: 0, pricePerUnit: 0 },
   });
@@ -115,7 +117,7 @@ export function ACM() {
     setRecommendedPrice(null);
     setStressSummary(null);
     try {
-      let adjustedCap = form.targetCapRate / 100;
+      let adjustedCap = normalizeCapRateToDecimal(form.targetCapRate, 0.08) ?? 0.08;
       if (form.penetrationRatePct > 0) {
         const adj = computeTgaAdjustment({
           baseTga: adjustedCap,
@@ -173,7 +175,7 @@ export function ACM() {
     selectSellerNarrative(
       financials,
       DEFAULT_MARKET_BENCHMARKS,
-      { capRateMedian: form.targetCapRate / 100 },
+      { capRateMedian: normalizeCapRateToDecimal(form.targetCapRate, 0.08) ?? 0.08 },
       { narrativeMode: 'RULES' }
     )
       .then((decision) => {

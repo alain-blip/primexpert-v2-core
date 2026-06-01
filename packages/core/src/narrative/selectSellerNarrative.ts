@@ -22,6 +22,10 @@ import { generateAINarrative } from '@primexpert/core/services/aiNarrativeServic
 import { lintNarrativeText, sanitizeNarrativeText } from './narrativeLint';
 import type { ComparableBenchmarks } from '../valuation/comparableBenchmarks';
 import { classifyPricingOpportunityTag } from './pricingOpportunity';
+import {
+  computeCapitalizationRateDecimal,
+  normalizeCapRateToDecimal,
+} from '../financial/capitalization';
 
 // ============================================================================
 // INTERFACES POUR LES DONNÉES D'ENTRÉE
@@ -103,12 +107,15 @@ export function buildFeatureVector(
   const residenceNoiMargin = rbe > 0 && noi ? noi / rbe : null;
 
   // Cap rate implicite au prix demandé
-  const capRateImplied = prixDemande && prixDemande > 0 && noi
-    ? noi / prixDemande
-    : null;
+  const capRateImplied =
+    prixDemande && prixDemande > 0 && noi
+      ? computeCapitalizationRateDecimal(noi, prixDemande)
+      : null;
 
   // Cap rate de référence (priorité: marketData > benchmarks)
-  const capRateReference = marketData?.capRateMedian ?? benchmarks.capRateMedian ?? null;
+  const capRateReference = normalizeCapRateToDecimal(
+    marketData?.capRateMedian ?? benchmarks.capRateMedian ?? null
+  );
 
   // Calculer les écarts
   const expenseRatioGapPct = calculateGapPct(residenceExpenseRatio, benchmarks.expenseRatioAvg);

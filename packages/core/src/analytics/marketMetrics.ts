@@ -4,6 +4,7 @@
  */
 
 import { coerceOperatingRatioPct } from '../market/marketDataNormalize';
+import { resolveOperatingExpensesFromRbeAndNoi } from '../financial/capitalization';
 
 /** Classes d'actif pour tolérances de validation IA. */
 export type AssetBenchmarkClass = 'rpa' | 'plex' | 'commercial_pure' | 'industrial';
@@ -74,7 +75,7 @@ export function computeOperatingExpenseRatioPct(input: {
 
   let depenses = input.depensesExploitation;
   if ((depenses == null || depenses <= 0) && input.revenuNetExploitation != null) {
-    depenses = rbe - input.revenuNetExploitation;
+    depenses = resolveOperatingExpensesFromRbeAndNoi(rbe, input.revenuNetExploitation);
   }
   if (depenses == null || !Number.isFinite(depenses) || depenses <= 0) return null;
 

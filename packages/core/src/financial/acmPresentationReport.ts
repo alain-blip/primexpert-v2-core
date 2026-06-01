@@ -22,6 +22,11 @@ import {
   resolveOffMarketConfidentialBanner,
 } from '../residence/listingSource';
 import type { FinancialCalc, FinancialDataV2Doc, ResidenceFinancialHints } from './normalizeFinancialData';
+import {
+  computeCapitalizationRateDecimal,
+  normalizeCapRateToDecimal,
+  normalizeCapRateToPct,
+} from './capitalization';
 
 export interface AcmPresentationBrokerBlock extends CertifiableReportBrokerFooter {
   phone?: string;
@@ -114,14 +119,10 @@ function parseExtractedComparables(
       const salePrice = finiteNum(o.salePrice) ?? 0;
       const capPct = finiteNum(o.capRatePct);
       const noi = finiteNum(o.noi) ?? finiteNum(o.netIncomePerUnit);
+      const capRateFromNoi =
+        noi != null && salePrice > 0 ? computeCapitalizationRateDecimal(noi, salePrice) : null;
       const capRate =
-        capPct != null && capPct > 0
-          ? capPct > 1
-            ? capPct / 100
-            : capPct
-          : noi != null && salePrice > 0
-            ? noi / salePrice
-            : 0;
+        normalizeCapRateToDecimal(capPct, capRateFromNoi) ?? 0;
       return {
         id: `ext-${i}`,
         salePrice,
@@ -150,11 +151,8 @@ function buildValuationOutputs(
         finiteNum(mapped.askingPrice) ??
         mapped.askingPrice,
       targetCapRate:
-        finiteNum(calc.tauxCapitalisation) != null
-          ? (finiteNum(calc.tauxCapitalisation)! > 1
-              ? finiteNum(calc.tauxCapitalisation)! / 100
-              : finiteNum(calc.tauxCapitalisation)!)
-          : mapped.targetCapRate,
+        normalizeCapRateToDecimal(finiteNum(calc.tauxCapitalisation), mapped.targetCapRate) ??
+        mapped.targetCapRate,
     });
     return calculateValuation(inputs);
   } catch {
@@ -183,19 +181,18 @@ function buildMarketConclusion(
   const comparables = parseExtractedComparables(residenceDoc);
   const capSelection = selectMarketCapRate({
     profileCapRate:
-      finiteNum(calc.tauxCapitalisation) != null
-        ? finiteNum(calc.tauxCapitalisation)! > 1
-          ? finiteNum(calc.tauxCapitalisation)! / 100
-          : finiteNum(calc.tauxCapitalisation)!
-        : valuation?.capRateMarketSelected ?? 0.08,
+      normalizeCapRateToDecimal(
+        finiteNum(calc.tauxCapitalisation),
+        valuation?.capRateMarketSelected ?? 0.08
+      ) ?? 0.08,
     comparables,
     minComparables: 3,
   });
 
   const tgaPct =
-    capSelection.capRateComparableMedian != null
-      ? capSelection.capRateComparableMedian * 100
-      : capSelection.capRateMarketSelected * 100;
+    (capSelection.capRateComparableMedian != null
+      ? normalizeCapRateToPct(capSelection.capRateComparableMedian, 0)
+      : normalizeCapRateToPct(capSelection.capRateMarketSelected, 0)) ?? 0;
   const capRateDisplay = formatPercentRaw(tgaPct, 2);
   const valueDisplay = fmtMoney(
     valeur ?? valuation?.weightedMarketValue ?? valuation?.suggestedPrice ?? null,

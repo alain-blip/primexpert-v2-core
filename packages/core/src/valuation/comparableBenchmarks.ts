@@ -17,6 +17,11 @@
  * @version 1.0.0
  */
 
+import {
+  computeCapitalizationRateDecimal,
+  resolveNetOperatingIncome,
+} from '../financial/capitalization';
+
 // ============================================================================
 // INTERFACES
 // ============================================================================
@@ -221,9 +226,14 @@ export function computeComparableBenchmarks(
 
     // Cap Rate
     if (c.salePrice && c.salePrice > 0) {
-      const noi = c.noi || (c.totalExpenses ? rbe - c.totalExpenses : 0);
-      if (noi > 0) {
-        capRates.push(noi / c.salePrice);
+      const noi = resolveNetOperatingIncome({
+        netOperatingIncome: c.noi,
+        revenuBrutEffectif: rbe,
+        depensesExploitation: c.totalExpenses,
+      });
+      if (noi != null && noi > 0) {
+        const capRate = computeCapitalizationRateDecimal(noi, c.salePrice);
+        if (capRate != null) capRates.push(capRate);
       }
     }
 
