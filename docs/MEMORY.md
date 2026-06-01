@@ -637,7 +637,7 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 ## Mise en place du pipeline d'auto-alimentation décentralisé (Data Flywheel) et protocole d'anonymisation (chantier parallèle — 2026-05-29)
 
-**Statut :** **[EN REVUE HITL — sans commit]** *(numéro de version distinct du jalon assembleur V3.5 scellé ci-dessous)*
+**Statut :** **[EN REVUE PR #3 — branche `automation/rpa-transaction-test-coverage`]** *(numéro de version distinct du jalon assembleur V3.5 scellé ci-dessous)*
 
 | Élément | Détail |
 |---------|--------|
@@ -706,7 +706,7 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 ## Intégration du protocole de gestion des inscriptions hors marché (Off-Market) (2026-05-29)
 
-**Statut :** **[EN REVUE HITL — sans commit]**
+**Statut :** **[EN REVUE PR #3 — branche `automation/rpa-transaction-test-coverage`]**
 
 | Élément | Détail |
 |---------|--------|
@@ -787,7 +787,7 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 | `brokerProfileCompliance.ts` | `profilePhotoUploadedAtMillis`, `isProfilePhotoExpired` (> 1826 j), `validateBrokerProfilePhotoForPublication` |
 | `index.ts` | Barrel |
 
-**Hors périmètre sprint (branchement prod planifié) :** collections Firestore `legal_vault` + `compliance_log`, `firestore.rules` deny update/delete si `isFinalWormLocked`, Function Montréal append journal sur READ/WRITE/LOCK/EXPORT_ZIP, extension `UserProfile` côté `users/{uid}`.
+**Suite déployée en V3.0 :** collections Firestore `legal_vault` + `compliance_logs`, règles WORM deny update/delete si `isFinalWormLocked`, Function Montréal `onVaultDocumentWrite` et extension profil courtier `profilePhotoUploadedAtMillis` côté `users/{uid}`.
 
 ---
 
@@ -936,6 +936,28 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
+## PR #3 — Couverture tests flux RPA + alignement modules marché/sécurité/formulaires (2026-06-01)
+
+**Déclencheur :** PR [#3](https://github.com/alain-blip/primexpert-v2-core/pull/3) — branche `automation/rpa-transaction-test-coverage` (`d13dadc` → `38a7779`).
+
+**Statut :** **[EN VALIDATION HUMAINE ALAIN — documentation alignée en PR dédiée]**
+
+| Volet | Ajouts / impacts |
+|-------|------------------|
+| **Couverture RPA** | Workflow `.github/workflows/rpa-transaction-test-coverage.yml`, `vitest.config.ts`, script `npm run test:rpa-coverage`, garde `scripts/check-resolveColumnId-coverage.mjs`. |
+| **Kanban** | `src/config/__tests__/resolveColumnId.test.ts` couvre les alias `pa-acceptee`, `vendue` et colonnes actives. |
+| **Promesse acceptée** | `packages/core/src/transaction/__tests__/paAccepteeCriticalDeadlines.test.ts` valide les 7 échéances critiques : réponse, visite, documents, inspection, financement, permis, **dédit LCI art. 73.2**. |
+| **Marché / Centris** | `listings_cache` lecture seule, `centrisComparableCapRate.ts`, `TerritorialCentrisCompetitionSection`, `marketAnalyticsService`, `useTerritorialCompetition`. |
+| **Flywheel / OER** | `onTransactionConcludedFlywheel` alimente `market_analytics_raw` anonymisé ; `@primexpert/core/analytics/marketMetrics.ts` calcule le ratio des dépenses d'exploitation (RDE/OER). |
+| **Sécurité WORM** | `legal_vault` + `compliance_logs` documentés comme collections canoniques ; `onVaultDocumentWrite` reste le point serveur Montréal. |
+| **Inscriptions** | `listingSource: 'centris' \| 'off_market'`, override manuel `isManuallyOverridden`, `CreateInscriptionForm`, `InscriptionStatusDropdown`, sync nocturne `centrisListingsSyncNightly`. |
+
+**Règle de non-duplication appliquée :** les informations sont fusionnées dans les sections existantes (`README`, `arborescence`, dictionnaire canonique) ; aucune collection parallèle (`buyerPipeline/`, `organizations/.../market_documents`, coffre-fort bis) n'est créée ni documentée comme cible.
+
+**HITL :** la PR de documentation doit rester en brouillon jusqu'à validation d'Alain ; aucun merge ni push direct sur `main`.
+
+---
+
 ## Verrouillage technique fin de sprint — Primexpert V3.5 (2026-05-30)
 
 | Point de contrôle | Statut |
@@ -949,4 +971,4 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
-*Journal mis à jour : 2026-05-30 — Redressement finance SSOT fiche résidence (`d232673`) + hosting prod déployé.*
+*Journal mis à jour : 2026-06-01 — PR #3 documentée (couverture RPA, Centris/off-market, flywheel/OER, WORM canonique).*

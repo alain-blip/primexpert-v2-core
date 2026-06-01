@@ -2,7 +2,7 @@
 
 **Source unique avec le code :** `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`  
 **URL officielle :** https://primexpert-app-v2.web.app  
-**Cycle technique :** **V3.5 — assembleur de mandats natif scellé** + **redressement finance SSOT fiche résidence (`d232673`)** (mai 2026) · architectures sécurisées V3.0 en production
+**Cycle technique :** **V3.7 — marché/OER/flywheel + assembleur de mandats V3.5** · **couverture RPA PR #3** (Kanban + délais PA acceptée) · architectures sécurisées V3.0 en production
 
 ## Registre global des architectures sécurisées — mai 2026
 
@@ -24,6 +24,8 @@
 | Coffre-fort WORM & sécurité | **OPÉRATIONNEL — PRODUCTION LIVE** |
 | Assembleur contrat & annexes (V3.5) | **SCELLÉ — commit `63286dc`** (HTML natif, sans docxtemplater) |
 | Hub Finance — cohérence RNE / prix inter-onglets | **DÉPLOYÉ PROD — commit `d232673`** (hosting 2026-05-30) |
+| Inscriptions Centris / hors marché + concurrence territoriale | **EN REVUE PR #3** — `listings_cache`, `listingSource`, override manuel |
+| Couverture tests flux RPA | **EN REVUE PR #3** — Vitest Kanban `resolveColumnId` + 7 délais PA acceptée |
 
 > Détail technique et historique : [`MEMORY.md`](./MEMORY.md)
 
@@ -97,6 +99,9 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 21. **Routage SPA (V2.8)** — `App.tsx` → lazy `AuthenticatedApp.tsx` ; routes `/workhub`, `/acces-vendeur` (jeton = session client sans Google).
 22. **Recherche multi-critères** — CRM (`contactSearch.ts`) et inscriptions (villes, municipalités).
 23. **Assembleur de mandats (V3.5)** — `@primexpert/core/forms` ; champs entre parenthèses typés ; `ContractAssemblerPanel` onglet Promesse ; export HTML natif (legacy docxtemplater expulsé).
+24. **Inscriptions Centris / hors marché** — `@primexpert/core/residence` (`listingSource`, `inscriptionBrokerageStatus`) ; création contrôlée depuis `CreateInscriptionForm` ; sync Centris bloquée sur `off_market` ou override manuel.
+25. **Marché V3.2–V3.7** — `@primexpert/core/market` + `@primexpert/core/analytics` ; cache `listings_cache`, flywheel anonymisé `market_analytics_raw`, ratio des dépenses d'exploitation (RDE/OER) et benchmarks régionaux.
+26. **Qualité RPA automatisée** — `npm run test:rpa-coverage` ; couverture `resolveColumnId()` et validations des 7 échéances critiques PA acceptée (`dateLimiteDeduitLci` incluse).
 
 ---
 
@@ -109,6 +114,8 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | `npm run test:voice-note` | Pipeline note vocale (Whisper si clé OpenAI) |
 | `npm run test:voice-note:gemini` | Pipeline note vocale — STT Gemini uniquement |
 | `npm run test:incoming-sms` | Injection SMS test → fil `crm_{contactId}` |
+| `npm run test:rpa-coverage` | Vitest ciblé Kanban + délais PA acceptée ; contrôle 100 % `resolveColumnId()` |
+| `npm test` | Suite Vitest configurée (`vitest.config.ts`) |
 
 ---
 
@@ -117,7 +124,7 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | Module | Accès | SSOT | Statut |
 |--------|-------|------|--------|
 | **Tableau de bord** | `Dashboard.tsx` | Briefing matin, radar off-market, priorités KISS | LIVE |
-| **Mes inscriptions** | `Listings.tsx` | Pipeline Kanban 4 colonnes, DnD, filtres régions, recherche | LIVE |
+| **Mes inscriptions** | `Listings.tsx` | Pipeline Kanban 4 colonnes, DnD, filtres régions, recherche, création Centris / hors marché | LIVE + PR #3 |
 | **CRM** | `ContactsListPage` | `organizations/{orgId}/contacts` ; recherche LCI ; Matchmaker | LIVE |
 | **Accès Vendeur** | `/acces-vendeur` · lien invité · bouton fiche | Catalogue 85 pièces, `vendorPortalCompliance`, `vendor_portal_invites` | LIVE |
 | **Messagerie** | `MailboxContainer` + `CommunicationHub` | `email_threads` / `messages` — courriel, SMS, Meta | LIVE |
@@ -148,10 +155,13 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | Couche | Détail |
 |--------|--------|
 | UI | `MarketLibraryDashboard.tsx` — upload PDF, grilles HITL (macro / transactions / ratios) |
-| Parse | `marketDocumentParseIA` — **2 GiB**, **540 s** (PDF massifs ~100 p.) |
+| Parse | `marketDocumentParseIA` — **512 MiB**, **60 s** ; découpage sémantique PDF avant Vertex |
 | Injection | `injectMarketMacroStats` — empreintes déterministes, `set(merge: true)` |
-| Anti-doublons | `packages/core/src/market/marketDeduplication.ts` |
-| Collections | `market_documents`, `market_macro_stats`, `market_analytics_raw`, `marketSnapshots/v1` |
+| Anti-doublons | `packages/core/src/market/marketDeduplication.ts` + cache `contentHashMd5` sur `market_documents` |
+| Concurrence territoriale | `listings_cache` Centris Matrix + `market_analytics_raw` → TGA médian ACM |
+| Flywheel interne | `onTransactionConcludedFlywheel` — PA acceptée / vendu → `market_analytics_raw` anonymisé |
+| OER / RDE | `@primexpert/core/analytics/marketMetrics.ts` — ratio dépenses/RBE et benchmarks régionaux |
+| Collections | `market_documents`, `market_macro_stats`, `market_analytics_raw`, `marketSnapshots/v1`, `listings_cache` |
 
 ---
 
@@ -181,4 +191,4 @@ Copie possible sur disque de sauvegarde (`00_PRIMEXPERT_SYSTEME_APP/docs/` ou vo
 
 ---
 
-*Index mis à jour : 2026-05-30 — Sprint V3.5 scellé (assembleur de mandats natif, commit `63286dc`).*
+*Index mis à jour : 2026-06-01 — alignement PR #3 (couverture RPA, Centris/off-market, flywheel/OER, coffre-fort WORM documenté).*
