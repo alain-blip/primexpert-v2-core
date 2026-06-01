@@ -10,6 +10,39 @@ export interface RevenusDepensesLiveKpis {
   valeurCapitalisation: number | null;
 }
 
+export function normalizeTgaPct(tgaPct: number | null | undefined): number | null {
+  if (tgaPct == null || !Number.isFinite(tgaPct) || tgaPct <= 0) return null;
+  return tgaPct > 1 ? tgaPct : tgaPct * 100;
+}
+
+export function computeTgaRatioFromRneAndPrice(
+  rne: number | null | undefined,
+  prixDemande: number | null | undefined
+): number | null {
+  if (rne == null || prixDemande == null) return null;
+  if (!Number.isFinite(rne) || !Number.isFinite(prixDemande)) return null;
+  if (rne <= 0 || prixDemande <= 0) return null;
+  return rne / prixDemande;
+}
+
+export function computeTgaPctFromRneAndPrice(
+  rne: number | null | undefined,
+  prixDemande: number | null | undefined
+): number | null {
+  const ratio = computeTgaRatioFromRneAndPrice(rne, prixDemande);
+  return ratio == null ? null : ratio * 100;
+}
+
+export function computeCapitalizedValueFromRneAndTga(
+  rne: number | null | undefined,
+  tgaPct: number | null | undefined
+): number | null {
+  if (rne == null || !Number.isFinite(rne) || rne <= 0) return null;
+  const normalizedTgaPct = normalizeTgaPct(tgaPct);
+  if (normalizedTgaPct == null) return null;
+  return rne / (normalizedTgaPct / 100);
+}
+
 export function computeRevenusDepensesLiveKpis(
   rbe: number | null,
   depensesNormalisees: number | null,
@@ -22,14 +55,9 @@ export function computeRevenusDepensesLiveKpis(
       : null;
 
   let tgaPct: number | null = null;
-  if (rne != null && rne > 0 && prixDemande != null && prixDemande > 0) {
-    tgaPct = (rne / prixDemande) * 100;
-  } else if (tgaReferencePct != null && Number.isFinite(tgaReferencePct)) {
-    tgaPct = tgaReferencePct > 1 ? tgaReferencePct : tgaReferencePct * 100;
-  }
+  tgaPct = computeTgaPctFromRneAndPrice(rne, prixDemande) ?? normalizeTgaPct(tgaReferencePct);
 
-  const valeurCapitalisation =
-    rne != null && rne > 0 && tgaPct != null && tgaPct > 0 ? rne / (tgaPct / 100) : null;
+  const valeurCapitalisation = computeCapitalizedValueFromRneAndTga(rne, tgaPct);
 
   return {
     rbe,
