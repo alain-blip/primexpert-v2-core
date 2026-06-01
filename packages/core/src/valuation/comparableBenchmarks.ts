@@ -17,6 +17,8 @@
  * @version 1.0.0
  */
 
+import { computeCapitalizationRateFromNoi } from '../financial/capitalizationMetrics';
+
 // ============================================================================
 // INTERFACES
 // ============================================================================
@@ -222,8 +224,9 @@ export function computeComparableBenchmarks(
     // Cap Rate
     if (c.salePrice && c.salePrice > 0) {
       const noi = c.noi || (c.totalExpenses ? rbe - c.totalExpenses : 0);
-      if (noi > 0) {
-        capRates.push(noi / c.salePrice);
+      const capRate = computeCapitalizationRateFromNoi(noi, c.salePrice);
+      if (capRate != null) {
+        capRates.push(capRate);
       }
     }
 

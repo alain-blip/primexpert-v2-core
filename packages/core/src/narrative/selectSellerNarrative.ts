@@ -22,6 +22,7 @@ import { generateAINarrative } from '@primexpert/core/services/aiNarrativeServic
 import { lintNarrativeText, sanitizeNarrativeText } from './narrativeLint';
 import type { ComparableBenchmarks } from '../valuation/comparableBenchmarks';
 import { classifyPricingOpportunityTag } from './pricingOpportunity';
+import { computeCapitalizationRateFromNoi } from '../financial/capitalizationMetrics';
 
 // ============================================================================
 // INTERFACES POUR LES DONNÉES D'ENTRÉE
@@ -103,9 +104,7 @@ export function buildFeatureVector(
   const residenceNoiMargin = rbe > 0 && noi ? noi / rbe : null;
 
   // Cap rate implicite au prix demandé
-  const capRateImplied = prixDemande && prixDemande > 0 && noi
-    ? noi / prixDemande
-    : null;
+  const capRateImplied = computeCapitalizationRateFromNoi(noi, prixDemande);
 
   // Cap rate de référence (priorité: marketData > benchmarks)
   const capRateReference = marketData?.capRateMedian ?? benchmarks.capRateMedian ?? null;
