@@ -13,7 +13,10 @@ import {
   sumSectorRpaUnits,
   getSubjectUnitCount,
 } from '@primexpert/core/market';
-import { computeTgaAdjustment } from '@primexpert/core/valuation';
+import {
+  computeTgaAdjustment,
+  formatTgaAdjustmentForDisplay,
+} from '@primexpert/core/valuation';
 import { useLanguage } from '../../../lib/i18n';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { InstitutionalKpi, InstitutionalSection } from '../institutional/InstitutionalUi';
@@ -51,6 +54,10 @@ export function MarketPenetrationSection() {
       nombreUnites: subjectUnits,
     });
   }, [rate, subjectUnits]);
+  const tgaRiskDisplay = useMemo(
+    () => (tgaRisk ? formatTgaAdjustmentForDisplay(tgaRisk) : null),
+    [tgaRisk]
+  );
 
   const radiusKm =
     residenceDoc?.marketScope &&
@@ -134,9 +141,9 @@ export function MarketPenetrationSection() {
                 )}
               </p>
               <p className="mt-1 text-sm font-black text-[#142c6a] tabular-nums">
-                {(tgaRisk.baseTga * 100).toFixed(2)} % → {(tgaRisk.finalTga * 100).toFixed(2)} %
+                {tgaRiskDisplay?.baseTgaDisplay ?? '—'} → {tgaRiskDisplay?.finalTgaDisplay ?? '—'}
                 <span className="text-xs font-semibold text-slate-600 ml-2">
-                  (+{tgaRisk.penetrationDeltaBps + tgaRisk.sizeDeltaBps + tgaRisk.marketDeltaBps} bps)
+                  ({tgaRiskDisplay?.totalAdjDisplay ?? '—'})
                 </span>
               </p>
               <p className="mt-1 text-[11px] text-slate-700">{tgaRisk.rationale[0]}</p>

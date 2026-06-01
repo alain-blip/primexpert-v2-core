@@ -6,6 +6,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Building2, CheckCircle2, Info, Landmark, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
 import {
+  assessNoiDocumentation,
   computeFinancabilite,
   DSCR_RULES,
   getMinimumDscrForProgram,
@@ -31,15 +32,15 @@ export interface FinancabiliteTabProps {
 
 /**
  * Toggle persistant (sessionStorage) — choix de la base RNE pour le scénario
- * bancaire. OFF : NOI Déclaré (brut vendeur). ON : NOI Audité (RBE enrichi
+ * bancaire. OFF : NOI Déclaré (brut vendeur). ON : NOI Vérifié (RBE enrichi
  * Phase 2.1 − dépenses normalisées). Cascade automatique sur EM / DSCR / MFR.
  */
-const USE_AUDIT_RNE_STORAGE_KEY = 'primexpert-financabilite-useAuditRne';
+const USE_VERIFIED_RNE_STORAGE_KEY = 'primexpert-financabilite-useVerifiedRne';
 
 function readUseAuditRneFromSession(): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    return window.sessionStorage.getItem(USE_AUDIT_RNE_STORAGE_KEY) === '1';
+    return window.sessionStorage.getItem(USE_VERIFIED_RNE_STORAGE_KEY) === '1';
   } catch {
     return false;
   }
@@ -48,7 +49,7 @@ function readUseAuditRneFromSession(): boolean {
 function persistUseAuditRne(value: boolean): void {
   if (typeof window === 'undefined') return;
   try {
-    window.sessionStorage.setItem(USE_AUDIT_RNE_STORAGE_KEY, value ? '1' : '0');
+    window.sessionStorage.setItem(USE_VERIFIED_RNE_STORAGE_KEY, value ? '1' : '0');
   } catch {
     /* sessionStorage indisponible : on reste sur l'état React local. */
   }
@@ -153,7 +154,7 @@ function AuditRneToggle({
   const optionA = useAuditRne === false;
   const optionB = useAuditRne === true;
   const labelA = language === 'fr' ? 'A · Sur le RNE Déclaré' : 'A · Declared NOI basis';
-  const labelB = language === 'fr' ? 'B · Sur le RNE Audité (RPA enrichi)' : 'B · Audited NOI (RPA enriched)';
+  const labelB = language === 'fr' ? 'B · Sur le RNE Vérifié (RPA enrichi)' : 'B · Verified NOI (RPA enriched)';
   const subA = language === 'fr' ? 'Brut du vendeur (RNE rapporté).' : 'Seller-reported NOI.';
   const subB =
     language === 'fr'
@@ -230,7 +231,7 @@ function AuditRneToggle({
         >
           <input
             type="radio"
-            id="finance-bank-noi-audited"
+            id="finance-bank-noi-verified"
             name="finance-bank-noi-basis"
             checked={optionB}
             disabled={disabled}
@@ -523,35 +524,35 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
     let noiStatus: ChecklistStatus = 'unknown';
     let noiNoteFr = 'Aucune donnée RNE disponible — compléter Revenus & Dépenses.';
     let noiNoteEn = 'No NOI data available — complete Revenue & Expenses.';
-    if (noiAudit != null && noiDeclared != null && noiAudit > 0 && noiDeclared > 0) {
-      const variance = Math.abs(noiAudit - noiDeclared) / Math.max(noiAudit, noiDeclared);
-      if (variance <= 0.05) {
-        noiStatus = 'ok';
-        noiNoteFr =
-          'RNE déclaré et RNE audité concordent (écart ≤ 5 %). Pièces justificatives en ordre côté prêteur.';
-        noiNoteEn =
-          'Declared and audited NOI match (≤ 5% variance). Supporting evidence is aligned with lender expectations.';
-      } else if (variance <= 0.15) {
-        noiStatus = 'warn';
-        noiNoteFr = `Écart de ${(variance * 100).toFixed(1)} % entre RNE déclaré et RNE audité — justifier la normalisation des dépenses.`;
-        noiNoteEn = `${(variance * 100).toFixed(1)}% gap between declared and audited NOI — justify expense normalization.`;
-      } else {
-        noiStatus = 'fail';
-        noiNoteFr = `Écart majeur de ${(variance * 100).toFixed(1)} % entre RNE déclaré et RNE audité — auditer les sources avant présentation prêteur.`;
-        noiNoteEn = `Major ${(variance * 100).toFixed(1)}% gap between declared and audited NOI — audit sources before lender submission.`;
-      }
-    } else if (noiAudit != null && noiAudit > 0) {
+    const noiDocumentation = assessNoiDocumentation(noiDeclared, noiAudit);
+    const noiVarianceLabel =
+      noiDocumentation.variancePct != null ? noiDocumentation.variancePct.toFixed(1) : '—';
+    if (noiDocumentation.code === 'aligned') {
+      noiStatus = 'ok';
+      noiNoteFr =
+        'RNE déclaré et RNE vérifié concordent (écart ≤ 5 %). Pièces justificatives en ordre côté prêteur.';
+      noiNoteEn =
+        'Declared and verified NOI match (≤ 5% variance). Supporting evidence is aligned with lender expectations.';
+    } else if (noiDocumentation.code === 'moderate_gap') {
+      noiStatus = 'warn';
+      noiNoteFr = `Écart de ${noiVarianceLabel} % entre RNE déclaré et RNE vérifié — justifier la normalisation des dépenses.`;
+      noiNoteEn = `${noiVarianceLabel}% gap between declared and verified NOI — justify expense normalization.`;
+    } else if (noiDocumentation.code === 'major_gap') {
+      noiStatus = 'fail';
+      noiNoteFr = `Écart majeur de ${noiVarianceLabel} % entre RNE déclaré et RNE vérifié — vérifier les sources avant présentation prêteur.`;
+      noiNoteEn = `Major ${noiVarianceLabel}% gap between declared and verified NOI — verify sources before lender submission.`;
+    } else if (noiDocumentation.code === 'normalized_only') {
       noiStatus = 'warn';
       noiNoteFr =
-        'Seul le RNE audité (calculé) est disponible — manque la déclaration vendeur pour pleinement convaincre le prêteur.';
+        'Seul le RNE vérifié (calculé) est disponible — manque la déclaration vendeur pour pleinement convaincre le prêteur.';
       noiNoteEn =
-        'Only audited NOI (computed) is available — missing seller statement to fully convince the lender.';
-    } else if (noiDeclared != null && noiDeclared > 0) {
+        'Only verified NOI (computed) is available — missing seller statement to fully convince the lender.';
+    } else if (noiDocumentation.code === 'declared_only') {
       noiStatus = 'warn';
       noiNoteFr =
-        'Seul le RNE déclaré est disponible — recommander une normalisation par dépenses auditées.';
+        'Seul le RNE déclaré est disponible — recommander une normalisation par dépenses vérifiées.';
       noiNoteEn =
-        'Only declared NOI is available — recommend normalization with audited expenses.';
+        'Only declared NOI is available — recommend normalization with verified expenses.';
     }
 
     return [
