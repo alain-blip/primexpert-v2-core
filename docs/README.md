@@ -2,7 +2,7 @@
 
 **Source unique avec le code :** `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`  
 **URL officielle :** https://primexpert-app-v2.web.app  
-**Cycle technique :** **V3.5 — assembleur de mandats natif scellé** + **redressement finance SSOT fiche résidence (`d232673`)** (mai 2026) · architectures sécurisées V3.0 en production
+**Cycle technique :** **V3.8 — QA règles RPA & alignement Centris / marché / WORM** (PR #4, juin 2026) · **V3.5 — assembleur de mandats natif scellé** + **redressement finance SSOT fiche résidence (`d232673`)**
 
 ## Registre global des architectures sécurisées — mai 2026
 
@@ -24,6 +24,8 @@
 | Coffre-fort WORM & sécurité | **OPÉRATIONNEL — PRODUCTION LIVE** |
 | Assembleur contrat & annexes (V3.5) | **SCELLÉ — commit `63286dc`** (HTML natif, sans docxtemplater) |
 | Hub Finance — cohérence RNE / prix inter-onglets | **DÉPLOYÉ PROD — commit `d232673`** (hosting 2026-05-30) |
+| Inscriptions Centris / hors marché + concurrence territoriale | **EN REVUE PR #4** — `listingSource`, sync Centris nocturne, override manuel, comparables ACM |
+| Data Flywheel & ratio dépenses/revenus (RDE/OER) | **EN REVUE PR #4** — ingestion anonymisée `market_analytics_raw`, médianes RDE, QA RPA |
 
 > Détail technique et historique : [`MEMORY.md`](./MEMORY.md)
 
@@ -97,6 +99,8 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 21. **Routage SPA (V2.8)** — `App.tsx` → lazy `AuthenticatedApp.tsx` ; routes `/workhub`, `/acces-vendeur` (jeton = session client sans Google).
 22. **Recherche multi-critères** — CRM (`contactSearch.ts`) et inscriptions (villes, municipalités).
 23. **Assembleur de mandats (V3.5)** — `@primexpert/core/forms` ; champs entre parenthèses typés ; `ContractAssemblerPanel` onglet Promesse ; export HTML natif (legacy docxtemplater expulsé).
+24. **Inscriptions MLS / hors marché** — `@primexpert/core/residence/listingSource.ts` + `inscriptionBrokerageStatus.ts` ; `CreateInscriptionForm`, `InscriptionStatusDropdown`, override manuel anti-sync.
+25. **Flywheel marché & RDE/OER** — `@primexpert/core/market/internalMarketFlywheel.ts` + `@primexpert/core/analytics/marketMetrics.ts` ; ingestion anonyme et alertes HITL si écart RDE > 7 points.
 
 ---
 
@@ -109,6 +113,7 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | `npm run test:voice-note` | Pipeline note vocale (Whisper si clé OpenAI) |
 | `npm run test:voice-note:gemini` | Pipeline note vocale — STT Gemini uniquement |
 | `npm run test:incoming-sms` | Injection SMS test → fil `crm_{contactId}` |
+| `npm run test:rpa-coverage` | Vitest ciblé QA RPA : mapping Kanban `resolveColumnId` + délais PA acceptée |
 
 ---
 
@@ -117,11 +122,11 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | Module | Accès | SSOT | Statut |
 |--------|-------|------|--------|
 | **Tableau de bord** | `Dashboard.tsx` | Briefing matin, radar off-market, priorités KISS | LIVE |
-| **Mes inscriptions** | `Listings.tsx` | Pipeline Kanban 4 colonnes, DnD, filtres régions, recherche | LIVE |
+| **Mes inscriptions** | `Listings.tsx` | Pipeline Kanban 4 colonnes, DnD, filtres régions, recherche, création Centris / hors marché | LIVE + PR #4 |
 | **CRM** | `ContactsListPage` | `organizations/{orgId}/contacts` ; recherche LCI ; Matchmaker | LIVE |
 | **Accès Vendeur** | `/acces-vendeur` · lien invité · bouton fiche | Catalogue 85 pièces, `vendorPortalCompliance`, `vendor_portal_invites` | LIVE |
 | **Messagerie** | `MailboxContainer` + `CommunicationHub` | `email_threads` / `messages` — courriel, SMS, Meta | LIVE |
-| **Statistiques du marché** | `MarketLibraryDashboard` | `market_documents`, parse Vertex, injection HITL | LIVE |
+| **Statistiques du marché** | `MarketLibraryDashboard` | `market_documents`, parse Vertex sémantique, cache MD5, injection HITL, RDE/OER | LIVE + PR #4 |
 | **Rédacteur IA** | `ContentGen.tsx` | `@primexpert/core/narrative` — lint OACIQ | LIVE |
 | **Copilote négociation** | core + Vertex | `negotiationEngine`, `oaciqSpecsTypes` | CÂBLÉ (core) |
 | **Après-vente closing** | core | `closingEngine.ts` → `residences/…/tasks` | CÂBLÉ — trigger prod planifié |
@@ -148,10 +153,11 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | Couche | Détail |
 |--------|--------|
 | UI | `MarketLibraryDashboard.tsx` — upload PDF, grilles HITL (macro / transactions / ratios) |
-| Parse | `marketDocumentParseIA` — **2 GiB**, **540 s** (PDF massifs ~100 p.) |
-| Injection | `injectMarketMacroStats` — empreintes déterministes, `set(merge: true)` |
+| Parse | `marketDocumentParseIA` — **512 MiB**, **60 s** ; découpage sémantique local + cache `contentHashMd5` avant Vertex |
+| Injection | `injectMarketMacroStats` — empreintes déterministes, `orgId`, `set(merge: true)` |
 | Anti-doublons | `packages/core/src/market/marketDeduplication.ts` |
-| Collections | `market_documents`, `market_macro_stats`, `market_analytics_raw`, `marketSnapshots/v1` |
+| Collections | `market_documents`, `market_macro_stats`, `market_analytics_raw`, `marketSnapshots/v1`, `listings_cache` |
+| Flywheel | `onTransactionConcludedFlywheel` — transition PA acceptée / vendu → ligne anonymisée `market_analytics_raw` |
 
 ---
 
@@ -163,11 +169,11 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | Identité | ✅ Édition inline Confort 66+ ; courtier responsable |
 | Finances (Hub 5 sous-onglets) | ✅ + benchmark global |
 | Déclaration | ✅ Questionnaire OACIQ |
-| Marché | ✅ **Analyse de mise en marché (ACM)** (SSOT finances + TGA GPS) + concurrence territoriale |
+| Marché | ✅ **Analyse de mise en marché (ACM)** (SSOT finances + TGA GPS), concurrence territoriale Centris/GPS, alerte ratio dépenses/revenus (RDE) |
 | Documents | ✅ Scan + parse Vertex + distribution + Verrouillage WORM/OACIQ client (V3.1) |
 | Intelligence | ✅ Chronologie + **`CommunicationHub`** (SMS / Meta / courriel) |
 | Accès Vendeur (depuis fiche) | ✅ Portail autonome — catalogue 85 pièces, lien invité 30 j, alertes téléversement |
-| Promesse | ✅ Cockpit PA (`offre` SSOT) + **assembleur contrat V3.5** (`ContractAssemblerPanel`, export HTML) |
+| Promesse | ✅ Cockpit PA (`offre` SSOT), délais PA acceptée couverts par tests RPA, **assembleur contrat V3.5** (`ContractAssemblerPanel`, export HTML) |
 
 **Tableau de bord :** briefing du matin (tâches critiques, rendez-vous, hot leads), radar à opportunités off-market, priorités KISS (J+3 / J+5 / J+7).
 
@@ -181,4 +187,4 @@ Copie possible sur disque de sauvegarde (`00_PRIMEXPERT_SYSTEME_APP/docs/` ou vo
 
 ---
 
-*Index mis à jour : 2026-05-30 — Sprint V3.5 scellé (assembleur de mandats natif, commit `63286dc`).*
+*Index mis à jour : 2026-06-01 — PR #4 QA règles RPA : Centris/hors marché, WORM, Data Flywheel, RDE/OER, tests Kanban + délais PA acceptée.*

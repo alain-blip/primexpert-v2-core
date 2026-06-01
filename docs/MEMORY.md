@@ -282,7 +282,7 @@ Côté client : `resolveEffectiveBillingStatus()` — règle 72 h si Firestore e
 - UI : `MarketLibraryDashboard.tsx` — upload PDF, HITL adaptatif (régions macro / grille transactions / grille ratios), spinner longue analyse (~3 min).
 - Core : `packages/core/src/documents/` (schémas extraction omnivore, normalisation) ; **`packages/core/src/market/marketDeduplication.ts`** (empreintes déterministes, logique legacy Copilote `marketComparableDedupe.js`).
 - Service : `marketDocumentsService.ts` ; type `marketDocument.ts`.
-- Functions : `marketDocumentParseIA` (**2 GiB**, **540 s** timeout), `injectMarketMacroStats` ; prebuild `sync-core-documents.cjs`, `sync-core-market.cjs`.
+- Functions : `marketDocumentParseIA` (**512 MiB**, **60 s** depuis la refonte sémantique V2.8 ; historique hotfix massif : 2 GiB / 540 s), `injectMarketMacroStats` ; prebuild `sync-core-documents.cjs`, `sync-core-market.cjs`.
 - **Anti-doublons (idempotent merge)** : empreintes Firestore → `doc(fingerprint).set(data, { merge: true })` — transactions `{silo}__tx__{adresse|ville}__{date}__{prix}`, macro `macro__{region}__{annee}__{type}`, ratios `{silo}__bench__…` ; compteurs UI « X nouvelles transactions, Y doublons ignorés ».
 - Firestore (top-level, hors `organizations/`) :
   - `market_documents/{docId}` — vault PDF courtier (`uploadedBy` + index `uploadedAtMillis`)
@@ -791,7 +791,7 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 ---
 
-## Registre global de la suite logicielle — mai 2026
+## Archive — registre global de la suite logicielle — mai 2026
 
 Statut officiel consolidé (conseil d'administration) :
 
@@ -808,7 +808,7 @@ Statut officiel consolidé (conseil d'administration) :
 
 ---
 
-## Registre global des architectures sécurisées — mai 2026
+## Archive — architectures sécurisées V3.0 — mai 2026
 
 Statut officiel post-déploiement V3.0 :
 
@@ -892,8 +892,6 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
----
-
 ## Assembleur de mandats — moteur de contrat natif & champs entre parenthèses (V3.5 — 2026-05-30)
 
 **Statut :** **[SCELLÉ — commit `63286dc` — branche `feature/v2.8-market-stats-optimization` — HEAD = origin]**
@@ -949,4 +947,25 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
-*Journal mis à jour : 2026-05-30 — Redressement finance SSOT fiche résidence (`d232673`) + hosting prod déployé.*
+## Session 2026-06-01 — PR #4 « correctifs QA règles RPA » (`4f351bd`)
+
+**Statut :** **[BROUILLON — validation humaine Alain requise]**
+**Portée documentaire :** alignement Bible sur le diff `d13dadc...4f351bd`, sans modification applicative.
+
+| Axe | Décision / fait source |
+|-----|------------------------|
+| **QA RPA** | Workflow `.github/workflows/rpa-transaction-test-coverage.yml`, `npm run test:rpa-coverage`, couverture Kanban `resolveColumnId` + délais PA acceptée ; aucun nouveau slug pipeline (`promise` reste la colonne PA). |
+| **Règle #0 financière** | Les libellés UI retirent l'exposition `RNE ÷ TGA`; `noiGapToMarketValue()` et `resolveAdmissibleOpex()` restent dans `@primexpert/core/financial`. |
+| **Inscriptions MLS / hors marché** | `listingSource: 'centris' \| 'off_market'`, `CreateInscriptionForm`, `InscriptionStatusDropdown`, sync Centris nocturne ignorée si hors marché ou override manuel. |
+| **Concurrence territoriale** | `TerritorialCentrisCompetitionSection`, `useTerritorialCompetition`, `marketAnalyticsService` ; lecture `listings_cache` + `market_analytics_raw` pour médiane TGA ACM. |
+| **Data Flywheel** | `onTransactionConcludedFlywheel` sur `residences/{residenceId}` ; transition `promise` / `sold` → document anonymisé `market_analytics_raw` + marqueur `internalFlywheelIngestion`. |
+| **RDE/OER** | `@primexpert/core/analytics/marketMetrics.ts` calcule le ratio des dépenses d'exploitation (RDE), bornes par classe d'actif et alerte HITL si écart régional > 7 points. |
+| **Marché PDF** | `marketDocumentParseIA` confirmé à **512 MiB / 60 s** ; découpage `marketPdfSlice.ts`, cache `contentHashMd5`, index `market_documents(orgId, uploadedAtMillis)` et `contentHashMd5`. |
+| **WORM** | `organizations/{orgId}/legal_vault/{documentId}` + sous-collection `compliance_logs`; `onVaultDocumentWrite` Montréal écrit le journal append-only SHA-256. |
+| **Authentification / hosting** | `signInWithPopup` demeure strict ; `firebase.json` ajoute `no-cache` sur `/workhub{,/**}` et `/acces-vendeur{,/**}` pour éviter les chunks obsolètes. |
+
+**HITL :** la PR reste en brouillon ; Alain valide avant publication, déploiement ou fusion.
+
+---
+
+*Journal mis à jour : 2026-06-01 — PR #4 QA règles RPA documentée ; redressement finance SSOT fiche résidence (`d232673`) conservé comme jalon prod.*
