@@ -40,6 +40,7 @@ import {
 } from '../../../services/extractedDataInjectionService';
 import { useFinancialHubDraft } from '../../../context/FinancialHubDraftContext';
 import { inst } from '../institutional/InstitutionalUi';
+import { normalizeCapitalizationRatePct } from '@primexpert/core/financial';
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`;
@@ -1033,10 +1034,7 @@ function ExtractionVerificationSection({
                   <li>
                     TGA :{' '}
                     <span className="font-black text-[#142c6a]">
-                      {(evaluationSubject.tgaRetenu > 1
-                        ? evaluationSubject.tgaRetenu
-                        : evaluationSubject.tgaRetenu * 100
-                      ).toFixed(2)}
+                      {(normalizeCapitalizationRatePct(evaluationSubject.tgaRetenu) ?? 0).toFixed(2)}
                       %
                     </span>
                   </li>
