@@ -5,9 +5,8 @@
  *   « On retire le Gemini hardcodé de la page ACM pour injecter
  *     ton Valuation Core (extrait en Phase A). »
  *
- * Source de vérité : @primexpert/core/valuation
- *   - calculateValuation(inputs) → ValuationOutputs (TGA, NOI, MRB, MRN, DSCR, etc.)
- *   - createDefaultValuationInputs(overrides)
+ * Source de vérité UI : @primexpert/core/financial
+ *   - computeSimpleAcmValuationPresentation() orchestre le moteur valuation.
  *
  * Charte v2026.2 §V — Zone Rouge : ne JAMAIS renommer les slugs canoniques
  *   (askingPrice, units, potentialRevenue, targetCapRate, etc.)
@@ -20,15 +19,11 @@ import { useLanguage } from '../lib/i18n';
 import { formatCurrency } from '../lib/utils';
 import { PageGuideShell } from './institutional/PageGuideHeader';
 import {
-  calculateValuation,
-  createDefaultValuationInputs,
   DEFAULT_MARKET_BENCHMARKS,
-  computeTgaAdjustment,
-  runStressTests,
-  type ValuationInputs,
   type ValuationOutputs,
   type TgaAdjustmentResult,
 } from '@primexpert/core/valuation';
+import { computeSimpleAcmValuationPresentation } from '@primexpert/core/financial';
 import {
   selectSellerNarrative,
   type SellerNarrativeDecision,
@@ -58,21 +53,6 @@ const INITIAL_FORM: SimpleForm = {
   penetrationRatePct: 0,
 };
 
-function buildInputs(form: SimpleForm, targetCapRateOverride?: number): ValuationInputs {
-  return createDefaultValuationInputs({
-    askingPrice: form.askingPrice,
-    units: form.units,
-    potentialRevenue: form.potentialRevenue,
-    otherIncome: form.otherIncome,
-    vacancyRate: form.vacancyRate / 100,
-    operatingExpenses: { total: form.operatingExpensesTotal },
-    customExpenses: [],
-    targetCapRate: targetCapRateOverride ?? form.targetCapRate / 100,
-    valuationMode: 'acm_unified_cap',
-    weights: { capRate: 1, mrb: 0, mrn: 0, pricePerUnit: 0 },
-  });
-}
-
 function PositioningBadge({ positioning, t }: { positioning: ValuationOutputs['pricePositioning']; t: ReturnType<typeof useLanguage>['t'] }) {
   const meta = {
     'sous-évalué': { Icon: TrendingDown, label: t('Sous-évalué', 'Underpriced'), color: 'bg-emerald-500/[0.08] text-emerald-300 border-emerald-400/30' },
@@ -94,6 +74,7 @@ export function ACM() {
   const [result, setResult] = useState<ValuationOutputs | null>(null);
   const [tgaAdjustment, setTgaAdjustment] = useState<TgaAdjustmentResult | null>(null);
   const [recommendedPrice, setRecommendedPrice] = useState<number | null>(null);
+  const [effectiveCapRate, setEffectiveCapRate] = useState<number | null>(null);
   const [stressSummary, setStressSummary] = useState<{
     occ85: number;
     occ90: number;
@@ -113,39 +94,24 @@ export function ACM() {
     setNarrative(null);
     setTgaAdjustment(null);
     setRecommendedPrice(null);
+    setEffectiveCapRate(null);
     setStressSummary(null);
     try {
-      let adjustedCap = form.targetCapRate / 100;
-      if (form.penetrationRatePct > 0) {
-        const adj = computeTgaAdjustment({
-          baseTga: adjustedCap,
-          tauxPenetrationRPA: form.penetrationRatePct / 100,
-          nombreUnites: form.units,
-        });
-        adjustedCap = adj.finalTga;
-        setTgaAdjustment(adj);
-      }
-      const inputs = buildInputs(form, adjustedCap);
-      const out = calculateValuation(inputs);
-      setResult(out);
-
-      const occupancy = Math.max(0.01, 1 - form.vacancyRate / 100);
-      const capRange = capRateRangeFromMedian(adjustedCap);
-      const stress = runStressTests(out.noiAccounting, occupancy, capRange);
-      const baseline = selectBaselineStressTest(occupancy, stress);
-      setStressSummary({
-        occ85: stress.occ85.valueRange.min,
-        occ90: stress.occ90.valueRange.min,
-        occ100: stress.occ100.valueRange.min,
+      const valuation = computeSimpleAcmValuationPresentation({
+        askingPrice: form.askingPrice,
+        units: form.units,
+        potentialRevenue: form.potentialRevenue,
+        otherIncome: form.otherIncome,
+        vacancyRatePct: form.vacancyRate,
+        operatingExpensesTotal: form.operatingExpensesTotal,
+        targetCapRatePct: form.targetCapRate,
+        penetrationRatePct: form.penetrationRatePct,
       });
-      setPriceRecommendation(
-        calculatePriceRecommendation(
-          baseline,
-          inferMarketType(''),
-          classifyAssetSize(form.units),
-          occupancy
-        )
-      );
+      setTgaAdjustment(valuation.tgaAdjustment);
+      setEffectiveCapRate(valuation.effectiveCapRate);
+      setResult(valuation.result);
+      setStressSummary(valuation.stressSummary);
+      setRecommendedPrice(valuation.recommendedPrice);
     } catch (e) {
       console.error(e);
       setError(e instanceof Error ? e.message : String(e));
@@ -173,7 +139,7 @@ export function ACM() {
     selectSellerNarrative(
       financials,
       DEFAULT_MARKET_BENCHMARKS,
-      { capRateMedian: form.targetCapRate / 100 },
+      { capRateMedian: effectiveCapRate ?? result.capRateImpliedAtAsking ?? 0 },
       { narrativeMode: 'RULES' }
     )
       .then((decision) => {
@@ -190,7 +156,7 @@ export function ACM() {
     return () => {
       cancelled = true;
     };
-  }, [result, form.askingPrice]);
+  }, [result, form.askingPrice, effectiveCapRate]);
 
   const ratios = useMemo(() => {
     if (!result) return null;
@@ -358,7 +324,7 @@ export function ACM() {
                 {formatCurrency(stressSummary.occ100)}
               </p>
               <p className="text-lg font-black text-emerald-300">
-                {t('Prix recommandé (RNE ÷ TGA cible)', 'Recommended price (NOI ÷ target cap rate)')} :{' '}
+                {t('Prix recommandé par le moteur financier SSOT', 'Recommended price from the SSOT financial engine')} :{' '}
                 {formatCurrency(recommendedPrice)}
               </p>
             </div>
