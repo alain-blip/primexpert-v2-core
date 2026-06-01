@@ -31,7 +31,7 @@ export interface FinancabiliteTabProps {
 
 /**
  * Toggle persistant (sessionStorage) — choix de la base RNE pour le scénario
- * bancaire. OFF : NOI Déclaré (brut vendeur). ON : NOI Audité (RBE enrichi
+ * bancaire. OFF : NOI Déclaré (brut vendeur). ON : NOI vérifié (RBE enrichi
  * Phase 2.1 − dépenses normalisées). Cascade automatique sur EM / DSCR / MFR.
  */
 const USE_AUDIT_RNE_STORAGE_KEY = 'primexpert-financabilite-useAuditRne';
@@ -153,7 +153,7 @@ function AuditRneToggle({
   const optionA = useAuditRne === false;
   const optionB = useAuditRne === true;
   const labelA = language === 'fr' ? 'A · Sur le RNE Déclaré' : 'A · Declared NOI basis';
-  const labelB = language === 'fr' ? 'B · Sur le RNE Audité (RPA enrichi)' : 'B · Audited NOI (RPA enriched)';
+  const labelB = language === 'fr' ? 'B · Sur le RNE vérifié (RPA enrichi)' : 'B · Verified NOI (RPA enriched)';
   const subA = language === 'fr' ? 'Brut du vendeur (RNE rapporté).' : 'Seller-reported NOI.';
   const subB =
     language === 'fr'
