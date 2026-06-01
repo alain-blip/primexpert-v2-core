@@ -19,6 +19,7 @@ import type {
 } from '../../../types/propertyDocument';
 import type { AssetNiche } from '../../../types/residence';
 import type { MarketSiloType } from '../../../types/marketAnalytics';
+import { capitalizationRateToPercent } from '@primexpert/core/financial';
 import {
   MARKET_SILO_OPTIONS,
   formatCertificateDate,
@@ -1031,12 +1032,9 @@ function ExtractionVerificationSection({
                 ) : null}
                 {evaluationSubject.tgaRetenu != null ? (
                   <li>
-                    TGA :{' '}
+                    {locale === 'fr' ? 'Taux de capitalisation (TGA) : ' : 'Capitalization rate (cap rate): '}
                     <span className="font-black text-[#142c6a]">
-                      {(evaluationSubject.tgaRetenu > 1
-                        ? evaluationSubject.tgaRetenu
-                        : evaluationSubject.tgaRetenu * 100
-                      ).toFixed(2)}
+                      {capitalizationRateToPercent(evaluationSubject.tgaRetenu)?.toFixed(2) ?? '—'}
                       %
                     </span>
                   </li>

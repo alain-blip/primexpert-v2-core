@@ -44,7 +44,7 @@ export function MarketCharts({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
           <h3 className="text-lg font-semibold text-slate-900 mb-4">
-            {t('🗺️ TGA par Région', '🗺️ Cap rate by region')}
+            {t('Taux de capitalisation (TGA) par région', 'Capitalization rate (cap rate) by region')}
           </h3>
           <div className="h-64">
             {regionRows.length > 0 ? (
@@ -53,7 +53,7 @@ export function MarketCharts({
                   labels: regionRows.map((r) => r.region.substring(0, 25)),
                   datasets: [
                     {
-                      label: t('TGA (%)', 'Cap rate (%)'),
+                      label: t('Taux de capitalisation (TGA) (%)', 'Capitalization rate (cap rate) (%)'),
                       data: regionRows.map((r) =>
                         r.tgaMedian != null ? Number(r.tgaMedian.toFixed(1)) : 0
                       ),
@@ -76,7 +76,7 @@ export function MarketCharts({
               />
             ) : (
               <div className="flex items-center justify-center h-full text-slate-400">
-                {t('Aucune donnée TGA disponible', 'No cap rate data available')}
+                {t('Aucune donnée de taux de capitalisation (TGA) disponible', 'No capitalization rate (cap rate) data available')}
               </div>
             )}
           </div>
@@ -180,7 +180,7 @@ export function MarketCharts({
               <thead className="bg-slate-50 sticky top-0">
                 <tr>
                   <th className="text-left px-3 py-2 font-medium text-slate-600">{t('Région', 'Region')}</th>
-                  <th className="text-right px-3 py-2 font-medium text-slate-600">{t('TGA', 'Cap rate')}</th>
+                  <th className="text-right px-3 py-2 font-medium text-slate-600">{t('Taux de capitalisation (TGA)', 'Capitalization rate (cap rate)')}</th>
                   <th className="text-right px-3 py-2 font-medium text-slate-600">{t('Prix / unité', 'Price / unit')}</th>
                   <th className="text-right px-3 py-2 font-medium text-slate-600">{t('Nb', 'Count')}</th>
                 </tr>

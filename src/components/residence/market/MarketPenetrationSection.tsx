@@ -13,6 +13,7 @@ import {
   sumSectorRpaUnits,
   getSubjectUnitCount,
 } from '@primexpert/core/market';
+import { capitalizationRateToPercent } from '@primexpert/core/financial';
 import { computeTgaAdjustment } from '@primexpert/core/valuation';
 import { useLanguage } from '../../../lib/i18n';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
@@ -134,7 +135,8 @@ export function MarketPenetrationSection() {
                 )}
               </p>
               <p className="mt-1 text-sm font-black text-[#142c6a] tabular-nums">
-                {(tgaRisk.baseTga * 100).toFixed(2)} % → {(tgaRisk.finalTga * 100).toFixed(2)} %
+                {capitalizationRateToPercent(tgaRisk.baseTga)?.toFixed(2) ?? '—'} % →{' '}
+                {capitalizationRateToPercent(tgaRisk.finalTga)?.toFixed(2) ?? '—'} %
                 <span className="text-xs font-semibold text-slate-600 ml-2">
                   (+{tgaRisk.penetrationDeltaBps + tgaRisk.sizeDeltaBps + tgaRisk.marketDeltaBps} bps)
                 </span>

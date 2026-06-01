@@ -24,6 +24,40 @@ function finiteNum(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+export function calculateGlobalCapitalizationRate(
+  rne: unknown,
+  price: unknown
+): number | null {
+  const normalizedRne = finiteNum(rne);
+  const normalizedPrice = finiteNum(price);
+  if (normalizedRne == null || normalizedRne <= 0) return null;
+  if (normalizedPrice == null || normalizedPrice <= 0) return null;
+  return normalizedRne / normalizedPrice;
+}
+
+export function normalizeCapitalizationRateRatio(capRatePctOrRatio: unknown): number | null {
+  const rawRate = finiteNum(capRatePctOrRatio);
+  if (rawRate == null || rawRate <= 0) return null;
+  return rawRate > 1 ? rawRate / 100 : rawRate;
+}
+
+export function capitalizationRateToPercent(capRatePctOrRatio: unknown): number | null {
+  const rawRate = finiteNum(capRatePctOrRatio);
+  if (rawRate == null || rawRate <= 0) return null;
+  return rawRate > 1 ? rawRate : rawRate * 100;
+}
+
+export function calculateCapitalizedValueFromRne(
+  rne: unknown,
+  capRatePctOrRatio: unknown
+): number | null {
+  const normalizedRne = finiteNum(rne);
+  const rateRatio = normalizeCapitalizationRateRatio(capRatePctOrRatio);
+  if (normalizedRne == null || normalizedRne <= 0) return null;
+  if (rateRatio == null || rateRatio <= 0) return null;
+  return normalizedRne / rateRatio;
+}
+
 function sumDepensesObjectValues(depenses: Record<string, unknown>): number {
   let total = 0;
   let has = false;
@@ -132,6 +166,15 @@ export function applyCanonicalMetricsToCalc(
 
   if (m.rne != null) {
     next.revenuNetExploitation = m.rne;
+  }
+
+  const price =
+    finiteNum(next.prixDemande) ??
+    finiteNum(baseData?.prixDemande) ??
+    finiteNum(baseData?.askingPrice);
+  const capRate = calculateGlobalCapitalizationRate(m.rne, price);
+  if (capRate != null) {
+    next.tauxCapitalisation = capRate;
   }
 
   return next;

@@ -51,12 +51,20 @@ import {
 import { safeDscrTarget, safeNum, safeRatePercent, safeRatioDecimal } from './safeNumbers';
 
 export type FinancingVerdict = 'financable' | 'financable_conditions' | 'insufficient_data';
+export type NoiEvidenceStatus = 'ok' | 'warn' | 'fail' | 'unknown';
 
 export interface FinancabiliteScenarioRow {
   labelFr: string;
   labelEn: string;
   value: string;
   highlight?: boolean;
+}
+
+export interface NoiEvidenceAssessment {
+  status: NoiEvidenceStatus;
+  variancePct: number | null;
+  noteFr: string;
+  noteEn: string;
 }
 
 export interface MortgagePaymentBreakdown {
@@ -166,6 +174,71 @@ export function computeDebtConstantAnnual(
 ): number | null {
   const row = computeMortgagePayments(1, annualRatePct, amortYears);
   return row?.annualDebtConstantPerDollar ?? null;
+}
+
+export function assessDocumentedNoiAdequacy(
+  declaredNoi: unknown,
+  normalizedNoi: unknown
+): NoiEvidenceAssessment {
+  const declared = safeNum(declaredNoi);
+  const normalized = safeNum(normalizedNoi);
+  if (normalized != null && declared != null && normalized > 0 && declared > 0) {
+    const variance = Math.abs(normalized - declared) / Math.max(normalized, declared);
+    const variancePct = variance * 100;
+    if (variance <= 0.05) {
+      return {
+        status: 'ok',
+        variancePct,
+        noteFr:
+          'RNE déclaré et RNE normalisé concordent (écart ≤ 5 %). Pièces justificatives en ordre côté prêteur.',
+        noteEn:
+          'Declared and normalized NOI match (≤ 5% variance). Supporting evidence is aligned with lender expectations.',
+      };
+    }
+    if (variance <= 0.15) {
+      return {
+        status: 'warn',
+        variancePct,
+        noteFr: `Écart de ${variancePct.toFixed(1)} % entre RNE déclaré et RNE normalisé — justifier la normalisation des dépenses.`,
+        noteEn: `${variancePct.toFixed(1)}% gap between declared and normalized NOI — justify expense normalization.`,
+      };
+    }
+    return {
+      status: 'fail',
+      variancePct,
+      noteFr: `Écart majeur de ${variancePct.toFixed(1)} % entre RNE déclaré et RNE normalisé — vérifier les sources avant présentation prêteur.`,
+      noteEn: `Major ${variancePct.toFixed(1)}% gap between declared and normalized NOI — verify sources before lender submission.`,
+    };
+  }
+
+  if (normalized != null && normalized > 0) {
+    return {
+      status: 'warn',
+      variancePct: null,
+      noteFr:
+        'Seul le RNE normalisé (calculé) est disponible — manque la déclaration vendeur pour pleinement convaincre le prêteur.',
+      noteEn:
+        'Only normalized NOI (computed) is available — missing seller statement to fully convince the lender.',
+    };
+  }
+
+  if (declared != null && declared > 0) {
+    return {
+      status: 'warn',
+      variancePct: null,
+      noteFr:
+        'Seul le RNE déclaré est disponible — recommander une normalisation des dépenses.',
+      noteEn:
+        'Only declared NOI is available — recommend expense normalization.',
+    };
+  }
+
+  return {
+    status: 'unknown',
+    variancePct: null,
+    noteFr: 'Aucune donnée RNE disponible — compléter Revenus & Dépenses.',
+    noteEn: 'No NOI data available — complete Revenue & Expenses.',
+  };
 }
 
 /**

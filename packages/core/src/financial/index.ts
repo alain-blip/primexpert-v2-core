@@ -16,6 +16,10 @@ export {
   resolveCanonicalFinancialMetrics,
   resolveAdmissibleOpex,
   applyCanonicalMetricsToCalc,
+  calculateGlobalCapitalizationRate,
+  calculateCapitalizedValueFromRne,
+  normalizeCapitalizationRateRatio,
+  capitalizationRateToPercent,
   type CanonicalFinancialMetrics,
 } from './resolveCanonicalRne';
 export {

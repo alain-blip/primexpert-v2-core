@@ -6,9 +6,9 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import {
   EXPENSE_FIELDS,
   EXPENSE_KEYS,
+  applyCanonicalMetricsToCalc,
   mergeExtractedIntoFinancialDataV2,
   recomputeFinancialCalculatedResults,
-  sumNormalizedOperatingExpenses,
   type FinancialBaseData,
   type FinancialDataV2Doc,
 } from '@primexpert/core/financial';
@@ -65,7 +65,6 @@ export async function saveExpenseAdjustmentsToFinancial(
   financialData: FinancialDataV2Doc,
   draft: ExpenseAdjustmentsDraft
 ): Promise<void> {
-  const dep = financialData.baseData?.depenses ?? {};
   const existingVerified = (
     (financialData.baseData?.expenseAdjustments as Record<string, unknown> | undefined)?.verified ??
     {}
@@ -73,39 +72,22 @@ export async function saveExpenseAdjustmentsToFinancial(
 
   const adjFirestore = buildExpenseAdjustmentsForFirestore(draft, existingVerified);
 
-  const depensesTotalesNormalisees =
-    sumNormalizedOperatingExpenses(dep, adjFirestore) ?? 0;
-  const rbe =
-    parseNum(financialData.calculatedResults?.revenuBrutEffectif) ||
-    parseNum(financialData.baseData?.revenusAnnuels);
-  const revenuNetExploitation =
-    rbe > 0 ? Math.round(rbe - depensesTotalesNormalisees) : null;
-
-  const prixDemande = parseNum(
-    (financialData.calculatedResults as Record<string, unknown> | undefined)?.prixDemande
+  const baseData: FinancialBaseData = {
+    ...(financialData.baseData ?? {}),
+    expenseAdjustments: adjFirestore,
+  };
+  const calculatedResults = recomputeFinancialCalculatedResults(
+    baseData,
+    financialData.calculatedResults ?? null
   );
-  const tauxCapitalisation =
-    revenuNetExploitation != null &&
-    revenuNetExploitation > 0 &&
-    prixDemande > 0
-      ? revenuNetExploitation / prixDemande
-      : undefined;
 
   const docRef = doc(db, 'residences', residenceId, 'financial', 'dataV2');
   await setDoc(
     docRef,
     stripUndefinedDeep({
-      baseData: {
-        ...(financialData.baseData ?? {}),
-        expenseAdjustments: adjFirestore,
-      },
+      baseData,
       lastUpdated: serverTimestamp(),
-      calculatedResults: {
-        ...(financialData.calculatedResults ?? {}),
-        depensesTotalesNormalisees,
-        revenuNetExploitation,
-        ...(tauxCapitalisation != null ? { tauxCapitalisation } : {}),
-      },
+      calculatedResults: calculatedResults ?? financialData.calculatedResults ?? null,
     }),
     { merge: true }
   );
@@ -314,10 +296,7 @@ export async function saveManualFinancialEntry(
       _confidence: options?.humanValidatedFromIa ? 'human_validated' : 'validation_required',
       ...(prix > 0 ? { prixDemande: prix } : {}),
     };
-    const rne = calculatedResults.revenuNetExploitation;
-    if (rne != null && rne > 0 && prix > 0) {
-      calculatedResults.tauxCapitalisation = rne / prix;
-    }
+    calculatedResults = applyCanonicalMetricsToCalc(calculatedResults, baseData);
     const mensuel = parseNum(draft.financement.paiementMensuel);
     if (mensuel > 0) {
       calculatedResults.paiementMensuel = mensuel;

@@ -44,10 +44,13 @@ import {
   type MarketGpsTransaction,
 } from '@primexpert/core/market';
 import { AcmHistoricalTrendsSection } from './AcmHistoricalTrendsSection';
-import type {
-  CertifiableReportBrokerFooter,
-  FinancialDataV2Doc,
-  TerritorialAcmMedians,
+import {
+  capitalizationRateToPercent,
+  calculateCapitalizedValueFromRne,
+  normalizeCapitalizationRateRatio,
+  type CertifiableReportBrokerFooter,
+  type FinancialDataV2Doc,
+  type TerritorialAcmMedians,
 } from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
@@ -156,7 +159,9 @@ export function AcmValuationWorkspace({
   const [tgaInput, setTgaInput] = useState(() => String(suggestedCapRatePct));
   const [targetCapRatePct, setTargetCapRatePct] = useState(suggestedCapRatePct);
   /** TGA réellement appliqué au moteur (après ajustement pénétration). */
-  const [effectiveCapRate, setEffectiveCapRate] = useState(suggestedCapRatePct / 100);
+  const [effectiveCapRate, setEffectiveCapRate] = useState(
+    () => normalizeCapitalizationRateRatio(suggestedCapRatePct) ?? 0
+  );
   const [penetrationRatePct, setPenetrationRatePct] = useState(bootstrap.penetrationRatePct);
   const [tgaManuallyAdjusted, setTgaManuallyAdjusted] = useState(false);
   const [result, setResult] = useState<ValuationOutputs | null>(null);
@@ -233,7 +238,7 @@ export function AcmValuationWorkspace({
       }
       setError(null);
       try {
-        let adjustedCap = capPct / 100;
+        let adjustedCap = normalizeCapitalizationRateRatio(capPct) ?? 0;
         let adj: TgaAdjustmentResult | null = null;
         if (penPct > 0) {
           adj = computeTgaAdjustment({
@@ -427,7 +432,10 @@ export function AcmValuationWorkspace({
       : null;
     const performanceBased =
       territorialMedians?.tgaPct && territorialMedians.tgaPct > 0
-        ? bootstrap.revenuNetExploitation / (territorialMedians.tgaPct / 100)
+        ? calculateCapitalizedValueFromRne(
+            bootstrap.revenuNetExploitation,
+            territorialMedians.tgaPct
+          )
         : null;
     const maxPotential = stressSummary?.occ100 ?? null;
     const rows = [
@@ -478,7 +486,7 @@ export function AcmValuationWorkspace({
         ),
         value:
           result.capRateImpliedAtAsking !== undefined
-            ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%`
+            ? `${capitalizationRateToPercent(result.capRateImpliedAtAsking)?.toFixed(2) ?? '—'}%`
             : '—',
       },
       {
@@ -809,7 +817,8 @@ export function AcmValuationWorkspace({
                 )}
               </p>
               <p className={`text-sm ${ACM_METRIC_VALUE_CLASS}`}>
-                {(tgaAdjustment.baseTga * 100).toFixed(2)} % → {(tgaAdjustment.finalTga * 100).toFixed(2)} %
+                {capitalizationRateToPercent(tgaAdjustment.baseTga)?.toFixed(2) ?? '—'} % →{' '}
+                {capitalizationRateToPercent(tgaAdjustment.finalTga)?.toFixed(2) ?? '—'} %
               </p>
             </div>
           ) : null}
