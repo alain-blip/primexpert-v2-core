@@ -623,8 +623,8 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 | Élément | Détail |
 |---------|--------|
-| **Règle #0** | Enrichissement SSOT `@primexpert/core/market/centrisComparableCapRate.ts` — aucun moteur parallèle. |
-| **Calcul TGA réel** | `calculateComparableCapRate()` — taux de capitalisation global (TGA) = revenu net d’exploitation (RNE) ÷ prix vendu × 100. |
+| **Règle #0** | Enrichissement du pipeline marché; toute dérivation de taux de capitalisation global (TGA) reste déléguée aux helpers `@primexpert/core/financial`. |
+| **Calcul TGA réel** | `calculateComparableCapRate()` consomme le helper financier partagé au lieu de porter une formule locale. |
 | **Sources Big Data** | Fusion `listings_cache` (Centris Matrix, `source: centris_odata`) + `market_analytics_raw` filtrés par `regionAdministrative` et classe RPA. |
 | **Service client** | `marketAnalyticsService.ts` + `useTerritorialCompetition` — abonnement temps réel, tri par récence. |
 | **Workspace ACM** | `AcmValuationWorkspace.tsx` — taux de capitalisation global (TGA) médian dynamique ; ajustement qualitatif courtier (ex. +0,25 % vétusté) recalcule la valorisation SSOT instantanément. |
@@ -680,7 +680,7 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 | **Prix SSOT** | `getListingPrice()` — champ `price` prime sur `prixAnnonce` legacy ; normalisation inter-onglets. |
 | **Calcul pur** | `getListingPricePerUnit()` — prix demandé ÷ unités totales (ex. 2 558 000 $ ÷ 23 → 111 217,39 $ / unité). |
 | **Onglets alignés** | Synthèse, Identité, Finances, Déclaration, Marché, Promesse, Diffusion — consommation `useUnifiedResidence()`. |
-| **Flywheel** | `internalMarketFlywheel.ts` — `computeFlywheelCapRatePct()` ; correction portée `closedAtMillis` (build functions exit 0). |
+| **Flywheel** | `internalMarketFlywheel.ts` — capitalisation déléguée au helper financier partagé ; correction portée `closedAtMillis` (build functions exit 0). |
 | **En-tête** | `ResidenceDetail` — prix unique via contexte ; mutation crayon → Firestore global + rafraîchissement en-tête. |
 
 **HITL :** toute modification du prix demandé demeure validée par le courtier titulaire de permis avant diffusion ou conclusion.
@@ -694,8 +694,8 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 | Élément | Détail |
 |---------|--------|
 | **Prix SSOT** | `resolvePrixDemande()` — interdit le `calc.prixDemande` legacy (3,5 M$) ; force `getListingPrice()` (2 558 000 $). |
-| **RNE** | `resolveAdmissibleOpex()` — `depensesTotales` déclaré prioritaire si grille Firestore incomplète ; RNE = RBE − dépenses (**529 489 $** = 1 129 749 $ − 600 260 $). |
-| **TGA réel** | Recalculé : 529 489 $ ÷ 2 558 000 $ = **20,70 %** (`syncCalcWithCanonicalListingPrice`). |
+| **RNE** | `resolveAdmissibleOpex()` — `depensesTotales` déclaré prioritaire si grille Firestore incomplète ; étalon 198 chemin du Roy : **RNE 529 489 $**. |
+| **TGA réel** | Recalculé par `syncCalcWithCanonicalListingPrice()` via le helper financier partagé ; étalon 198 chemin du Roy : **20,70 %**. |
 | **Emprunt + MFR** | Réalignement automatique quand le prix canonique diffère du `calculatedResults` figé ; somme = prix demandé. |
 | **Hub Finance** | `useResidenceFinancialHints()` + `buildResidenceFinancialHints()` — hints unifiés sur tous les sous-onglets. |
 | **Crash UI** | `ResidenceTabErrorBoundary` ; contextes `ResidenceDocument` / `FinancialData` mémoïsés ; gardes `ResidenceDetail`. |
@@ -905,7 +905,7 @@ Cible : https://primexpert-app-v2.web.app
 | **Legacy expulsée** | Copilote-RPA : `docxGenerator.js` (docxtemplater + PizZip) — **identifiée, non portée en V2**. Gabarit référence : `00_RPA_SYSTEME_APP/…/gabarits-v3/Promesse d'achat ACTIFS.docx`. |
 | **Schéma parenthèses** | `annexeFieldSchema.ts` — `AnnexePrixFields.nouveauPrixNumerique` `( $ )`, `AnnexeRFields.retributionPct` `( % )`, `AnnexeGFields.ccvReference` `CCV-…` ; `ContractAssemblerFieldState`. |
 | **Rendu dynamique** | `renderDynamicParenthesis.ts` — `.dynamic-value` / `.is-empty` ; `renderParenthesisMoney`, `renderParenthesisPercent`, `renderCcvReference`. |
-| **Defaults ACM** | `buildContractAssemblerDefaults.ts` — prix annexe depuis RNE ÷ taux de capitalisation global (TGA) ajusté (`resolveCanonicalRne`, bootstrap ACM). |
+| **Defaults ACM** | `buildContractAssemblerDefaults.ts` — prix annexe via `computeCapitalizedValueFromNoi()` après résolution du revenu net d'exploitation (RNE) et du taux de capitalisation global (TGA) ACM. |
 | **Dossier HTML** | `renderContractAssemblerToHtml.ts` — contrat courtage + annexes cochées + promesse d'achat actifs (V3.4 `renderPaActifsToHtml`). |
 | **UI** | `ContractAssemblerPanel.tsx` — checkboxes annexes, champs conditionnels, export HTML ; câblé dans `PromesseAchatTab` (`955410e` + `63286dc`). |
 | **Alias build** | `@primexpert/core/forms` — `vite.config.ts` + `tsconfig.json`. |

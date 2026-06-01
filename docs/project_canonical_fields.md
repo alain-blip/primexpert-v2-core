@@ -7,7 +7,7 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 **Identité Phase 4 (lecture + écriture)** : `packages/core/src/identity/` — définitions UI dans `identitySections.ts`, `buildingAuditSections.ts`, `servicesRecognition.ts`, `rentPricingGrid.ts`.  
 **Promesse d'achat (PA)** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`.  
 **Assembleur contrat / formulaires natifs (V3.4–V3.5)** : `packages/core/src/forms/` — HTML sans OpenXML ; schéma parenthèses `annexeFieldSchema.ts` ; PA Actifs `paActifsTypes.ts`, `renderPaActifsToHtml.ts`.  
-**Capitalisation / TGA (QA PR #14)** : `packages/core/src/financial/capitalizationMetrics.ts` — normalise `8.5` et `0.085`, calcule `RNE ÷ prix` et `RNE ÷ TGA` pour ACM, rapports, comparables et scénarios prêteur.  
+**Capitalisation / TGA (QA PR #14)** : `packages/core/src/financial/capitalizationMetrics.ts` — normalise `8.5` et `0.085`, puis expose les helpers partagés pour dériver le taux de capitalisation global (TGA) et la valeur capitalisée sans formule locale.  
 **Messagerie (Hub omnicanal)** : **SSOT unique** `users/{uid}/email_threads` (alias canonique `communication_threads` dans `@primexpert/core/mail`) + `messages` — Nylas, SMS Twilio, Meta ; analyse `@primexpert/core/mail` à l’écriture serveur.  
 **Diffusion Web** : `packages/core/src/diffusion/` — vendoré dans `functions/src/diffusion/_vendored/` au prebuild.  
 **CRM Contacts** : `packages/core/src/crm/` — fiche `organizations/{orgId}/contacts` ; liaisons `coBuyerIds` / `coSellerIds` ; typologie acheteur `deriveBuyerTier` ; **Loi 25** — `QuebecLaw25Consent` + `validateLaw25Compliance()`.  
@@ -647,7 +647,7 @@ Normalisation : `normalizeFinancialData()` → source `calculatedResults` | `der
 | Règle | Module core |
 |-------|-------------|
 | Prix affiché / emprunt / MFR | `getListingPrice()` + `syncCalcWithCanonicalListingPrice()` — ignore `calculatedResults.prixDemande` figé (ex. 3,5 M$) |
-| RNE canonique | `resolveAdmissibleOpex()` — **`depensesTotales` déclaré** prioritaire ; RNE = RBE − OPEX déclaré (pas le normalisé seul) |
+| RNE canonique | `resolveAdmissibleOpex()` — **`depensesTotales` déclaré** prioritaire ; aucune recomposition locale du revenu net d'exploitation (RNE) |
 | Hints UI inter-onglets | `ResidenceDataContext` → `useResidenceFinancialHints()` → `buildResidenceFinancialHints()` |
 | Étalon QA | 198 chemin du Roy : 2 558 000 $ · RBE 1 129 749 $ · dépenses 600 260 $ · **RNE 529 489 $** · **TGA 20,70 %** |
 
@@ -759,7 +759,7 @@ Cache Centris Matrix / RESO pour comparables territoriaux ACM. Lecture client au
 | `closedAtMillis` | number | Date clôture / vente si disponible |
 | `modificationTimestamp`, `receivedAt` | Timestamp / string | Fraîcheur cache |
 
-**Calcul TGA :** `centrisComparableCapRate.ts` mappe `listings_cache` vers `CentrisComparableListingWithSource` puis calcule `RNE ÷ prix vendu × 100`.
+**Calcul TGA :** `centrisComparableCapRate.ts` mappe `listings_cache` vers `CentrisComparableListingWithSource`, puis délègue le taux de capitalisation global (TGA) au helper financier partagé.
 
 ---
 
@@ -982,7 +982,7 @@ Sous-collection documents PA : `residences/{id}/documents` (filtre type promesse
 | `annexeR` | `retributionPct` | number — zone `(       % )` |
 | `annexeG` | `ccvReference` | string — zone `CCV-     ` |
 
-**Defaults :** `buildContractAssemblerDefaults()` — prix annexe depuis revenu net d'exploitation (RNE) ÷ taux de capitalisation global (TGA) ACM (`resolveCanonicalRne`, `bootstrapResidenceAcm`).
+**Defaults :** `buildContractAssemblerDefaults()` — prix annexe via `computeCapitalizedValueFromNoi()` après résolution du revenu net d'exploitation (RNE) et du taux de capitalisation global (TGA) ACM (`resolveCanonicalRne`, `bootstrapResidenceAcm`).
 
 **UI :** `ContractAssemblerPanel.tsx` dans onglet Promesse — consomme `residence`, `residenceDoc`, `financial/dataV2`.
 
@@ -1043,7 +1043,7 @@ Tâches et rendez-vous courtier (Synthèse 360°) ; création auto depuis note v
 | Champ (`calculatedResults`) | Usage ACM |
 |-----------------------------|-----------|
 | `revenuBrutEffectif` / `revenusAnnuels` | Affichage verrouillé RBE ; ancrage `potentialRevenue` moteur |
-| `revenuNetExploitation` | Affichage verrouillé RNE ; ancrage dépenses SSOT (RBE − RNE) |
+| `revenuNetExploitation` | Affichage verrouillé RNE ; ancrage dépenses SSOT sans recomposition locale |
 | `prixDemande` / `tauxCapitalisation` | Prix demandé ; repli TGA si GPS insuffisant |
 | `nombreUnites` | Unités sujet (avec repli `residence` / `residenceDoc`) |
 

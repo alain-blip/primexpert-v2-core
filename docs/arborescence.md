@@ -26,7 +26,7 @@
 │           ├── index.ts             # Barrel (canonical, valuation, financial, identity, security…)
 │           ├── canonical/           # Champs canoniques & alias
 │           ├── financial/           # normalizeFinancialData, bilan, ratios, SCHL, capitalisation…
-│           │   ├── capitalizationMetrics.ts # Normalisation TGA + RNE/prix + valeur capitalisée
+│           │   ├── capitalizationMetrics.ts # Normalisation TGA + helpers de valeur capitalisée
 │           │   ├── mergeExtractedFinancials.ts
 │           │   └── normalizeFinancialData.ts
 │           ├── identity/            # buildIdentityViewModel, sections MSSS/RPA
@@ -87,7 +87,7 @@
 │           │   └── inscriptionBrokerageStatus.ts # Statuts courtage + override manuel
 │           ├── documents/             # extraction rapports marché, schémas Gemini (MARKET_REPORT omnivore)
 │           ├── market/                # haversine, zonePenetration, gpsCapRateByRegionClass, marketDeduplication, closingEngine
-│           │   ├── centrisComparableCapRate.ts  # TGA réel comparables Centris / analytics
+│           │   ├── centrisComparableCapRate.ts  # Comparables Centris déléguant le TGA au helper financier
 │           │   ├── internalMarketFlywheel.ts    # PA acceptée / vendu → market_analytics_raw anonymisé
 │           │   └── marketPdfSemanticAnchors.ts  # Découpage rapports marché avant Vertex
 │           ├── quality/             # Score qualité fiche
@@ -358,7 +358,7 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Ratios performance | `PerformanceRatiosTab` | `computePerformanceRatiosViewModel()` |
 | Vérification performance | `Analyse360FinanceTab` | `computePerformanceAudit360()` |
 
-**SSOT prix & hints finance (`d232673`) :** `ResidenceDataProvider` normalise `price` / `prixAnnonce` / `prixDemande` ; `useResidenceFinancialHints()` injecte le prix canonique dans tous les sous-onglets ; core `resolveAdmissibleOpex()` — RNE = RBE − dépenses **déclarées** (pas le normalisé seul).
+**SSOT prix & hints finance (`d232673`) :** `ResidenceDataProvider` normalise `price` / `prixAnnonce` / `prixDemande` ; `useResidenceFinancialHints()` injecte le prix canonique dans tous les sous-onglets ; core `resolveAdmissibleOpex()` porte seul la résolution du revenu net d'exploitation (RNE) admissible.
 
 **Règle #0 :** le Hub Finance et l’identité consomment `@primexpert/core` — pas de moteur financier dupliqué dans l’UI. L’onglet **Synthèse** affiche une **lecture** rétribution / jalons (cascade sur champs `residences` + formatage), distincte du SSOT `financial/dataV2`.
 
