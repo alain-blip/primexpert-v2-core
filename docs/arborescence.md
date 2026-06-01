@@ -445,4 +445,4 @@ Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only func
 | Analyse de mise en marché (ACM) | `AcmValuationWorkspace`, `ResidenceAcmValuationPanel`, `residenceAcmBootstrap.ts`, `gpsCapRateByRegionClass.ts`, `acmValuationPresentation.ts` |
 | Assembleur contrat / PA (V3.5) | `ContractAssemblerPanel.tsx`, `annexeFieldSchema.ts`, `renderContractAssemblerToHtml.ts`, `@primexpert/core/forms` |
 
-*Dernière mise à jour : 2026-06-01 — PR #19 : QA finance/langage, orchestrateur ACM dans `@primexpert/core/financial`, aucune nouvelle route Functions.*
+*Dernière mise à jour : 2026-06-01 — PR #19 : QA finance/langage, orchestrateur ACM dans `@primexpert/core/financial`, aucune nouvelle route Functions. Revue PR #33 : diff documentation-only, aucune nouvelle arborescence applicative.*

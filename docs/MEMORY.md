@@ -981,6 +981,24 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
+## PR #33 — Revue du déclencheur documentation QA finance/langage (2026-06-01)
+
+**Déclencheur :** PR [#33](https://github.com/alain-blip/primexpert-v2-core/pull/33) — branche `cursor/alignement-docs-primexpert-a8ea` (`d13dadc` → `3975980`).
+
+**Statut :** **[BROUILLON — VALIDATION HUMAINE ALAIN REQUISE]**
+
+| Axe contrôlé | Résultat |
+|--------------|----------|
+| **Fichiers modifiés** | `docs/README.md`, `docs/MEMORY.md`, `docs/arborescence.md`, `docs/project_canonical_fields.md` uniquement. |
+| **Nouveaux modules / packages** | Aucun ajout code dans le diff PR #33 ; la documentation y référence le module PR #19 déjà consigné : `packages/core/src/financial/acmValuationPresentation.ts`. |
+| **Composants UI** | Aucun composant ajouté ou modifié dans le diff PR #33 ; impacts UI PR #19 déjà fusionnés dans les sections Finance / ACM existantes. |
+| **Cloud Functions** | Aucune nouvelle route ni fonction ; `functions/src` absent du diff. |
+| **Schémas / Firestore** | Aucune clé, sous-collection, règle ou index nouveau ; `project_canonical_fields.md` reste un enrichissement explicatif sans mutation de schéma. |
+
+**Décision de secrétaire :** ne pas recréer les sections QA finance/langage déjà ouvertes pour PR #19 ; la PR #33 est notée comme revue documentaire du même périmètre, avec rejet de toute collection parallèle ou alias Firestore additionnel.
+
+---
+
 ## Verrouillage technique fin de sprint — Primexpert V3.5 (2026-05-30)
 
 | Point de contrôle | Statut |
@@ -994,4 +1012,4 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
-*Journal mis à jour : 2026-06-01 — PR #19 documentée (QA finance/langage, orchestrateur ACM core, RNE vérifié, aucune dérive Firestore).*
+*Journal mis à jour : 2026-06-01 — PR #19 documentée et PR #33 revue (QA finance/langage, orchestrateur ACM core, RNE vérifié, aucune dérive Firestore ni diff applicatif PR #33).*

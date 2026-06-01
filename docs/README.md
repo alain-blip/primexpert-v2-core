@@ -2,7 +2,7 @@
 
 **Source unique avec le code :** `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`
 **URL officielle :** https://primexpert-app-v2.web.app
-**Cycle technique :** **V3.7 — marché/OER/flywheel + assembleur de mandats V3.5** · **couverture RPA PR #3** (Kanban + délais PA acceptée) · **QA finance/langage PR #19** (ACM + finançabilité) · architectures sécurisées V3.0 en production
+**Cycle technique :** **V3.7 — marché/OER/flywheel + assembleur de mandats V3.5** · **couverture RPA PR #3** (Kanban + délais PA acceptée) · **QA finance/langage PR #19 / docs PR #33** (ACM + finançabilité) · architectures sécurisées V3.0 en production
 
 ## Registre global des architectures sécurisées — mai 2026
 
@@ -26,7 +26,7 @@
 | Hub Finance — cohérence RNE / prix inter-onglets | **DÉPLOYÉ PROD — commit `d232673`** (hosting 2026-05-30) |
 | Inscriptions Centris / hors marché + concurrence territoriale | **EN REVUE PR #3** — `listings_cache`, `listingSource`, override manuel |
 | Couverture tests flux RPA | **EN REVUE PR #3** — Vitest Kanban `resolveColumnId` + 7 délais PA acceptée |
-| QA finance & langage Québec | **EN VALIDATION HUMAINE PR #19** — orchestrateur ACM core, RNE vérifié, purge lexique « audit » côté UI |
+| QA finance & langage Québec | **EN VALIDATION HUMAINE PR #19 / DOCS PR #33** — orchestrateur ACM core, RNE vérifié, purge lexique « audit » côté UI ; PR #33 confirme un diff documentation-only sans nouvelle surface code |
 
 > Détail technique et historique : [`MEMORY.md`](./MEMORY.md)
 
@@ -192,4 +192,4 @@ Copie possible sur disque de sauvegarde (`00_PRIMEXPERT_SYSTEME_APP/docs/` ou vo
 
 ---
 
-*Index mis à jour : 2026-06-01 — alignement PR #19 (QA finance/langage : ACM core, RNE vérifié, aucune nouvelle structure Firestore).*
+*Index mis à jour : 2026-06-01 — alignement PR #19 et revue PR #33 (QA finance/langage : ACM core, RNE vérifié ; PR #33 documentation-only, aucune nouvelle structure Firestore).*
