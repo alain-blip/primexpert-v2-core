@@ -2,7 +2,7 @@
 
 **Source unique avec le code :** `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`
 **URL officielle :** https://primexpert-app-v2.web.app
-**Cycle technique :** **V3.7 — marché/OER/flywheel + assembleur de mandats V3.5** · **couverture RPA PR #3 / QA PR #9** (Kanban + délais PA acceptée) · architectures sécurisées V3.0 en production
+**Cycle technique :** **V3.7 — marché/OER/flywheel + assembleur de mandats V3.5** · **couverture RPA PR #3 / QA PR #9 / docs PR #42** (Kanban + délais PA acceptée) · architectures sécurisées V3.0 en production
 
 ## Registre global des architectures sécurisées — mai 2026
 
@@ -26,6 +26,7 @@
 | Hub Finance — cohérence RNE / prix inter-onglets | **DÉPLOYÉ PROD — commit `d232673`** (hosting 2026-05-30) |
 | Inscriptions Centris / hors marché + concurrence territoriale | **EN REVUE PR #3 → PR #9** — `listings_cache`, `listingSource`, override manuel, sync nocturne |
 | Couverture tests flux RPA | **EN REVUE PR #3 → PR #9** — Vitest Kanban `resolveColumnId` + 7 délais PA acceptée |
+| Bible documentaire QA Copilote-RPA | **EN VALIDATION DRAFT PR #42** — diff documentaire seulement ; aucune route, collection ou structure applicative nouvelle |
 
 > Détail technique et historique : [`MEMORY.md`](./MEMORY.md)
 
@@ -192,4 +193,4 @@ Copie possible sur disque de sauvegarde (`00_PRIMEXPERT_SYSTEME_APP/docs/` ou vo
 
 ---
 
-*Index mis à jour : 2026-06-01 — alignement PR #9 (QA règles Copilote-RPA PR #5) ajouté sans dupliquer l'historique PR #3.*
+*Index mis à jour : 2026-06-01 — PR #42 validée comme alignement documentaire PR #35 QA Copilote-RPA, sans doublonner l'historique PR #3 / PR #9.*

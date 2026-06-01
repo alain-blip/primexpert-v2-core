@@ -7,6 +7,8 @@
 | **`01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/`** | Application **Vite + React** + **monorepo `@primexpert/core`** + **documentation** (`docs/`), déployée sur Firebase Hosting **`primexpert-app-v2`**. |
 | **`00_RPA_SYSTEME_APP/Copilote-RPA/`** | Legacy RPA (référence métier ; migration vers V2 via scripts). |
 
+> Validation PR #42 (2026-06-01) : le déclencheur est documentaire seulement ; aucune nouvelle entrée physique, route, Function ou collection n'est ajoutée à l'arborescence ci-dessous.
+
 ---
 
 ## Vue d’ensemble du dépôt
@@ -451,4 +453,4 @@ Aucun nouveau HTTP public dans PR #9 ; les ajouts sont des déclencheurs Firesto
 | Analyse de mise en marché (ACM) | `AcmValuationWorkspace`, `ResidenceAcmValuationPanel`, `residenceAcmBootstrap.ts`, `gpsCapRateByRegionClass.ts` |
 | Assembleur contrat / PA (V3.5) | `ContractAssemblerPanel.tsx`, `annexeFieldSchema.ts`, `renderContractAssemblerToHtml.ts`, `@primexpert/core/forms` |
 
-*Dernière mise à jour : 2026-06-01 — PR #9 : QA règles Copilote-RPA, modules `analytics`/`forms`/`security`, triggers WORM/flywheel et index marché documentés sans doublon.*
+*Dernière mise à jour : 2026-06-01 — PR #42 : alignement Bible docs PR #35 QA Copilote-RPA validé comme diff documentaire, sans changement d'arborescence applicative ni doublon de section.*

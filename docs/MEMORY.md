@@ -978,6 +978,25 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
+## PR #42 — Draft alignement Bible docs PR #35 QA Copilote-RPA (2026-06-01)
+
+**Déclencheur :** PR [#42](https://github.com/alain-blip/primexpert-v2-core/pull/42) — branche `cursor/alignement-docs-primexpert-0513`, base `main`, diff `d13dadc` → `1d38635`.
+
+**Analyse du diff :** documentation uniquement (`docs/README.md`, `docs/MEMORY.md`, `docs/arborescence.md`, `docs/project_canonical_fields.md`). Aucun fichier applicatif, workflow, règle Firestore ou configuration Firebase n'est modifié par ce déclencheur.
+
+| Axe contrôlé | Résultat |
+|--------------|----------|
+| **Nouveaux modules / packages** | Aucun nouveau module dans le diff PR #42 ; les modules `@primexpert/core/analytics`, `forms`, `security`, `market` et `residence` restent les mêmes éléments déjà consolidés par PR #9. |
+| **Composants UI** | Aucun composant ajouté ou modifié dans ce diff ; les mentions `ContractAssemblerPanel`, `LegalVaultWormPanel`, `TerritorialCentrisCompetitionSection`, `CreateInscriptionForm` et `InscriptionStatusDropdown` demeurent des références documentaires existantes. |
+| **Routes / Cloud Functions** | Aucune route HTTP ni callable nouvelle ; les fonctions WORM, flywheel, Centris nocturne et parse marché sont seulement documentées dans les sections existantes. |
+| **Schémas / Firestore** | Aucune clé additionnelle à créer dans le dictionnaire ; `legal_vault`, `compliance_logs`, `listings_cache`, `market_documents`, `market_analytics_raw`, `listingSource`, `isManuallyOverridden`, `internalFlywheelIngestion` et les 7 délais PA acceptée sont déjà alignés dans `project_canonical_fields.md`. |
+
+**Règle de non-duplication appliquée :** PR #42 ne recrée pas de section fonctionnelle parallèle ; elle confirme l'alignement documentaire PR #35 / QA Copilote-RPA en prolongeant les entrées PR #3 et PR #9 existantes.
+
+**HITL :** validation humaine Alain obligatoire avant publication ; PR de documentation à conserver en brouillon, sans push direct sur `main` ni merge automatique.
+
+---
+
 ## Verrouillage technique fin de sprint — Primexpert V3.5 (2026-05-30)
 
 | Point de contrôle | Statut |
@@ -991,4 +1010,4 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
-*Journal mis à jour : 2026-06-01 — PR #9 documentée sans dupliquer l'historique PR #3 (couverture RPA, Centris/off-market, flywheel/OER, WORM canonique).*
+*Journal mis à jour : 2026-06-01 — PR #42 ajoutée comme validation documentaire PR #35 QA Copilote-RPA, sans dupliquer l'historique PR #3 / PR #9.*
