@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useContext, useMemo } from 'react';
 import { resolveTransactionBanner } from '@primexpert/core/diffusion';
 import { useLanguage } from '../../lib/i18n';
+import ResidenceDataContext from '../../context/ResidenceDataContext';
 import { useResidenceDocument } from '../../context/ResidenceDocumentContext';
 
 function formatNotaireDate(iso: string, locale: 'fr' | 'en'): string {
@@ -17,12 +18,14 @@ function formatNotaireDate(iso: string, locale: 'fr' | 'en'): string {
 
 export function ResidenceTransactionBanner() {
   const { t, language } = useLanguage();
-  const { residenceDoc } = useResidenceDocument();
+  const dataCtx = useContext(ResidenceDataContext);
+  const docCtx = useResidenceDocument();
+  const residenceRecord = dataCtx?.residenceRecord ?? docCtx.residenceDoc ?? null;
   const locale = language === 'fr' ? 'fr' : 'en';
 
   const banner = useMemo(() => {
-    if (!residenceDoc) return null;
-    const promesseRaw = residenceDoc.promesseAchat;
+    if (!residenceRecord || Object.keys(residenceRecord).length === 0) return null;
+    const promesseRaw = residenceRecord.promesseAchat;
     const promesseAchat =
       promesseRaw && typeof promesseRaw === 'object' && !Array.isArray(promesseRaw)
         ? (promesseRaw as {
@@ -33,18 +36,18 @@ export function ResidenceTransactionBanner() {
         : null;
 
     return resolveTransactionBanner({
-      stage: typeof residenceDoc.stage === 'string' ? residenceDoc.stage : null,
-      status: typeof residenceDoc.status === 'string' ? residenceDoc.status : null,
+      stage: typeof residenceRecord.stage === 'string' ? residenceRecord.stage : null,
+      status: typeof residenceRecord.status === 'string' ? residenceRecord.status : null,
       pipelineStatus:
-        typeof residenceDoc.pipelineStatus === 'string' ? residenceDoc.pipelineStatus : null,
-      statut: typeof residenceDoc.statut === 'string' ? residenceDoc.statut : null,
+        typeof residenceRecord.pipelineStatus === 'string' ? residenceRecord.pipelineStatus : null,
+      statut: typeof residenceRecord.statut === 'string' ? residenceRecord.statut : null,
       dateNotairePrevu:
-        typeof residenceDoc.dateNotairePrevu === 'string'
-          ? residenceDoc.dateNotairePrevu
+        typeof residenceRecord.dateNotairePrevu === 'string'
+          ? residenceRecord.dateNotairePrevu
           : null,
       promesseAchat,
     });
-  }, [residenceDoc]);
+  }, [residenceRecord]);
 
   if (!banner?.kind) return null;
 

@@ -6,17 +6,20 @@ import React, { useMemo } from 'react';
 import { buildBrokerFooterFromProfile } from '../../../services/certifiableReportPdfService';
 import { AlertTriangle } from 'lucide-react';
 import { bootstrapResidenceAcm } from '@primexpert/core/valuation';
-import type { FinancialDataV2Doc } from '@primexpert/core/financial';
+import type { FinancialDataV2Doc, ResidenceFinancialHints } from '@primexpert/core/financial';
 import { useLanguage } from '../../../lib/i18n';
 import { useAuth } from '../../../lib/auth';
 import { useFinancialData } from '../../../context/FinancialDataContext';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { useMarketData } from '../../../hooks/useMarketData';
 import { useGlobalFinancialBenchmark } from '../../../hooks/useGlobalFinancialBenchmark';
+import { resolveRegionalOerMedianFromRatioSamples } from '@primexpert/core/analytics';
+import type { TerritorialCompetitionSnapshot } from '@primexpert/core/market';
 import { getListingPrice } from '@primexpert/core/residence';
 import type { Residence } from '../../../services/residences';
 import { AcmValuationWorkspace } from '../../acm/AcmValuationWorkspace';
 import { AcmTab } from './AcmTab';
+import type { useTerritorialCompetition } from '../../../hooks/useTerritorialCompetition';
 import {
   institutionalListingsCardHeaderClass,
   institutionalListingsCardShellClass,
@@ -27,17 +30,22 @@ import {
 export interface ResidenceAcmValuationPanelProps {
   residence: Residence;
   onOpenComparables?: () => void;
+  territorialCompetition: ReturnType<typeof useTerritorialCompetition>;
 }
 
 export function ResidenceAcmValuationPanel({
   residence,
   onOpenComparables,
+  territorialCompetition,
 }: ResidenceAcmValuationPanelProps) {
   const { t, language } = useLanguage();
   const { profile } = useAuth();
   const { financialData, loading, error } = useFinancialData();
   const { residenceDoc } = useResidenceDocument();
-  const { transactions: marketTransactions, ratioSamples } = useMarketData(language, profile?.uid ?? null);
+  const { transactions: marketTransactions, ratioSamples } = useMarketData(
+    language,
+    profile?.uid ?? null
+  );
 
   const residenceLive = useMemo((): Residence => {
     const merged = { ...residence, ...(residenceDoc ?? {}) } as Residence & Record<string, unknown>;
@@ -78,6 +86,24 @@ export function ResidenceAcmValuationPanel({
     assetClassLabel: bootstrap?.assetClassLabel ?? null,
   });
 
+  const regionalOperatingExpenseRatioMedian = useMemo(() => {
+    if (!bootstrap?.regionLabel) return null;
+    return resolveRegionalOerMedianFromRatioSamples(ratioSamples, bootstrap.regionLabel);
+  }, [ratioSamples, bootstrap?.regionLabel]);
+
+  const competitionSnapshot = useMemo((): TerritorialCompetitionSnapshot | undefined => {
+    if (territorialCompetition.sampleCount <= 0 && territorialCompetition.medianTgaPct == null) {
+      return undefined;
+    }
+    return {
+      comparables: territorialCompetition.comparables,
+      medianTgaPct: territorialCompetition.medianTgaPct,
+      sampleCount: territorialCompetition.sampleCount,
+      regionAdministrative: territorialCompetition.regionAdministrative,
+      classeImmeuble: territorialCompetition.classeImmeuble,
+    };
+  }, [territorialCompetition]);
+
   const pdfExport = useMemo(() => {
     if (!financialData) return undefined;
     const addressParts = [residenceLive.address, residenceLive.city].filter(Boolean);
@@ -85,9 +111,9 @@ export function ResidenceAcmValuationPanel({
       residenceId: residenceLive.id,
       residenceAddress: addressParts.length ? addressParts.join(', ') : undefined,
       broker: buildBrokerFooterFromProfile(profile),
-      locale: (language === 'fr' ? 'fr' : 'en') as const,
+      locale: language === 'fr' ? ('fr' as const) : ('en' as const),
       financialData: financialData as FinancialDataV2Doc,
-      residence: residenceLive,
+      residence: residenceLive as unknown as ResidenceFinancialHints,
     };
   }, [residenceLive, financialData, profile, language]);
 
@@ -155,6 +181,8 @@ export function ResidenceAcmValuationPanel({
             subjectExpenses={subjectExpenses}
             pdfExport={pdfExport}
             territorialMedians={benchmarkState.territorialMedians ?? undefined}
+            territorialCompetition={competitionSnapshot}
+            regionalOperatingExpenseRatioMedian={regionalOperatingExpenseRatioMedian}
           />
         </div>
       </section>

@@ -25,6 +25,10 @@ const HEADER_BANNER = [
 ].join('\n');
 
 const FILES = ['extractionSchemas.ts', 'marketReportTypes.ts', 'marketReportNormalize.ts'];
+const ANALYTICS_VENDOR_FILES = ['marketMetrics.ts'];
+const ANALYTICS_CORE_DIR = path.join(REPO_ROOT, 'packages', 'core', 'src', 'analytics');
+const MARKET_VENDOR_FILES = ['operatingRatio.ts'];
+const MARKET_CORE_DIR = path.join(REPO_ROOT, 'packages', 'core', 'src', 'market');
 const FINANCIAL_VENDOR_FILES = ['nonOpexFinancialLines.ts'];
 const FINANCIAL_CORE_DIR = path.join(REPO_ROOT, 'packages', 'core', 'src', 'financial');
 const VENDORED_FINANCIAL_DIR = path.join(VENDORED_DIR, 'financial');
@@ -33,6 +37,7 @@ const VENDORED_INDEX = [
   "export * from './extractionSchemas';",
   "export * from './marketReportTypes';",
   "export * from './marketReportNormalize';",
+  "export * from './marketMetrics';",
   '',
 ].join('\n');
 
@@ -53,6 +58,16 @@ function syncFile(name, options = {}) {
       "from '../financial/nonOpexFinancialLines'",
       "from './financial/nonOpexFinancialLines'"
     );
+    original = original.replace(
+      "from '../analytics/marketMetrics'",
+      "from './marketMetrics'"
+    );
+  }
+  if (name === 'marketMetrics.ts') {
+    original = original.replace(
+      "from '../market/operatingRatio'",
+      "from './operatingRatio'"
+    );
   }
   const targetDir = options.toDir ?? VENDORED_DIR;
   const target = path.join(targetDir, name);
@@ -68,6 +83,12 @@ function main() {
     written.push(
       syncFile(name, { fromDir: FINANCIAL_CORE_DIR, toDir: VENDORED_FINANCIAL_DIR })
     );
+  }
+  for (const name of MARKET_VENDOR_FILES) {
+    written.push(syncFile(name, { fromDir: MARKET_CORE_DIR }));
+  }
+  for (const name of ANALYTICS_VENDOR_FILES) {
+    written.push(syncFile(name, { fromDir: ANALYTICS_CORE_DIR }));
   }
   const indexPath = path.join(VENDORED_DIR, 'index.ts');
   fs.writeFileSync(indexPath, HEADER_BANNER + VENDORED_INDEX, 'utf-8');

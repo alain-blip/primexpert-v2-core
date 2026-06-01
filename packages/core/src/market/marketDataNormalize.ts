@@ -5,8 +5,10 @@
 
 import { mergeMarketLabelKey, normalizeRatioLabelKey } from './marketPlExpenseDictionary';
 import type { MarketGpsRatioSample } from './marketGpsViewModel';
+import { coerceOperatingRatioPct } from './operatingRatio';
 
 export { mergeMarketLabelKey } from './marketPlExpenseDictionary';
+export { coerceOperatingRatioPct } from './operatingRatio';
 
 const REVENUE_LINE_KEYS = new Set(['rbe', 'rne', 'rde', 'valeurEvaluee', 'rbPotentiel']);
 
@@ -27,16 +29,6 @@ export function coerceNbUnites(...sources: unknown[]): number | undefined {
     }
   }
   return undefined;
-}
-
-/** Normalise un ratio d'exploitation (RDE) entre 0 et 100 %. */
-export function coerceOperatingRatioPct(value: number): number | undefined {
-  if (!Number.isFinite(value)) return undefined;
-  let v = value;
-  if (v > 0 && v <= 1) v *= 100;
-  else if (v > 100 && v <= 10_000) v /= 100;
-  if (v <= 0 || v > 100) return undefined;
-  return Math.round(v * 1000) / 1000;
 }
 
 export type AmountLabelKind = 'ratio' | 'per_unit' | 'annual_total' | 'unknown';
