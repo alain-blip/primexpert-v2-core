@@ -12,6 +12,7 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 **CRM Contacts** : `packages/core/src/crm/` — fiche `organizations/{orgId}/contacts` ; liaisons `coBuyerIds` / `coSellerIds` ; typologie acheteur `deriveBuyerTier` ; **Loi 25** — `QuebecLaw25Consent` + `validateLaw25Compliance()`.  
 **Après-vente (V2.7)** : `packages/core/src/market/closingEngine.ts` — tâches `source: 'closing_pipeline'` dans `residences/{id}/tasks`.  
 **Copilote négociation (V2.6)** : `packages/core/src/ai/` — brouillons HITL `manualVerifications` (`kind: 'commercial_negotiation_clause'`).
+**QA RNE / taux de capitalisation (TGA) (PR #36)** : `packages/core/src/financial/capitalizationMetrics.ts` — normalisation décimale des TGA, valeur capitalisée `RNE ÷ TGA`, TGA implicite `RNE ÷ prix`, variance RNE déclaré/vérifié.
 
 **Inscriptions Centris / hors marché** : `packages/core/src/residence/listingSource.ts`, `inscriptionBrokerageStatus.ts` — champs racine `listingSource`, `isManuallyOverridden`, `statut`.
 
@@ -356,6 +357,18 @@ Document racine — **SSOT onglet Identité** (`ResidenceDocumentContext`) + Rad
 | `date` | string | Date inscription / mandat (UI) |
 | **`internalFlywheelIngestion`** | map | Marqueur idempotence flywheel : `{ promiseAtMillis?, soldAtMillis?, lastAnalyticsDocId?, lastTransitionKind?, updatedAtMillis? }` |
 
+### Champs racine — évaluation extraite / TGA
+
+Ces champs existent sur `residences/{id}` quand un rapport d'évaluation alimente l'onglet Identité ou l'ACM. La PR #36 ne crée pas de collection dédiée : elle normalise seulement le miroir `tauxCapitalisation` avec `normalizeCapitalizationRate()`.
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| **`tgaRetenu`** | number | Taux de capitalisation (TGA) retenu extrait du rapport ; peut être en points de pourcentage (ex. `8.5`) ou décimal legacy selon source. |
+| **`tauxCapitalisation`** | number | Miroir normalisé en décimal (`0.085`) pour moteurs ACM / rapports ; dérivé de `tgaRetenu` si présent. |
+| `valeurAvaluee` | number | Valeur évaluée extraite du rapport (orthographe historique conservée). |
+| `valeurEstimee` | number | Miroir valeur estimée pour affichage / compatibilité UI. |
+| `superficieTotale`, `superficieBatiment` | number | Superficie bâtiment issue de l'évaluation ; `superficieBatiment` est le miroir canonique identité. |
+
 ### Statuts courtage inscriptions (`inscriptionBrokerageStatus.ts`)
 
 | Statut UI | Patch Firestore |
@@ -650,6 +663,27 @@ Normalisation : `normalizeFinancialData()` → source `calculatedResults` | `der
 | Hints UI inter-onglets | `ResidenceDataContext` → `useResidenceFinancialHints()` → `buildResidenceFinancialHints()` |
 | Étalon QA | 198 chemin du Roy : 2 558 000 $ · RBE 1 129 749 $ · dépenses 600 260 $ · **RNE 529 489 $** · **TGA 20,70 %** |
 
+### QA RNE / taux de capitalisation (TGA) centralisée (PR #36)
+
+La PR #36 étend les champs existants de `financial/dataV2` : pas de nouvelle sous-collection et pas de moteur React parallèle. Les calculs passent par `@primexpert/core/financial/capitalizationMetrics.ts`.
+
+| Champ / structure | Type | Description |
+|-------------------|------|-------------|
+| `calculatedResults.tauxCapitalisation` | number | TGA normalisé en décimal (`0.207` = 20,70 %) ; calculé par `computeCapitalizationRateFromNoi(revenuNetExploitation, prixDemande)`. |
+| `calculatedResults.depensesTotalesNormalisees` | number | Total des dépenses après ajustements CPA / normalisation, persisté lors de `saveExpenseAdjustmentsToFinancial()`. |
+| `calculatedResults.revenuNetExploitation` | number | RNE recalculé après ajustements (`recomputeFinancialCalculatedResults`) avant mise à jour du TGA. |
+| `baseData.expenseAdjustments` | map | Ajustements CPA par clé `EXPENSE_KEYS` + `autresDepenses[]` ; conserve `verified` existant si présent. |
+| `lastInjection.source` | string | `human_validated_ia` lors d'une sauvegarde manuelle issue d'une extraction IA validée par l'humain. |
+| `lastInjection.documentId` | string \| null | Document source de l'extraction IA validée. |
+| `lastInjection.atMillis` | number | Horodatage client de l'injection validée. |
+
+| Helper core | Usage |
+|-------------|-------|
+| `normalizeCapitalizationRate(value)` | Accepte un TGA décimal (`0.085`) ou en pourcentage (`8.5`) et retourne toujours un décimal. |
+| `computeCapitalizationRateFromNoi(noi, price)` | TGA implicite au prix demandé ; utilisé par ACM, Finançabilité, narratif vendeur, sauvegardes manuelles et rapports. |
+| `computeCapitalizedValueFromNoi(noi, capitalizationRate)` | Valeur capitalisée (`RNE ÷ TGA`) pour ACM, stress tests et valeur banquable. |
+| `computeNoiVarianceRatio(firstNoi, secondNoi)` | Écart RNE déclaré / RNE vérifié ; Finançabilité : OK ≤ 5 %, avertissement ≤ 15 %, échec au-delà. |
+
 ### Sous-collection `residences/{id}/documents/{documentId}`
 
 **SSOT Espace Documents** — UI `DocumentsDiligenceTab`, listener temps réel par fiche.
@@ -878,6 +912,7 @@ Agrégat lecture recalculé par `injectMarketMacroStats` et par le flywheel inte
 | Concurrence territoriale ACM | `centrisComparableCapRate.ts`, `marketAnalyticsService.ts`, `useTerritorialCompetition.ts`, `TerritorialCentrisCompetitionSection.tsx` |
 | Flywheel / RDE-OER | `internalMarketFlywheel.ts`, `flywheelIngestion.ts`, `marketMetrics.ts`, `onTransactionConcludedTrigger.ts` |
 | Couverture RPA | `resolveColumnId.test.ts`, `paAccepteeCriticalDeadlines.test.ts`, `check-resolveColumnId-coverage.mjs` |
+| QA RNE / TGA centralisée | `capitalizationMetrics.ts`, `safeNumbers.ts`, `residenceAcmBootstrap.ts`, `AcmValuationWorkspace.tsx`, `FinancabiliteTab.tsx`, `FinancialAuditEeePanel.tsx`, `financialDataService.ts`, `extractedDataInjection.ts` |
 
 ---
 
@@ -1060,4 +1095,4 @@ Modes négociation : `OACIQ_FORM`, `CUSTOM_CONTRACT`, `LETTER_OF_INTENT`.
 
 ---
 
-*Dernière mise à jour : 2026-06-01 — PR #3 : WORM, Centris/off-market, flywheel/OER, `contentHashMd5`, 7 délais PA acceptée.*
+*Dernière mise à jour : 2026-06-01 — PR #36 : QA RNE/TGA centralisée, après PR #3 : WORM, Centris/off-market, flywheel/OER, `contentHashMd5`, 7 délais PA acceptée.*

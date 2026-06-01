@@ -2,7 +2,7 @@
 
 **Source unique avec le code :** `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`  
 **URL officielle :** https://primexpert-app-v2.web.app  
-**Cycle technique :** **V3.7 — marché/OER/flywheel + assembleur de mandats V3.5** · **couverture RPA PR #3** (Kanban + délais PA acceptée) · architectures sécurisées V3.0 en production
+**Cycle technique :** **V3.8 — QA RNE/TGA centralisée** · V3.7 marché/OER/flywheel + assembleur de mandats V3.5 · **couverture RPA PR #3** (Kanban + délais PA acceptée) · architectures sécurisées V3.0 en production
 
 ## Registre global des architectures sécurisées — mai 2026
 
@@ -24,6 +24,7 @@
 | Coffre-fort WORM & sécurité | **OPÉRATIONNEL — PRODUCTION LIVE** |
 | Assembleur contrat & annexes (V3.5) | **SCELLÉ — commit `63286dc`** (HTML natif, sans docxtemplater) |
 | Hub Finance — cohérence RNE / prix inter-onglets | **DÉPLOYÉ PROD — commit `d232673`** (hosting 2026-05-30) |
+| QA RNE / taux de capitalisation (TGA) centralisée | **EN VALIDATION PR #36** — `capitalizationMetrics`, Finançabilité, EEE, ACM, injection IA |
 | Inscriptions Centris / hors marché + concurrence territoriale | **EN REVUE PR #3** — `listings_cache`, `listingSource`, override manuel |
 | Couverture tests flux RPA | **EN REVUE PR #3** — Vitest Kanban `resolveColumnId` + 7 délais PA acceptée |
 
@@ -78,7 +79,7 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 
 1. **Règle #0** — Calculs métier dans `packages/core/`, pas dans React.
 2. **Multi-tenant** — `courtiersResponsables` sur `residences` ; filtre `@primexpert/core/tenant` + `firestore.rules`.
-3. **Finance** — Document unique `residences/{id}/financial/dataV2` ; contexte `FinancialDataProvider` ; prix/RNE via `@primexpert/core/financial` + `ResidenceDataContext`.
+3. **Finance** — Document unique `residences/{id}/financial/dataV2` ; contexte `FinancialDataProvider` ; prix/RNE via `@primexpert/core/financial` + `ResidenceDataContext` ; QA taux de capitalisation (TGA) via `capitalizationMetrics.ts`.
 4. **Identité** — Document racine `residences/{id}` ; contexte `ResidenceDocumentProvider` + **`ResidenceDataProvider`** (fusion liste + Firestore).
 5. **Documents** — Sous-collection `residences/{id}/documents/` ; scan + parse IA via Cloud Functions (Vertex ADC).
 6. **UI fiche & inscriptions** — Tokens **`primexpert-*`** ; coquilles `InstitutionalResidenceTabShell` ; cartes **Mes inscriptions** (Kanban DnD, filtres régions QC).
@@ -102,6 +103,7 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 24. **Inscriptions Centris / hors marché** — `@primexpert/core/residence` (`listingSource`, `inscriptionBrokerageStatus`) ; création contrôlée depuis `CreateInscriptionForm` ; sync Centris bloquée sur `off_market` ou override manuel.
 25. **Marché V3.2–V3.7** — `@primexpert/core/market` + `@primexpert/core/analytics` ; cache `listings_cache`, flywheel anonymisé `market_analytics_raw`, ratio des dépenses d'exploitation (RDE/OER) et benchmarks régionaux.
 26. **Qualité RPA automatisée** — `npm run test:rpa-coverage` ; couverture `resolveColumnId()` et validations des 7 échéances critiques PA acceptée (`dateLimiteDeduitLci` incluse).
+27. **QA RNE / TGA centralisée (PR #36)** — `@primexpert/core/financial/capitalizationMetrics.ts` normalise les taux en décimal, calcule `RNE ÷ prix`, `RNE ÷ TGA`, et l'écart RNE déclaré/vérifié ; consommation par ACM, rapports, Finançabilité et sauvegardes `financial/dataV2`.
 
 ---
 
@@ -171,9 +173,9 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 |--------|--------|
 | Synthèse | ✅ Bilan, rétribution éditable, prix demandé éditable, C-73.2, notes, **note vocale**, **Matchmaker Raphaël**, nœuds canoniques HITL |
 | Identité | ✅ Édition inline Confort 66+ ; courtier responsable |
-| Finances (Hub 5 sous-onglets) | ✅ + benchmark global |
+| Finances (Hub 5 sous-onglets) | ✅ + benchmark global + QA RNE déclaré/vérifié (`computeNoiVarianceRatio`) |
 | Déclaration | ✅ Questionnaire OACIQ |
-| Marché | ✅ **Analyse de mise en marché (ACM)** (SSOT finances + TGA GPS) + concurrence territoriale |
+| Marché | ✅ **Analyse de mise en marché (ACM)** (SSOT finances + TGA GPS) + concurrence territoriale + TGA centralisé |
 | Documents | ✅ Scan + parse Vertex + distribution + Verrouillage WORM/OACIQ client (V3.1) |
 | Intelligence | ✅ Chronologie + **`CommunicationHub`** (SMS / Meta / courriel) |
 | Accès Vendeur (depuis fiche) | ✅ Portail autonome — catalogue 85 pièces, lien invité 30 j, alertes téléversement |
@@ -191,4 +193,4 @@ Copie possible sur disque de sauvegarde (`00_PRIMEXPERT_SYSTEME_APP/docs/` ou vo
 
 ---
 
-*Index mis à jour : 2026-06-01 — alignement PR #3 (couverture RPA, Centris/off-market, flywheel/OER, coffre-fort WORM documenté).*
+*Index mis à jour : 2026-06-01 — alignement PR #36 (QA RNE/TGA centralisée) après PR #3 (couverture RPA, Centris/off-market, flywheel/OER, coffre-fort WORM documenté).*

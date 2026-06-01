@@ -960,6 +960,30 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
+## PR #36 — Corrections QA RNE/TGA centralisées (2026-06-01)
+
+**Déclencheur :** PR [#36](https://github.com/alain-blip/primexpert-v2-core/pull/36) — branche `cursor/contr-le-qualit-r-gles-61c2` (`d13dadc` → `61cb366`).
+
+**Statut :** **[EN VALIDATION HUMAINE ALAIN — documentation alignée en PR dédiée]**
+
+| Volet | Ajouts / impacts |
+|-------|------------------|
+| **Nouveau module core** | `packages/core/src/financial/capitalizationMetrics.ts` centralise `normalizeCapitalizationRate`, `computeCapitalizationRateFromNoi`, `computeCapitalizedValueFromNoi`, `formatCapitalizationRatePercent`, `isCapitalizationRatePctAdjusted`, `computeNoiVarianceRatio` et `formatNoiVariancePercent`. |
+| **Parsing numérique** | `safePositiveNum()` est ajouté dans `safeNumbers.ts` pour refuser zéro/négatif avant calcul de taux ou de valeur capitalisée. |
+| **ACM / valorisation** | `residenceAcmBootstrap`, `AcmValuationWorkspace`, `marketCapRate`, `lenderCapRate`, `stressTest`, `valuationEngine`, `comparableBenchmarks` et le rapport de présentation ACM consomment les helpers centralisés au lieu de recalculer `RNE ÷ prix` ou `RNE ÷ TGA` localement. |
+| **Finançabilité** | `FinancabiliteTab` remplace le libellé client « RNE audité » par **RNE vérifié** et calcule les écarts déclaré/vérifié via `computeNoiVarianceRatio()` ; seuils conservés : OK ≤ 5 %, avertissement ≤ 15 %, échec au-delà. |
+| **Vérification EEE** | `FinancialAuditEeePanel` formate le taux de capitalisation (TGA) avec `formatCapitalizationRatePercent()` et résout les unités depuis `nicheMetadata.rpaFields.units` / `plexFields.units`. |
+| **Injection et sauvegarde financière** | `extractedDataInjection` normalise `tgaRetenu` avant écriture `tauxCapitalisation`; `financialDataService` recompute `calculatedResults` après ajustements CPA/manuels puis persiste `depensesTotalesNormalisees`, `revenuNetExploitation` et `tauxCapitalisation` cohérents. |
+| **Narratif vendeur** | `selectSellerNarrative` délègue le TGA implicite au helper core pour éviter les divergences d'arrondi. |
+
+**Firestore :** aucune nouvelle collection, sous-collection ou règle Cloud Functions. Les écritures restent sur les structures existantes `residences/{id}` et `residences/{id}/financial/dataV2`; les champs documentés (`tgaRetenu`, `tauxCapitalisation`, `baseData.expenseAdjustments`, `calculatedResults.depensesTotalesNormalisees`, `lastInjection`) sont étendus dans le dictionnaire canonique sans créer de doublon.
+
+**Règle linguistique :** côté UI et documentation visible, le mot « audit » est remplacé par **vérification** / **RNE vérifié** ; les identifiants internes historiques (`noiAudit`, `useAuditRne`, `FinancialAuditEeePanel`) demeurent tolérés car non exposés comme libellés client.
+
+**HITL :** la PR #36 reste un contrôle QA financier ; le courtier valide les sources RNE et le taux de capitalisation (TGA) avant toute présentation ACM, financement ou diffusion.
+
+---
+
 ## Verrouillage technique fin de sprint — Primexpert V3.5 (2026-05-30)
 
 | Point de contrôle | Statut |
@@ -973,4 +997,4 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
-*Journal mis à jour : 2026-06-01 — PR #3 documentée (couverture RPA, Centris/off-market, flywheel/OER, WORM canonique).*
+*Journal mis à jour : 2026-06-01 — PR #36 documentée (QA RNE/TGA centralisée) après PR #3 (couverture RPA, Centris/off-market, flywheel/OER, WORM canonique).*

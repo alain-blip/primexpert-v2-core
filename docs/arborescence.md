@@ -25,7 +25,12 @@
 │       └── src/
 │           ├── index.ts             # Barrel (canonical, valuation, financial, identity, security…)
 │           ├── canonical/           # Champs canoniques & alias
-│           ├── financial/           # normalizeFinancialData, bilan, ratios, SCHL…
+│           ├── financial/           # normalizeFinancialData, bilan, ratios, SCHL, QA RNE/TGA
+│           │   ├── capitalizationMetrics.ts   # TGA décimal, valeur capitalisée, variance RNE déclaré/vérifié
+│           │   ├── safeNumbers.ts             # safeNum, safePositiveNum, ratios
+│           │   ├── resolveCanonicalRne.ts     # RNE canonique + cohérence RBE/RNE
+│           │   ├── computeFinancabilite.ts
+│           │   └── mergeExtractedFinancials.ts
 │           ├── identity/            # buildIdentityViewModel, sections MSSS/RPA
 │           ├── transaction/         # Promesse d'achat — offre SSOT, délais, commission
 │           │   ├── offreTronc.ts
@@ -92,8 +97,6 @@
 │           ├── export/              # Export dataset / politique
 │           ├── tenant/              # Multi-tenant (courtiersResponsables)
 │           ├── mail/                # mailParser, contactMatch, messageUrgency, types omnicanal
-│           ├── financial/
-│           │   └── mergeExtractedFinancials.ts
 │           ├── audio/               # Transcription (legacy)
 │           └── utils/formatting.ts
 ├── functions/                       # Cloud Functions Gen2 (us-central1 + régions ciblées)
@@ -228,16 +231,17 @@
     │   │       ├── FinanceHubTab.tsx
     │   │       ├── BilanExecutifTab.tsx
     │   │       ├── RevenusDepensesTab.tsx
-    │   │       ├── FinancabiliteTab.tsx
+    │   │       ├── FinancabiliteTab.tsx  # Choix RNE déclaré / RNE vérifié ; variance centralisée
     │   │       ├── Analyse360FinanceTab.tsx
     │   │       ├── DeclarationVendeurTab.tsx
     │   │       ├── MarcheConcurrenceTab.tsx    # ACM + concurrence territoriale Centris
     │   │       └── PromesseAchatTab.tsx
-    │   ├── financial/               # Composants partagés Hub Finance
+    │   ├── financial/               # Composants partagés Hub Finance / QA EEE
     │   │   ├── PerformanceRatiosTab.tsx
     │   │   ├── ProvenanceStrip.tsx
     │   │   ├── TP70Card.tsx
-    │   │   └── FinancialReportsSection.tsx
+    │   │   ├── FinancialReportsSection.tsx
+    │   │   └── FinancialAuditEeePanel.tsx # Vérification EEE, TGA formaté via capitalizationMetrics
     │   ├── mailbox/                 # Email Center — MailboxContainer (Nylas temps réel)
     │   │   ├── MailboxContainer.tsx
     │   │   ├── MailContactLinkBar.tsx
@@ -383,7 +387,7 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Domaine | Fichiers |
 |---------|----------|
 | Multi-tenant résidences | `src/services/residences.ts`, `packages/core/src/tenant/`, `firestore.rules` |
-| Données financières | `src/context/FinancialDataContext.tsx`, `packages/core/src/financial/` |
+| Données financières | `src/context/FinancialDataContext.tsx`, `packages/core/src/financial/`, `capitalizationMetrics.ts`, `financialDataService.ts` |
 | Identité immeuble | `src/context/ResidenceDocumentContext.tsx`, `packages/core/src/identity/`, `IdentiteImmeubleTab` |
 | Promesse d'achat | `PromesseAchatTab.tsx`, `src/components/residence/promesse/`, `packages/core/src/transaction/`, **`packages/core/src/forms/`** (V3.4–V3.5) |
 | Charte UI institutionnelle | `tailwind.config.js`, `src/index.css` (`@theme` / `@config`), `src/lib/institutionalTheme.ts`, `InstitutionalUi.tsx` |
@@ -391,6 +395,7 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Messagerie ↔ CRM (Phase 2) | `MailContactLinkBar.tsx`, `emailSyncService.linkEmailThreadToContact`, `packages/core/src/mail/contactMatch.ts`, `matchedContactId` |
 | Bibliothèque marché (Statistiques du marché) | `MarketLibraryDashboard.tsx`, `marketDocumentsService.ts`, `marketAnalyticsService.ts`, `parseMarketDocument.ts`, `injectMarketMacroStats.ts`, `marketDeduplication.ts`, `marketMetrics.ts` |
 | Concurrence territoriale ACM | `TerritorialCentrisCompetitionSection.tsx`, `useTerritorialCompetition.ts`, `centrisComparableCapRate.ts`, `listings_cache` |
+| QA RNE / TGA centralisée | `capitalizationMetrics.ts`, `safeNumbers.ts`, `residenceAcmBootstrap.ts`, `AcmValuationWorkspace.tsx`, `FinancabiliteTab.tsx`, `FinancialAuditEeePanel.tsx`, `financialDataService.ts`, `extractedDataInjection.ts` |
 | Coffre-fort WORM | `LegalVaultWormPanel.tsx`, `LegalVaultWormLockModal.tsx`, `legalVaultService.ts`, `@primexpert/core/security`, `onVaultDocumentWrite` |
 | Benchmark finance global | `getGlobalFinancialBenchmark.ts`, `useGlobalFinancialBenchmark.ts`, `globalFinancialBenchmark.ts` |
 | Billing / Chérif | `src/lib/billingAccess.ts`, `src/App.tsx`, `SuspendedAccountScreen.tsx` |
@@ -445,4 +450,4 @@ Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only func
 | Analyse de mise en marché (ACM) | `AcmValuationWorkspace`, `ResidenceAcmValuationPanel`, `residenceAcmBootstrap.ts`, `gpsCapRateByRegionClass.ts` |
 | Assembleur contrat / PA (V3.5) | `ContractAssemblerPanel.tsx`, `annexeFieldSchema.ts`, `renderContractAssemblerToHtml.ts`, `@primexpert/core/forms` |
 
-*Dernière mise à jour : 2026-06-01 — PR #3 : couverture RPA, Centris/off-market, flywheel/OER, WORM et modules `analytics`/`security`.*
+*Dernière mise à jour : 2026-06-01 — PR #36 : QA RNE/TGA centralisée, après PR #3 : couverture RPA, Centris/off-market, flywheel/OER, WORM et modules `analytics`/`security`.*
