@@ -16,6 +16,11 @@ import {
 } from '../valuation';
 import { formatCertifiableReportTimestamp } from './certifiableFinancialReport';
 import type { CertifiableReportBrokerFooter } from './certifiableFinancialReport';
+import {
+  isOffMarketListing,
+  resolveListingSource,
+  resolveOffMarketConfidentialBanner,
+} from '../residence/listingSource';
 import type { FinancialCalc, FinancialDataV2Doc, ResidenceFinancialHints } from './normalizeFinancialData';
 
 export interface AcmPresentationBrokerBlock extends CertifiableReportBrokerFooter {
@@ -44,6 +49,8 @@ export interface AcmPresentationReportModel {
   launchActionsEn: readonly string[];
   deontologicalClauseFr: readonly string[];
   deontologicalClauseEn: readonly string[];
+  /** Filigrane hors marché (Off-Market). */
+  confidentialBanner?: string | null;
 }
 
 export const ACM_LAUNCH_ACTIONS_FR = [
@@ -265,6 +272,7 @@ export interface BuildAcmPresentationReportInput {
     region?: string;
     nombreUnites?: number | null;
     nombreUnitesTotal?: number | null;
+    listingSource?: string;
   };
   residenceDoc?: Record<string, unknown> | null;
   broker: AcmPresentationBrokerBlock;
@@ -303,6 +311,10 @@ export function buildAcmPresentationReportModel(
     input.financialData
   );
 
+  const listingSource = resolveListingSource(
+    input.residence.listingSource ?? input.residenceDoc?.listingSource
+  );
+
   return {
     locale,
     generatedAtDisplay: formatCertifiableReportTimestamp(generatedAt),
@@ -318,5 +330,8 @@ export function buildAcmPresentationReportModel(
     launchActionsEn: ACM_LAUNCH_ACTIONS_EN,
     deontologicalClauseFr: ACM_DEONTOLOGICAL_CLAUSE_FR,
     deontologicalClauseEn: ACM_DEONTOLOGICAL_CLAUSE_EN,
+    confidentialBanner: isOffMarketListing(listingSource)
+      ? resolveOffMarketConfidentialBanner(locale)
+      : null,
   };
 }

@@ -249,9 +249,9 @@ export function MarketLibraryDashboard() {
   const [dragOver, setDragOver] = useState(false);
 
   useEffect(() => {
-    if (!profile?.uid) return;
-    return subscribeMarketDocuments(profile.uid, setDocs);
-  }, [profile?.uid]);
+    if (!profile?.orgId) return;
+    return subscribeMarketDocuments(profile.orgId, setDocs);
+  }, [profile?.orgId]);
 
   const selectedDoc = useMemo(
     () => docs.find((d) => d.id === selectedId) ?? docs[0] ?? null,
@@ -278,13 +278,13 @@ export function MarketLibraryDashboard() {
 
   const handleUpload = useCallback(
     async (files: FileList | null) => {
-      if (!profile?.uid || !files?.length) return;
+      if (!profile?.uid || !profile?.orgId || !files?.length) return;
       setError(null);
       setSuccess(null);
       setUploading(true);
       try {
         for (const file of Array.from(files)) {
-          const created = await uploadMarketDocument(profile.uid, file);
+          const created = await uploadMarketDocument(profile.uid, profile.orgId, file);
           setSelectedId(created.id);
           setParsing(true);
           try {
@@ -299,7 +299,7 @@ export function MarketLibraryDashboard() {
         setUploading(false);
       }
     },
-    [profile?.uid]
+    [profile?.uid, profile?.orgId]
   );
 
   const handleReparse = useCallback(async () => {

@@ -26,6 +26,7 @@ export interface MarketDocumentRecord {
   sizeBytes: number;
   storagePath: string;
   uploadedBy: string;
+  orgId?: string;
   uploadedAtMillis: number;
   documentCategory: 'MARKET_REPORT';
   virusScanStatus: MarketDocumentVirusScanStatus;

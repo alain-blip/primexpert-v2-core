@@ -13,6 +13,17 @@ const INK = '#121212';
 const PAGE =
   'pdf-page-break relative box-border flex min-h-[11in] w-[8.5in] flex-col bg-white text-[#1a1a1a]';
 
+function ConfidentialBanner({ text }: { text: string }) {
+  return (
+    <div
+      className="mx-[0.65in] mt-3 rounded border-2 px-4 py-2 text-center text-[8pt] font-black uppercase tracking-[0.12em]"
+      style={{ borderColor: GOLD, backgroundColor: '#fff7ed', color: '#9a3412' }}
+    >
+      {text}
+    </div>
+  );
+}
+
 function PdfPageFooter({
   model,
   page,
@@ -112,6 +123,9 @@ function CoverPage({ model }: { model: AcmPresentationReportModel }) {
         </p>
       </div>
       <div className="flex min-w-0 flex-1 flex-col bg-white px-[0.65in] pt-[0.85in]">
+        {model.confidentialBanner ? (
+          <ConfidentialBanner text={model.confidentialBanner} />
+        ) : null}
         <p
           className="text-[11pt] font-semibold uppercase tracking-[0.2em]"
           style={{ color: NAVY }}

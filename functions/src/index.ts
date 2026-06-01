@@ -161,8 +161,8 @@ export const marketDocumentParseIA = onCall(
   {
     invoker: 'public',
     serviceAccount: VERTEX_RUNTIME_SA,
-    memory: '2GiB',
-    timeoutSeconds: 540,
+    memory: '512MiB',
+    timeoutSeconds: 60,
   },
   async (request) => {
     try {
@@ -203,12 +203,14 @@ export const injectMarketMacroStats = onCall({ invoker: 'public' }, async (reque
       ? request.data.selectedOperationalBenchmarks
       : [];
     const siloType = String(request.data?.siloType ?? 'rpa_ri_chsld').trim();
+    const orgId = String(request.auth.token?.orgId ?? '').trim();
     if (!documentId) {
       throw new HttpsError('invalid-argument', 'documentId requis.');
     }
     const result = await injectMasterMarketExtractionServer({
       documentId,
       brokerId: request.auth.uid,
+      orgId: orgId || undefined,
       siloType,
       selectedRegions,
       selectedTransactions,
@@ -726,6 +728,12 @@ export { getGlobalFinancialBenchmark } from './benchmark/getGlobalFinancialBench
 /** Briefing du matin + Radar opportunités (06:00 America/Toronto). */
 export { morningBriefingGenerator } from './cron/morningBriefingGenerator';
 
+/** Sync nocturne Centris — ignore les inscriptions hors marché (Off-Market). */
+export { centrisListingsSyncNightly } from './centris/centrisListingsSyncNightly';
+
+/** Data Flywheel V3.5 — alimentation anonymisée du Big Data provincial. */
+export { onTransactionConcludedFlywheel } from './analytics/onTransactionConcludedTrigger';
+
 /** Portail vendeur — jeton d'invitation et notification téléversement. */
 export {
   createVendorPortalInvite,
@@ -736,6 +744,9 @@ export {
 
 /** Notes vocales mobile — Whisper + intention Gemini → notes / tâches (Montréal). */
 export { onVoiceNoteUploaded } from './audio/onVoiceNoteUploaded';
+
+/** Vault WORM — journal LegalComplianceLog (Montréal, Loi 25). */
+export { onVaultDocumentWrite } from './security/onVaultDocumentWrite';
 
 /** Webhooks omnicanaux — SMS Twilio + Meta (Montréal). */
 export const twilioSmsWebhook = onRequest(

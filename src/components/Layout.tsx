@@ -7,6 +7,7 @@ import { useSilo } from '../context/SiloContext';
 import { type AssetNiche } from '../types/residence';
 import { isGracePeriod } from '../lib/billingAccess';
 import { GracePeriodBanner } from './GracePeriodBanner';
+import { BrokerPhotoComplianceBanner } from './BrokerPhotoComplianceBanner';
 import { listDriveDocuments } from '../services/driveStorage';
 import {
   buildStorageQuotaLabel,
@@ -37,7 +38,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
-  const { profile, logOut } = useAuth();
+  const { profile, logOut, isProfilePhotoExpired } = useAuth();
   const sessionReady = Boolean(profile?.uid);
   const { language, setLanguage, t } = useLanguage();
   const { activeSilo, setActiveSilo, canAccess } = useSilo();
@@ -86,6 +87,9 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
   return (
     <AppResponsiveLayout
       shell={sessionReady}
+      topComplianceBanner={
+        sessionReady && isProfilePhotoExpired ? <BrokerPhotoComplianceBanner /> : null
+      }
       navigation={
         sessionReady ? (
         <LayoutNavigationRail
