@@ -88,6 +88,7 @@ export {
   type TgaAdjustmentInput,
   type TgaAdjustmentResult,
   computeTgaAdjustment,
+  formatTgaAdjustmentForDisplay,
   createMarketPenetration,
   calculatePenetrationDelta,
   calculateSizeDelta,
