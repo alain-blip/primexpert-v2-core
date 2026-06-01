@@ -9,6 +9,11 @@ import {
   type ResidenceFinancialHints,
 } from '../financial/normalizeFinancialData';
 import { noiGapToMarketValue } from '../financial/financialOptimization360';
+import {
+  capitalizationRatePctToDecimal,
+  DEFAULT_RPA_CAPITALIZATION_RATE_PCT,
+  normalizeCapitalizationRatePct,
+} from '../financial/capitalization';
 import { applyCanonicalMetricsToCalc, resolveCanonicalFinancialMetrics } from '../financial/resolveCanonicalRne';
 import type { MarketGpsTransaction } from '../market/marketGpsViewModel';
 import {
@@ -302,13 +307,9 @@ export function bootstrapResidenceAcm(
   const marketContext = resolveMarketContext(residence, residenceDoc);
 
   const calcTgaPct =
-    finiteNum(calc.tauxCapitalisation) != null
-      ? finiteNum(calc.tauxCapitalisation)! > 1
-        ? finiteNum(calc.tauxCapitalisation)!
-        : finiteNum(calc.tauxCapitalisation)! * 100
-      : valuationInputs.targetCapRate > 0
-        ? valuationInputs.targetCapRate * 100
-        : 8.5;
+    normalizeCapitalizationRatePct(finiteNum(calc.tauxCapitalisation)) ??
+    normalizeCapitalizationRatePct(valuationInputs.targetCapRate) ??
+    DEFAULT_RPA_CAPITALIZATION_RATE_PCT;
 
   const gpsSelection = selectGpsCapRateMedian({
     transactions: options?.marketTransactions ?? [],
@@ -319,7 +320,8 @@ export function bootstrapResidenceAcm(
   });
 
   const suggestedCapRatePct = gpsSelection.capRatePct;
-  valuationInputs.targetCapRate = suggestedCapRatePct / 100;
+  valuationInputs.targetCapRate =
+    capitalizationRatePctToDecimal(suggestedCapRatePct) ?? valuationInputs.targetCapRate;
 
   const askingPrice =
     finiteNum(calc.prixDemande) ??

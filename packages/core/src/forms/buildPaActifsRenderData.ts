@@ -5,6 +5,7 @@
 
 import { normalizeFinancialData } from '../financial/normalizeFinancialData';
 import { resolveCanonicalFinancialMetrics } from '../financial/resolveCanonicalRne';
+import { applyCapitalizationRateAdjustmentPct } from '../financial/capitalization';
 import { noiGapToMarketValue } from '../financial/financialOptimization360';
 import { bootstrapResidenceAcm, type ResidenceAcmIdentity } from '../valuation/residenceAcmBootstrap';
 import { parsePromesseAchatFromDoc } from '../transaction/promesseAchatEngine';
@@ -99,8 +100,7 @@ export function buildPaActifsRenderData(input: BuildPaActifsRenderDataInput): Pa
 
   const medianTga = input.territorial?.medianTgaPct ?? acmBootstrap?.suggestedCapRatePct ?? null;
   const tgaAdj = input.qualitativeTgaAdjustmentPct ?? 0;
-  const tgaApplique =
-    medianTga != null && medianTga > 0 ? Number((medianTga + tgaAdj).toFixed(2)) : null;
+  const tgaApplique = applyCapitalizationRateAdjustmentPct(medianTga, tgaAdj);
 
   const rne = metrics.rne ?? acmBootstrap?.revenuNetExploitation ?? null;
   const rbe = metrics.rbe ?? acmBootstrap?.revenuBrutEffectif ?? null;

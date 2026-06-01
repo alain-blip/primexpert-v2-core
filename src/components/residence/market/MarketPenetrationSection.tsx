@@ -13,7 +13,11 @@ import {
   sumSectorRpaUnits,
   getSubjectUnitCount,
 } from '@primexpert/core/market';
-import { computeTgaAdjustment } from '@primexpert/core/valuation';
+import {
+  capitalizationRateDecimalToPct,
+  computeTgaAdjustment,
+  DEFAULT_RPA_CAPITALIZATION_RATE_DECIMAL,
+} from '@primexpert/core/financial';
 import { useLanguage } from '../../../lib/i18n';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { InstitutionalKpi, InstitutionalSection } from '../institutional/InstitutionalUi';
@@ -44,9 +48,8 @@ export function MarketPenetrationSection() {
 
   const tgaRisk = useMemo(() => {
     if (rate == null || subjectUnits <= 0) return null;
-    const baseTga = 0.085;
     return computeTgaAdjustment({
-      baseTga,
+      baseTga: DEFAULT_RPA_CAPITALIZATION_RATE_DECIMAL,
       tauxPenetrationRPA: rate,
       nombreUnites: subjectUnits,
     });
@@ -134,7 +137,8 @@ export function MarketPenetrationSection() {
                 )}
               </p>
               <p className="mt-1 text-sm font-black text-[#142c6a] tabular-nums">
-                {(tgaRisk.baseTga * 100).toFixed(2)} % → {(tgaRisk.finalTga * 100).toFixed(2)} %
+                {capitalizationRateDecimalToPct(tgaRisk.baseTga)?.toFixed(2) ?? '—'} % →{' '}
+                {capitalizationRateDecimalToPct(tgaRisk.finalTga)?.toFixed(2) ?? '—'} %
                 <span className="text-xs font-semibold text-slate-600 ml-2">
                   (+{tgaRisk.penetrationDeltaBps + tgaRisk.sizeDeltaBps + tgaRisk.marketDeltaBps} bps)
                 </span>

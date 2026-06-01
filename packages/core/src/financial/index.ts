@@ -45,3 +45,16 @@ export * from './revenusDepensesPreview';
 export * from './financialAuditEee';
 export * from './sellerListingAnalysisReport';
 export * from './capitalization';
+export {
+  computeTgaAdjustment,
+  formatTgaAdjustmentForDisplay,
+  createMarketPenetration,
+  calculatePenetrationDelta,
+  calculateSizeDelta,
+  calculateMarketTierDelta,
+} from '../valuation/penetrationTgaAdjustment';
+export type {
+  MarketPenetration,
+  TgaAdjustmentInput,
+  TgaAdjustmentResult,
+} from '../valuation/penetrationTgaAdjustment';

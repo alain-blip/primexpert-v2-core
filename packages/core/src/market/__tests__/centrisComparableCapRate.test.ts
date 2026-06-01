@@ -68,6 +68,7 @@ describe('centrisComparableCapRate', () => {
       },
     });
     expect(row?.calculatedCapRate).toBe(7.5);
+    expect(row?.netOperatingIncome).toBe(600_000);
     expect(row?.source).toBe('market_analytics_raw');
 
     const cacheRow: CentrisComparableListingWithSource = {
