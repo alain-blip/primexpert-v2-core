@@ -145,14 +145,13 @@ export function ACM() {
         occ90: stress.occ90.valueRange.min,
         occ100: stress.occ100.valueRange.min,
       });
-      setRecommendedPrice(
-        calculatePriceRecommendation(
-          baseline,
-          inferMarketType(''),
-          classifyAssetSize(form.units),
-          occupancy
-        )
+      const priceRecommendation = calculatePriceRecommendation(
+        baseline,
+        inferMarketType(''),
+        classifyAssetSize(form.units),
+        occupancy
       );
+      setRecommendedPrice(priceRecommendation.recommendedListPrice);
     } catch (e) {
       console.error(e);
       setError(e instanceof Error ? e.message : String(e));
