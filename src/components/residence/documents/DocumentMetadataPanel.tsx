@@ -40,6 +40,7 @@ import {
 } from '../../../services/extractedDataInjectionService';
 import { useFinancialHubDraft } from '../../../context/FinancialHubDraftContext';
 import { inst } from '../institutional/InstitutionalUi';
+import { normalizeCapitalizationRate } from '@primexpert/core/financial';
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`;
@@ -52,6 +53,11 @@ function formatDate(ms: number, locale: 'fr' | 'en'): string {
     dateStyle: 'long',
     timeStyle: 'short',
   });
+}
+
+function formatCapitalizationRatePct(value: unknown): string {
+  const rate = normalizeCapitalizationRate(value);
+  return rate != null ? `${(rate * 100).toFixed(2)}%` : '—';
 }
 
 function StatusBadge({
@@ -1033,11 +1039,7 @@ function ExtractionVerificationSection({
                   <li>
                     TGA :{' '}
                     <span className="font-black text-[#142c6a]">
-                      {(evaluationSubject.tgaRetenu > 1
-                        ? evaluationSubject.tgaRetenu
-                        : evaluationSubject.tgaRetenu * 100
-                      ).toFixed(2)}
-                      %
+                      {formatCapitalizationRatePct(evaluationSubject.tgaRetenu)}
                     </span>
                   </li>
                 ) : null}

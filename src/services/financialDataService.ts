@@ -7,6 +7,7 @@ import {
   EXPENSE_FIELDS,
   EXPENSE_KEYS,
   mergeExtractedIntoFinancialDataV2,
+  computeCapitalizationRateFromNoi,
   recomputeFinancialCalculatedResults,
   sumNormalizedOperatingExpenses,
   type FinancialBaseData,
@@ -85,11 +86,7 @@ export async function saveExpenseAdjustmentsToFinancial(
     (financialData.calculatedResults as Record<string, unknown> | undefined)?.prixDemande
   );
   const tauxCapitalisation =
-    revenuNetExploitation != null &&
-    revenuNetExploitation > 0 &&
-    prixDemande > 0
-      ? revenuNetExploitation / prixDemande
-      : undefined;
+    computeCapitalizationRateFromNoi(revenuNetExploitation, prixDemande) ?? undefined;
 
   const docRef = doc(db, 'residences', residenceId, 'financial', 'dataV2');
   await setDoc(
@@ -314,10 +311,9 @@ export async function saveManualFinancialEntry(
       _confidence: options?.humanValidatedFromIa ? 'human_validated' : 'validation_required',
       ...(prix > 0 ? { prixDemande: prix } : {}),
     };
-    const rne = calculatedResults.revenuNetExploitation;
-    if (rne != null && rne > 0 && prix > 0) {
-      calculatedResults.tauxCapitalisation = rne / prix;
-    }
+    calculatedResults.tauxCapitalisation =
+      computeCapitalizationRateFromNoi(calculatedResults.revenuNetExploitation, prix) ??
+      calculatedResults.tauxCapitalisation;
     const mensuel = parseNum(draft.financement.paiementMensuel);
     if (mensuel > 0) {
       calculatedResults.paiementMensuel = mensuel;

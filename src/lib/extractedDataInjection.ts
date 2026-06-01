@@ -3,7 +3,7 @@
  * Logique pure (SSOT locale documents ; pas de calcul CFO ici).
  */
 
-import { findRegion } from '@primexpert/core/financial';
+import { findRegion, normalizeCapitalizationRate } from '@primexpert/core/financial';
 import type { ExpenseKey } from '@primexpert/core/financial';
 import { EXPENSE_KEYS, isNonOpexExpenseLabel } from '@primexpert/core/financial';
 import type { AssetNiche } from '../types/residence';
@@ -305,8 +305,9 @@ export function formatComparableDisplayLabel(
       locale === 'fr' ? `${units} unité${units > 1 ? 's' : ''}` : `${units} unit${units > 1 ? 's' : ''}`
     );
   }
-  if (capRatePct != null && capRatePct > 0) {
-    const pct = capRatePct > 1 ? capRatePct : capRatePct * 100;
+  const capRate = normalizeCapitalizationRate(capRatePct);
+  if (capRate != null) {
+    const pct = capRate * 100;
     parts.push(locale === 'fr' ? `TGA ${pct.toFixed(2)} %` : `Cap rate ${pct.toFixed(2)}%`);
   }
   return parts.join(' - ');
@@ -338,7 +339,8 @@ export function buildResidenceEvaluationSubjectPatch(
   }
   if (s.tgaRetenu != null) {
     patch.tgaRetenu = s.tgaRetenu;
-    patch.tauxCapitalisation = s.tgaRetenu > 1 ? s.tgaRetenu / 100 : s.tgaRetenu;
+    const normalizedTgaRetenu = normalizeCapitalizationRate(s.tgaRetenu);
+    if (normalizedTgaRetenu != null) patch.tauxCapitalisation = normalizedTgaRetenu;
   }
   if (s.valeurAvaluee != null) {
     patch.valeurAvaluee = s.valeurAvaluee;
