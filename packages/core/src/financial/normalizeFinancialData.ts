@@ -7,6 +7,8 @@ import { EXPENSE_KEYS } from './expenseKeys';
 import { isNonOpexExpenseKey } from './nonOpexFinancialLines';
 import { deriveRevenusAnnuelsFromTarification } from '../identity/rentPricingGrid';
 import { applyCanonicalMetricsToCalc, resolveCanonicalFinancialMetrics } from './resolveCanonicalRne';
+import { getListingPrice, type ListingCommissionSource } from '../residence/listingCommission';
+import { resolveMiseDeFondsRequiseAcheteur } from './bankingSubscriptionLimits';
 
 const LEGACY_TAX_KEY = 'taxesMunicipalesScolaire';
 const CANONICAL_TAX_KEY = 'taxesPermis';
@@ -263,6 +265,58 @@ export function sumExpenseAdjustmentsAlgebraic(
   return hasAny ? total : null;
 }
 
+function syncCalcWithCanonicalListingPrice(
+  calc: FinancialCalc,
+  residence: ResidenceFinancialHints
+): FinancialCalc {
+  const prix = getListingPrice(residence as ListingCommissionSource);
+  if (prix <= 0) return calc;
+  const rne = finiteNum(calc.revenuNetExploitation);
+  const rbe = finiteNum(calc.revenuBrutEffectif) ?? finiteNum(calc.revenusAnnuels);
+  const oldPrix = finiteNum(calc.prixDemande);
+
+  let next: FinancialCalc = {
+    ...calc,
+    prixDemande: prix,
+    tauxCapitalisation:
+      rne != null && rne > 0 ? rne / prix : calc.tauxCapitalisation,
+    facteurRevenuNet:
+      rne != null && rne > 0 ? prix / rne : calc.facteurRevenuNet,
+    facteurRevenuBrut:
+      rbe != null && rbe > 0 ? prix / rbe : calc.facteurRevenuBrut,
+    prixParUnite:
+      calc.nombreUnites && calc.nombreUnites > 0
+        ? prix / calc.nombreUnites
+        : calc.prixParUnite,
+  };
+
+  // Réaligne emprunt / MFR quand le prix canonique diffère du prix figé en calculatedResults.
+  if (oldPrix != null && oldPrix > 0 && Math.abs(oldPrix - prix) > 1) {
+    const empruntMaxDscr = finiteNum(calc.empruntMaxDSCR);
+    const oldPlafondLtv = finiteNum(calc.plafondLtv);
+    let empruntRetenu = finiteNum(calc.empruntMaxTransaction);
+
+    if (oldPlafondLtv != null && oldPlafondLtv > 0) {
+      const ltvRatio = oldPlafondLtv / oldPrix;
+      const plafondLtv = Math.round(prix * ltvRatio);
+      next.plafondLtv = plafondLtv;
+      if (empruntMaxDscr != null && empruntMaxDscr > 0) {
+        empruntRetenu = Math.round(Math.min(empruntMaxDscr, plafondLtv));
+      } else if (empruntRetenu != null && empruntRetenu > 0) {
+        empruntRetenu = Math.round(Math.min(empruntRetenu, plafondLtv));
+      }
+    }
+
+    if (empruntRetenu != null && empruntRetenu >= 0) {
+      next.empruntMaxTransaction = empruntRetenu;
+      next.hypothequeMaxRecommandee = empruntRetenu;
+      next.miseDeFondsRequise = Math.max(0, Math.round(prix - empruntRetenu));
+    }
+  }
+
+  return next;
+}
+
 function finiteNum(v: unknown): number | null {
   if (v === null || v === undefined || v === '') return null;
   const n = typeof v === 'string' ? parseFloat(String(v).replace(/[^\d.-]/g, '')) : Number(v);
@@ -465,6 +519,7 @@ export function normalizeFinancialData(
       residence
     );
     enrichedCalc = applyCanonicalMetricsToCalc(enrichedCalc, baseData);
+    enrichedCalc = syncCalcWithCanonicalListingPrice(enrichedCalc, residence);
     const reconciledRbe =
       finiteNum(enrichedCalc.revenuBrutEffectif) ?? finiteNum(enrichedCalc.revenusAnnuels);
     if (reconciledRbe != null && finiteNum(enrichedCalc.revenuBrutEffectif) == null) {
@@ -496,11 +551,7 @@ export function normalizeFinancialData(
       safeNum(derived?.noiOperationnel) ??
       safeNum(derived?.noi) ??
       (revenusAnnuels != null && depensesTotales != null ? revenusAnnuels - depensesTotales : null);
-    const prixDemande =
-      safeNum((residence as { price?: unknown }).price) ??
-      safeNum(residence.prixDemande) ??
-      safeNum(residence.askingPrice) ??
-      null;
+    const prixDemande = getListingPrice(residence as ListingCommissionSource) || null;
     const tauxCap = noi != null && prixDemande ? noi / prixDemande : null;
 
     const calc: FinancialCalc = {
@@ -539,7 +590,13 @@ export function normalizeFinancialData(
       _confidence: (derived?.confidence as string) ?? null,
     };
 
-    const enrichedCalc = enrichCalcWithRpaAncillary(calc, baseData, residence);
+    const enrichedCalc = syncCalcWithCanonicalListingPrice(
+      applyCanonicalMetricsToCalc(
+        enrichCalcWithRpaAncillary(calc, baseData, residence),
+        baseData
+      ),
+      residence
+    );
     return { calc: enrichedCalc, baseData, hasFinancials: true, source: 'derivedData' };
   }
 
@@ -575,6 +632,7 @@ export function computeBilanExecutifKpis(
   }
 
   const rbe = finiteNum(calc.revenuBrutEffectif) ?? finiteNum(calc.revenusAnnuels);
+  const metrics = resolveCanonicalFinancialMetrics(calc, baseData);
   const depensesNormalisees =
     finiteNum(calc.depensesTotalesNormalisees) ??
     (baseData?.depenses
@@ -587,7 +645,7 @@ export function computeBilanExecutifKpis(
     baseData?.depenses && typeof baseData.depenses === 'object'
       ? sumDeclaredOperatingExpensesGrid(baseData.depenses)
       : finiteNum(calc.depensesTotales);
-  const noi = finiteNum(calc.revenuNetExploitation);
+  const noi = metrics.rne ?? finiteNum(calc.revenuNetExploitation);
   const noiAudit = getAuditNormalizedNoi(calc, baseData);
 
   return {
@@ -616,12 +674,13 @@ function mirrorFinite(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-/** SSOT Bilan exécutif 360° — lecture directe de financial/dataV2.calculatedResults. */
+/** SSOT Bilan exécutif 360° — calc normalisé (RNE = RBE − dépenses déclarées, prix inscription). */
 export function readCalculatedResultsDisplayMirror(
-  financialData: FinancialDataV2Doc | null | undefined
+  financialData: FinancialDataV2Doc | null | undefined,
+  residence: ResidenceFinancialHints = {}
 ): CalculatedResultsDisplayMirror {
-  const calc = financialData?.calculatedResults;
-  if (!calc || typeof calc !== 'object') {
+  const { calc, baseData, hasFinancials } = normalizeFinancialData(financialData, residence);
+  if (!calc || !hasFinancials) {
     return {
       rbe: null,
       rne: null,
@@ -633,12 +692,27 @@ export function readCalculatedResultsDisplayMirror(
     };
   }
 
+  const metrics = resolveCanonicalFinancialMetrics(calc, baseData);
+  const rne = metrics.rne ?? mirrorFinite(calc.revenuNetExploitation);
+  const prix =
+    getListingPrice(residence as ListingCommissionSource) ||
+    mirrorFinite(calc.prixDemande) ||
+    0;
+  const tgaRatio =
+    rne != null && prix > 0 ? rne / prix : mirrorFinite(calc.tauxCapitalisation);
+  const miseDeFonds =
+    resolveMiseDeFondsRequiseAcheteur(calc, prix > 0 ? prix : null) ??
+    mirrorFinite(calc.miseDeFondsRequise);
+
   return {
-    rbe: mirrorFinite(calc.revenuBrutEffectif) ?? mirrorFinite(calc.revenusAnnuels),
-    rne: mirrorFinite(calc.revenuNetExploitation),
-    tgaRatio: mirrorFinite(calc.tauxCapitalisation),
-    miseDeFonds: mirrorFinite(calc.miseDeFondsRequise),
-    depensesExploitation: mirrorFinite(calc.depensesTotales),
+    rbe: metrics.rbe ?? mirrorFinite(calc.revenuBrutEffectif) ?? mirrorFinite(calc.revenusAnnuels),
+    rne,
+    tgaRatio,
+    miseDeFonds,
+    depensesExploitation:
+      metrics.opex ??
+      mirrorFinite(calc.depensesTotalesNormalisees) ??
+      mirrorFinite(calc.depensesTotales),
     ratioCouvertureDette: mirrorFinite(calc.ratioCouvertureDette),
     hasCalculatedResults: true,
   };

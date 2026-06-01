@@ -64,6 +64,7 @@ function AcmTabContent({ residence }: AcmTabProps) {
           nombreUnitesTotal: residence.nicheMetadata?.nombreUnites,
           prixDemande: residence.price,
           askingPrice: residence.price,
+          listingSource: residence.listingSource,
         },
         residenceDoc: residenceDoc ?? undefined,
         broker,

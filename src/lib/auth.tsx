@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
   onAuthStateChanged,
   signInWithPopup,
@@ -13,6 +13,10 @@ import type { BillingStatus, NurtureEmailSent } from '../types/billing';
 import type { J7SurveyResponse } from '../types/nurture';
 import type { EmailAccount } from '../types/emailAccount';
 import type { UserTelephony } from '@primexpert/core/telephony';
+import {
+  deriveBrokerProfilePhotoCompliance,
+  type BrokerPhotoComplianceResult,
+} from '@primexpert/core/security';
 
 export interface UserProfile {
   uid: string;
@@ -52,12 +56,18 @@ export interface UserProfile {
    * Téléphonie VOIP — numéro Twilio assigné par l'admin (`telephony.twilioNumber` requis pour les appels intégrés).
    */
   telephony?: UserTelephony | null;
+  /** Horodatage téléversement photo permis — base du verrou chronologique OACIQ (1826 j). */
+  profilePhotoUploadedAtMillis?: number;
 }
 
 interface AuthContextType {
   user: FirebaseUser | null;
   profile: UserProfile | null;
   loading: boolean;
+  /** true si la photo de permis dépasse 5 ans (conformité publicitaire OACIQ). */
+  isProfilePhotoExpired: boolean;
+  /** Détail chronologique dérivé du core (`daysRemaining`, etc.). */
+  photoCompliance: BrokerPhotoComplianceResult;
   signIn: () => Promise<void>;
   /** true pendant l’ouverture de la fenêtre Google OAuth (popup). */
   signInPending: boolean;
@@ -189,9 +199,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signOut(auth);
   };
 
+  const photoCompliance = useMemo(
+    () => deriveBrokerProfilePhotoCompliance(profile?.profilePhotoUploadedAtMillis ?? 0),
+    [profile?.profilePhotoUploadedAtMillis]
+  );
+
+  const isProfilePhotoExpired = Boolean(profile) && photoCompliance.isProfilePhotoExpired;
+
   return (
     <AuthContext.Provider
-      value={{ user, profile, loading, signIn, signInPending, logOut, refreshProfile }}
+      value={{
+        user,
+        profile,
+        loading,
+        isProfilePhotoExpired,
+        photoCompliance,
+        signIn,
+        signInPending,
+        logOut,
+        refreshProfile,
+      }}
     >
       {children}
     </AuthContext.Provider>

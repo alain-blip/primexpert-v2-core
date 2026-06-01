@@ -24,6 +24,7 @@ import {
   InstitutionalSection,
 } from '../institutional/InstitutionalUi';
 import type { Residence } from '../../../services/residences';
+import { useResidenceFinancialHints } from '../../../context/ResidenceDataContext';
 
 export interface FinancabiliteTabProps {
   residence: Residence;
@@ -431,14 +432,7 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
     persistUseAuditRne(next);
   }, []);
 
-  const residenceHints = useMemo(
-    () => ({
-      ...residence,
-      prixDemande: residence.price,
-      askingPrice: residence.price,
-    }),
-    [residence]
-  );
+  const residenceHints = useResidenceFinancialHints(residence);
 
   const fmt = useCallback(
     (n: number | null) =>
@@ -668,7 +662,7 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
 
       <FinancialAuditEeePanel
         residence={residence}
-        prixDemande={model.prixDemande ?? residence.price}
+        prixDemande={model.prixDemande ?? residenceHints.prixDemande ?? residence.price}
         paiementAnnuelDette={model.paiementAnnuel ?? 0}
       />
 
