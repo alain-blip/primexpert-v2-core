@@ -19,6 +19,22 @@ const SOURCE = path.join(
   'market',
   'internalMarketFlywheel.ts'
 );
+const CAP_RATE_SOURCE = path.join(
+  REPO_ROOT,
+  'packages',
+  'core',
+  'src',
+  'market',
+  'comparableCapRate.ts'
+);
+const PIPELINE_STATUS_SOURCE = path.join(
+  REPO_ROOT,
+  'packages',
+  'core',
+  'src',
+  'residence',
+  'pipelineStatusResolve.ts'
+);
 const VENDORED_DIR = path.join(FUNCTIONS_DIR, 'src', 'analytics', '_vendored');
 const TARGET = path.join(VENDORED_DIR, 'internalMarketFlywheel.ts');
 
@@ -32,28 +48,12 @@ const HEADER_BANNER = [
   '',
 ].join('\n');
 
-const CAP_RATE_FN = `
-function calculateComparableCapRate(
-  listing: {
-    soldPrice: number;
-    revenuBrutEffectif: number;
-    densesExploitation: number;
-    netOperatingIncome: number;
-    mlsNumber?: string;
-    closedAtMillis?: number;
-    regionAdministrative?: string;
-    classeImmeuble?: string;
+function syncSupportFile(source, name) {
+  if (!fs.existsSync(source)) {
+    throw new Error(`[sync-core-analytics-flywheel] Source manquante : ${source}`);
   }
-): number {
-  if (!listing.soldPrice || listing.soldPrice <= 0) return 0;
-  const rne =
-    listing.netOperatingIncome > 0
-      ? listing.netOperatingIncome
-      : listing.revenuBrutEffectif - listing.densesExploitation;
-  if (!Number.isFinite(rne) || rne <= 0) return 0;
-  return Number(((rne / listing.soldPrice) * 100).toFixed(2));
+  fs.writeFileSync(path.join(VENDORED_DIR, name), HEADER_BANNER + fs.readFileSync(source, 'utf-8'), 'utf-8');
 }
-`;
 
 function main() {
   if (!fs.existsSync(SOURCE)) {
@@ -67,13 +67,15 @@ function main() {
     "import { internalFlywheelFingerprint } from '../../documents/_vendored/marketDeduplication';"
   );
   body = body.replace(
-    "import { calculateComparableCapRate } from './centrisComparableCapRate';",
-    CAP_RATE_FN.trimStart()
+    "} from '../residence/pipelineStatusResolve';",
+    "} from './pipelineStatusResolve';"
   );
 
+  syncSupportFile(CAP_RATE_SOURCE, 'comparableCapRate.ts');
+  syncSupportFile(PIPELINE_STATUS_SOURCE, 'pipelineStatusResolve.ts');
   fs.writeFileSync(TARGET, HEADER_BANNER + body, 'utf-8');
   process.stdout.write(
-    `[sync-core-analytics-flywheel] 1 fichier → ${path.relative(REPO_ROOT, TARGET)}\n`
+    `[sync-core-analytics-flywheel] 3 fichier(s) → ${path.relative(REPO_ROOT, VENDORED_DIR)}/\n`
   );
 }
 

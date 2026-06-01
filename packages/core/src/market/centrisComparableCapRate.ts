@@ -4,6 +4,9 @@
 
 import { normalizeAdministrativeRegion } from './marketRegionNormalize';
 import { normalizeRpaBuildingClass } from './gpsCapRateByRegionClass';
+import { calculateComparableCapRate } from './comparableCapRate';
+
+export { calculateComparableCapRate } from './comparableCapRate';
 
 export interface CentrisComparableListing {
   mlsNumber: string;
@@ -34,17 +37,14 @@ export interface TerritorialComparableMergeResult {
   filterScope: 'REGION_CLASS' | 'REGION' | 'ALL';
 }
 
-export function calculateComparableCapRate(
-  listing: Omit<CentrisComparableListing, 'calculatedCapRate'>
-): number {
-  if (!listing.soldPrice || listing.soldPrice <= 0) return 0;
-  const rne =
-    listing.netOperatingIncome > 0
-      ? listing.netOperatingIncome
-      : listing.revenuBrutEffectif - listing.densesExploitation;
-  if (!Number.isFinite(rne) || rne <= 0) return 0;
-  return Number(((rne / listing.soldPrice) * 100).toFixed(2));
-}
+export type TerritorialCompetitionSnapshot = Omit<
+  TerritorialComparableMergeResult,
+  'comparables'
+> & {
+  comparables: CentrisComparableListing[];
+  regionAdministrative: string | null;
+  classeImmeuble: string | null;
+};
 
 function parseNum(v: unknown): number {
   if (typeof v === 'number' && Number.isFinite(v)) return v;

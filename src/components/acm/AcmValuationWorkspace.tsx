@@ -40,9 +40,9 @@ import {
   ACM_TOP3_TREND_KEYS,
   buildAcmCostTrendNarrativeBundle,
   computeAcmCostTrendPoints,
-  type CentrisComparableListing,
   type MarketGpsRatioSample,
   type MarketGpsTransaction,
+  type TerritorialCompetitionSnapshot,
 } from '@primexpert/core/market';
 import {
   assessOperatingExpenseRatioVsRegionalMedian,
@@ -54,7 +54,16 @@ import type {
   FinancialDataV2Doc,
   TerritorialAcmMedians,
 } from '@primexpert/core/financial';
-import { noiGapToMarketValue } from '@primexpert/core/financial';
+import {
+  formatDecimalTgaPct,
+  formatTgaPct,
+  formatTgaPctForInput,
+  isManualTgaOverride,
+  noiGapToMarketValue,
+  percentToDecimal,
+  resolveAppliedTgaPct,
+  resolveDynamicMarketTgaPct,
+} from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
 import {
@@ -131,14 +140,6 @@ export interface AcmValuationPdfExportContext {
   residence: Residence;
 }
 
-export interface TerritorialCompetitionSnapshot {
-  comparables: CentrisComparableListing[];
-  medianTgaPct: number | null;
-  sampleCount: number;
-  regionAdministrative: string | null;
-  classeImmeuble: string | null;
-}
-
 export interface AcmValuationWorkspaceProps {
   bootstrap: ResidenceAcmBootstrap;
   onOpenComparables?: () => void;
@@ -173,28 +174,21 @@ export function AcmValuationWorkspace({
       ? bootstrap.suggestedCapRatePct
       : bootstrap.targetCapRatePct;
 
-  const dynamicMarketTgaPct = useMemo(() => {
-    if (
-      territorialCompetition?.medianTgaPct != null &&
-      territorialCompetition.medianTgaPct > 0
-    ) {
-      return territorialCompetition.medianTgaPct;
-    }
-    if (territorialMedians?.tgaPct != null && territorialMedians.tgaPct > 0) {
-      return territorialMedians.tgaPct;
-    }
-    return bootstrapSuggestedCapRatePct;
-  }, [
-    territorialCompetition?.medianTgaPct,
-    territorialMedians?.tgaPct,
-    bootstrapSuggestedCapRatePct,
-  ]);
+  const dynamicMarketTgaPct = useMemo(
+    () =>
+      resolveDynamicMarketTgaPct({
+        territorialCompetitionMedianTgaPct: territorialCompetition?.medianTgaPct,
+        territorialMedianTgaPct: territorialMedians?.tgaPct,
+        fallbackTgaPct: bootstrapSuggestedCapRatePct,
+      }),
+    [territorialCompetition?.medianTgaPct, territorialMedians?.tgaPct, bootstrapSuggestedCapRatePct]
+  );
 
   const [qualitativeTgaAdjustmentPct, setQualitativeTgaAdjustmentPct] = useState(0);
-  const [tgaInput, setTgaInput] = useState(() => String(dynamicMarketTgaPct));
+  const [tgaInput, setTgaInput] = useState(() => formatTgaPctForInput(dynamicMarketTgaPct));
   const [targetCapRatePct, setTargetCapRatePct] = useState(dynamicMarketTgaPct);
   /** TGA réellement appliqué au moteur (après ajustement pénétration). */
-  const [effectiveCapRate, setEffectiveCapRate] = useState(dynamicMarketTgaPct / 100);
+  const [effectiveCapRate, setEffectiveCapRate] = useState(percentToDecimal(dynamicMarketTgaPct));
   const [penetrationRatePct, setPenetrationRatePct] = useState(bootstrap.penetrationRatePct);
   const [tgaManuallyAdjusted, setTgaManuallyAdjusted] = useState(false);
   const [result, setResult] = useState<ValuationOutputs | null>(null);
@@ -222,15 +216,16 @@ export function AcmValuationWorkspace({
     updatedAt: new Date().toISOString(),
   });
 
-  const appliedCapRatePct = useMemo(() => {
-    if (tgaManuallyAdjusted) return targetCapRatePct;
-    return dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
-  }, [
-    tgaManuallyAdjusted,
-    targetCapRatePct,
-    dynamicMarketTgaPct,
-    qualitativeTgaAdjustmentPct,
-  ]);
+  const appliedCapRatePct = useMemo(
+    () =>
+      resolveAppliedTgaPct({
+        isManualOverride: tgaManuallyAdjusted,
+        manualTgaPct: targetCapRatePct,
+        marketTgaPct: dynamicMarketTgaPct,
+        qualitativeAdjustmentPct: qualitativeTgaAdjustmentPct,
+      }),
+    [tgaManuallyAdjusted, targetCapRatePct, dynamicMarketTgaPct, qualitativeTgaAdjustmentPct]
+  );
 
   const bootstrapSyncKey = useMemo(
     () =>
@@ -255,8 +250,13 @@ export function AcmValuationWorkspace({
     if (lastBootstrapSyncRef.current === bootstrapSyncKey) return;
     lastBootstrapSyncRef.current = bootstrapSyncKey;
     if (!tgaManuallyAdjusted) {
-      const next = dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
-      setTgaInput(String(Number(next.toFixed(2))));
+      const next = resolveAppliedTgaPct({
+        isManualOverride: false,
+        manualTgaPct: targetCapRatePct,
+        marketTgaPct: dynamicMarketTgaPct,
+        qualitativeAdjustmentPct: qualitativeTgaAdjustmentPct,
+      });
+      setTgaInput(formatTgaPctForInput(next));
       setTargetCapRatePct(next);
     }
     setPenetrationRatePct(bootstrap.penetrationRatePct);
@@ -270,10 +270,15 @@ export function AcmValuationWorkspace({
 
   useEffect(() => {
     if (tgaManuallyAdjusted) return;
-    const next = dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
-    setTgaInput(String(Number(next.toFixed(2))));
+    const next = resolveAppliedTgaPct({
+      isManualOverride: false,
+      manualTgaPct: targetCapRatePct,
+      marketTgaPct: dynamicMarketTgaPct,
+      qualitativeAdjustmentPct: qualitativeTgaAdjustmentPct,
+    });
+    setTgaInput(formatTgaPctForInput(next));
     setTargetCapRatePct(next);
-  }, [dynamicMarketTgaPct, qualitativeTgaAdjustmentPct, tgaManuallyAdjusted]);
+  }, [dynamicMarketTgaPct, qualitativeTgaAdjustmentPct, targetCapRatePct, tgaManuallyAdjusted]);
 
   const runValuation = useCallback(
     (capPct: number, penPct: number) => {
@@ -298,12 +303,12 @@ export function AcmValuationWorkspace({
       }
       setError(null);
       try {
-        let adjustedCap = capPct / 100;
+        let adjustedCap = percentToDecimal(capPct);
         let adj: TgaAdjustmentResult | null = null;
         if (penPct > 0) {
           adj = computeTgaAdjustment({
             baseTga: adjustedCap,
-            tauxPenetrationRPA: penPct / 100,
+            tauxPenetrationRPA: percentToDecimal(penPct),
             nombreUnites: bootstrap.units,
           });
           adjustedCap = adj.finalTga;
@@ -425,13 +430,25 @@ export function AcmValuationWorkspace({
       return;
     }
     setTargetCapRatePct(parsed);
-    const autoTarget = dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
-    setTgaManuallyAdjusted(Math.abs(parsed - autoTarget) > 0.04);
+    const autoTarget = resolveAppliedTgaPct({
+      isManualOverride: false,
+      manualTgaPct: targetCapRatePct,
+      marketTgaPct: dynamicMarketTgaPct,
+      qualitativeAdjustmentPct: qualitativeTgaAdjustmentPct,
+    });
+    setTgaManuallyAdjusted(
+      isManualTgaOverride({ enteredTgaPct: parsed, automaticTgaPct: autoTarget })
+    );
   };
 
   const resetTgaToMarket = () => {
-    const next = dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
-    setTgaInput(String(Number(next.toFixed(2))));
+    const next = resolveAppliedTgaPct({
+      isManualOverride: false,
+      manualTgaPct: targetCapRatePct,
+      marketTgaPct: dynamicMarketTgaPct,
+      qualitativeAdjustmentPct: qualitativeTgaAdjustmentPct,
+    });
+    setTgaInput(formatTgaPctForInput(next));
     setTargetCapRatePct(next);
     setTgaManuallyAdjusted(false);
   };
@@ -543,6 +560,7 @@ export function AcmValuationWorkspace({
 
   const ratios = useMemo(() => {
     if (!result) return null;
+    const impliedCapRatePct = formatDecimalTgaPct(result.capRateImpliedAtAsking);
     return [
       {
         label: t(
@@ -551,7 +569,7 @@ export function AcmValuationWorkspace({
         ),
         value:
           result.capRateImpliedAtAsking !== undefined
-            ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%`
+            ? `${impliedCapRatePct}%`
             : '—',
       },
       {
@@ -764,7 +782,7 @@ export function AcmValuationWorkspace({
                   {territorialCompetition?.sampleCount ? (
                     <span className="text-slate-600">
                       {' '}
-                      · {t('Médiane', 'Median')} {dynamicMarketTgaPct.toFixed(2)} %
+                      · {t('Médiane', 'Median')} {formatTgaPct(dynamicMarketTgaPct)} %
                     </span>
                   ) : bootstrap.capRateSampleCount > 0 ? (
                     <span className="text-slate-600"> · n={bootstrap.capRateSampleCount}</span>
@@ -958,7 +976,7 @@ export function AcmValuationWorkspace({
                 )}
               </p>
               <p className={`text-sm ${ACM_METRIC_VALUE_CLASS}`}>
-                {(tgaAdjustment.baseTga * 100).toFixed(2)} % → {(tgaAdjustment.finalTga * 100).toFixed(2)} %
+                {formatDecimalTgaPct(tgaAdjustment.baseTga)} % → {formatDecimalTgaPct(tgaAdjustment.finalTga)} %
               </p>
             </div>
           ) : null}
@@ -994,7 +1012,7 @@ export function AcmValuationWorkspace({
               </p>
               <p className={`text-xs font-bold ${ACM_METRIC_VALUE_CLASS}`}>
                 {t('Taux de capitalisation global (TGA) médian', 'Median global cap rate')}:{' '}
-                {territorialMedians.tgaPct?.toFixed(2) ?? '—'}% ·{' '}
+                {formatTgaPct(territorialMedians.tgaPct)}% ·{' '}
                 {t('Prix par unité médian', 'Median price per unit')}:{' '}
                 {fmtMoneyField(territorialMedians.prixParUnite ?? NaN)} ·{' '}
                 {t('Multiple du revenu net (MRN)', 'Net income multiplier (MRN)')}:{' '}

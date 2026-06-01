@@ -4,6 +4,8 @@
  * Statuts courtage québécois — édition manuelle inscriptions (HITL).
  */
 
+import { isOffMarketListing, resolveListingSource } from './listingSource';
+
 export const INSCRIPTION_BROKERAGE_STATUSES = [
   'active',
   'suspended',
@@ -82,7 +84,6 @@ export function labelForInscriptionBrokerageStatus(
 
 /** Le menu statut est éditable si hors marché, ou Centris avec override manuel actif. */
 export function isInscriptionStatusEditable(data: Record<string, unknown>): boolean {
-  const source = String(data.listingSource ?? 'centris').trim().toLowerCase();
-  if (source === 'off_market' || source === 'off-market') return true;
+  if (isOffMarketListing(resolveListingSource(data.listingSource))) return true;
   return data.isManuallyOverridden === true;
 }

@@ -17,6 +17,8 @@ import {
 } from '@primexpert/core/residence';
 import {
   DEFAULT_LISTING_SOURCE,
+  isOffMarketListing,
+  resolveListingSource,
   type ListingSource,
 } from '@primexpert/core/residence';
 import type { AssetNiche } from '../types/residence';
@@ -51,16 +53,18 @@ export async function createInscription(
   }
 
   const listingSource = input.listingSource ?? DEFAULT_LISTING_SOURCE;
+  const normalizedListingSource = resolveListingSource(listingSource);
+  const offMarketListing = isOffMarketListing(normalizedListingSource);
   const price = Math.max(0, Math.round(input.price ?? 0));
   const statusPatch =
-    listingSource === 'off_market' && input.initialStatus
+    offMarketListing && input.initialStatus
       ? buildInscriptionBrokerageStatusPatch(input.initialStatus)
       : { status: 'prospect', statut: 'prospect' };
 
   const col = collection(db, 'residences');
   const docRef = await addDoc(col, {
     ...statusPatch,
-    listingSource,
+    listingSource: normalizedListingSource,
     address,
     city,
     ville: city,
@@ -71,14 +75,14 @@ export async function createInscription(
     [TENANT_FIELD]: ctx.tenantId,
     assetNiche: input.assetNiche ?? 'RPA',
     residenceName: input.residenceName?.trim() || address,
-    isManuallyOverridden: listingSource === 'off_market',
+    isManuallyOverridden: offMarketListing,
     lastManualStatusUpdateAt:
-      listingSource === 'off_market' ? Date.now() : null,
+      offMarketListing ? Date.now() : null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
 
-  return { id: docRef.id, listingSource };
+  return { id: docRef.id, listingSource: normalizedListingSource };
 }
 
 /** Met à jour le statut courtage — force le verrou manuel anti-sync MLS. */

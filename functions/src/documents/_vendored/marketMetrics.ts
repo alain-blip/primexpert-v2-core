@@ -9,7 +9,7 @@
  * SSOT validation IA, benchmarks régionaux et alertes HITL.
  */
 
-import { coerceOperatingRatioPct } from './marketDataNormalizeLite';
+import { coerceOperatingRatioPct } from './operatingRatio';
 
 /** Classes d'actif pour tolérances de validation IA. */
 export type AssetBenchmarkClass = 'rpa' | 'plex' | 'commercial_pure' | 'industrial';

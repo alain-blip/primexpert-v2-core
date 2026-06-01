@@ -19,5 +19,7 @@ export * from './gpsComparablesImport';
 export * from './marketSourceTag';
 export * from './marketRegionNormalize';
 export * from './gpsCapRateByRegionClass';
+export * from './operatingRatio';
+export * from './comparableCapRate';
 export * from './centrisComparableCapRate';
 export * from './internalMarketFlywheel';

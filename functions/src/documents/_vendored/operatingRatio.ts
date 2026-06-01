@@ -4,6 +4,10 @@
  * Source : packages/core/src/documents/
  * Régénéré : functions/scripts/sync-core-documents.cjs (prebuild)
  */
+/**
+ * Normalisation des ratios d'exploitation (RDE/OER).
+ */
+
 export function coerceOperatingRatioPct(value: number): number | undefined {
   if (!Number.isFinite(value)) return undefined;
   let v = value;
@@ -12,3 +16,4 @@ export function coerceOperatingRatioPct(value: number): number | undefined {
   if (v <= 0 || v > 100) return undefined;
   return Math.round(v * 1000) / 1000;
 }
+

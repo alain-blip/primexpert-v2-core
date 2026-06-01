@@ -12,3 +12,4 @@ export * from './canonicalNodes';
 export * from './residenceSearch';
 export * from './listingSource';
 export * from './inscriptionBrokerageStatus';
+export * from './pipelineStatusResolve';

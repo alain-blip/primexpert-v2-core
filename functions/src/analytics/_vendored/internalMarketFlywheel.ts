@@ -10,27 +10,12 @@
  */
 
 import { internalFlywheelFingerprint } from '../../documents/_vendored/marketDeduplication';
-function calculateComparableCapRate(
-  listing: {
-    soldPrice: number;
-    revenuBrutEffectif: number;
-    densesExploitation: number;
-    netOperatingIncome: number;
-    mlsNumber?: string;
-    closedAtMillis?: number;
-    regionAdministrative?: string;
-    classeImmeuble?: string;
-  }
-): number {
-  if (!listing.soldPrice || listing.soldPrice <= 0) return 0;
-  const rne =
-    listing.netOperatingIncome > 0
-      ? listing.netOperatingIncome
-      : listing.revenuBrutEffectif - listing.densesExploitation;
-  if (!Number.isFinite(rne) || rne <= 0) return 0;
-  return Number(((rne / listing.soldPrice) * 100).toFixed(2));
-}
-
+import { calculateComparableCapRate } from './comparableCapRate';
+import {
+  extractPipelineStatusRaw,
+  resolvePipelineColumnId,
+  type PipelineColumnId,
+} from './pipelineStatusResolve';
 
 export const INTERNAL_FLYWHEEL_DATA_SOURCE = 'internal_flywheel' as const;
 
@@ -41,67 +26,19 @@ export interface FlywheelPipelineColumn {
   column: 'promise' | 'sold';
 }
 
-const FINALIZED_COLUMNS = new Set<FlywheelPipelineColumn['column']>(['promise', 'sold']);
-
-const LEGACY_TO_COLUMN: Record<string, FlywheelPipelineColumn['column']> = {
-  promise: 'promise',
-  promesse: 'promise',
-  'promesse-achat': 'promise',
-  'pa-acceptee': 'promise',
-  'pa_acceptee': 'promise',
-  'due-diligence': 'promise',
-  financement: 'promise',
-  'transfert-permis': 'promise',
-  sold: 'sold',
-  vendu: 'sold',
-  vendue: 'sold',
-  cloture: 'sold',
-  fermee: 'sold',
-  fermée: 'sold',
-  clos: 'sold',
-  success: 'sold',
-  succes: 'sold',
-};
-
-function stripDiacritics(value: string): string {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-}
-
-function normalizeStatusToken(raw: unknown): string {
-  if (raw == null) return '';
-  return stripDiacritics(String(raw).trim().toLowerCase());
-}
-
-function extractStatusRaw(data: Record<string, unknown>): string {
-  const raw =
-    data.status ??
-    data.pipelineStatus ??
-    data.etat ??
-    data.phase ??
-    data.stage ??
-    data.statut ??
-    '';
-  return typeof raw === 'string' ? raw.trim() : '';
-}
+const FINALIZED_COLUMNS = new Set<PipelineColumnId>(['promise', 'sold']);
 
 /** Résout la colonne pipeline canonique (promise | sold | null). */
 export function resolveFlywheelPipelineColumn(
   data: Record<string, unknown> | null | undefined
 ): FlywheelPipelineColumn['column'] | null {
   if (!data) return null;
-  const normalized = normalizeStatusToken(extractStatusRaw(data));
-  if (!normalized) return null;
-  if (normalized === 'promise' || normalized === 'sold') return normalized;
-  if (LEGACY_TO_COLUMN[normalized]) return LEGACY_TO_COLUMN[normalized];
-
-  const slug = normalized.replace(/[^a-z0-9]+/g, '');
-  if (slug.includes('promess') || slug.includes('paaccept')) return 'promise';
-  if (slug.includes('vendu') || slug.includes('vendue') || slug.includes('sold')) return 'sold';
-  return null;
+  const column = resolvePipelineColumnId(extractPipelineStatusRaw(data));
+  return isFlywheelFinalizedColumn(column) ? column : null;
 }
 
 export function isFlywheelFinalizedColumn(
-  column: FlywheelPipelineColumn['column'] | null | undefined
+  column: PipelineColumnId | null | undefined
 ): column is FlywheelPipelineColumn['column'] {
   return column != null && FINALIZED_COLUMNS.has(column);
 }
