@@ -49,6 +49,7 @@ import {
   type FinancingProgramId,
 } from './financialRules';
 import { safeDscrTarget, safeNum, safeRatePercent, safeRatioDecimal } from './safeNumbers';
+import { computeCapitalizedValueFromNoi } from './capitalizationMetrics';
 
 export type FinancingVerdict = 'financable' | 'financable_conditions' | 'insufficient_data';
 
@@ -466,8 +467,7 @@ function computeCore(
     };
   }
 
-  const valeurBanquable =
-    tgaPreteurPct > 0 ? noiRetenu / (tgaPreteurPct / 100) : null;
+  const valeurBanquable = computeCapitalizedValueFromNoi(noiRetenu, tgaPreteurPct);
 
   const ratioCouverture = scenario.ratioCouverture;
   const dscrVerdict = getDSCRVerdict(ratioCouverture, {

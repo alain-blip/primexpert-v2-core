@@ -7,6 +7,10 @@ import { EXPENSE_KEYS } from './expenseKeys';
 import { isNonOpexExpenseKey } from './nonOpexFinancialLines';
 import { deriveRevenusAnnuelsFromTarification } from '../identity/rentPricingGrid';
 import { applyCanonicalMetricsToCalc, resolveCanonicalFinancialMetrics } from './resolveCanonicalRne';
+import {
+  computeCapitalizationRateFromNoi,
+  computeCapitalizedValueFromNoi,
+} from './capitalizationMetrics';
 
 const LEGACY_TAX_KEY = 'taxesMunicipalesScolaire';
 const CANONICAL_TAX_KEY = 'taxesPermis';
@@ -501,7 +505,7 @@ export function normalizeFinancialData(
       safeNum(residence.prixDemande) ??
       safeNum(residence.askingPrice) ??
       null;
-    const tauxCap = noi != null && prixDemande ? noi / prixDemande : null;
+    const tauxCap = computeCapitalizationRateFromNoi(noi, prixDemande);
 
     const calc: FinancialCalc = {
       revenusAnnuels,
@@ -525,7 +529,7 @@ export function normalizeFinancialData(
       cashFlow: null,
       valeurBanquable: null,
       valeurBanquableTransaction: null,
-      valeurCapitalisation: tauxCap && noi ? noi / tauxCap : null,
+      valeurCapitalisation: computeCapitalizedValueFromNoi(noi, tauxCap),
       valeurDSCRLTV: null,
       paiementAnnuel: null,
       paiementMensuel: null,

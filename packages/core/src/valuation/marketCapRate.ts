@@ -10,6 +10,8 @@
  * @version 1.0.0
  */
 
+import { computeCapitalizationRateFromNoi } from '../financial/capitalizationMetrics';
+
 // ============================================================================
 // INTERFACES
 // ============================================================================
@@ -245,8 +247,7 @@ export function mapComparablesToCapRateSamples(
         noi = (c.rbp * 0.95) - c.totalExpenses;
       }
 
-      // Calculer le cap rate
-      const capRate = noi > 0 && c.salePrice > 0 ? noi / c.salePrice : 0;
+      const capRate = computeCapitalizationRateFromNoi(noi, c.salePrice) ?? 0;
 
       return {
         id: c.id,
@@ -272,7 +273,8 @@ export function computeCapRateImpliedAtAsking(
   if (noi <= 0 || askingPrice <= 0) {
     return undefined;
   }
-  return Math.round((noi / askingPrice) * 10000) / 10000;
+  const capRate = computeCapitalizationRateFromNoi(noi, askingPrice);
+  return capRate == null ? undefined : Math.round(capRate * 10000) / 10000;
 }
 
 /**

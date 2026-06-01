@@ -7,6 +7,10 @@ import { getPublicUnitsRangeLabel } from '../diffusion/priceRanges';
 import { extractBuyerPreviewKpis } from '../diffusion/buyerPreviewKpis';
 import { formatCurrency, formatPercentRaw } from '../utils/formatting';
 import {
+  computeCapitalizationRateFromNoi,
+  normalizeCapitalizationRate,
+} from './capitalizationMetrics';
+import {
   calculateValuation,
   createDefaultValuationInputs,
   mapFirestoreDataToValuationInputs,
@@ -108,13 +112,9 @@ function parseExtractedComparables(
       const capPct = finiteNum(o.capRatePct);
       const noi = finiteNum(o.noi) ?? finiteNum(o.netIncomePerUnit);
       const capRate =
-        capPct != null && capPct > 0
-          ? capPct > 1
-            ? capPct / 100
-            : capPct
-          : noi != null && salePrice > 0
-            ? noi / salePrice
-            : 0;
+        normalizeCapitalizationRate(capPct) ??
+        computeCapitalizationRateFromNoi(noi, salePrice) ??
+        0;
       return {
         id: `ext-${i}`,
         salePrice,
@@ -143,11 +143,8 @@ function buildValuationOutputs(
         finiteNum(mapped.askingPrice) ??
         mapped.askingPrice,
       targetCapRate:
-        finiteNum(calc.tauxCapitalisation) != null
-          ? (finiteNum(calc.tauxCapitalisation)! > 1
-              ? finiteNum(calc.tauxCapitalisation)! / 100
-              : finiteNum(calc.tauxCapitalisation)!)
-          : mapped.targetCapRate,
+        normalizeCapitalizationRate(finiteNum(calc.tauxCapitalisation)) ??
+        mapped.targetCapRate,
     });
     return calculateValuation(inputs);
   } catch {
@@ -176,11 +173,9 @@ function buildMarketConclusion(
   const comparables = parseExtractedComparables(residenceDoc);
   const capSelection = selectMarketCapRate({
     profileCapRate:
-      finiteNum(calc.tauxCapitalisation) != null
-        ? finiteNum(calc.tauxCapitalisation)! > 1
-          ? finiteNum(calc.tauxCapitalisation)! / 100
-          : finiteNum(calc.tauxCapitalisation)!
-        : valuation?.capRateMarketSelected ?? 0.08,
+      normalizeCapitalizationRate(finiteNum(calc.tauxCapitalisation)) ??
+      valuation?.capRateMarketSelected ??
+      0.08,
     comparables,
     minComparables: 3,
   });

@@ -4,6 +4,7 @@ export * from './financialRules';
 export * from './schlMultilogementRules';
 export * from './safeNumbers';
 export * from './normalizeFinancialData';
+export * from './capitalizationMetrics';
 export * from './nonOpexFinancialLines';
 export { buildFinancialDataV2PatchFromExtraction, recomputeFinancialCalculatedResults } from './applyExtractedFinancials';
 export {

@@ -4,6 +4,7 @@
  */
 
 import { DSCR_RULES } from './financialRules';
+import { computeCapitalizationRateFromNoi } from './capitalizationMetrics';
 import { sumDeclaredOperatingExpenses, type FinancialBaseData, type FinancialCalc } from './normalizeFinancialData';
 
 export const CAPEX_RESERVE_PER_UNIT_ANNUAL = 500;
@@ -109,10 +110,8 @@ export function computeFinancialAuditEee(
   const capexShortfall = Math.max(0, theoreticalCapex - explicitReserve);
   const noiNormalized = noiReported - capexShortfall;
 
-  const capRateReported =
-    prixDemande > 0 && noiReported > 0 ? noiReported / prixDemande : null;
-  const capRateNormalized =
-    prixDemande > 0 && noiNormalized > 0 ? noiNormalized / prixDemande : null;
+  const capRateReported = computeCapitalizationRateFromNoi(noiReported, prixDemande);
+  const capRateNormalized = computeCapitalizationRateFromNoi(noiNormalized, prixDemande);
 
   const dscrReported =
     paiementAnnuelDette > 0 && noiReported > 0 ? noiReported / paiementAnnuelDette : null;
