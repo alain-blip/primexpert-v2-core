@@ -23,7 +23,7 @@
 | Clauses négociation Gemini | **CÂBLÉ — MOTEUR DYNAMIQUE ACTIF** |
 | Coffre-fort WORM & sécurité | **OPÉRATIONNEL — PRODUCTION LIVE** |
 | Assembleur contrat & annexes (V3.5) | **SCELLÉ — commit `63286dc`** (HTML natif, sans docxtemplater) |
-| Hub Finance — cohérence RNE / prix inter-onglets + TGA centralisé | **DÉPLOYÉ PROD — commit `d232673`** + **QA PR #29 EN REVUE** (RNE vérifié, helpers core TGA) |
+| Hub Finance — cohérence RNE / prix inter-onglets + TGA centralisé | **DÉPLOYÉ PROD — commit `d232673`** + **QA PR #29 EN REVUE** (RNE vérifié, helpers core TGA) ; alignement documentaire **PR #52 BROUILLON** |
 | Inscriptions Centris / hors marché + concurrence territoriale | **EN REVUE PR #3** — `listings_cache`, `listingSource`, override manuel |
 | Couverture tests flux RPA | **EN REVUE PR #3** — Vitest Kanban `resolveColumnId` + 7 délais PA acceptée |
 
@@ -191,4 +191,4 @@ Copie possible sur disque de sauvegarde (`00_PRIMEXPERT_SYSTEME_APP/docs/` ou vo
 
 ---
 
-*Index mis à jour : 2026-06-01 — alignement PR #3 (couverture RPA, Centris/off-market, flywheel/OER, coffre-fort WORM documenté) + PR #29 (QA finance TGA SSOT et lexique RNE vérifié).*
+*Index mis à jour : 2026-06-01 — alignement PR #3 (couverture RPA, Centris/off-market, flywheel/OER, coffre-fort WORM documenté) + PR #29 (QA finance TGA SSOT et lexique RNE vérifié) ; PR #52 vérifiée comme diffusion documentaire brouillon sans impact applicatif.*

@@ -395,6 +395,7 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Benchmark finance global | `getGlobalFinancialBenchmark.ts`, `useGlobalFinancialBenchmark.ts`, `globalFinancialBenchmark.ts` |
 | Billing / Chérif | `src/lib/billingAccess.ts`, `src/App.tsx`, `SuspendedAccountScreen.tsx` |
 | Rôles, essai & sortie auth SPA | `src/lib/auth.tsx`, `AuthenticatedApp.tsx` (`signInPending`, `PublicLandingRedirect`), `firestore.rules` (`users`) |
+| Alignement docs QA finance | PR #52 — diff documentaire seulement ; aucun nouveau répertoire, composant, export Function ou fichier de schéma |
 | KPIs Finance admin | `AdminSubscriptionsDashboard.tsx`, `subscriptionPricing.ts` |
 | Migration Copilote | `migrate_financial_subcollections.js` |
 | Espace Documents | `DocumentsDiligenceTab`, `propertyDocumentsService.ts`, `functions/src/documents/` |
@@ -445,4 +446,4 @@ Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only func
 | Analyse de mise en marché (ACM) | `AcmValuationWorkspace`, `ResidenceAcmValuationPanel`, `residenceAcmBootstrap.ts`, `gpsCapRateByRegionClass.ts` |
 | Assembleur contrat / PA (V3.5) | `ContractAssemblerPanel.tsx`, `annexeFieldSchema.ts`, `renderContractAssemblerToHtml.ts`, `@primexpert/core/forms` |
 
-*Dernière mise à jour : 2026-06-01 — PR #3 : couverture RPA, Centris/off-market, flywheel/OER, WORM et modules `analytics`/`security` ; PR #29 : QA finance TGA SSOT et lexique RNE vérifié.*
+*Dernière mise à jour : 2026-06-01 — PR #3 : couverture RPA, Centris/off-market, flywheel/OER, WORM et modules `analytics`/`security` ; PR #29 : QA finance TGA SSOT et lexique RNE vérifié ; PR #52 : diffusion documentaire brouillon sans changement d'arborescence applicative.*

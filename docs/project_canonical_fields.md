@@ -6,7 +6,7 @@ Les champs **serveur** (`billingStatus`, `gracePeriodStartedAt`) ne sont **pas**
 Référence alias / provenance : `packages/core/src/canonical/`.
 **Identité Phase 4 (lecture + écriture)** : `packages/core/src/identity/` — définitions UI dans `identitySections.ts`, `buildingAuditSections.ts`, `servicesRecognition.ts`, `rentPricingGrid.ts`.
 **Promesse d'achat (PA)** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`.
-**Finance QA RPA (PR #29)** : `packages/core/src/financial/revenusDepensesPreview.ts` — helpers TGA (`normalizeTgaPct`, `computeTgaRatioFromRneAndPrice`, `computeCapitalizedValueFromRneAndTga`) ; aucun nouveau champ Firestore.
+**Finance QA RPA (PR #29, diffusion docs PR #52)** : `packages/core/src/financial/revenusDepensesPreview.ts` — helpers TGA (`normalizeTgaPct`, `computeTgaRatioFromRneAndPrice`, `computeCapitalizedValueFromRneAndTga`) ; aucun nouveau champ Firestore.
 **Assembleur contrat / formulaires natifs (V3.4–V3.5)** : `packages/core/src/forms/` — HTML sans OpenXML ; schéma parenthèses `annexeFieldSchema.ts` ; PA Actifs `paActifsTypes.ts`, `renderPaActifsToHtml.ts`.
 **Messagerie (Hub omnicanal)** : **SSOT unique** `users/{uid}/email_threads` (alias canonique `communication_threads` dans `@primexpert/core/mail`) + `messages` — Nylas, SMS Twilio, Meta ; analyse `@primexpert/core/mail` à l’écriture serveur.
 **Diffusion Web** : `packages/core/src/diffusion/` — vendoré dans `functions/src/diffusion/_vendored/` au prebuild.
@@ -653,7 +653,7 @@ Normalisation : `normalizeFinancialData()` → source `calculatedResults` | `der
 
 ### Taux de capitalisation (TGA) — ratio stocké, pourcentage affiché
 
-PR #29 ne crée aucune clé Firestore ; elle formalise l'interprétation des champs financiers existants.
+PR #29 ne crée aucune clé Firestore ; la diffusion documentaire PR #52 confirme ce point et formalise l'interprétation des champs financiers existants.
 
 | Clé / valeur | Règle canonique |
 |--------------|-----------------|
@@ -1074,4 +1074,4 @@ Modes négociation : `OACIQ_FORM`, `CUSTOM_CONTRACT`, `LETTER_OF_INTENT`.
 
 ---
 
-*Dernière mise à jour : 2026-06-01 — PR #3 : WORM, Centris/off-market, flywheel/OER, `contentHashMd5`, 7 délais PA acceptée ; PR #29 : TGA SSOT finance, RNE vérifié, aucun nouveau champ Firestore.*
+*Dernière mise à jour : 2026-06-01 — PR #3 : WORM, Centris/off-market, flywheel/OER, `contentHashMd5`, 7 délais PA acceptée ; PR #29 : TGA SSOT finance, RNE vérifié, aucun nouveau champ Firestore ; PR #52 : contrôle documentaire sans nouvelle clé ni sous-collection.*

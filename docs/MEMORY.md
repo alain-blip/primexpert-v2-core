@@ -984,6 +984,26 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
+## PR #52 — Diffusion documentaire QA finance PR #29 (2026-06-01)
+
+**Déclencheur :** PR [#52](https://github.com/alain-blip/primexpert-v2-core/pull/52) — branche `cursor/alignement-docs-primexpert-0ce7` (`d13dadc` → `b7fb668`).
+
+**Statut :** **[BROUILLON — VALIDATION HUMAINE ALAIN]**
+
+| Axe vérifié | Conclusion |
+|-------------|------------|
+| **Nouveaux modules / packages** | Aucun fichier applicatif ajouté ; la PR diffuse uniquement l'alignement docs du module existant `@primexpert/core/financial`. |
+| **Composants UI** | Aucun composant React modifié par la PR #52 ; les mentions UI RNE vérifié / moteur financier central proviennent de la PR #29 déjà journalisée. |
+| **Routes Cloud Functions** | Aucune route ni export Function ajouté ou modifié dans ce diff documentaire. |
+| **Schéma Firestore / règles** | Aucune nouvelle clé, sous-collection, règle ou index ; `calculatedResults.tauxCapitalisation` reste documenté comme champ existant stocké en ratio. |
+| **Fichiers touchés** | `docs/README.md`, `docs/MEMORY.md`, `docs/arborescence.md`, `docs/project_canonical_fields.md` seulement. |
+
+**Règle de non-duplication appliquée :** cette entrée qualifie le déclencheur PR #52 sans recréer les sections PR #29, Finance ou dictionnaire Firestore ; les détails métier restent dans leurs blocs existants.
+
+**HITL :** conserver la PR en brouillon jusqu'à validation d'Alain ; aucun merge ni publication automatique.
+
+---
+
 ## Verrouillage technique fin de sprint — Primexpert V3.5 (2026-05-30)
 
 | Point de contrôle | Statut |
@@ -997,4 +1017,4 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
-*Journal mis à jour : 2026-06-01 — PR #3 documentée (couverture RPA, Centris/off-market, flywheel/OER, WORM canonique) + PR #29 documentée (QA finance TGA SSOT, RNE vérifié, aucune route Function ni clé Firestore nouvelle).*
+*Journal mis à jour : 2026-06-01 — PR #3 documentée (couverture RPA, Centris/off-market, flywheel/OER, WORM canonique) + PR #29 documentée (QA finance TGA SSOT, RNE vérifié, aucune route Function ni clé Firestore nouvelle) + PR #52 qualifiée comme diffusion documentaire brouillon sans impact applicatif.*
