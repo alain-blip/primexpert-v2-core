@@ -6,6 +6,7 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import {
   EXPENSE_FIELDS,
   EXPENSE_KEYS,
+  calculateCapitalizationRateFromNoi,
   mergeExtractedIntoFinancialDataV2,
   recomputeFinancialCalculatedResults,
   sumNormalizedOperatingExpenses,
@@ -72,38 +73,37 @@ export async function saveExpenseAdjustmentsToFinancial(
   ) as Record<string, unknown>;
 
   const adjFirestore = buildExpenseAdjustmentsForFirestore(draft, existingVerified);
-
+  const nextBaseData = {
+    ...(financialData.baseData ?? {}),
+    expenseAdjustments: adjFirestore,
+  } as FinancialBaseData;
+  const recalculatedResults = recomputeFinancialCalculatedResults(
+    nextBaseData,
+    financialData.calculatedResults ?? null
+  );
   const depensesTotalesNormalisees =
-    sumNormalizedOperatingExpenses(dep, adjFirestore) ?? 0;
-  const rbe =
-    parseNum(financialData.calculatedResults?.revenuBrutEffectif) ||
-    parseNum(financialData.baseData?.revenusAnnuels);
-  const revenuNetExploitation =
-    rbe > 0 ? Math.round(rbe - depensesTotalesNormalisees) : null;
+    recalculatedResults?.depensesTotalesNormalisees ??
+    sumNormalizedOperatingExpenses(dep, adjFirestore) ??
+    0;
 
   const prixDemande = parseNum(
-    (financialData.calculatedResults as Record<string, unknown> | undefined)?.prixDemande
+    ((recalculatedResults ?? financialData.calculatedResults) as Record<string, unknown> | undefined)?.prixDemande
   );
-  const tauxCapitalisation =
-    revenuNetExploitation != null &&
-    revenuNetExploitation > 0 &&
-    prixDemande > 0
-      ? revenuNetExploitation / prixDemande
-      : undefined;
+  const tauxCapitalisation = calculateCapitalizationRateFromNoi(
+    recalculatedResults?.revenuNetExploitation,
+    prixDemande
+  );
 
   const docRef = doc(db, 'residences', residenceId, 'financial', 'dataV2');
   await setDoc(
     docRef,
     stripUndefinedDeep({
-      baseData: {
-        ...(financialData.baseData ?? {}),
-        expenseAdjustments: adjFirestore,
-      },
+      baseData: nextBaseData,
       lastUpdated: serverTimestamp(),
       calculatedResults: {
         ...(financialData.calculatedResults ?? {}),
+        ...(recalculatedResults ?? {}),
         depensesTotalesNormalisees,
-        revenuNetExploitation,
         ...(tauxCapitalisation != null ? { tauxCapitalisation } : {}),
       },
     }),

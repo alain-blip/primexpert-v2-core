@@ -15,6 +15,7 @@ export {
 export {
   resolveCanonicalFinancialMetrics,
   resolveAdmissibleOpex,
+  calculateCapitalizationRateFromNoi,
   applyCanonicalMetricsToCalc,
   type CanonicalFinancialMetrics,
 } from './resolveCanonicalRne';

@@ -110,6 +110,17 @@ export function resolveCanonicalFinancialMetrics(
   return { rbe, opex, rne, rneIntegrityOk, rneIntegrityIssueFr, rneIntegrityIssueEn };
 }
 
+/** Calcule le TGA canonique depuis le RNE et le prix, sous forme décimale (0.08 = 8 %). */
+export function calculateCapitalizationRateFromNoi(
+  revenuNetExploitation: unknown,
+  prixDemande: unknown
+): number | null {
+  const rne = finiteNum(revenuNetExploitation);
+  const price = finiteNum(prixDemande);
+  if (rne == null || rne <= 0 || price == null || price <= 0) return null;
+  return rne / price;
+}
+
 /** Applique RBE/RNE/OPEX cohérents sur un FinancialCalc (SSOT lecture). */
 export function applyCanonicalMetricsToCalc(
   calc: FinancialCalc,
