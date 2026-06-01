@@ -9,7 +9,11 @@ import {
   type ResidenceFinancialHints,
 } from '../financial/normalizeFinancialData';
 import { applyCanonicalMetricsToCalc, resolveCanonicalFinancialMetrics } from '../financial/resolveCanonicalRne';
-import { computeCapitalizedValueFromNoi, normalizeCapitalizationRate } from '../financial/capitalizationMetrics';
+import {
+  capitalizationRateToPercent,
+  computeCapitalizedValueFromNoi,
+  normalizeCapitalizationRate,
+} from '../financial/capitalizationMetrics';
 import type { MarketGpsTransaction } from '../market/marketGpsViewModel';
 import {
   selectGpsCapRateMedian,
@@ -302,13 +306,9 @@ export function bootstrapResidenceAcm(
   const marketContext = resolveMarketContext(residence, residenceDoc);
 
   const calcTgaPct =
-    finiteNum(calc.tauxCapitalisation) != null
-      ? finiteNum(calc.tauxCapitalisation)! > 1
-        ? finiteNum(calc.tauxCapitalisation)!
-        : finiteNum(calc.tauxCapitalisation)! * 100
-      : valuationInputs.targetCapRate > 0
-        ? valuationInputs.targetCapRate * 100
-        : 8.5;
+    capitalizationRateToPercent(calc.tauxCapitalisation) ??
+    capitalizationRateToPercent(valuationInputs.targetCapRate) ??
+    8.5;
 
   const gpsSelection = selectGpsCapRateMedian({
     transactions: options?.marketTransactions ?? [],

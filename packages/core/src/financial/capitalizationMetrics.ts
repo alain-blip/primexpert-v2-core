@@ -42,6 +42,20 @@ export function formatCapitalizationRatePercent(
   return percent == null ? fallback : formatPercentRaw(percent, decimals);
 }
 
+export function capitalizationRateDeltaToPercent(value: unknown): number | null {
+  const delta = safeNum(value);
+  return delta == null ? null : delta * 100;
+}
+
+export function formatCapitalizationRateDeltaPercent(
+  value: unknown,
+  decimals = 2,
+  fallback = '—'
+): string {
+  const percent = capitalizationRateDeltaToPercent(value);
+  return percent == null ? fallback : formatPercentRaw(percent, decimals);
+}
+
 export function isCapitalizationRatePctAdjusted(
   candidatePct: unknown,
   referencePct: unknown,

@@ -12,6 +12,8 @@
 import {
   computeCapitalizationRateFromNoi,
   computeCapitalizedValueFromNoi,
+  formatCapitalizationRateDeltaPercent,
+  formatCapitalizationRatePercent,
 } from '../financial/capitalizationMetrics';
 
 // ============================================================================
@@ -241,13 +243,14 @@ export function calculateAdjustedLenderCapRate(
 
   // 5. Générer l'explication
   const explanationParts: string[] = [
-    `TGA base (${baseInfo.label}): ${(baseInfo.rate * 100).toFixed(2)}%`,
+    `TGA base (${baseInfo.label}): ${formatCapitalizationRatePercent(baseInfo.rate, 2)}`,
   ];
 
   if (performanceAdjustment !== 0) {
-    const sign = performanceAdjustment > 0 ? '+' : '';
+    const formattedAdjustment = formatCapitalizationRateDeltaPercent(performanceAdjustment, 2);
+    const sign = performanceAdjustment > 0 && formattedAdjustment !== '—' ? '+' : '';
     explanationParts.push(
-      `Performance ${performanceLabel}: ${sign}${(performanceAdjustment * 100).toFixed(2)}%`
+      `Performance ${performanceLabel}: ${sign}${formattedAdjustment}`
     );
   } else if (performanceVsSegment !== null) {
     explanationParts.push(`Performance ${performanceLabel}: aucun ajustement`);
@@ -257,7 +260,9 @@ export function calculateAdjustedLenderCapRate(
     explanationParts.push(`Risques: ${riskResult.factors.join(', ')}`);
   }
 
-  explanationParts.push(`TGA prêteur ajusté: ${(adjustedCapRate * 100).toFixed(2)}%`);
+  explanationParts.push(
+    `TGA prêteur ajusté: ${formatCapitalizationRatePercent(adjustedCapRate, 2)}`
+  );
 
   return {
     adjustedCapRate,

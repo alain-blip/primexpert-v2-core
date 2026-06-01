@@ -25,7 +25,11 @@ import {
 } from './valuationProfiles';
 
 import { formatCurrency } from '@primexpert/core/utils/formatting';
-import { computeCapitalizedValueFromNoi } from '../financial/capitalizationMetrics';
+import {
+  computeCapitalizationRateFromNoi,
+  computeCapitalizedValueFromNoi,
+  formatCapitalizationRatePercent,
+} from '../financial/capitalizationMetrics';
 
 import {
   type ComparableCapRateSample,
@@ -585,9 +589,10 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
 
   // Méthode 1: Capitalisation (RNE comptable / TGA)
   // Utilise le RNE comptable (avant ajustements) comme demandé
-  const valueByCap = inputs.targetCapRate > 0
-    ? noiAccounting / inputs.targetCapRate
-    : 0;
+  const valueByCap = computeCapitalizedValueFromNoi(
+    noiAccounting,
+    inputs.targetCapRate
+  ) ?? 0;
 
   // Méthode 2: Multiple du Revenu Brut (RBE × MRB)
   // Utilise le RBE (revenu brut effectif)
@@ -626,9 +631,10 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
 
   // Valeur par capitalisation bancaire (RNE comptable / TGA prêteur)
   // Utilise le RNE comptable comme demandé
-  const bankCapValue = financing.lenderCapRate > 0
-    ? noiAccounting / financing.lenderCapRate
-    : 0;
+  const bankCapValue = computeCapitalizedValueFromNoi(
+    noiAccounting,
+    financing.lenderCapRate
+  ) ?? 0;
 
   // Constante de dette: DC = r / (1 - (1+r)^-n)
   const debtConstant = calculateDebtConstant(
@@ -675,8 +681,10 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
     ? Math.max(...valuationCandidates)
     : 0;
 
-  const canonicalValueByCap =
-    inputs.targetCapRate > 0 ? noiAccounting / inputs.targetCapRate : 0;
+  const canonicalValueByCap = computeCapitalizedValueFromNoi(
+    noiAccounting,
+    inputs.targetCapRate
+  ) ?? 0;
 
   let suggestedPrice: number;
   let suggestedLow: number;
@@ -714,9 +722,8 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
   // =========================================================================
 
   // TGA réel au prix demandé = RNE comptable / Prix demandé
-  const actualCapRateAtAsking = inputs.askingPrice > 0
-    ? noiAccounting / inputs.askingPrice
-    : 0;
+  const actualCapRateAtAsking =
+    computeCapitalizationRateFromNoi(noiAccounting, inputs.askingPrice) ?? 0;
 
   const actualMrbAtAsking = effectiveGrossIncome > 0
     ? inputs.askingPrice / effectiveGrossIncome
@@ -849,10 +856,10 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
       50 // tolérance 0.5%
     );
     if (warningLowCapRate) {
-      const impliedPct = (capRateImpliedAtAsking * 100).toFixed(2);
-      const minPct = (marketCapRateMeta.capRateComparableMin * 100).toFixed(2);
+      const impliedPct = formatCapitalizationRatePercent(capRateImpliedAtAsking, 2);
+      const minPct = formatCapitalizationRatePercent(marketCapRateMeta.capRateComparableMin, 2);
       warnings.push(
-        `Prix agressif: TGA implicite (${impliedPct}%) inférieur au minimum des comparables (${minPct}%)`
+        `Prix agressif: TGA implicite (${impliedPct}) inférieur au minimum des comparables (${minPct})`
       );
     }
   } else if (
@@ -860,19 +867,19 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
     capRateImpliedAtAsking < capRateMarketSelected - 0.005
   ) {
     warningLowCapRate = true;
-    const impliedPct = (capRateImpliedAtAsking * 100).toFixed(2);
-    const marketPct = (capRateMarketSelected * 100).toFixed(2);
+    const impliedPct = formatCapitalizationRatePercent(capRateImpliedAtAsking, 2);
+    const marketPct = formatCapitalizationRatePercent(capRateMarketSelected, 2);
     warnings.push(
-      `Rendement sous le marché: TGA implicite (${impliedPct}%) inférieur au TGA de marché (${marketPct}%)`
+      `Rendement sous le marché: TGA implicite (${impliedPct}) inférieur au TGA de marché (${marketPct})`
     );
   } else if (
     capRateImpliedAtAsking !== undefined &&
     capRateImpliedAtAsking > capRateMarketSelected + 0.0025
   ) {
-    const impliedPct = (capRateImpliedAtAsking * 100).toFixed(2);
-    const marketPct = (capRateMarketSelected * 100).toFixed(2);
+    const impliedPct = formatCapitalizationRatePercent(capRateImpliedAtAsking, 2);
+    const marketPct = formatCapitalizationRatePercent(capRateMarketSelected, 2);
     warnings.push(
-      `Opportunité au prix demandé: TGA implicite (${impliedPct}%) supérieur au TGA cible (${marketPct}%)`
+      `Opportunité au prix demandé: TGA implicite (${impliedPct}) supérieur au TGA cible (${marketPct})`
     );
   }
 

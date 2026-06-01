@@ -863,7 +863,7 @@ export function AcmValuationWorkspace({
               </p>
               <p className={`text-xs font-bold ${ACM_METRIC_VALUE_CLASS}`}>
                 {t('Taux de capitalisation global (TGA) médian', 'Median global cap rate')}:{' '}
-                {territorialMedians.tgaPct?.toFixed(2) ?? '—'}% ·{' '}
+                {formatCapitalizationRatePercent(territorialMedians.tgaPct, 2)} ·{' '}
                 {t('Prix par unité médian', 'Median price per unit')}:{' '}
                 {fmtMoneyField(territorialMedians.prixParUnite ?? NaN)} ·{' '}
                 {t('Multiple du revenu net (MRN)', 'Net income multiplier (MRN)')}:{' '}
