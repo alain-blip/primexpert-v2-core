@@ -26,6 +26,7 @@
 │           ├── index.ts             # Barrel (canonical, valuation, financial, identity, security…)
 │           ├── canonical/           # Champs canoniques & alias
 │           ├── financial/           # normalizeFinancialData, bilan, ratios, SCHL…
+│           │   └── mergeExtractedFinancials.ts
 │           ├── identity/            # buildIdentityViewModel, sections MSSS/RPA
 │           ├── transaction/         # Promesse d'achat — offre SSOT, délais, commission
 │           │   ├── offreTronc.ts
@@ -92,8 +93,6 @@
 │           ├── export/              # Export dataset / politique
 │           ├── tenant/              # Multi-tenant (courtiersResponsables)
 │           ├── mail/                # mailParser, contactMatch, messageUrgency, types omnicanal
-│           ├── financial/
-│           │   └── mergeExtractedFinancials.ts
 │           ├── audio/               # Transcription (legacy)
 │           └── utils/formatting.ts
 ├── functions/                       # Cloud Functions Gen2 (us-central1 + régions ciblées)
