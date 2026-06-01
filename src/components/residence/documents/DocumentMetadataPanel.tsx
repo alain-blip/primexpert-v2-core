@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Copy, Download, FileText, Loader2, Pencil, Shield, Trash2 } from 'lucide-react';
+import { normalizeCapitalizationRatePercent } from '@primexpert/core/financial';
 import {
   ensureOriginalFileExtension,
   splitPropertyDocumentFileName,
@@ -51,6 +52,15 @@ function formatDate(ms: number, locale: 'fr' | 'en'): string {
   return new Date(ms).toLocaleString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
     dateStyle: 'long',
     timeStyle: 'short',
+  });
+}
+
+function formatTgaPercent(value: unknown, locale: 'fr' | 'en'): string {
+  const pct = normalizeCapitalizationRatePercent(value);
+  if (pct == null || !Number.isFinite(pct)) return '—';
+  return pct.toLocaleString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 }
 
@@ -1033,11 +1043,7 @@ function ExtractionVerificationSection({
                   <li>
                     TGA :{' '}
                     <span className="font-black text-[#142c6a]">
-                      {(evaluationSubject.tgaRetenu > 1
-                        ? evaluationSubject.tgaRetenu
-                        : evaluationSubject.tgaRetenu * 100
-                      ).toFixed(2)}
-                      %
+                      {formatTgaPercent(evaluationSubject.tgaRetenu, locale)} %
                     </span>
                   </li>
                 ) : null}

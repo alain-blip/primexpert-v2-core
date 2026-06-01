@@ -44,10 +44,15 @@ import {
   type MarketGpsTransaction,
 } from '@primexpert/core/market';
 import { AcmHistoricalTrendsSection } from './AcmHistoricalTrendsSection';
-import type {
-  CertifiableReportBrokerFooter,
-  FinancialDataV2Doc,
-  TerritorialAcmMedians,
+import {
+  computeCapitalizedValueFromNoi,
+  normalizeCapitalizationRate,
+  normalizeCapitalizationRatePercent,
+  safeRatioDecimal,
+  type CertifiableReportBrokerFooter,
+  type FinancialDataV2Doc,
+  type ResidenceFinancialHints,
+  type TerritorialAcmMedians,
 } from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
@@ -156,7 +161,9 @@ export function AcmValuationWorkspace({
   const [tgaInput, setTgaInput] = useState(() => String(suggestedCapRatePct));
   const [targetCapRatePct, setTargetCapRatePct] = useState(suggestedCapRatePct);
   /** TGA réellement appliqué au moteur (après ajustement pénétration). */
-  const [effectiveCapRate, setEffectiveCapRate] = useState(suggestedCapRatePct / 100);
+  const [effectiveCapRate, setEffectiveCapRate] = useState(
+    () => normalizeCapitalizationRate(suggestedCapRatePct) ?? 0
+  );
   const [penetrationRatePct, setPenetrationRatePct] = useState(bootstrap.penetrationRatePct);
   const [tgaManuallyAdjusted, setTgaManuallyAdjusted] = useState(false);
   const [result, setResult] = useState<ValuationOutputs | null>(null);
@@ -224,7 +231,8 @@ export function AcmValuationWorkspace({
         );
         return;
       }
-      if (!Number.isFinite(capPct) || capPct <= 0) {
+      const normalizedCap = normalizeCapitalizationRate(capPct);
+      if (normalizedCap == null || !Number.isFinite(normalizedCap) || normalizedCap <= 0) {
         setResult(null);
         setTgaAdjustment(null);
         setRecommendedPrice(null);
@@ -233,12 +241,12 @@ export function AcmValuationWorkspace({
       }
       setError(null);
       try {
-        let adjustedCap = capPct / 100;
+        let adjustedCap = normalizedCap;
         let adj: TgaAdjustmentResult | null = null;
         if (penPct > 0) {
           adj = computeTgaAdjustment({
             baseTga: adjustedCap,
-            tauxPenetrationRPA: penPct / 100,
+            tauxPenetrationRPA: safeRatioDecimal(penPct, 0),
             nombreUnites: bootstrap.units,
           });
           adjustedCap = adj.finalTga;
@@ -393,7 +401,7 @@ export function AcmValuationWorkspace({
         residenceId: pdfExport.residenceId,
         residenceAddress: pdfExport.residenceAddress,
         financialData: pdfExport.financialData,
-        residence: pdfExport.residence,
+        residence: pdfExport.residence as unknown as ResidenceFinancialHints,
         effectiveCapRate,
         recommendedPrice,
         sellerNarrative: narrative?.signedReading ?? null,
@@ -425,10 +433,10 @@ export function AcmValuationWorkspace({
     const marketAligned = territorialMedians?.prixParUnite
       ? territorialMedians.prixParUnite * Math.max(1, bootstrap.units)
       : null;
-    const performanceBased =
-      territorialMedians?.tgaPct && territorialMedians.tgaPct > 0
-        ? bootstrap.revenuNetExploitation / (territorialMedians.tgaPct / 100)
-        : null;
+    const performanceBased = computeCapitalizedValueFromNoi(
+      bootstrap.revenuNetExploitation,
+      territorialMedians?.tgaPct
+    );
     const maxPotential = stressSummary?.occ100 ?? null;
     const rows = [
       {
@@ -470,16 +478,14 @@ export function AcmValuationWorkspace({
 
   const ratios = useMemo(() => {
     if (!result) return null;
+    const capRateImpliedPct = normalizeCapitalizationRatePercent(result.capRateImpliedAtAsking);
     return [
       {
         label: t(
           'Taux de capitalisation global (TGA) implicite',
           'Implied global capitalization rate (cap rate)'
         ),
-        value:
-          result.capRateImpliedAtAsking !== undefined
-            ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%`
-            : '—',
+        value: capRateImpliedPct != null ? `${capRateImpliedPct.toFixed(2)}%` : '—',
       },
       {
         label: t('Multiple du revenu brut réel (MRB)', 'Actual gross rent multiplier (GRM)'),
@@ -809,7 +815,8 @@ export function AcmValuationWorkspace({
                 )}
               </p>
               <p className={`text-sm ${ACM_METRIC_VALUE_CLASS}`}>
-                {(tgaAdjustment.baseTga * 100).toFixed(2)} % → {(tgaAdjustment.finalTga * 100).toFixed(2)} %
+                {normalizeCapitalizationRatePercent(tgaAdjustment.baseTga)?.toFixed(2) ?? '—'} % →{' '}
+                {normalizeCapitalizationRatePercent(tgaAdjustment.finalTga)?.toFixed(2) ?? '—'} %
               </p>
             </div>
           ) : null}
@@ -825,8 +832,8 @@ export function AcmValuationWorkspace({
               </p>
               <p className={`text-lg ${ACM_METRIC_VALUE_CLASS}`}>
                 {t(
-                  'Prix recommandé (revenu net d’exploitation (RNE) ÷ taux de capitalisation global (TGA) cible)',
-                  'Recommended price (net operating income (NOI) ÷ target global cap rate)'
+                  'Prix recommandé (moteur financier partagé)',
+                  'Recommended price (shared financial engine)'
                 )}{' '}
                 : {formatCurrency(recommendedPrice)}
               </p>
