@@ -1,5 +1,5 @@
 /**
- * Finançabilité commerciale — SSOT (formules bancaires auditées).
+ * Finançabilité commerciale — SSOT (formules bancaires vérifiées).
  *
  * Chaîne MFR (ordre strict) :
  *   1. Service dette max annuel = RNE ÷ DSCR cible
@@ -83,6 +83,7 @@ export interface FinancabiliteResult {
   noiRetenu: number | null;
   noiDeclare: number | null;
   noiAudit: number | null;
+  noiVerification: NoiVerificationForFinancingResult;
   dscrCible: number;
   tauxInteretPct: number;
   amortissementAnnees: number;
@@ -120,6 +121,91 @@ export interface FinancabiliteResult {
     lastUpdated: unknown;
     source: string;
     confidenceTier: 'high' | 'medium' | 'low' | 'validation_required';
+  };
+}
+
+export type NoiVerificationForFinancingStatus = 'ok' | 'warn' | 'fail' | 'unknown';
+
+export interface NoiVerificationForFinancingInput {
+  declaredNoi?: number | null;
+  verifiedNoi?: number | null;
+}
+
+export interface NoiVerificationForFinancingResult {
+  status: NoiVerificationForFinancingStatus;
+  varianceRatio: number | null;
+  noteFr: string;
+  noteEn: string;
+}
+
+function formatVariancePct(varianceRatio: number): string {
+  return (varianceRatio * 100).toFixed(1);
+}
+
+export function assessNoiVerificationForFinancing(
+  input: NoiVerificationForFinancingInput
+): NoiVerificationForFinancingResult {
+  const declaredNoi = safeNum(input.declaredNoi);
+  const verifiedNoi = safeNum(input.verifiedNoi);
+
+  if (declaredNoi != null && verifiedNoi != null && declaredNoi > 0 && verifiedNoi > 0) {
+    const varianceRatio = Math.abs(verifiedNoi - declaredNoi) / Math.max(verifiedNoi, declaredNoi);
+    if (varianceRatio <= 0.05) {
+      return {
+        status: 'ok',
+        varianceRatio,
+        noteFr:
+          'RNE déclaré et RNE vérifié concordent (écart ≤ 5 %). Pièces justificatives en ordre côté prêteur.',
+        noteEn:
+          'Declared and verified NOI match (≤ 5% variance). Supporting evidence is aligned with lender expectations.',
+      };
+    }
+    if (varianceRatio <= 0.15) {
+      const variancePct = formatVariancePct(varianceRatio);
+      return {
+        status: 'warn',
+        varianceRatio,
+        noteFr: `Écart de ${variancePct} % entre RNE déclaré et RNE vérifié — justifier la normalisation des dépenses.`,
+        noteEn: `${variancePct}% gap between declared and verified NOI — justify expense normalization.`,
+      };
+    }
+
+    const variancePct = formatVariancePct(varianceRatio);
+    return {
+      status: 'fail',
+      varianceRatio,
+      noteFr: `Écart majeur de ${variancePct} % entre RNE déclaré et RNE vérifié — confirmer les sources avant présentation prêteur.`,
+      noteEn: `Major ${variancePct}% gap between declared and verified NOI — confirm sources before lender submission.`,
+    };
+  }
+
+  if (verifiedNoi != null && verifiedNoi > 0) {
+    return {
+      status: 'warn',
+      varianceRatio: null,
+      noteFr:
+        'Seul le RNE vérifié (calculé) est disponible — manque la déclaration vendeur pour pleinement convaincre le prêteur.',
+      noteEn:
+        'Only verified NOI (computed) is available — missing seller statement to fully convince the lender.',
+    };
+  }
+
+  if (declaredNoi != null && declaredNoi > 0) {
+    return {
+      status: 'warn',
+      varianceRatio: null,
+      noteFr:
+        'Seul le RNE déclaré est disponible — recommander une normalisation par dépenses vérifiées.',
+      noteEn:
+        'Only declared NOI is available — recommend normalization with verified expenses.',
+    };
+  }
+
+  return {
+    status: 'unknown',
+    varianceRatio: null,
+    noteFr: 'Aucune donnée RNE disponible — compléter Revenus & Dépenses.',
+    noteEn: 'No NOI data available — complete Revenue & Expenses.',
   };
 }
 
@@ -384,6 +470,10 @@ function computeCore(
     getDefaultDscrTarget(program.programId, program.aphSelectPoints, program.propertyCategory)
   );
   const tgaPreteurPct = safeRatePercent(financement.tgaPreteur, 6.5);
+  const noiVerification = assessNoiVerificationForFinancing({
+    declaredNoi,
+    verifiedNoi: auditNoi,
+  });
 
   if (!hasValidInputs || prixDemande == null || noiRetenu == null) {
     return {
@@ -392,6 +482,7 @@ function computeCore(
       noiRetenu,
       noiDeclare: declaredNoi > 0 ? declaredNoi : null,
       noiAudit: auditNoi,
+      noiVerification,
       dscrCible,
       tauxInteretPct,
       amortissementAnnees,
@@ -439,6 +530,7 @@ function computeCore(
       noiRetenu,
       noiDeclare: declaredNoi,
       noiAudit: auditNoi,
+      noiVerification,
       dscrCible,
       tauxInteretPct,
       amortissementAnnees,
@@ -489,6 +581,7 @@ function computeCore(
     noiRetenu,
     noiDeclare: declaredNoi > 0 ? declaredNoi : null,
     noiAudit: auditNoi,
+    noiVerification,
     dscrCible,
     tauxInteretPct,
     amortissementAnnees,
