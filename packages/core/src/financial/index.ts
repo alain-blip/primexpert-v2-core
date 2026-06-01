@@ -1,6 +1,7 @@
 export * from './expenseKeys';
 export * from './expenseFields';
 export * from './financialRules';
+export * from './capitalization';
 export * from './schlMultilogementRules';
 export * from './safeNumbers';
 export * from './normalizeFinancialData';
