@@ -29,7 +29,6 @@ import {
   InstitutionalPageHeader,
 } from '../institutional/InstitutionalUi';
 import type { Residence } from '../../../services/residences';
-import { useResidenceFinancialHints } from '../../../context/ResidenceDataContext';
 
 export interface RevenusDepensesTabProps {
   residence: Residence;
@@ -66,7 +65,14 @@ export function RevenusDepensesTab({ residence }: RevenusDepensesTabProps) {
   const [saving, setSaving] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const residenceHints = useResidenceFinancialHints(residence);
+  const residenceHints = useMemo(
+    () => ({
+      ...residence,
+      prixDemande: residence.price,
+      askingPrice: residence.price,
+    }),
+    [residence]
+  );
 
   useEffect(() => {
     setDraft(expenseAdjustmentsDraftFromFinancial(financialData));
@@ -102,17 +108,15 @@ export function RevenusDepensesTab({ residence }: RevenusDepensesTabProps) {
     });
   }, [grid.rows, grid.rbe, nombreUnites]);
 
-  const listingPrice = residenceHints.prixDemande ?? residence.price;
-
   const liveKpis = useMemo(
     () =>
       computeRevenusDepensesLiveKpis(
         grid.rbe,
         grid.depensesNormaliseesTotal,
-        listingPrice ?? null,
+        residence.price ?? null,
         financialData?.calculatedResults?.tauxCapitalisation as number | null | undefined
       ),
-    [grid.rbe, grid.depensesNormaliseesTotal, listingPrice, financialData?.calculatedResults]
+    [grid.rbe, grid.depensesNormaliseesTotal, residence.price, financialData?.calculatedResults]
   );
 
   const persistDraft = useCallback(

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../../../lib/i18n';
-import { useAuth } from '../../../lib/auth';
 import type { PropertyDocumentRecord } from '../../../types/propertyDocument';
 import type { AssetNiche } from '../../../types/residence';
 import {
@@ -33,10 +32,6 @@ import { DocumentUploadPanel } from './DocumentUploadPanel';
 import { DocumentMetadataPanel } from './DocumentMetadataPanel';
 import { DocumentDistributionBar } from './DocumentDistributionPanel';
 import { DocumentEmailPanel } from './DocumentEmailPanel';
-import {
-  subscribeLegalVaultByProperty,
-  type LegalVaultFirestoreRecord,
-} from '../../../services/legalVaultService';
 
 export interface DocumentsDiligenceTabProps {
   propertyId: string;
@@ -46,7 +41,6 @@ export interface DocumentsDiligenceTabProps {
   residenceRegionHint?: string;
   assetNiche?: AssetNiche;
   propertyType?: string;
-  contractPrice?: number;
 }
 
 function canUploadToResidence(brokerId: string, courtiersResponsables?: string): boolean {
@@ -68,13 +62,8 @@ export function DocumentsDiligenceTab({
   residenceRegionHint,
   assetNiche,
   propertyType,
-  contractPrice = 0,
 }: DocumentsDiligenceTabProps) {
   const { language, t } = useLanguage();
-  const { profile } = useAuth();
-  const orgId = profile?.orgId ?? '';
-  const licenseName = profile?.licenseName ?? profile?.displayName ?? '';
-  const licenseTitle = profile?.title;
   const locale = language === 'fr' ? 'fr' : 'en';
   const uploadAllowed = canUploadToResidence(brokerId, courtiersResponsables);
 
@@ -87,7 +76,6 @@ export function DocumentsDiligenceTab({
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [emailPanelOpen, setEmailPanelOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [vaultByDocId, setVaultByDocId] = useState<Record<string, LegalVaultFirestoreRecord>>({});
   const iaPrefillQueuedDocIds = useRef(new Set<string>());
   const { queueIaPrefill } = useFinancialHubDraft();
 
@@ -171,22 +159,6 @@ export function DocumentsDiligenceTab({
     );
     return unsub;
   }, [propertyId, t, uploadAllowed]);
-
-  useEffect(() => {
-    if (!orgId || !propertyId) {
-      setVaultByDocId({});
-      return undefined;
-    }
-    return subscribeLegalVaultByProperty(orgId, propertyId, setVaultByDocId);
-  }, [orgId, propertyId]);
-
-  const wormLockedByDocId = useMemo(() => {
-    const map: Record<string, boolean> = {};
-    for (const [docId, record] of Object.entries(vaultByDocId)) {
-      map[docId] = record.isFinalWormLocked === true;
-    }
-    return map;
-  }, [vaultByDocId]);
 
   /** Post-analyse IA : pré-remplit le panneau Saisie manuelle (aucune écriture Firestore). */
   useEffect(() => {
@@ -454,7 +426,7 @@ export function DocumentsDiligenceTab({
       ) : null}
 
       <div className="relative flex min-h-[520px] flex-col gap-0">
-        <div className="flex min-h-0 flex-1 flex-col gap-4 pb-16 lg:flex-row">
+        <div className="flex min-h-0 flex-1 gap-4 pb-16">
           <DocumentTabs
             activeTab={activeTab}
             onTabChange={setActiveTab}
@@ -475,18 +447,11 @@ export function DocumentsDiligenceTab({
             onUpload={handleUpload}
             locale={locale}
             labels={uploadLabels}
-            wormLockedByDocId={wormLockedByDocId}
-            wormIndicatorsEnabled={Boolean(orgId)}
           />
           <DocumentMetadataPanel
             document={selected}
             propertyId={propertyId}
             brokerId={brokerId}
-            orgId={orgId}
-            licenseName={licenseName}
-            licenseTitle={licenseTitle}
-            contractPrice={contractPrice}
-            vaultRecord={selected ? vaultByDocId[selected.id] ?? null : null}
             residenceCity={residenceCity}
             residenceRegionHint={residenceRegionHint}
             assetNiche={assetNiche}

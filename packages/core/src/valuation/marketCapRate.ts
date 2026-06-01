@@ -10,8 +10,6 @@
  * @version 1.0.0
  */
 
-import { computeCapitalizationRateDecimal } from '../financial/capitalization';
-
 // ============================================================================
 // INTERFACES
 // ============================================================================
@@ -247,7 +245,8 @@ export function mapComparablesToCapRateSamples(
         noi = (c.rbp * 0.95) - c.totalExpenses;
       }
 
-      const capRate = computeCapitalizationRateDecimal(noi, c.salePrice) ?? 0;
+      // Calculer le cap rate
+      const capRate = noi > 0 && c.salePrice > 0 ? noi / c.salePrice : 0;
 
       return {
         id: c.id,
@@ -270,7 +269,10 @@ export function computeCapRateImpliedAtAsking(
   noi: number,
   askingPrice: number
 ): number | undefined {
-  return computeCapitalizationRateDecimal(noi, askingPrice) ?? undefined;
+  if (noi <= 0 || askingPrice <= 0) {
+    return undefined;
+  }
+  return Math.round((noi / askingPrice) * 10000) / 10000;
 }
 
 /**

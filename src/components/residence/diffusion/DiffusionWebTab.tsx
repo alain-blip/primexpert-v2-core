@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Globe, Loader2, X } from 'lucide-react';
 import { useLanguage } from '../../../lib/i18n';
 import type { Residence } from '../../../services/residences';
-import { useUnifiedResidence } from '../../../context/ResidenceDataContext';
+import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { FinancialDataProvider } from '../../../context/FinancialDataContext';
 import { buildSellerPreviewUrl, parseSyndicationMeta } from '../../../lib/diffusionSyndication';
 import { useDiffusionPublication } from '../../../hooks/useDiffusionPublication';
@@ -38,18 +38,10 @@ export interface DiffusionWebTabProps {
   residence: Residence;
 }
 
-export function DiffusionWebTab({ residence: residenceProp }: DiffusionWebTabProps) {
+export function DiffusionWebTab({ residence }: DiffusionWebTabProps) {
   const { t, language } = useLanguage();
-  const {
-    residence,
-    residenceRecord,
-    loading,
-    error,
-    isInProvider,
-    saveError,
-    updateResidence,
-    saving,
-  } = useUnifiedResidence(residenceProp);
+  const { residenceDoc, loading, error, isInProvider, saveError, updateResidence, saving } =
+    useResidenceDocument();
 
   const {
     toast,
@@ -64,11 +56,11 @@ export function DiffusionWebTab({ residence: residenceProp }: DiffusionWebTabPro
   } = useDiffusionPublication(residence.id);
 
   const meta = useMemo(
-    () => parseSyndicationMeta(residenceRecord),
-    [residenceRecord]
+    () => parseSyndicationMeta(residenceDoc ?? undefined),
+    [residenceDoc]
   );
 
-  const guardrails = usePublicationGuardrails(residenceRecord);
+  const guardrails = usePublicationGuardrails(residenceDoc);
 
   const [draftPreviewOpen, setDraftPreviewOpen] = useState(false);
   const [sellerLinkCopied, setSellerLinkCopied] = useState(false);
@@ -100,8 +92,8 @@ export function DiffusionWebTab({ residence: residenceProp }: DiffusionWebTabPro
 
   const handleSyndicationToggle = useCallback(
     async (portal: 'rpaAVendre' | 'cpeAVendre' | 'plexAVendre', enabled: boolean) => {
-      if (!residenceRecord || Object.keys(residenceRecord).length === 0) return;
-      const current = parseSyndicationMeta(residenceRecord);
+      if (!residenceDoc) return;
+      const current = parseSyndicationMeta(residenceDoc);
       await updateResidence({
         syndication: {
           ...current,
@@ -109,7 +101,7 @@ export function DiffusionWebTab({ residence: residenceProp }: DiffusionWebTabPro
         },
       });
     },
-    [residenceRecord, updateResidence]
+    [residenceDoc, updateResidence]
   );
 
   if (!isInProvider) {

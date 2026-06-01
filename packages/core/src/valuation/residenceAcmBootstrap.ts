@@ -8,7 +8,6 @@ import {
   type FinancialDataV2Doc,
   type ResidenceFinancialHints,
 } from '../financial/normalizeFinancialData';
-import { noiGapToMarketValue } from '../financial/financialOptimization360';
 import { applyCanonicalMetricsToCalc, resolveCanonicalFinancialMetrics } from '../financial/resolveCanonicalRne';
 import type { MarketGpsTransaction } from '../market/marketGpsViewModel';
 import {
@@ -332,7 +331,7 @@ export function bootstrapResidenceAcm(
   });
   const regionalCapRatePerformanceValue =
     rne > 0 && suggestedCapRatePct > 0
-      ? roundToNearestThousand(noiGapToMarketValue(rne, suggestedCapRatePct))
+      ? roundToNearestThousand(rne / (suggestedCapRatePct / 100))
       : 0;
 
   return {

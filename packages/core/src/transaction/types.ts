@@ -59,21 +59,7 @@ export interface PromesseComputedDeadlines {
   dateLimiteInspection?: string;
   dateLimiteFinancement?: string;
   dateLimitePermis?: string;
-  /** Fin du délai de dédit — Loi sur le courtage immobilier (C-73.2), art. 73.2. */
-  dateLimiteDeduitLci?: string;
 }
-
-/** Clés des 7 échéances critiques lorsque la PA passe à « acceptée » / `pa-acceptee`. */
-export type PaAccepteeCriticalDeadlineKey = keyof Pick<
-  PromesseComputedDeadlines,
-  | 'dateLimiteReponse'
-  | 'dateLimiteVisiteLieux'
-  | 'dateLimiteVerificationDocuments'
-  | 'dateLimiteInspection'
-  | 'dateLimiteFinancement'
-  | 'dateLimitePermis'
-  | 'dateLimiteDeduitLci'
->;
 
 export interface PromesseCommissionView {
   prixBase?: number;

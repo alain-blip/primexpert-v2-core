@@ -30,10 +30,8 @@ import { OffreConditionsLegalesSection } from '../promesse/OffreConditionsLegale
 import { OffreTroncFinancierSection } from '../promesse/OffreTroncFinancierSection';
 import { PromesseCommissionPaSection } from '../promesse/PromesseCommissionPaSection';
 import { PromesseDelaisPaSection } from '../promesse/PromesseDelaisPaSection';
-import { ContractAssemblerPanel } from '../promesse/ContractAssemblerPanel';
 import { PartiesImpliquees } from '../promesse/PartiesImpliquees';
-import { FinancialDataProvider } from '../../../context/FinancialDataContext';
-import { useUnifiedResidence } from '../../../context/ResidenceDataContext';
+import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { useAuth } from '../../../lib/auth';
 import { useLanguage } from '../../../lib/i18n';
 import { cn, formatCurrency } from '../../../lib/utils';
@@ -74,19 +72,11 @@ export interface PromesseAchatTabProps {
   brokerId: string;
 }
 
-function promesseDocRevision(doc: Record<string, unknown>): string {
-  const updated = doc.updatedAt ?? doc.updatedAtMillis ?? doc.lastModified ?? '';
-  return typeof updated === 'object' && updated !== null && 'seconds' in updated
-    ? String((updated as { seconds: number }).seconds)
-    : String(updated ?? '');
-}
-
-export function PromesseAchatTab({ residence: residenceProp, brokerId }: PromesseAchatTabProps) {
+export function PromesseAchatTab({ residence, brokerId }: PromesseAchatTabProps) {
   const { t, language } = useLanguage();
   const locale = language === 'fr' ? 'fr-CA' : 'en-CA';
   const { profile } = useAuth();
-  const { residence, residenceRecord, loading, saving, saveError, updateResidence } =
-    useUnifiedResidence(residenceProp);
+  const { residenceDoc, loading, saving, saveError, updateResidence } = useResidenceDocument();
 
   const [innerTab, setInnerTab] = useState<InnerTab>('edit');
   const [offreTronc, setOffreTronc] = useState<OffreTroncInput>({});
@@ -102,6 +92,7 @@ export function PromesseAchatTab({ residence: residenceProp, brokerId }: Promess
 
   const vm = useMemo(() => buildPromesseAchatViewModel(form), [form]);
   const locked = vm.isWormLocked;
+  const residenceRecord = (residenceDoc ?? {}) as Record<string, unknown>;
 
   const transactionStage: TransactionStage = useMemo(() => {
     if (form.status === 'accepted') return 'due_diligence';
@@ -153,16 +144,16 @@ export function PromesseAchatTab({ residence: residenceProp, brokerId }: Promess
   }, [residenceRecord]);
 
   useEffect(() => {
-    if (!residenceRecord || Object.keys(residenceRecord).length === 0) return;
-    const offre = parseOffreTroncFromDoc(residenceRecord);
-    const conditions = parseOffreConditionsFromDoc(residenceRecord);
-    const cloture = parseOffreClotureFromDoc(residenceRecord);
+    if (!residenceDoc) return;
+    const offre = parseOffreTroncFromDoc(residenceDoc);
+    const conditions = parseOffreConditionsFromDoc(residenceDoc);
+    const cloture = parseOffreClotureFromDoc(residenceDoc);
     setOffreTronc(offre);
     setOffreConditions(conditions);
     setOffreCloture(cloture);
-    setForm(parsePromesseAchatFromDoc(residenceRecord));
-    setOffers(parsePromesseOffersFromDoc(residenceRecord));
-  }, [residence.id, promesseDocRevision(residenceRecord)]);
+    setForm(parsePromesseAchatFromDoc(residenceDoc));
+    setOffers(parsePromesseOffersFromDoc(residenceDoc));
+  }, [residenceDoc]);
 
   useEffect(() => {
     const unsub = subscribePromesseDocuments(
@@ -501,14 +492,6 @@ export function PromesseAchatTab({ residence: residenceProp, brokerId }: Promess
             locked={locked}
             onPersist={persistOffreCloture}
           />
-
-          <FinancialDataProvider residenceId={residence.id}>
-            <ContractAssemblerPanel
-              residence={residence}
-              residenceDoc={residenceRecord ?? undefined}
-              locked={locked}
-            />
-          </FinancialDataProvider>
 
           <InstitutionalSection title={t("Promesse d'achat et infos de vente", 'Purchase promise & sale info')}>
             <div className="grid gap-4 md:grid-cols-2">

@@ -28,16 +28,6 @@ export type ListingCommissionSource = {
   };
 };
 
-export type ResidenceUnitsSource = {
-  nombreUnitesTotal?: number;
-  unitsCount?: number;
-  nombreUnites?: number;
-  unitesRPA?: number;
-  nombreUnitesRPA?: number;
-  totalUnits?: number;
-  unites?: number;
-};
-
 export interface PipelineColumnTotals {
   totalPrice: number;
   totalCommission: number;
@@ -54,46 +44,18 @@ function parsePctValue(raw: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Prix d'annonce / demandé pour pilotage portefeuille (SSOT — `price` prime sur champs legacy). */
+/** Prix d'annonce / demandé pour pilotage portefeuille. */
 export function getListingPrice(residence: ListingCommissionSource | null | undefined): number {
   if (!residence) return 0;
 
   return (
-    toPositiveNumber(residence.price) ??
     toPositiveNumber(residence.prixAnnonce) ??
+    toPositiveNumber(residence.price) ??
     toPositiveNumber(residence.askingPrice) ??
     toPositiveNumber(residence.prixDemande) ??
     toPositiveNumber(residence.listingPrice) ??
     0
   );
-}
-
-/** Nombre total d'unités — SSOT fiche résidence (champs canoniques puis legacy). */
-export function getResidenceTotalUnits(
-  residence: ResidenceUnitsSource | null | undefined
-): number {
-  if (!residence) return 0;
-
-  return (
-    toPositiveNumber(residence.nombreUnitesTotal) ??
-    toPositiveNumber(residence.unitsCount) ??
-    toPositiveNumber(residence.nombreUnites) ??
-    toPositiveNumber(residence.unitesRPA) ??
-    toPositiveNumber(residence.nombreUnitesRPA) ??
-    toPositiveNumber(residence.totalUnits) ??
-    toPositiveNumber(residence.unites) ??
-    0
-  );
-}
-
-/** Prix par unité — calcul pur : prix demandé (SSOT) ÷ nombre d'unités. */
-export function getListingPricePerUnit(
-  residence: (ListingCommissionSource & ResidenceUnitsSource) | null | undefined
-): number | null {
-  const price = getListingPrice(residence);
-  const units = getResidenceTotalUnits(residence);
-  if (price <= 0 || units <= 0) return null;
-  return price / units;
 }
 
 /** Taux de commission totale (pourcentage entier, ex. 5 pour 5 %). */

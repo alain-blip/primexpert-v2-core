@@ -125,21 +125,6 @@
         { "fieldPath": "uploadedBy", "order": "ASCENDING" },
         { "fieldPath": "uploadedAtMillis", "order": "DESCENDING" }
       ]
-    },
-    {
-      "collectionGroup": "market_documents",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "orgId", "order": "ASCENDING" },
-        { "fieldPath": "uploadedAtMillis", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "market_documents",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "contentHashMd5", "order": "ASCENDING" }
-      ]
     }
   ],
   "fieldOverrides": [

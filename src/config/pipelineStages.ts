@@ -104,7 +104,7 @@ export const ACTIVE_PIPELINE_RAW_STATUTS = new Set([
 ]);
 
 /** Mapping slug legacy Copilote / FR → colonne canonique Firestore. */
-export const LEGACY_STATUT_TO_COLUMN: Readonly<Record<string, PipelineColumnId>> = {
+const LEGACY_STATUT_TO_COLUMN: Record<string, PipelineColumnId> = {
   prospection: 'prospect',
   prospect: 'prospect',
   lead: 'prospect',

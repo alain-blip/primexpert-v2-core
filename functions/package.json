@@ -13,10 +13,7 @@
     "sync:core-telephony": "node scripts/sync-core-telephony.cjs",
     "sync:core-ai": "node scripts/sync-core-ai.cjs",
     "sync:core-crm": "node scripts/sync-core-crm.cjs",
-    "sync:core-security": "node scripts/sync-core-security.cjs",
-    "sync:core-residence": "node scripts/sync-core-residence.cjs",
-    "sync:core-analytics-flywheel": "node scripts/sync-core-analytics-flywheel.cjs",
-    "prebuild": "npm run sync:core-crm && npm run sync:core-diffusion && npm run sync:core-mail && npm run sync:core-documents && npm run sync:core-market && npm run sync:core-telephony && npm run sync:core-ai && npm run sync:core-security && npm run sync:core-residence && npm run sync:core-analytics-flywheel",
+    "prebuild": "npm run sync:core-crm && npm run sync:core-diffusion && npm run sync:core-mail && npm run sync:core-documents && npm run sync:core-market && npm run sync:core-telephony && npm run sync:core-ai",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "serve": "npm run build && firebase emulators:start --only functions",
@@ -26,8 +23,6 @@
     "@google-cloud/vertexai": "^1.10.0",
     "firebase-admin": "^13.10.0",
     "firebase-functions": "^7.2.5",
-    "pdf-lib": "^1.17.1",
-    "pdf-parse": "^1.1.4",
     "twilio": "^5.13.1"
   },
   "devDependencies": {

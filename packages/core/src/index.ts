@@ -23,4 +23,3 @@ export * as diffusion from './diffusion';
 export * as crm from './crm';
 export * as residence from './residence';
 export * as telephony from './telephony';
-export * as security from './security';

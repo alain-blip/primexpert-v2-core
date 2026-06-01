@@ -1,12 +1,12 @@
 /**
- * Marché & Concurrence — zone, concurrence territoriale Centris, diagnostic, registre visiteurs.
+ * Marché & Concurrence — 3 piliers (zone, diagnostic territorial, registre visiteurs).
  * SSOT : @primexpert/core/market + ResidenceDocumentContext.
  */
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useLanguage } from '../../../lib/i18n';
 import type { Residence } from '../../../services/residences';
-import { useUnifiedResidence } from '../../../context/ResidenceDataContext';
+import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { inst } from '../institutional/InstitutionalUi';
 import { CompetitorZoneSection } from '../market/CompetitorZoneSection';
 import { MarketPenetrationSection } from '../market/MarketPenetrationSection';
@@ -14,13 +14,7 @@ import { TerritorialDiagnosticSection } from '../market/TerritorialDiagnosticSec
 import { VisitorRegistrySection } from '../market/VisitorRegistrySection';
 import { WorkforceBasinSection } from '../market/WorkforceBasinSection';
 import { ResidenceAcmValuationPanel } from '../market/ResidenceAcmValuationPanel';
-import { TerritorialCentrisCompetitionSection } from '../market/TerritorialCentrisCompetitionSection';
-import { useTerritorialCompetition } from '../../../hooks/useTerritorialCompetition';
 import { FinancialDataProvider } from '../../../context/FinancialDataContext';
-import {
-  normalizeAdministrativeRegion,
-  resolveResidenceRpaBuildingClass,
-} from '@primexpert/core/market';
 import {
   institutionalListingsFailSafeClass,
   institutionalListingsPanelClass,
@@ -30,32 +24,9 @@ export interface MarcheConcurrenceTabProps {
   residence: Residence;
 }
 
-export function MarcheConcurrenceTab({ residence: residenceProp }: MarcheConcurrenceTabProps) {
+export function MarcheConcurrenceTab({ residence }: MarcheConcurrenceTabProps) {
   const { t } = useLanguage();
-  const { residence, residenceRecord, loading, error, isInProvider, saveError } =
-    useUnifiedResidence(residenceProp);
-
-  const regionAdministrative = useMemo(() => {
-    const raw = String(
-      residenceRecord.regionAdministrative ??
-        residence.region ??
-        residence.city ??
-        ''
-    ).trim();
-    if (!raw) return '';
-    return normalizeAdministrativeRegion(raw, residence.city ?? undefined);
-  }, [residenceRecord, residence]);
-
-  const classeImmeuble = useMemo(
-    () => resolveResidenceRpaBuildingClass(residenceRecord, residence),
-    [residenceRecord, residence]
-  );
-
-  const territorialCompetition = useTerritorialCompetition({
-    regionAdministrative,
-    classeImmeuble,
-    enabled: isInProvider && !loading && Boolean(regionAdministrative),
-  });
+  const { residenceDoc, loading, error, isInProvider, saveError } = useResidenceDocument();
 
   if (!isInProvider) {
     return (
@@ -77,10 +48,7 @@ export function MarcheConcurrenceTab({ residence: residenceProp }: MarcheConcurr
       )}
 
       <FinancialDataProvider residenceId={residence.id}>
-        <ResidenceAcmValuationPanel
-          residence={residence}
-          territorialCompetition={territorialCompetition}
-        />
+        <ResidenceAcmValuationPanel residence={residence} />
       </FinancialDataProvider>
 
       {error ? (
@@ -97,15 +65,6 @@ export function MarcheConcurrenceTab({ residence: residenceProp }: MarcheConcurr
         </div>
       ) : (
         <>
-          <TerritorialCentrisCompetitionSection
-            loading={territorialCompetition.loading}
-            error={territorialCompetition.error?.message ?? null}
-            comparables={territorialCompetition.comparables}
-            medianTgaPct={territorialCompetition.medianTgaPct}
-            sampleCount={territorialCompetition.sampleCount}
-            regionAdministrative={regionAdministrative}
-            classeImmeuble={classeImmeuble}
-          />
           <MarketPenetrationSection />
           <CompetitorZoneSection />
           <WorkforceBasinSection />

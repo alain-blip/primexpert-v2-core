@@ -22,14 +22,6 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.orgId == orgId; 
     }
 
-    /** Vault WORM — membre org (JWT orgId ou profil users/{uid}). */
-    function isVaultOrgMember(orgId) {
-      return isSignedIn() && (
-        request.auth.token.orgId == orgId ||
-        isOrgMember(orgId)
-      );
-    }
-
     function userProfile() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
@@ -224,36 +216,6 @@ service cloud.firestore {
         resource.data.uploadedBy == request.auth.uid;
     }
 
-    // Coffre-fort légal WORM — V3.0 (@primexpert/core/security LegalVaultDocument)
-    match /organizations/{orgId}/legal_vault/{documentId} {
-      allow read: if isVaultOrgMember(orgId);
-
-      allow create: if isVaultOrgMember(orgId) &&
-        incoming().orgId == orgId &&
-        incoming().brokerId == request.auth.uid &&
-        incoming().documentId == documentId &&
-        incoming().isFinalWormLocked == false &&
-        incoming().createdAtMillis is int &&
-        incoming().oaciqRetentionExpiryTimestamp is int &&
-        incoming().storageUrl is string &&
-        incoming().documentType in [
-          'CONTRAT_COURTAGE', 'PROMESSE_ACHAT', 'FICHE_DESCRIPTIVE', 'ACM_REPORT'
-        ];
-
-      // WORM : seule transition autorisée — déverrouillé → verrouillé final (une fois).
-      allow update: if isVaultOrgMember(orgId) &&
-        resource.data.isFinalWormLocked == false &&
-        request.resource.data.isFinalWormLocked == true;
-
-      allow delete: if false;
-
-      // Journal d'adéquation de conformité légale — append serveur uniquement.
-      match /compliance_logs/{entryId} {
-        allow read: if isVaultOrgMember(orgId);
-        allow create, update, delete: if false;
-      }
-    }
-
     // ========================================================================
     // SILOS 2026 v4 — Multi-tenant flat collections (brokerId-based)
     //
@@ -374,14 +336,8 @@ service cloud.firestore {
       allow read:   if isTenantOwner();
       allow create: if isIncomingTenantOwner();
       allow update: if isTenantOwner() && isIncomingTenantOwner();
-      // Suppression interdite (OACIQ — conservation 6 ans, journal de conformité immuable)
+      // Suppression interdite (OACIQ — conservation 6 ans, audit log immuable)
       allow delete: if false;
-    }
-
-    // Cache Centris Matrix — lecture seule pour comparables territoriaux ACM.
-    match /listings_cache/{entryId} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if false;
     }
 
     // Big Data marché — entrées strictement anonymisées (pas d'adresse ni de fiche résidence).
@@ -411,35 +367,19 @@ service cloud.firestore {
 
     // Vault global — rapports macro (Altus, Côté Mercier, briefs démo) hors fiche résidence.
     match /market_documents/{documentId} {
-      allow read: if isSignedIn() && (
-        resource.data.orgId == request.auth.token.orgId ||
-        isVaultOrgMember(resource.data.orgId) ||
-        (!('orgId' in resource.data) && resource.data.uploadedBy == request.auth.uid)
-      );
+      allow read: if isSignedIn() && resource.data.uploadedBy == request.auth.uid;
       allow create: if isSignedIn()
-        && incoming().orgId == request.auth.token.orgId
-        && isVaultOrgMember(incoming().orgId)
         && incoming().uploadedBy == request.auth.uid
         && incoming().documentCategory == 'MARKET_REPORT'
         && incoming().fileName is string
         && incoming().storagePath is string;
-      allow update: if isSignedIn() && (
-        (resource.data.orgId == request.auth.token.orgId && isVaultOrgMember(resource.data.orgId)) ||
-        (!('orgId' in resource.data) && resource.data.uploadedBy == request.auth.uid)
-      );
-      allow delete: if isSignedIn() && (
-        (resource.data.orgId == request.auth.token.orgId && isVaultOrgMember(resource.data.orgId)) ||
-        (!('orgId' in resource.data) && resource.data.uploadedBy == request.auth.uid)
-      );
+      allow update: if isSignedIn() && resource.data.uploadedBy == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.uploadedBy == request.auth.uid;
     }
 
     // Stats macro validées (écriture serveur — callable injectMarketMacroStats).
     match /market_macro_stats/{entryId} {
-      allow read: if isSignedIn() && (
-        resource.data.orgId == request.auth.token.orgId ||
-        isVaultOrgMember(resource.data.orgId) ||
-        !('orgId' in resource.data)
-      );
+      allow read: if isSignedIn();
       allow create, update, delete: if false;
     }
   }

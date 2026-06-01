@@ -23,7 +23,7 @@ import { buildIdentityViewModel } from '@primexpert/core/identity';
 import { cn } from '../../../lib/utils';
 import { useLanguage } from '../../../lib/i18n';
 import { useAuth } from '../../../lib/auth';
-import { useUnifiedResidence } from '../../../context/ResidenceDataContext';
+import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { ResponsibleBrokerCard } from '../identity/ResponsibleBrokerCard';
 import type { Residence } from '../../../services/residences';
 import { IdentityOverviewStrip } from '../identity/IdentityOverviewStrip';
@@ -1129,16 +1129,27 @@ export function IdentiteImmeubleTab({ residence, isVendorMode = false }: Identit
   const { language, t } = useLanguage();
   const { profile } = useAuth();
   const {
-    residenceRecord: docWithHints,
+    residenceDoc,
     loading,
     error,
     isInProvider,
     saving,
     saveError,
     updateResidence,
-  } = useUnifiedResidence(residence);
+  } = useResidenceDocument();
 
   const lang = language === 'fr' ? 'fr' : 'en';
+
+  const docWithHints = useMemo(() => {
+    if (!residenceDoc) return null;
+    return {
+      ...residenceDoc,
+      address: residenceDoc.address ?? residence.address,
+      city: residenceDoc.city ?? residence.city,
+      price: residence.price,
+      prixDemande: residence.price,
+    } as Record<string, unknown>;
+  }, [residenceDoc, residence]);
 
   const view = useMemo(
     () => buildIdentityViewModel(docWithHints, { loading }),
@@ -1169,8 +1180,8 @@ export function IdentiteImmeubleTab({ residence, isVendorMode = false }: Identit
   const legalSection = view.sections.find((s) => s.id === 'legal');
 
   const courtiersResponsables =
-    typeof docWithHints?.courtiersResponsables === 'string'
-      ? docWithHints.courtiersResponsables
+    typeof residenceDoc?.courtiersResponsables === 'string'
+      ? residenceDoc.courtiersResponsables
       : residence.courtiersResponsables;
 
   const vpc = identityVendorPortalClasses(isVendorMode);
@@ -1310,7 +1321,7 @@ export function IdentiteImmeubleTab({ residence, isVendorMode = false }: Identit
       {/* Compléments — tarification des loyers et capacité fine */}
       <RentPricingTableSection rentPricing={view.rentPricing} language={lang} />
 
-      {docWithHints ? <EditableCapacitySection residenceDoc={docWithHints} language={lang} /> : null}
+      {docWithHints && <EditableCapacitySection residenceDoc={docWithHints} language={lang} />}
 
       {view.capacity.agePyramid.length > 0 && (
         <IdentitySectionCard

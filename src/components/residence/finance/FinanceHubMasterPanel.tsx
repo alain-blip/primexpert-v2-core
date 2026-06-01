@@ -21,7 +21,6 @@ import {
 } from '../../../services/certifiableReportPdfService';
 import { downloadBuyerReportPdf } from '../../../services/buyerReportPdfService';
 import type { Residence } from '../../../services/residences';
-import { useResidenceFinancialHints } from '../../../context/ResidenceDataContext';
 
 const GOLD_BTN =
   'flex-1 min-w-0 min-h-[52px] rounded-lg border-2 border-black bg-[#D4AF37] px-3 py-3 text-[13px] sm:text-[14px] font-black text-black text-center hover:bg-[#c9a432] transition disabled:opacity-50 disabled:cursor-not-allowed';
@@ -49,7 +48,6 @@ export function FinanceHubMasterPanel({
   const [detailPdfPending, setDetailPdfPending] = useState(false);
 
   const activeResidenceId = documentResidenceId ?? financeResidenceId ?? residence.id;
-  const financialHints = useResidenceFinancialHints(residence);
 
   const exportResidence = useMemo(
     () => ({
@@ -59,10 +57,9 @@ export function FinanceHubMasterPanel({
       residenceName: residence.residenceName,
       nomCommercial: residence.nomCommercial,
       name: residence.name,
-      price: financialHints.price ?? residence.price,
-      prixDemande: financialHints.prixDemande ?? residence.price,
-      askingPrice: financialHints.askingPrice ?? residence.price,
-      listingSource: residence.listingSource,
+      price: residence.price,
+      prixDemande: residence.price,
+      askingPrice: residence.price,
     }),
     [
       activeResidenceId,
@@ -72,12 +69,16 @@ export function FinanceHubMasterPanel({
       residence.nomCommercial,
       residence.name,
       residence.price,
-      residence.listingSource,
-      financialHints,
     ]
   );
 
-  const residenceHints = financialHints;
+  const residenceHints = useMemo(
+    () => ({
+      prixDemande: residence.price,
+      askingPrice: residence.price,
+    }),
+    [residence.price]
+  );
 
   const normalized = useMemo(
     () => normalizeFinancialData(financialData, residenceHints),

@@ -6,12 +6,9 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import {
   EXPENSE_FIELDS,
   EXPENSE_KEYS,
-  computeCapitalizationRateDecimal,
   mergeExtractedIntoFinancialDataV2,
   recomputeFinancialCalculatedResults,
-  resolveNetOperatingIncome,
   sumNormalizedOperatingExpenses,
-  type DepensesGrid,
   type FinancialBaseData,
   type FinancialDataV2Doc,
 } from '@primexpert/core/financial';
@@ -81,14 +78,8 @@ export async function saveExpenseAdjustmentsToFinancial(
   const rbe =
     parseNum(financialData.calculatedResults?.revenuBrutEffectif) ||
     parseNum(financialData.baseData?.revenusAnnuels);
-  const rneCentral = resolveNetOperatingIncome(
-    {
-      revenuBrutEffectif: rbe,
-      depensesExploitation: depensesTotalesNormalisees,
-    },
-    { allowNonPositive: true }
-  );
-  const revenuNetExploitation = rneCentral != null ? Math.round(rneCentral) : null;
+  const revenuNetExploitation =
+    rbe > 0 ? Math.round(rbe - depensesTotalesNormalisees) : null;
 
   const prixDemande = parseNum(
     (financialData.calculatedResults as Record<string, unknown> | undefined)?.prixDemande
@@ -97,7 +88,7 @@ export async function saveExpenseAdjustmentsToFinancial(
     revenuNetExploitation != null &&
     revenuNetExploitation > 0 &&
     prixDemande > 0
-      ? computeCapitalizationRateDecimal(revenuNetExploitation, prixDemande)
+      ? revenuNetExploitation / prixDemande
       : undefined;
 
   const docRef = doc(db, 'residences', residenceId, 'financial', 'dataV2');
@@ -293,8 +284,8 @@ export async function saveManualFinancialEntry(
     if (amount > 0) depensesPatch[key] = Math.round(amount);
   }
 
-  const existingDep = (existing?.baseData?.depenses ?? {}) as DepensesGrid;
-  const mergedDepenses: DepensesGrid = { ...existingDep, ...depensesPatch };
+  const existingDep = (existing?.baseData?.depenses ?? {}) as Record<string, unknown>;
+  const mergedDepenses = { ...existingDep, ...depensesPatch };
 
   const existingFin = (existing?.baseData?.financement ?? {}) as Record<string, unknown>;
   const mergedFinancement = {
@@ -325,8 +316,7 @@ export async function saveManualFinancialEntry(
     };
     const rne = calculatedResults.revenuNetExploitation;
     if (rne != null && rne > 0 && prix > 0) {
-      const tga = computeCapitalizationRateDecimal(rne, prix);
-      if (tga != null) calculatedResults.tauxCapitalisation = tga;
+      calculatedResults.tauxCapitalisation = rne / prix;
     }
     const mensuel = parseNum(draft.financement.paiementMensuel);
     if (mensuel > 0) {

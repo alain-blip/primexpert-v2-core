@@ -590,96 +590,59 @@ Contrairement \'e0 une IA g\'e9n\'e9rative (comme ChatGPT) qui "discute", une IA
 \f0\b0  Elle sugg\'e8re une fourchette de prix pour prot\'e9ger les int\'e9r\'eats de la partie repr\'e9sent\'e9e. \outl0\strokewidth0 \
 \pard\pardeftab720\sa298\partightenfactor0
 
-\f1\b\fs36 \cf0 Annexe \'97 \'c9tat d'implantation technique (V2.8 \'97 mai 2026)\
+\f1\b\fs36 \cf0 Annexe \'97 \'c9tat d'implantation technique (mai 2026)\
 \pard\pardeftab720\sa240\partightenfactor0
 
-\f0\b0\fs24 \cf0 Cette annexe documente la correspondance entre les pr\'e9sentes normes et le d\'e9p\'f4t canonique 
-\f1\b 01_PRIMEXPERT_SYSTEME_APP_STABLE_V2
-\f0\b0  / Firebase 
-\f1\b primexpert-app-v2
-\f0\b0  (https://primexpert-app-v2.web.app). Jumeaux markdown : 
-\f1\b docs/README.md
-\f0\b0 , 
-\f1\b docs/MEMORY.md
-\f0\b0 . \'c0 actualiser lors des livraisons majeures.\
+\f0\b0\fs24 \cf0 Cette annexe documente la correspondance entre les pr\'e9sentes normes et le d\'e9p\'f4t racine 
+\f1\b 00_RPA_SYSTEME_APP
+\f0\b0  / projet Firebase 
+\f1\b primexpert-app
+\f0\b0 . Elle compl\'e8te le corps du document sans le remplacer ; \'e0 actualiser lors des livraisons majeures.\
 \pard\pardeftab720\sa160\partightenfactor0
 
-\f1\b\fs28 \cf0 Op\'e9rationnel \'97 production LIVE\
+\f1\b\fs28 \cf0 D\'e9j\'e0 implant\'e9 ou d\'e9ployable\
 \pard\pardeftab720\sa120\partightenfactor0
 
 \f0\b0\fs24 \cf0 
-\f1\b CRM RPA :\f0\b0  
-\f1\b organizations/\{orgId\}/contacts
-\f0\b0  \'97 LCI, tiers acheteur/vendeur, 
-\f1\b law25Consent
-\f0\b0 , Matchmaker Rapha\'ebl.\
-\pard\pardeftab720\sa120\partightenfactor0
-
-\f1\b Fiche r\'e9sidence :\f0\b0  8 onglets ; Hub Finance (
-\f1\b financial/dataV2
-\f0\b0 ) ; analyse de mise en march\'e9 (ACM) ; Espace Documents (scan + parse Vertex).\
-\pard\pardeftab720\sa120\partightenfactor0
-
-\f1\b Promesse d'achat :\f0\b0  
-\f1\b offre
-\f0\b0  + 
-\f1\b promesseAchat
-\f0\b0  (
-\f1\b @primexpert/core/transaction
-\f0\b0 ).\
-\pard\pardeftab720\sa120\partightenfactor0
-
-\f1\b Hub omnicanal :\f0\b0  
-\f1\b email_threads/messages
-\f0\b0  (Nylas, SMS Twilio, notes vocales).\
-\pard\pardeftab720\sa120\partightenfactor0
-
-\f1\b Statistiques du march\'e9 :\f0\b0  
-\f1\b market_documents
-\f0\b0  \uc0\u8594  parse HITL \uc0\u8594  injection d\'e9dupliqu\'e9e.\
-\pard\pardeftab720\sa120\partightenfactor0
-
-\f1\b Acc\'e8s Vendeur V2.8 :\f0\b0  portail client autonome (
-\f1\b /acces-vendeur?token=
-\f0\b0 ), catalogue 
-\f1\b 85 pi\'e8ces
-\f0\b0 , jeton 30 j (
-\f1\b vendor_portal_invites
-\f0\b0 ).\
-\pard\pardeftab720\sa120\partightenfactor0
-
-\f1\b Briefing matin & Radar off-market :\f0\b0  
-\f1\b morning_briefings
-\f0\b0  + 
-\f1\b prospects_radar
-\f0\b0  — cron 06:00 Toronto ; signaux occupation / certification CIUSSS.\
-\pard\pardeftab720\sa120\partightenfactor0
-
-\f1\b Copilote n\'e9gociation V2.6 :\f0\b0  
-\f1\b negotiationEngine
+\f1\b Firestore :\f0\b0  r\'e8gles multi-tenant (custom claim JWT 
+\f1\b orgId
+\f0\b0 ), collections 
+\f1\b listings_cache
+\f0\b0  (extractions Centris/Matrix), 
+\f1\b organizations
 \f0\b0 , 
-\f1\b oaciqSpecsTypes
-\f0\b0  ; Vertex 
-\f1\b functions/src/ai/
+\f1\b app_settings/translations
 \f0\b0 .\
 \pard\pardeftab720\sa120\partightenfactor0
 
-\f1\b Apr\'e8s-vente V2.7 :\f0\b0  
-\f1\b closingEngine.ts
-\f0\b0  \'97 trigger 
-\f1\b onPromiseAcceptedTrigger
-\f0\b0  planifi\'e9.\
+\f1\b Storage :\f0\b0  r\'e8gles sur pr\'e9fixe 
+\f1\b centris_imports/
+\f0\b0  + segment organisation pour PDF import.\
 \pard\pardeftab720\sa120\partightenfactor0
 
-\f1\b ContentGen :\f0\b0  r\'e9dacteur IA Centris + lint OACIQ (
-\f1\b @primexpert/core/narrative
-\f0\b0 ).\
+\f1\b Cloud Function\f0\b0  
+\f1\b processCentrisPDF\f0\b0  (2e g\'e9n\'e9ration, r\'e9gion 
+\f1\b northamerica-northeast1\f0\b0 ) : envoi PDF vers API Gemini (mod\'e8le par d\'e9faut 
+\f1\b gemini-2.5-flash\f0\b0 ), secret 
+\f1\b GEMINI_API_KEY\f0\b0 , persistance Admin vers 
+\f1\b listings_cache
+\f0\b0 .\
+\pard\pardeftab720\sa120\partightenfactor0
+
+\f1\b Scripts npm\f0\b0  (racine) : graine 
+\f1\b app_settings/translations\f0\b0 , 
+\f1\b set-user-org\f0\b0  (claims + document org), 
+\f1\b run-centris-pdf-admin\f0\b0  (pipeline hors UI).\
+\pard\pardeftab720\sa120\partightenfactor0
+
+\f1\b Hosting :\f0\b0  landing marketing FR|EN (Tailwind CDN), 
+\f1\b /login\f0\b0  (amorce Auth), 
+\f1\b /demo\f0\b0  (prototype ACM), fichier 
+\f1\b public/locales/default-translations.json\f0\b0 .\
 \pard\pardeftab720\sa160\partightenfactor0
 
-\f1\b\fs28 \cf0 Partiel / backlog r\'e9glementaire\
+\f1\b\fs28 \cf0 Non couvert \'e0 ce stade (\'e9carts vs. exigences du corps du document)\
 \pard\pardeftab720\sa120\partightenfactor0
 
-\f0\b0\fs24 \cf0 Coffre WORM 6 ans (2190 j) ; validateur photo profil > 5 ans ; contr\'f4le prix publicit\'e9 vs contrat ; API export dossier ZIP/PDF-A ; mode lecture seule post-cession ; connecteur OData Centris (
-\f1\b CENTRIS_RESO_MAPPING_DRAFT.md
-\f0\b0 ).\
+\f0\b0\fs24 \cf0 Coffre WORM 6 ans ; journal de conformit\'e9 immuable d\'e9taill\'e ; RBAC adjoint / dirigeant ; fiches partie (identit\'e9, preuve ID \'e0 distance, capacit\'e9) ; workflow ACM avec validation humaine obligatoire et note du courtier ; injection syst\'e9matique permis sur toutes sorties ; validateur photo 5 ans ; contr\'f4le prix publicit\'e9 vs contrat ; API export dossier (ZIP / PDF-A) ; mode lecture seule post-cession sur la dur\'e9e l\'e9gale.\
 }
