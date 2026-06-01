@@ -25,6 +25,11 @@ import {
   DEFAULT_MARKET_BENCHMARKS,
   computeTgaAdjustment,
   runStressTests,
+  capRateRangeFromMedian,
+  selectBaselineStressTest,
+  calculatePriceRecommendation,
+  inferMarketType,
+  classifyAssetSize,
   type ValuationInputs,
   type ValuationOutputs,
   type TgaAdjustmentResult,
@@ -143,7 +148,7 @@ export function ACM() {
         occ90: stress.occ90.valueRange.min,
         occ100: stress.occ100.valueRange.min,
       });
-      setPriceRecommendation(
+      setRecommendedPrice(
         calculatePriceRecommendation(
           baseline,
           inferMarketType(''),
