@@ -15,6 +15,7 @@ import {
 } from './normalizeFinancialData';
 import { resolvePrixDemande } from './computeFinancabilite';
 import { safeNum } from './safeNumbers';
+import { capitalizeNoiAtCapRatePct } from './capitalization';
 
 const OPS_ENERGY_KEYS = ['energie', 'entretienReparation'] as const;
 
@@ -106,7 +107,7 @@ export function noiGapToMarketValue(
   if (gap == null || gap <= 0) return 0;
   const cap = safeNum(capRatePct);
   if (cap != null && cap > 0) {
-    return gap / (cap / 100);
+    return capitalizeNoiAtCapRatePct(gap, cap) ?? 0;
   }
   return gap * OPTIMIZATION_360_RULES.TGA_VALUE_MULTIPLIER;
 }

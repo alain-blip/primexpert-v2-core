@@ -110,7 +110,7 @@ async function processDocument(
 
   const validation = await validateDocSnapshot(docSnap);
 
-  if (!validation.ok) {
+  if (validation.ok === false) {
     await markDocumentInfected(docSnap.ref, validation.code);
     if (storagePath) {
       try {

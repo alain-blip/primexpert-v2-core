@@ -123,6 +123,22 @@ Branches : `expired`, `unsigned`
 
 **Ne pas renommer** (charte Copilote / export). Le **Kanban « Mes inscriptions »** n’affiche que les statuts **actifs** (`PIPELINE_ACTIVE_STATUSES` : sans `expired`).
 
+**Protection Kanban (2026-06-01 — certifié)** : `resolveColumnId()` dans `src/config/pipelineStages.ts` — couverture tests **100 %** (`resolveColumnId.test.ts` + `scripts/check-resolveColumnId-coverage.mjs`). Aucun statut actif (`ACTIVE_PIPELINE_RAW_STATUTS`) ne doit retourner `null`.
+
+### Promesse acceptée — 7 délais légaux (SSOT `promesseAchatEngine.ts`)
+
+Dès qu’une PA passe à **`accepted`** (statut Kanban `pa-acceptee` → colonne `promise`), le moteur calcule **7 échéances critiques** via `PA_ACCEPTEE_CRITICAL_DEADLINE_KEYS` :
+
+1. `dateLimiteReponse` — délai réponse offre  
+2. `dateLimiteVisiteLieux` — visite des lieux  
+3. `dateLimiteVerificationDocuments` — vérification documents  
+4. `dateLimiteInspection` — inspection  
+5. `dateLimiteFinancement` — financement  
+6. `dateLimitePermis` — permis MSSS  
+7. `dateLimiteDeduitLci` — **débit LCI art. 73.2** (`DEDIT_LCI_ART_73_2_JOURS` = **3 jours calendaires**)
+
+Tests bloquants CI : `npm run test:rpa-coverage` (workflow `.github/workflows/rpa-transaction-test-coverage.yml`).
+
 ### Données financières (Hub)
 
 ```text

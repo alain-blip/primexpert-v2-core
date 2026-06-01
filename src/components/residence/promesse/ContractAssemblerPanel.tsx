@@ -260,8 +260,8 @@ export function ContractAssemblerPanel({
                       {field.key === 'annexePrix.nouveauPrix' && suggestedPrixLabel ? (
                         <p className="text-[11px] text-slate-600">
                           {t(
-                            'Suggestion ACM (revenu net d’exploitation (RNE) ÷ taux de capitalisation global (TGA) ajusté)',
-                            'ACM suggestion (net operating income (NOI) ÷ adjusted global cap rate)'
+                            'Suggestion ACM (module financier central)',
+                            'ACM suggestion (central financial module)'
                           )}
                           : {suggestedPrixLabel}
                         </p>
