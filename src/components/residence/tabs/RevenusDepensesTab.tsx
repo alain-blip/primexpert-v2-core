@@ -302,8 +302,8 @@ export function RevenusDepensesTab({ residence }: RevenusDepensesTabProps) {
           </p>
           <p className="text-[11px] text-slate-700 leading-relaxed">
             {t(
-              'Ces postes proviennent des états financiers extraits. Ils sont affichés pour transparence CPA : le revenu net d’exploitation (RNE) = revenu brut effectif (RBE) moins les dépenses d’exploitation admissibles seulement.',
-              'These lines come from extracted financial statements. Shown for CPA transparency: net operating income (NOI) = effective gross income (EGI) minus admissible operating expenses only.'
+              'Ces postes proviennent des états financiers extraits. Ils sont affichés pour transparence CPA : le moteur financier SSOT les exclut du revenu net d’exploitation (RNE) admissible.',
+              'These lines come from extracted financial statements. Shown for CPA transparency: the SSOT financial engine excludes them from admissible net operating income (NOI).'
             )}
           </p>
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">

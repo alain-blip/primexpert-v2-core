@@ -22,11 +22,7 @@ import { formatPopulationCount } from '@primexpert/core/market';
 import { useLanguage } from '../../lib/i18n';
 import { formatCurrency } from '../../lib/utils';
 import {
-  calculateValuation,
   DEFAULT_MARKET_BENCHMARKS,
-  computeTgaAdjustment,
-  runStressTests,
-  buildValuationInputsFromAcmBootstrap,
   type ResidenceAcmBootstrap,
   type ValuationOutputs,
   type TgaAdjustmentResult,
@@ -44,10 +40,11 @@ import {
   type MarketGpsTransaction,
 } from '@primexpert/core/market';
 import { AcmHistoricalTrendsSection } from './AcmHistoricalTrendsSection';
-import type {
-  CertifiableReportBrokerFooter,
-  FinancialDataV2Doc,
-  TerritorialAcmMedians,
+import {
+  computeResidenceAcmValuationPresentation,
+  type CertifiableReportBrokerFooter,
+  type FinancialDataV2Doc,
+  type TerritorialAcmMedians,
 } from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
@@ -156,7 +153,7 @@ export function AcmValuationWorkspace({
   const [tgaInput, setTgaInput] = useState(() => String(suggestedCapRatePct));
   const [targetCapRatePct, setTargetCapRatePct] = useState(suggestedCapRatePct);
   /** TGA réellement appliqué au moteur (après ajustement pénétration). */
-  const [effectiveCapRate, setEffectiveCapRate] = useState(suggestedCapRatePct / 100);
+  const [effectiveCapRate, setEffectiveCapRate] = useState(0);
   const [penetrationRatePct, setPenetrationRatePct] = useState(bootstrap.penetrationRatePct);
   const [tgaManuallyAdjusted, setTgaManuallyAdjusted] = useState(false);
   const [result, setResult] = useState<ValuationOutputs | null>(null);
@@ -233,38 +230,16 @@ export function AcmValuationWorkspace({
       }
       setError(null);
       try {
-        let adjustedCap = capPct / 100;
-        let adj: TgaAdjustmentResult | null = null;
-        if (penPct > 0) {
-          adj = computeTgaAdjustment({
-            baseTga: adjustedCap,
-            tauxPenetrationRPA: penPct / 100,
-            nombreUnites: bootstrap.units,
-          });
-          adjustedCap = adj.finalTga;
-        }
-        setTgaAdjustment(adj);
-        setEffectiveCapRate(adjustedCap);
-
-        const inputs = buildValuationInputsFromAcmBootstrap(bootstrap, {
-          targetCapRate: adjustedCap,
+        const valuation = computeResidenceAcmValuationPresentation({
+          bootstrap,
+          targetCapRatePct: capPct,
           penetrationRatePct: penPct,
         });
-        const out = calculateValuation(inputs);
-        setResult(out);
-
-        const vacancyRate = bootstrap.valuationInputs.vacancyRate;
-        const occupancy = Math.max(0.01, 1 - vacancyRate);
-        const stress = runStressTests(out.noiAccounting, occupancy, adjustedCap, {
-          rbp: out.grossPotentialIncome,
-          operatingExpenses: out.operatingExpensesTotal,
-        });
-        setStressSummary({
-          occ85: stress.occ85.valueRange.min,
-          occ90: stress.occ90.valueRange.min,
-          occ100: stress.occ100.valueRange.min,
-        });
-        setRecommendedPrice(out.suggestedPrice);
+        setTgaAdjustment(valuation.tgaAdjustment);
+        setEffectiveCapRate(valuation.effectiveCapRate);
+        setResult(valuation.result);
+        setStressSummary(valuation.stressSummary);
+        setRecommendedPrice(valuation.recommendedPrice);
       } catch (e) {
         console.error('[AcmValuationWorkspace]', e);
         setError(e instanceof Error ? e.message : String(e));
@@ -825,8 +800,8 @@ export function AcmValuationWorkspace({
               </p>
               <p className={`text-lg ${ACM_METRIC_VALUE_CLASS}`}>
                 {t(
-                  'Prix recommandé (revenu net d’exploitation (RNE) ÷ taux de capitalisation global (TGA) cible)',
-                  'Recommended price (net operating income (NOI) ÷ target global cap rate)'
+                  'Prix recommandé par le moteur financier SSOT',
+                  'Recommended price from the SSOT financial engine'
                 )}{' '}
                 : {formatCurrency(recommendedPrice)}
               </p>
