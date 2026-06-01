@@ -108,9 +108,7 @@ export function Dashboard() {
           setMorningBriefing(null);
         }
       } finally {
-        if (!cancelled) {
-          setDashboardDataLoading(false);
-        }
+        if (!cancelled) setDashboardDataLoading(false);
       }
     })();
     return () => {

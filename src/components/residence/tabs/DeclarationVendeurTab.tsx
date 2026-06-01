@@ -2,7 +2,7 @@
  * Déclaration du vendeur — onglet institutionnel V2 (Gold Signature).
  */
 
-import { useContext, useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Loader2, Shield } from 'lucide-react';
 import {
   buildDeclarationAnswerPatch,
@@ -13,7 +13,6 @@ import {
 } from '@primexpert/core/declaration';
 import type { DeclarationResponse } from '@primexpert/core/declaration';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
-import ResidenceDataContext from '../../../context/ResidenceDataContext';
 import { useAuth } from '../../../lib/auth';
 import { useLanguage } from '../../../lib/i18n';
 import { cn } from '../../../lib/utils';
@@ -43,9 +42,8 @@ export function DeclarationVendeurTab({
 }: DeclarationVendeurTabProps) {
   const { t, language } = useLanguage();
   const { profile } = useAuth();
-  const dataCtx = useContext(ResidenceDataContext);
   const {
-    residenceDoc: firestoreDoc,
+    residenceDoc,
     residenceId,
     loading,
     error,
@@ -54,7 +52,6 @@ export function DeclarationVendeurTab({
     saveError,
     updateResidence,
   } = useResidenceDocument();
-  const residenceDoc = (dataCtx?.residenceRecord ?? firestoreDoc) as Record<string, unknown> | null;
 
   const [certifying, setCertifying] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);

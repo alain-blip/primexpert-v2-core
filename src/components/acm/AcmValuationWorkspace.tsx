@@ -40,23 +40,14 @@ import {
   ACM_TOP3_TREND_KEYS,
   buildAcmCostTrendNarrativeBundle,
   computeAcmCostTrendPoints,
-  type CentrisComparableListing,
   type MarketGpsRatioSample,
   type MarketGpsTransaction,
 } from '@primexpert/core/market';
-import {
-  assessOperatingExpenseRatioVsRegionalMedian,
-  computeOperatingExpenseRatioPct,
-} from '@primexpert/core/analytics';
 import { AcmHistoricalTrendsSection } from './AcmHistoricalTrendsSection';
-import {
-  applyTgaAdjustmentPct,
-  computeCapitalizedValueFromRneAndTgaPct,
-  normalizeTgaPct,
-  tgaPctToRate,
-  type CertifiableReportBrokerFooter,
-  type FinancialDataV2Doc,
-  type TerritorialAcmMedians,
+import type {
+  CertifiableReportBrokerFooter,
+  FinancialDataV2Doc,
+  TerritorialAcmMedians,
 } from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
@@ -134,14 +125,6 @@ export interface AcmValuationPdfExportContext {
   residence: Residence;
 }
 
-export interface TerritorialCompetitionSnapshot {
-  comparables: CentrisComparableListing[];
-  medianTgaPct: number | null;
-  sampleCount: number;
-  regionAdministrative: string | null;
-  classeImmeuble: string | null;
-}
-
 export interface AcmValuationWorkspaceProps {
   bootstrap: ResidenceAcmBootstrap;
   onOpenComparables?: () => void;
@@ -150,10 +133,6 @@ export interface AcmValuationWorkspaceProps {
   transactions?: MarketGpsTransaction[];
   subjectExpenses?: Partial<Record<string, number>>;
   territorialMedians?: TerritorialAcmMedians;
-  /** Comparables Centris / GPS liés dynamiquement au territoire. */
-  territorialCompetition?: TerritorialCompetitionSnapshot;
-  /** Médiane régionale ratio des dépenses d'exploitation (RDE) — `market_analytics_raw`. */
-  regionalOperatingExpenseRatioMedian?: number | null;
   /** Contexte export CraftMyPDF — rapport vendeur (ACM). */
   pdfExport?: AcmValuationPdfExportContext;
 }
@@ -166,38 +145,18 @@ export function AcmValuationWorkspace({
   transactions = [],
   subjectExpenses,
   territorialMedians,
-  territorialCompetition,
-  regionalOperatingExpenseRatioMedian,
   pdfExport,
 }: AcmValuationWorkspaceProps) {
   const { t, language } = useLanguage();
-  const bootstrapSuggestedCapRatePct =
+  const suggestedCapRatePct =
     Number.isFinite(bootstrap.suggestedCapRatePct) && bootstrap.suggestedCapRatePct > 0
       ? bootstrap.suggestedCapRatePct
       : bootstrap.targetCapRatePct;
 
-  const dynamicMarketTgaPct = useMemo(() => {
-    if (
-      territorialCompetition?.medianTgaPct != null &&
-      territorialCompetition.medianTgaPct > 0
-    ) {
-      return territorialCompetition.medianTgaPct;
-    }
-    if (territorialMedians?.tgaPct != null && territorialMedians.tgaPct > 0) {
-      return territorialMedians.tgaPct;
-    }
-    return bootstrapSuggestedCapRatePct;
-  }, [
-    territorialCompetition?.medianTgaPct,
-    territorialMedians?.tgaPct,
-    bootstrapSuggestedCapRatePct,
-  ]);
-
-  const [qualitativeTgaAdjustmentPct, setQualitativeTgaAdjustmentPct] = useState(0);
-  const [tgaInput, setTgaInput] = useState(() => String(dynamicMarketTgaPct));
-  const [targetCapRatePct, setTargetCapRatePct] = useState(dynamicMarketTgaPct);
+  const [tgaInput, setTgaInput] = useState(() => String(suggestedCapRatePct));
+  const [targetCapRatePct, setTargetCapRatePct] = useState(suggestedCapRatePct);
   /** TGA réellement appliqué au moteur (après ajustement pénétration). */
-  const [effectiveCapRate, setEffectiveCapRate] = useState(tgaPctToRate(dynamicMarketTgaPct) ?? 0);
+  const [effectiveCapRate, setEffectiveCapRate] = useState(suggestedCapRatePct / 100);
   const [penetrationRatePct, setPenetrationRatePct] = useState(bootstrap.penetrationRatePct);
   const [tgaManuallyAdjusted, setTgaManuallyAdjusted] = useState(false);
   const [result, setResult] = useState<ValuationOutputs | null>(null);
@@ -225,16 +184,6 @@ export function AcmValuationWorkspace({
     updatedAt: new Date().toISOString(),
   });
 
-  const appliedCapRatePct = useMemo(() => {
-    if (tgaManuallyAdjusted) return targetCapRatePct;
-    return applyTgaAdjustmentPct(dynamicMarketTgaPct, qualitativeTgaAdjustmentPct) ?? 0;
-  }, [
-    tgaManuallyAdjusted,
-    targetCapRatePct,
-    dynamicMarketTgaPct,
-    qualitativeTgaAdjustmentPct,
-  ]);
-
   const bootstrapSyncKey = useMemo(
     () =>
       [
@@ -246,10 +195,8 @@ export function AcmValuationWorkspace({
         bootstrap.units,
         bootstrap.penetrationRatePct,
         bootstrap.marketContext.sectorUnits,
-        dynamicMarketTgaPct,
-        territorialCompetition?.sampleCount ?? 0,
       ].join('|'),
-    [bootstrap, dynamicMarketTgaPct, territorialCompetition?.sampleCount]
+    [bootstrap]
   );
 
   const lastBootstrapSyncRef = useRef('');
@@ -257,26 +204,11 @@ export function AcmValuationWorkspace({
   useEffect(() => {
     if (lastBootstrapSyncRef.current === bootstrapSyncKey) return;
     lastBootstrapSyncRef.current = bootstrapSyncKey;
-    if (!tgaManuallyAdjusted) {
-      const next = applyTgaAdjustmentPct(dynamicMarketTgaPct, qualitativeTgaAdjustmentPct) ?? 0;
-      setTgaInput(String(Number(next.toFixed(2))));
-      setTargetCapRatePct(next);
-    }
+    setTgaInput(String(suggestedCapRatePct));
+    setTargetCapRatePct(suggestedCapRatePct);
     setPenetrationRatePct(bootstrap.penetrationRatePct);
-  }, [
-    bootstrapSyncKey,
-    dynamicMarketTgaPct,
-    qualitativeTgaAdjustmentPct,
-    bootstrap.penetrationRatePct,
-    tgaManuallyAdjusted,
-  ]);
-
-  useEffect(() => {
-    if (tgaManuallyAdjusted) return;
-    const next = applyTgaAdjustmentPct(dynamicMarketTgaPct, qualitativeTgaAdjustmentPct) ?? 0;
-    setTgaInput(String(Number(next.toFixed(2))));
-    setTargetCapRatePct(next);
-  }, [dynamicMarketTgaPct, qualitativeTgaAdjustmentPct, tgaManuallyAdjusted]);
+    setTgaManuallyAdjusted(false);
+  }, [bootstrapSyncKey, suggestedCapRatePct, bootstrap.penetrationRatePct]);
 
   const runValuation = useCallback(
     (capPct: number, penPct: number) => {
@@ -301,7 +233,7 @@ export function AcmValuationWorkspace({
       }
       setError(null);
       try {
-        let adjustedCap = tgaPctToRate(capPct) ?? 0;
+        let adjustedCap = capPct / 100;
         let adj: TgaAdjustmentResult | null = null;
         if (penPct > 0) {
           adj = computeTgaAdjustment({
@@ -342,8 +274,8 @@ export function AcmValuationWorkspace({
   );
 
   useEffect(() => {
-    runValuation(appliedCapRatePct, penetrationRatePct);
-  }, [appliedCapRatePct, penetrationRatePct, runValuation]);
+    runValuation(targetCapRatePct, penetrationRatePct);
+  }, [targetCapRatePct, penetrationRatePct, runValuation]);
 
   const costTrendNotes = useMemo(() => {
     if (!ratioSamples.length) return [];
@@ -410,13 +342,7 @@ export function AcmValuationWorkspace({
     language === 'fr' ? bootstrap.rneIntegrityIssueFr : bootstrap.rneIntegrityIssueEn;
 
   const capRateRationale =
-    territorialCompetition?.medianTgaPct != null && territorialCompetition.sampleCount > 0
-      ? language === 'fr'
-        ? `Taux de capitalisation global (TGA) médian territorial — ${territorialCompetition.sampleCount} comparable(s) Centris / GPS liés (${territorialCompetition.regionAdministrative ?? bootstrap.regionLabel ?? '—'}${territorialCompetition.classeImmeuble ? ` · ${territorialCompetition.classeImmeuble}` : ''}).`
-        : `Territorial median global capitalization rate (cap rate) — ${territorialCompetition.sampleCount} linked Centris / GPS comparable(s) (${territorialCompetition.regionAdministrative ?? bootstrap.regionLabel ?? '—'}${territorialCompetition.classeImmeuble ? ` · ${territorialCompetition.classeImmeuble}` : ''}).`
-      : language === 'fr'
-        ? bootstrap.capRateRationaleFr
-        : bootstrap.capRateRationaleEn;
+    language === 'fr' ? bootstrap.capRateRationaleFr : bootstrap.capRateRationaleEn;
 
   const handleTgaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
@@ -428,14 +354,12 @@ export function AcmValuationWorkspace({
       return;
     }
     setTargetCapRatePct(parsed);
-    const autoTarget = applyTgaAdjustmentPct(dynamicMarketTgaPct, qualitativeTgaAdjustmentPct) ?? 0;
-    setTgaManuallyAdjusted(Math.abs(parsed - autoTarget) > 0.04);
+    setTgaManuallyAdjusted(Math.abs(parsed - suggestedCapRatePct) > 0.04);
   };
 
   const resetTgaToMarket = () => {
-    const next = applyTgaAdjustmentPct(dynamicMarketTgaPct, qualitativeTgaAdjustmentPct) ?? 0;
-    setTgaInput(String(Number(next.toFixed(2))));
-    setTargetCapRatePct(next);
+    setTgaInput(String(suggestedCapRatePct));
+    setTargetCapRatePct(suggestedCapRatePct);
     setTgaManuallyAdjusted(false);
   };
 
@@ -501,10 +425,10 @@ export function AcmValuationWorkspace({
     const marketAligned = territorialMedians?.prixParUnite
       ? territorialMedians.prixParUnite * Math.max(1, bootstrap.units)
       : null;
-    const performanceBased = computeCapitalizedValueFromRneAndTgaPct({
-      rne: bootstrap.revenuNetExploitation,
-      tgaPct: dynamicMarketTgaPct,
-    });
+    const performanceBased =
+      territorialMedians?.tgaPct && territorialMedians.tgaPct > 0
+        ? bootstrap.revenuNetExploitation / (territorialMedians.tgaPct / 100)
+        : null;
     const maxPotential = stressSummary?.occ100 ?? null;
     const rows = [
       {
@@ -533,7 +457,7 @@ export function AcmValuationWorkspace({
       },
     ];
     return rows;
-  }, [result, territorialMedians, bootstrap.units, bootstrap.revenuNetExploitation, stressSummary, dynamicMarketTgaPct, t]);
+  }, [result, territorialMedians, bootstrap.units, bootstrap.revenuNetExploitation, stressSummary, t]);
 
   useEffect(() => {
     setManualVerifications({
@@ -554,7 +478,7 @@ export function AcmValuationWorkspace({
         ),
         value:
           result.capRateImpliedAtAsking !== undefined
-            ? `${normalizeTgaPct(result.capRateImpliedAtAsking)?.toFixed(2) ?? '—'}%`
+            ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%`
             : '—',
       },
       {
@@ -571,23 +495,6 @@ export function AcmValuationWorkspace({
       },
     ];
   }, [result, t]);
-
-  const subjectOperatingExpenseRatioPct = useMemo(
-    () =>
-      computeOperatingExpenseRatioPct({
-        revenuBrutEffectif: bootstrap.revenuBrutEffectif,
-        revenuNetExploitation: bootstrap.revenuNetExploitation,
-      }),
-    [bootstrap.revenuBrutEffectif, bootstrap.revenuNetExploitation]
-  );
-
-  const operatingExpenseRatioAssessment = useMemo(() => {
-    if (subjectOperatingExpenseRatioPct == null) return null;
-    return assessOperatingExpenseRatioVsRegionalMedian(
-      subjectOperatingExpenseRatioPct,
-      regionalOperatingExpenseRatioMedian
-    );
-  }, [subjectOperatingExpenseRatioPct, regionalOperatingExpenseRatioMedian]);
 
   const lockedFields = [
     { label: t('Propriété sujet', 'Subject property'), value: bootstrap.residenceLabel },
@@ -633,35 +540,6 @@ export function AcmValuationWorkspace({
           </div>
         </div>
       )}
-
-      {operatingExpenseRatioAssessment?.exceedsAlertThreshold ? (
-        <div
-          role="status"
-          className="flex items-start gap-3 rounded-xl border-2 border-amber-400 bg-amber-50 px-5 py-4 text-amber-950"
-        >
-          <BadgeAlert className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
-          <div className="space-y-2">
-            <p className="text-[11px] font-black uppercase tracking-[0.16em]">
-              {t(
-                'Validation financière — ratio des dépenses d’exploitation (RDE)',
-                'Financial validation — operating expense ratio (OER)'
-              )}
-            </p>
-            <p className="text-[14px] leading-relaxed">
-              {t(
-                `Le ratio des dépenses d’exploitation (RDE) de l’immeuble (${operatingExpenseRatioAssessment.subjectRatioPct.toFixed(1)} %) s’écarte de plus de ${operatingExpenseRatioAssessment.alertThresholdPct} points du médian régional (${operatingExpenseRatioAssessment.regionalMedianPct.toFixed(1)} %). Révision des charges recommandée avant conclusion de la bancabilité.`,
-                `The property operating expense ratio (OER) (${operatingExpenseRatioAssessment.subjectRatioPct.toFixed(1)}%) deviates by more than ${operatingExpenseRatioAssessment.alertThresholdPct} percentage points from the regional median (${operatingExpenseRatioAssessment.regionalMedianPct.toFixed(1)}%). Expense review recommended before bankability conclusion.`
-              )}
-            </p>
-            <p className="text-[11px] font-semibold text-amber-900">
-              {t(
-                'Décision courtier requise (HITL) — diligence raisonnable sur les postes de dépenses.',
-                'Broker decision required (HITL) — due diligence on expense line items.'
-              )}
-            </p>
-          </div>
-        </div>
-      ) : null}
 
       {bootstrap.rneBlocksValuation && (
         <div
@@ -764,12 +642,7 @@ export function AcmValuationWorkspace({
               {!tgaManuallyAdjusted && capRateRationale ? (
                 <p id="acm-tga-rationale" className="text-[11px] font-semibold leading-relaxed text-slate-800">
                   {capRateRationale}
-                  {territorialCompetition?.sampleCount ? (
-                    <span className="text-slate-600">
-                      {' '}
-                      · {t('Médiane', 'Median')} {dynamicMarketTgaPct.toFixed(2)} %
-                    </span>
-                  ) : bootstrap.capRateSampleCount > 0 ? (
+                  {bootstrap.capRateSampleCount > 0 ? (
                     <span className="text-slate-600"> · n={bootstrap.capRateSampleCount}</span>
                   ) : null}
                 </p>
@@ -782,37 +655,12 @@ export function AcmValuationWorkspace({
                 >
                   <RotateCcw className="h-3 w-3" />
                   {t(
-                    'Réinitialiser au taux de capitalisation global (TGA) territorial dynamique',
-                    'Reset to dynamic territorial global cap rate'
+                    'Réinitialiser au taux de capitalisation global (TGA) marché GPS',
+                    'Reset to GPS market global cap rate'
                   )}
                 </button>
               ) : null}
             </div>
-            <label className="space-y-2">
-              <span className={ACM_METRIC_LABEL_CLASS}>
-                {t(
-                  'Ajustement qualitatif taux de capitalisation global (TGA) (%) — ex. vétusté',
-                  'Qualitative global capitalization rate (cap rate) adjustment (%) — e.g. obsolescence'
-                )}
-              </span>
-              <input
-                type="number"
-                step={0.05}
-                value={qualitativeTgaAdjustmentPct}
-                onChange={(e) => {
-                  const next = Number(e.target.value);
-                  setQualitativeTgaAdjustmentPct(Number.isFinite(next) ? next : 0);
-                }}
-                className={TGA_INPUT_CLASS}
-                aria-describedby="acm-tga-qualitative-hint"
-              />
-              <p id="acm-tga-qualitative-hint" className="text-[11px] font-semibold text-slate-700">
-                {t(
-                  'Ex. +0,25 % pour vétusté — recalcule instantanément la valeur marchande indicative (revenu net d’exploitation (RNE) ÷ taux de capitalisation global (TGA) ajusté).',
-                  'E.g. +0.25% for obsolescence — instantly recalculates indicative market value (net operating income (NOI) ÷ adjusted global cap rate).'
-                )}
-              </p>
-            </label>
             <label className="space-y-2">
               <span className={ACM_METRIC_LABEL_CLASS}>
                 {t(
@@ -961,8 +809,7 @@ export function AcmValuationWorkspace({
                 )}
               </p>
               <p className={`text-sm ${ACM_METRIC_VALUE_CLASS}`}>
-                {normalizeTgaPct(tgaAdjustment.baseTga)?.toFixed(2) ?? '—'} % →{' '}
-                {normalizeTgaPct(tgaAdjustment.finalTga)?.toFixed(2) ?? '—'} %
+                {(tgaAdjustment.baseTga * 100).toFixed(2)} % → {(tgaAdjustment.finalTga * 100).toFixed(2)} %
               </p>
             </div>
           ) : null}

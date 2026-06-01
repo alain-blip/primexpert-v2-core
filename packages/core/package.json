@@ -19,20 +19,14 @@
     "./market": "./src/market/index.ts",
     "./intelligence": "./src/intelligence/index.ts",
     "./diffusion": "./src/diffusion/index.ts",
-    "./documents": "./src/documents/index.ts",
-    "./analytics": "./src/analytics/index.ts",
-    "./security": "./src/security/index.ts",
-    "./forms": "./src/forms/index.ts",
-    "./transaction": "./src/transaction/index.ts"
+    "./documents": "./src/documents/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "test": "vitest run --config ../../vitest.config.ts src/config/__tests__ packages/core/src/transaction/__tests__",
-    "test:rpa": "vitest run --config ../../vitest.config.ts src/config/__tests__/resolveColumnId.test.ts packages/core/src/transaction/__tests__/paAccepteeCriticalDeadlines.test.ts",
+    "test": "echo 'No test runner wired yet (TDD: ajouter vitest ou jest en Phase B)'",
     "lint": "tsc --noEmit"
   },
   "devDependencies": {
-    "typescript": "~5.8.2",
-    "vitest": "^3.2.4"
+    "typescript": "~5.8.2"
   }
 }

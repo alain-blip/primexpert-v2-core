@@ -31,12 +31,6 @@
       "@primexpert/core/diffusion": [
         "./packages/core/src/diffusion/index.ts"
       ],
-      "@primexpert/core/security": [
-        "./packages/core/src/security/index.ts"
-      ],
-      "@primexpert/core/forms": [
-        "./packages/core/src/forms/index.ts"
-      ],
       "@primexpert/core/*": [
         "./packages/core/src/*/index.ts"
       ]

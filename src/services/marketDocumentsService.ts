@@ -76,7 +76,6 @@ function mapDoc(id: string, data: Record<string, unknown>): MarketDocumentRecord
     sizeBytes: Number(data.sizeBytes ?? 0),
     storagePath: String(data.storagePath ?? ''),
     uploadedBy: String(data.uploadedBy ?? ''),
-    orgId: typeof data.orgId === 'string' ? data.orgId : undefined,
     uploadedAtMillis,
     documentCategory: 'MARKET_REPORT',
     virusScanStatus: parseVirusScanStatus(data.virusScanStatus),
@@ -124,12 +123,8 @@ function mapDoc(id: string, data: Record<string, unknown>): MarketDocumentRecord
 
 export async function uploadMarketDocument(
   brokerId: string,
-  orgId: string,
   file: File
 ): Promise<MarketDocumentRecord> {
-  if (!orgId.trim()) {
-    throw new Error('Organisation requise pour déposer un rapport marché.');
-  }
   if (file.type !== 'application/pdf') {
     throw new Error('Seuls les fichiers PDF sont acceptés pour la bibliothèque de marché.');
   }
@@ -153,7 +148,6 @@ export async function uploadMarketDocument(
     sizeBytes: file.size,
     storagePath,
     uploadedBy: brokerId,
-    orgId: orgId.trim(),
     uploadedAtMillis: Date.now(),
     documentCategory: 'MARKET_REPORT',
     virusScanStatus: 'clean',
@@ -173,7 +167,6 @@ export async function uploadMarketDocument(
     sizeBytes: file.size,
     storagePath,
     uploadedBy: brokerId,
-    orgId: orgId.trim(),
     uploadedAtMillis: Date.now(),
     documentCategory: 'MARKET_REPORT',
     virusScanStatus: 'clean',
@@ -182,12 +175,12 @@ export async function uploadMarketDocument(
 }
 
 export function subscribeMarketDocuments(
-  orgId: string,
+  brokerId: string,
   onChange: (docs: MarketDocumentRecord[]) => void
 ): Unsubscribe {
   const q = query(
     collection(db, MARKET_DOCUMENTS),
-    where('orgId', '==', orgId),
+    where('uploadedBy', '==', brokerId),
     orderBy('uploadedAtMillis', 'desc')
   );
   return onSnapshot(q, (snap) => {

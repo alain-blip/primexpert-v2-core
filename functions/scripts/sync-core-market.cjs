@@ -24,7 +24,7 @@ const HEADER_BANNER = [
   '',
 ].join('\n');
 
-const FILES = ['marketDeduplication.ts', 'marketPdfSemanticAnchors.ts'];
+const FILES = ['marketDeduplication.ts'];
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });

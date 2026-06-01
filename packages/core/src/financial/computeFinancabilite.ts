@@ -17,7 +17,6 @@
  *   - APH Select : 40 / 45 / 50 ans selon paliers 50 / 70 / 100 points
  */
 
-import { getListingPrice, type ListingCommissionSource } from '../residence/listingCommission';
 import {
   getAuditNormalizedNoi,
   normalizeFinancialData,
@@ -49,7 +48,6 @@ import {
   type FinancingProgramContext,
   type FinancingProgramId,
 } from './financialRules';
-import { resolveCanonicalFinancialMetrics } from './resolveCanonicalRne';
 import { safeDscrTarget, safeNum, safeRatePercent, safeRatioDecimal } from './safeNumbers';
 
 export type FinancingVerdict = 'financable' | 'financable_conditions' | 'insufficient_data';
@@ -171,34 +169,30 @@ export function computeDebtConstantAnnual(
 }
 
 /**
- * Prix demandé — SSOT inscription (`price` / getListingPrice).
- * Interdit d'utiliser un `calc.prixDemande` figé (ex. 3,5 M$) si la fiche affiche 2,558 M$.
+ * Prix demandé — priorité fiche inscription V2 (`price`), puis financial/dataV2.
+ * Évite un `calc.prixDemande` erroné (TGA, ratio, etc.) qui écraserait le prix affiché.
  */
 export function resolvePrixDemande(
   calc: FinancialCalc | null,
   residence: ResidenceFinancialHints,
-  _baseData: FinancialBaseData | null
+  baseData: FinancialBaseData | null
 ): number | null {
-  const fromListing = getListingPrice(residence as ListingCommissionSource);
-  if (fromListing > 0) return fromListing;
+  const bd = baseData as { prixDemande?: unknown; askingPrice?: unknown } | null;
+  const candidates: unknown[] = [
+    (residence as { price?: unknown }).price,
+    residence.prixDemande,
+    residence.askingPrice,
+    calc?.prixDemande,
+    bd?.prixDemande,
+    bd?.askingPrice,
+  ];
+
+  for (const raw of candidates) {
+    const n = safeNum(raw);
+    if (n != null && n > 0) return n;
+  }
   return null;
 }
-
-/** Injecte le prix canonique dans les hints Finances (Hub, Finançabilité, Bilan). */
-export function buildResidenceFinancialHints(
-  residence: ResidenceFinancialHints
-): ResidenceFinancialHints {
-  const listingPrice = getListingPrice(residence as ListingCommissionSource);
-  if (listingPrice <= 0) return residence;
-  return {
-    ...residence,
-    price: listingPrice,
-    prixDemande: listingPrice,
-    askingPrice: listingPrice,
-  };
-}
-
-export type { ResidenceFinancialHints } from './normalizeFinancialData';
 
 export interface FinancingScenarioInputs {
   prixDemande: number;
@@ -355,8 +349,7 @@ function computeCore(
 
   const prixDemande = resolvePrixDemande(calc, residence, baseData);
 
-  const canonical = resolveCanonicalFinancialMetrics(calc, baseData);
-  const declaredNoi = canonical.rne ?? safeNum(calc.revenuNetExploitation) ?? 0;
+  const declaredNoi = safeNum(calc.revenuNetExploitation) ?? 0;
   const auditNoi = getAuditNormalizedNoi(calc, baseData);
   const noiRetenu =
     useAuditNoi && auditNoi != null && auditNoi > 0 ? auditNoi : declaredNoi > 0 ? declaredNoi : null;
@@ -551,7 +544,6 @@ function buildScenarioRows(
     | 'aphSelectPoints'
     | 'aphSelectTier'
     | 'amortissementVerdict'
-    | 'isNewConstruction'
     | 'ltvRatio'
     | 'debtServiceMaxAnnual'
     | 'debtConstantAnnual'

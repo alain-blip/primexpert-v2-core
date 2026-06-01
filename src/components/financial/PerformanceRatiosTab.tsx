@@ -18,7 +18,6 @@ import { useLanguage } from '../../lib/i18n';
 import { useFinancialData } from '../../context/FinancialDataContext';
 import { ProvenanceStrip } from './ProvenanceStrip';
 import type { Residence } from '../../services/residences';
-import { useResidenceFinancialHints } from '../../context/ResidenceDataContext';
 
 function formatRatioValue(
   value: number | null,
@@ -73,16 +72,7 @@ function RatioTable({
             </tr>
           </thead>
           <tbody className="bg-white">
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={3} className="px-5 py-8 text-center text-sm font-semibold text-slate-600">
-                  {language === 'fr'
-                    ? 'Aucune donnée — complétez la grille Finances.'
-                    : 'No data — complete the Finance grid.'}
-                </td>
-              </tr>
-            ) : (
-            rows.map((row) => (
+            {rows.map((row) => (
               <tr
                 key={row.id}
                 className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
@@ -108,8 +98,7 @@ function RatioTable({
                   )}
                 </td>
               </tr>
-            ))
-            )}
+            ))}
           </tbody>
         </table>
       </div>
@@ -127,7 +116,15 @@ export function PerformanceRatiosTab({ residence }: PerformanceRatiosTabProps) {
   const lang = language === 'fr' ? 'fr' : 'en';
   const locale = lang === 'fr' ? 'fr-CA' : 'en-CA';
 
-  const residenceHints = useResidenceFinancialHints(residence) as Record<string, unknown>;
+  const residenceHints = useMemo(
+    () =>
+      ({
+        ...residence,
+        prixDemande: residence.price,
+        askingPrice: residence.price,
+      }) as Record<string, unknown>,
+    [residence]
+  );
 
   const model = useMemo(
     () => computePerformanceRatiosViewModel(financialData, residenceHints),

@@ -13,7 +13,6 @@ import {
   isPermanentParseFailure,
 } from '../../../lib/propertyDocumentValidation';
 import { parsePropertyDocumentNow } from '../../../services/propertyDocumentsService';
-import { normalizeTgaPct } from '@primexpert/core/financial';
 import type {
   PropertyDocumentExtractedData,
   PropertyDocumentRecord,
@@ -41,8 +40,6 @@ import {
 } from '../../../services/extractedDataInjectionService';
 import { useFinancialHubDraft } from '../../../context/FinancialHubDraftContext';
 import { inst } from '../institutional/InstitutionalUi';
-import { LegalVaultWormPanel } from './LegalVaultWormPanel';
-import type { LegalVaultFirestoreRecord } from '../../../services/legalVaultService';
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`;
@@ -163,11 +160,6 @@ export interface DocumentMetadataPanelProps {
   document: PropertyDocumentRecord | null;
   propertyId: string;
   brokerId: string;
-  orgId?: string;
-  licenseName?: string;
-  licenseTitle?: string;
-  contractPrice?: number;
-  vaultRecord?: LegalVaultFirestoreRecord | null;
   residenceCity?: string;
   residenceRegionHint?: string;
   assetNiche?: AssetNiche;
@@ -200,11 +192,6 @@ export function DocumentMetadataPanel({
   document,
   propertyId,
   brokerId,
-  orgId,
-  licenseName,
-  licenseTitle,
-  contractPrice,
-  vaultRecord,
   residenceCity,
   residenceRegionHint,
   assetNiche,
@@ -411,7 +398,7 @@ export function DocumentMetadataPanel({
 
   return (
     <>
-    <aside className="flex h-full w-full shrink-0 flex-col rounded-xl border border-slate-200 bg-white shadow-sm lg:w-[300px]">
+    <aside className="flex h-full w-[300px] shrink-0 flex-col rounded-xl border border-slate-200 bg-white shadow-sm">
       <header className={inst.sectionHeader}>
         <h3 className={inst.sectionTitle}>{labels.title}</h3>
       </header>
@@ -429,24 +416,6 @@ export function DocumentMetadataPanel({
               {labels.analysis}
             </p>
             {parsingBadge(document, locale)}
-            {orgId ? (
-              <div className="mt-3 border-t border-slate-100 pt-3">
-                <p className="mb-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
-                  {locale === 'fr' ? 'Verrouillage légal OACIQ' : 'OACIQ legal lock'}
-                </p>
-                <LegalVaultWormPanel
-                  orgId={orgId}
-                  propertyId={propertyId}
-                  brokerId={brokerId}
-                  document={document}
-                  licenseName={licenseName}
-                  licenseTitle={licenseTitle}
-                  contractPrice={contractPrice}
-                  locale={locale}
-                  vaultRecord={vaultRecord}
-                />
-              </div>
-            ) : null}
           </div>
 
           {showParseLaunch ? (
@@ -1064,7 +1033,10 @@ function ExtractionVerificationSection({
                   <li>
                     TGA :{' '}
                     <span className="font-black text-[#142c6a]">
-                      {normalizeTgaPct(evaluationSubject.tgaRetenu)?.toFixed(2) ?? '—'}
+                      {(evaluationSubject.tgaRetenu > 1
+                        ? evaluationSubject.tgaRetenu
+                        : evaluationSubject.tgaRetenu * 100
+                      ).toFixed(2)}
                       %
                     </span>
                   </li>
