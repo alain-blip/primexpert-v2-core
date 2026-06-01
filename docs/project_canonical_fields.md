@@ -196,6 +196,8 @@ Jetons portail vendeur autonome (TTL 30 j).
 | `lockedAtMillis` | number | Horodatage verrou final ; requis si `isFinalWormLocked === true` |
 | `brokerId` | string | UID courtier responsable |
 | `orgId` | string | Organisation ; doit égaler `{orgId}` |
+| `propertyId` | string | Fiche résidence source lorsque le verrou provient de l'Espace Documents |
+| `propertyDocumentId` | string | ID `residences/{id}/documents/{documentId}` source ; clé de regroupement UI |
 | `oaciqRetentionExpiryTimestamp` | number | Fin rétention stricte : clôture dossier + 2190 jours (`OACIQ_VAULT_RETENTION_DAYS`) |
 | `metadataFieldsCrossChecked` | map | Vérifications humaines avant verrou — voir ci-dessous |
 | `lastWriteClientIp` | string | IP résolue lors du verrouillage client, si disponible |
@@ -344,6 +346,8 @@ Document racine — **SSOT onglet Identité** (`ResidenceDocumentContext`) + Rad
 | **`statut`** | string | Libellé courtage Québec synchronisé avec `status` (`actif`, `pa-acceptee`, `vendue`, `expiree`, `annulee`, `suspendue`) |
 | **`listingSource`** | string | `centris` \| `off_market` ; défaut historique `centris`; bloque la sync MLS si `off_market` |
 | **`isManuallyOverridden`** | bool | Override courtier sur statut MLS/Centris ; empêche la sync descendante automatique |
+| `centrisLastSyncAtMillis` | number | Dernière réconciliation nocturne Centris appliquée par `centrisListingsSyncNightly` |
+| `lastManualStatusUpdateAt` | number | Horodatage du dernier changement manuel de statut courtage |
 | **`region`** | string | Région administrative Québec (filtre inscriptions — `QUEBEC_REGIONS`) |
 | `regionAdministrative` | string | Région administrative normalisée pour ACM, Centris et flywheel |
 | **`prixAccepte`** | number | Prix accepté (promesse) — requis pour glisser vers colonne `promise` (DnD Kanban) |
@@ -351,7 +355,7 @@ Document racine — **SSOT onglet Identité** (`ResidenceDocumentContext`) + Rad
 | `assetNiche` | string | `RPA` \| `CPE` \| `PLEX` |
 | `propertyType` | string | `rpa`, `cpe`, `plex`, `commercial` |
 | `date` | string | Date inscription / mandat (UI) |
-| **`internalFlywheelIngestion`** | map | Marqueur idempotence flywheel : `{ promiseAtMillis?, soldAtMillis? }` |
+| **`internalFlywheelIngestion`** | map | Marqueur idempotence flywheel : `{ promiseAtMillis?, soldAtMillis?, lastAnalyticsDocId?, lastTransitionKind?, updatedAtMillis? }` |
 
 ### Statuts courtage inscriptions (`inscriptionBrokerageStatus.ts`)
 
@@ -736,6 +740,8 @@ Cache Centris Matrix / RESO pour comparables territoriaux ACM. Lecture client au
 | `canonicalPreview.classeImmeuble` | string | Classe RPA / immeuble pour filtre territorial |
 | `canonicalPreview.financials.revenuBrutEffectif` | number | Revenu brut effectif (RBE) |
 | `canonicalPreview.financials.depensesExploitation` | number | Dépenses d'exploitation |
+| `residenceId` / `linkedResidenceId` | string | Fiche résidence rattachée pour sync Centris nocturne |
+| `standardStatus` / `resoStandardStatus` | string | Statut RESO source utilisé pour patcher `status` / `statut` si non override |
 | `closedAtMillis` | number | Date clôture / vente si disponible |
 | `modificationTimestamp`, `receivedAt` | Timestamp / string | Fraîcheur cache |
 
@@ -754,6 +760,11 @@ Collection **top-level** (pas sous `organizations/`).
 | `uploadedAtMillis` | number | Horodatage téléversement (index composite) |
 | `fileName` | string | Nom fichier |
 | **`contentHashMd5`** | string | Hash binaire déterministe ; cache parse IA et index composite |
+| **`parseCacheHit`** | bool | `true` si `extractedData` a été cloné depuis un rapport au même `contentHashMd5` |
+| `cacheSourceDocumentId` | string | Document source du cache MD5 lorsque `parseCacheHit === true` |
+| `originalPageCount` | number | Nombre de pages du PDF original |
+| `semanticPageCount` | number | Nombre de pages envoyées à Vertex après découpage sémantique |
+| `semanticHit` | bool | `true` si les ancres marché Québec ont permis de réduire le PDF |
 | `mimeType` | string | `application/pdf` |
 | `sizeBytes` | number | Taille octets |
 | `storagePath` | string | `primexpert/{brokerId}/market_documents/{fileName}` |
@@ -764,6 +775,10 @@ Collection **top-level** (pas sous `organizations/`).
 | `extractedData` | map | Extraction omnivore Vertex — `macroTrends`, `comparableTransactions`, `operationalBenchmarks` (@primexpert/core/documents) |
 | `isValidated` | bool | HITL complété |
 | `validatedAtMillis` | number | Horodatage validation / injection |
+
+**Extraction marché (`extractedData`) — clés normalisées ajoutées au schéma omnivore :** `tgaPct`, `operatingExpenseRatio`, `population75_plus`, `monthsOfInventory`, `sellingPriceListingPriceRatio`.
+
+**Index Firestore requis :** collection group `market_documents` sur `orgId ASC + uploadedAtMillis DESC` et sur `contentHashMd5 ASC`.
 
 ### Document `market_macro_stats/{fingerprint}`
 
@@ -788,6 +803,7 @@ Collection **top-level** (pas sous `organizations/`).
 | `siloType` | string | ex. `rpa_ri_chsld` |
 | `regionAdministrative` | string | Région |
 | `regionDisplayName` | string | Ville / libellé régional non identifiant |
+| `orgId` | string | Organisation source lorsque disponible ; non utilisé dans l'empreinte flywheel anonymisée |
 | `postalFsa3` | string | FSALDU-3 seulement (3 premiers caractères du code postal), sans adresse |
 | `anneeDonnees` | number | Année |
 | `provenance` | string | `market_report` (injection serveur) \| `etats_financiers` \| `rapport_evaluation` (résidence) \| `internal_flywheel` (Admin SDK) |
@@ -1057,4 +1073,4 @@ Modes négociation : `OACIQ_FORM`, `CUSTOM_CONTRACT`, `LETTER_OF_INTENT`.
 
 ---
 
-*Dernière mise à jour : 2026-06-01 — PR #3 : WORM, Centris/off-market, flywheel/OER, `contentHashMd5`, 7 délais PA acceptée.*
+*Dernière mise à jour : 2026-06-01 — PR #9 : champs cache parse marché, WORM lié aux documents résidence, Centris/off-market, flywheel/OER et 7 délais PA acceptée alignés sans doublon.*

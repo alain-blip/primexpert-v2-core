@@ -13,6 +13,9 @@
 
 ```
 01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/
+├── .github/
+│   └── workflows/
+│       └── rpa-transaction-test-coverage.yml # QA RPA — Kanban + 7 échéances PA acceptée
 ├── docs/                          # Bible Primexpert (ce dossier)
 │   ├── README.md
 │   ├── MEMORY.md
@@ -40,7 +43,7 @@
 │           │   ├── paActifsTypes.ts
 │           │   ├── buildPaActifsRenderData.ts
 │           │   ├── renderPaActifsToHtml.ts
-│           │   ├── templates/paActifsTemplate.ts
+│           │   ├── templates/          # Contrat courtage, annexes G/R/E/PR/C, PA Actifs
 │           │   └── index.ts
 │           ├── analytics/             # Métriques marché — RDE/OER, bornes par classe, agrégats provinciaux
 │           │   ├── marketMetrics.ts
@@ -98,7 +101,7 @@
 │           └── utils/formatting.ts
 ├── functions/                       # Cloud Functions Gen2 (us-central1 + régions ciblées)
 │   └── src/
-│       ├── index.ts                 # Exports onCall / onRequest
+│       ├── index.ts                 # Exports callables, triggers Firestore, jobs planifiés
 │       ├── services/
 │       │   └── vertexClient.ts    # Vertex AI — ADC (compte de service runtime)
 │       ├── documents/
@@ -373,6 +376,7 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | **Firestore** | Bases `(default)` + `ai-studio-1214d671-efd2-47da-93b7-425feb92155a` (même rules/indexes) |
 | **Storage** | `primexpert/{orgId}/contacts/…` ; `primexpert/{brokerId}/properties/{id}/documents/…` ; **`primexpert/{brokerId}/market_documents/…`** |
 | **Functions** | `functions/` — Nylas, Espace Documents, **Statistiques du marché**, Centris, flywheel, WORM, benchmark global |
+| **Hosting headers** | `/workhub{,/**}` et `/acces-vendeur{,/**}` sans cache HTML/chunks + COOP popup OAuth |
 | **Compte de service Functions** | `250702494735-compute@developer.gserviceaccount.com` (`roles/aiplatform.user`) |
 | **Vertex AI** | `aiplatform.googleapis.com` — modèle `gemini-2.0-flash-001`, région `us-central1` |
 
@@ -431,6 +435,8 @@ Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only func
 
 ### Cloud Functions — Statistiques du marché (Big Data)
 
+Aucun nouveau HTTP public dans PR #9 ; les ajouts sont des déclencheurs Firestore (`onVaultDocumentWrite`, `onTransactionConcludedFlywheel`) et le job planifié `centrisListingsSyncNightly`.
+
 | Fonction | Rôle |
 |----------|------|
 | `marketDocumentParseIA` | Parse Vertex rapports marché — **512 MiB**, **60 s**, découpage sémantique local |
@@ -445,4 +451,4 @@ Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only func
 | Analyse de mise en marché (ACM) | `AcmValuationWorkspace`, `ResidenceAcmValuationPanel`, `residenceAcmBootstrap.ts`, `gpsCapRateByRegionClass.ts` |
 | Assembleur contrat / PA (V3.5) | `ContractAssemblerPanel.tsx`, `annexeFieldSchema.ts`, `renderContractAssemblerToHtml.ts`, `@primexpert/core/forms` |
 
-*Dernière mise à jour : 2026-06-01 — PR #3 : couverture RPA, Centris/off-market, flywheel/OER, WORM et modules `analytics`/`security`.*
+*Dernière mise à jour : 2026-06-01 — PR #9 : QA règles Copilote-RPA, modules `analytics`/`forms`/`security`, triggers WORM/flywheel et index marché documentés sans doublon.*

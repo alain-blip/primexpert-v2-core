@@ -2,7 +2,7 @@
 
 **Source unique avec le code :** `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`  
 **URL officielle :** https://primexpert-app-v2.web.app  
-**Cycle technique :** **V3.7 — marché/OER/flywheel + assembleur de mandats V3.5** · **couverture RPA PR #3** (Kanban + délais PA acceptée) · architectures sécurisées V3.0 en production
+**Cycle technique :** **V3.7 — marché/OER/flywheel + assembleur de mandats V3.5** · **couverture RPA PR #3 / QA PR #9** (Kanban + délais PA acceptée) · architectures sécurisées V3.0 en production
 
 ## Registre global des architectures sécurisées — mai 2026
 
@@ -24,8 +24,8 @@
 | Coffre-fort WORM & sécurité | **OPÉRATIONNEL — PRODUCTION LIVE** |
 | Assembleur contrat & annexes (V3.5) | **SCELLÉ — commit `63286dc`** (HTML natif, sans docxtemplater) |
 | Hub Finance — cohérence RNE / prix inter-onglets | **DÉPLOYÉ PROD — commit `d232673`** (hosting 2026-05-30) |
-| Inscriptions Centris / hors marché + concurrence territoriale | **EN REVUE PR #3** — `listings_cache`, `listingSource`, override manuel |
-| Couverture tests flux RPA | **EN REVUE PR #3** — Vitest Kanban `resolveColumnId` + 7 délais PA acceptée |
+| Inscriptions Centris / hors marché + concurrence territoriale | **EN REVUE PR #3 → PR #9** — `listings_cache`, `listingSource`, override manuel, sync nocturne |
+| Couverture tests flux RPA | **EN REVUE PR #3 → PR #9** — Vitest Kanban `resolveColumnId` + 7 délais PA acceptée |
 
 > Détail technique et historique : [`MEMORY.md`](./MEMORY.md)
 
@@ -158,6 +158,7 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | Parse | `marketDocumentParseIA` — **512 MiB**, **60 s** ; découpage sémantique PDF avant Vertex |
 | Injection | `injectMarketMacroStats` — empreintes déterministes, `set(merge: true)` |
 | Anti-doublons | `packages/core/src/market/marketDeduplication.ts` + cache `contentHashMd5` sur `market_documents` |
+| Indexation | `market_documents` — index `orgId + uploadedAtMillis` et `contentHashMd5` pour bibliothèque multi-tenant + cache parse |
 | Concurrence territoriale | `listings_cache` Centris Matrix + `market_analytics_raw` → TGA médian ACM |
 | Flywheel interne | `onTransactionConcludedFlywheel` — PA acceptée / vendu → `market_analytics_raw` anonymisé |
 | OER / RDE | `@primexpert/core/analytics/marketMetrics.ts` — ratio dépenses/RBE et benchmarks régionaux |
@@ -191,4 +192,4 @@ Copie possible sur disque de sauvegarde (`00_PRIMEXPERT_SYSTEME_APP/docs/` ou vo
 
 ---
 
-*Index mis à jour : 2026-06-01 — alignement PR #3 (couverture RPA, Centris/off-market, flywheel/OER, coffre-fort WORM documenté).*
+*Index mis à jour : 2026-06-01 — alignement PR #9 (QA règles Copilote-RPA PR #5) ajouté sans dupliquer l'historique PR #3.*

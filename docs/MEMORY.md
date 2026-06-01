@@ -958,6 +958,26 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
+## PR #9 — QA règles Copilote-RPA PR #5 + consolidation diff `d13dadc` → `7c0be05` (2026-06-01)
+
+**Déclencheur :** PR [#9](https://github.com/alain-blip/primexpert-v2-core/pull/9) — branche `cursor/contr-le-qualit-r-gles-0348`, base `main`.
+
+**Statut :** **[EN VALIDATION HUMAINE ALAIN — documentation alignée en PR dédiée brouillon]**
+
+| Volet | Ajouts / impacts à retenir |
+|-------|----------------------------|
+| **Packages `@primexpert/core`** | Exports `./analytics`, `./security`, `./forms`, `./transaction` ; nouveaux modules `marketMetrics`, `internalMarketFlywheel`, `centrisComparableCapRate`, `listingSource`, `inscriptionBrokerageStatus`, `vaultSpecsTypes`, assembleur HTML natif. |
+| **UI Workhub / fiche** | Pas de nouvelle route ; nouvelles entrées dans les surfaces existantes : `CreateInscriptionForm`, `InscriptionStatusDropdown`, `ContractAssemblerPanel`, `LegalVaultWormPanel`, `TerritorialCentrisCompetitionSection`, `BrokerPhotoComplianceBanner`, `ResidenceTabErrorBoundary`. |
+| **Cloud Functions** | Aucun nouveau HTTP public ; nouveaux déclencheurs / jobs : `onVaultDocumentWrite` (Montréal), `onTransactionConcludedFlywheel`, `centrisListingsSyncNightly`; `marketDocumentParseIA` passe en 512 MiB / 60 s avec découpage sémantique et cache MD5. |
+| **Firestore / règles** | Extension de l'existant : `legal_vault` + `compliance_logs`, lecture `listings_cache`, accès multi-tenant `market_documents` / `market_macro_stats`, index `market_documents(orgId, uploadedAtMillis)` et `market_documents(contentHashMd5)`. |
+| **QA automatisée** | Workflow `.github/workflows/rpa-transaction-test-coverage.yml`, `vitest.config.ts`, `npm run test:rpa-coverage`, couverture Kanban et 7 dates critiques PA acceptée incluant `dateLimiteDeduitLci`. |
+
+**Règle de non-duplication appliquée :** PR #9 reprend et consolide le périmètre PR #3 dans le diff déclencheur ; la documentation ci-dessus ne recrée pas de sections parallèles et renvoie aux sections existantes pour les détails WORM, Centris/off-market, flywheel/OER, assembleur et couverture RPA.
+
+**HITL :** validation humaine Alain obligatoire avant publication ; aucune propulsion directe sur `main`, aucun merge automatique.
+
+---
+
 ## Verrouillage technique fin de sprint — Primexpert V3.5 (2026-05-30)
 
 | Point de contrôle | Statut |
@@ -971,4 +991,4 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
-*Journal mis à jour : 2026-06-01 — PR #3 documentée (couverture RPA, Centris/off-market, flywheel/OER, WORM canonique).*
+*Journal mis à jour : 2026-06-01 — PR #9 documentée sans dupliquer l'historique PR #3 (couverture RPA, Centris/off-market, flywheel/OER, WORM canonique).*
