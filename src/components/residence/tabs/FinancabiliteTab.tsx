@@ -6,6 +6,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Building2, CheckCircle2, Info, Landmark, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
 import {
+  assessNoiDocumentationAdequacy,
   computeFinancabilite,
   DSCR_RULES,
   getMinimumDscrForProgram,
@@ -520,34 +521,30 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
 
     const noiAudit = model.noiAudit;
     const noiDeclared = model.noiDeclare;
-    let noiStatus: ChecklistStatus = 'unknown';
+    const noiAssessment = assessNoiDocumentationAdequacy(noiAudit, noiDeclared);
+    const noiStatus: ChecklistStatus = noiAssessment.status;
     let noiNoteFr = 'Aucune donnée RNE disponible — compléter Revenus & Dépenses.';
     let noiNoteEn = 'No NOI data available — complete Revenue & Expenses.';
-    if (noiAudit != null && noiDeclared != null && noiAudit > 0 && noiDeclared > 0) {
-      const variance = Math.abs(noiAudit - noiDeclared) / Math.max(noiAudit, noiDeclared);
-      if (variance <= 0.05) {
-        noiStatus = 'ok';
+    if (noiAssessment.hasNormalizedNoi && noiAssessment.hasDeclaredNoi) {
+      const variancePct = noiAssessment.variancePct?.toFixed(1) ?? '0.0';
+      if (noiAssessment.status === 'ok') {
         noiNoteFr =
           'RNE déclaré et RNE normalisé concordent (écart ≤ 5 %). Pièces justificatives en ordre côté prêteur.';
         noiNoteEn =
           'Declared and normalized NOI match (≤ 5% variance). Supporting evidence is aligned with lender expectations.';
-      } else if (variance <= 0.15) {
-        noiStatus = 'warn';
-        noiNoteFr = `Écart de ${(variance * 100).toFixed(1)} % entre RNE déclaré et RNE normalisé — justifier la normalisation des dépenses.`;
-        noiNoteEn = `${(variance * 100).toFixed(1)}% gap between declared and normalized NOI — justify expense normalization.`;
+      } else if (noiAssessment.status === 'warn') {
+        noiNoteFr = `Écart de ${variancePct} % entre RNE déclaré et RNE normalisé — justifier la normalisation des dépenses.`;
+        noiNoteEn = `${variancePct}% gap between declared and normalized NOI — justify expense normalization.`;
       } else {
-        noiStatus = 'fail';
-        noiNoteFr = `Écart majeur de ${(variance * 100).toFixed(1)} % entre RNE déclaré et RNE normalisé — vérifier les sources avant présentation prêteur.`;
-        noiNoteEn = `Major ${(variance * 100).toFixed(1)}% gap between declared and normalized NOI — validate sources before lender submission.`;
+        noiNoteFr = `Écart majeur de ${variancePct} % entre RNE déclaré et RNE normalisé — vérifier les sources avant présentation prêteur.`;
+        noiNoteEn = `Major ${variancePct}% gap between declared and normalized NOI — validate sources before lender submission.`;
       }
-    } else if (noiAudit != null && noiAudit > 0) {
-      noiStatus = 'warn';
+    } else if (noiAssessment.hasNormalizedNoi) {
       noiNoteFr =
         'Seul le RNE normalisé (calculé) est disponible — manque la déclaration vendeur pour pleinement convaincre le prêteur.';
       noiNoteEn =
         'Only normalized NOI (computed) is available — missing seller statement to fully convince the lender.';
-    } else if (noiDeclared != null && noiDeclared > 0) {
-      noiStatus = 'warn';
+    } else if (noiAssessment.hasDeclaredNoi) {
       noiNoteFr =
         'Seul le RNE déclaré est disponible — recommander une normalisation par dépenses vérifiées.';
       noiNoteEn =

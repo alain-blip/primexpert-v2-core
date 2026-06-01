@@ -52,6 +52,16 @@ import { safeDscrTarget, safeNum, safeRatePercent, safeRatioDecimal } from './sa
 
 export type FinancingVerdict = 'financable' | 'financable_conditions' | 'insufficient_data';
 
+export type NoiDocumentationAdequacyStatus = 'ok' | 'warn' | 'fail' | 'unknown';
+
+export interface NoiDocumentationAdequacyAssessment {
+  status: NoiDocumentationAdequacyStatus;
+  varianceRatio: number | null;
+  variancePct: number | null;
+  hasDeclaredNoi: boolean;
+  hasNormalizedNoi: boolean;
+}
+
 export interface FinancabiliteScenarioRow {
   labelFr: string;
   labelEn: string;
@@ -120,6 +130,39 @@ export interface FinancabiliteResult {
     lastUpdated: unknown;
     source: string;
     confidenceTier: 'high' | 'medium' | 'low' | 'validation_required';
+  };
+}
+
+export function assessNoiDocumentationAdequacy(
+  noiNormalized: number | null | undefined,
+  noiDeclared: number | null | undefined
+): NoiDocumentationAdequacyAssessment {
+  const hasNormalizedNoi =
+    noiNormalized != null && Number.isFinite(noiNormalized) && noiNormalized > 0;
+  const hasDeclaredNoi =
+    noiDeclared != null && Number.isFinite(noiDeclared) && noiDeclared > 0;
+
+  if (!hasNormalizedNoi || !hasDeclaredNoi) {
+    return {
+      status: hasNormalizedNoi || hasDeclaredNoi ? 'warn' : 'unknown',
+      varianceRatio: null,
+      variancePct: null,
+      hasDeclaredNoi,
+      hasNormalizedNoi,
+    };
+  }
+
+  const normalizedNoi = noiNormalized as number;
+  const declaredNoi = noiDeclared as number;
+  const varianceRatio =
+    Math.abs(normalizedNoi - declaredNoi) / Math.max(normalizedNoi, declaredNoi);
+
+  return {
+    status: varianceRatio <= 0.05 ? 'ok' : varianceRatio <= 0.15 ? 'warn' : 'fail',
+    varianceRatio,
+    variancePct: varianceRatio * 100,
+    hasDeclaredNoi,
+    hasNormalizedNoi,
   };
 }
 
