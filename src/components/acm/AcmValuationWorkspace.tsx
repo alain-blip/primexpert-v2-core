@@ -41,6 +41,7 @@ import {
 } from '@primexpert/core/market';
 import { AcmHistoricalTrendsSection } from './AcmHistoricalTrendsSection';
 import {
+  computeAcmManualPricingSuggestionValues,
   computeResidenceAcmValuationPresentation,
   type CertifiableReportBrokerFooter,
   type FinancialDataV2Doc,
@@ -398,18 +399,16 @@ export function AcmValuationWorkspace({
 
   const multiAngleSuggestions = useMemo(() => {
     if (!result) return [];
-    const marketAligned = territorialMedians?.prixParUnite
-      ? territorialMedians.prixParUnite * Math.max(1, bootstrap.units)
-      : null;
-    const performanceBased =
-      territorialMedians?.tgaPct && territorialMedians.tgaPct > 0
-        ? bootstrap.revenuNetExploitation / (territorialMedians.tgaPct / 100)
-        : null;
-    const maxPotential = stressSummary?.occ100 ?? null;
+    const suggestionValues = computeAcmManualPricingSuggestionValues({
+      units: bootstrap.units,
+      revenuNetExploitation: bootstrap.revenuNetExploitation,
+      territorialMedians,
+      maxPotential: stressSummary?.occ100 ?? null,
+    });
     const rows = [
       {
         label: t('Aligné marché', 'Market-aligned'),
-        value: marketAligned,
+        value: suggestionValues.marketAligned,
         rationale: t(
           'Basé sur la médiane territoriale prix/unité.',
           'Based on territorial median price per unit.'
@@ -417,7 +416,7 @@ export function AcmValuationWorkspace({
       },
       {
         label: t('Basé performance', 'Performance-based'),
-        value: performanceBased,
+        value: suggestionValues.performanceBased,
         rationale: t(
           'Basé sur le revenu net d’exploitation (RNE) et la médiane du taux de capitalisation global (TGA) territorial.',
           'Based on net operating income (NOI) and territorial median capitalization rate (cap rate).'
@@ -425,7 +424,7 @@ export function AcmValuationWorkspace({
       },
       {
         label: t('Potentiel maximum', 'Maximum potential'),
-        value: maxPotential,
+        value: suggestionValues.maxPotential,
         rationale: t(
           'Basé sur le scénario de pleine occupation (100%).',
           'Based on full occupancy scenario (100%).'

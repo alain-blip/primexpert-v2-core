@@ -13,6 +13,7 @@ import {
   type TgaAdjustmentResult,
   type ValuationOutputs,
 } from '../valuation';
+import type { TerritorialAcmMedians } from './globalFinancialBenchmark';
 
 export interface AcmStressSummary {
   occ85: number;
@@ -38,6 +39,12 @@ export interface ComputeSimpleAcmValuationPresentationInput {
   targetCapRatePct: number;
   penetrationRatePct: number;
   marketLabel?: string;
+}
+
+export interface AcmManualPricingSuggestionValues {
+  marketAligned: number | null;
+  performanceBased: number | null;
+  maxPotential: number | null;
 }
 
 function resolveAdjustedCapRate(
@@ -174,5 +181,32 @@ export function computeResidenceAcmValuationPresentation(params: {
     effectiveCapRate,
     stressSummary,
     recommendedPrice: result.suggestedPrice,
+  };
+}
+
+export function computeAcmManualPricingSuggestionValues(input: {
+  units: number;
+  revenuNetExploitation: number;
+  territorialMedians?: TerritorialAcmMedians | null;
+  maxPotential?: number | null;
+}): AcmManualPricingSuggestionValues {
+  const units = Number.isFinite(input.units) ? Math.max(1, input.units) : 1;
+  const prixParUnite = input.territorialMedians?.prixParUnite;
+  const tgaPct = input.territorialMedians?.tgaPct;
+  const rne = input.revenuNetExploitation;
+
+  return {
+    marketAligned:
+      prixParUnite != null && Number.isFinite(prixParUnite)
+        ? prixParUnite * units
+        : null,
+    performanceBased:
+      tgaPct != null && Number.isFinite(tgaPct) && tgaPct > 0 && Number.isFinite(rne)
+        ? rne / (tgaPct / 100)
+        : null,
+    maxPotential:
+      input.maxPotential != null && Number.isFinite(input.maxPotential)
+        ? input.maxPotential
+        : null,
   };
 }
