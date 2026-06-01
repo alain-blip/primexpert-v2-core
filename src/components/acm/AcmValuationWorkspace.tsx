@@ -47,6 +47,7 @@ import { AcmHistoricalTrendsSection } from './AcmHistoricalTrendsSection';
 import type {
   CertifiableReportBrokerFooter,
   FinancialDataV2Doc,
+  ResidenceFinancialHints,
   TerritorialAcmMedians,
 } from '@primexpert/core/financial';
 import { computeCapitalizedValueFromNoi } from '@primexpert/core/financial';
@@ -394,7 +395,7 @@ export function AcmValuationWorkspace({
         residenceId: pdfExport.residenceId,
         residenceAddress: pdfExport.residenceAddress,
         financialData: pdfExport.financialData,
-        residence: pdfExport.residence,
+        residence: pdfExport.residence as ResidenceFinancialHints,
         effectiveCapRate,
         recommendedPrice,
         sellerNarrative: narrative?.signedReading ?? null,
