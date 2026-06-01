@@ -130,22 +130,16 @@ export function ACM() {
       setResult(out);
 
       const occupancy = Math.max(0.01, 1 - form.vacancyRate / 100);
-      const capRange = capRateRangeFromMedian(adjustedCap);
-      const stress = runStressTests(out.noiAccounting, occupancy, capRange);
-      const baseline = selectBaselineStressTest(occupancy, stress);
+      const stress = runStressTests(out.noiAccounting, occupancy, adjustedCap, {
+        rbp: out.grossPotentialIncome,
+        operatingExpenses: out.operatingExpensesTotal,
+      });
       setStressSummary({
         occ85: stress.occ85.valueRange.min,
         occ90: stress.occ90.valueRange.min,
         occ100: stress.occ100.valueRange.min,
       });
-      setPriceRecommendation(
-        calculatePriceRecommendation(
-          baseline,
-          inferMarketType(''),
-          classifyAssetSize(form.units),
-          occupancy
-        )
-      );
+      setRecommendedPrice(out.suggestedPrice);
     } catch (e) {
       console.error(e);
       setError(e instanceof Error ? e.message : String(e));
@@ -358,7 +352,7 @@ export function ACM() {
                 {formatCurrency(stressSummary.occ100)}
               </p>
               <p className="text-lg font-black text-emerald-300">
-                {t('Prix recommandé (RNE ÷ TGA cible)', 'Recommended price (NOI ÷ target cap rate)')} :{' '}
+                {t('Prix recommandé (module financier central)', 'Recommended price (central financial module)')} :{' '}
                 {formatCurrency(recommendedPrice)}
               </p>
             </div>

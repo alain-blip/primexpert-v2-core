@@ -802,15 +802,31 @@ SSOT : `serializeOffreForFirestore(tronc, conditions?, cloture?)` dans `offreCon
 
 SSOT moteur : `promesseAchatEngine.ts` — dates limites dérivées de `dateAcceptation` + délais en **jours**.
 
+### Constante SSOT — `PA_ACCEPTEE_CRITICAL_DEADLINE_KEYS` (7 échéances)
+
+Exportée par `packages/core/src/transaction/promesseAchatEngine.ts`. Dès que `promesseAchat.statut === 'accepted'` (Kanban `pa-acceptee` → colonne `promise` via `resolveColumnId()`), le moteur **doit** produire les 7 dates ci-dessous. Validation stricte : `validatePaAccepteeCriticalDeadlines()`. Couverture tests : `paAccepteeCriticalDeadlines.test.ts`.
+
+| Clé SSOT | Champ Firestore / VM | Origine du calcul |
+|----------|----------------------|-------------------|
+| `dateLimiteReponse` | `promesseAchat.dateLimiteReponse` | `dateReception` + `delaiReponseJours` |
+| `dateLimiteVisiteLieux` | `promesseAchat.dateLimiteVisiteLieux` | `dateAcceptation` + `delais.visiteLieuxJours` |
+| `dateLimiteVerificationDocuments` | `promesseAchat.dateLimiteVerificationDocuments` | `dateAcceptation` + `delais.verificationDocumentsJours` |
+| `dateLimiteInspection` | `promesseAchat.dateLimiteInspection` | `dateAcceptation` + `delais.inspectionJours` |
+| `dateLimiteFinancement` | `promesseAchat.dateLimiteFinancement` | `dateAcceptation` + `delais.financementJours` (sync `offre.dateLimiteFinancement`) |
+| `dateLimitePermis` | `promesseAchat.dateLimitePermis` | `dateAcceptation` + `delais.permisJours` (sync `offre.dateLimitePermisMsss`) |
+| `dateLimiteDeduitLci` | `promesseAchat.dateLimiteDeduitLci` | `dateAcceptation` + **`DEDIT_LCI_ART_73_2_JOURS` (= 3 jours calendaires)** — Loi sur le courtage immobilier (C-73.2), art. 73.2 (OACIQ) |
+
 | Champ | Type | Description |
 |--------|------|-------------|
 | `promesseAchat.statut` | string | `draft`, `received`, `accepted`, `refused`, `cancelled` |
 | `promesseAchat.dateAcceptation` | string | Date d’acceptation (référence calcul délais) |
+| `promesseAchat.dateLimiteReponse` | string | Calculée (délai réponse offre) |
 | `promesseAchat.dateLimiteVisiteLieux` | string | Calculée (lecture seule UI) |
 | `promesseAchat.dateLimiteVerificationDocuments` | string | Calculée |
 | `promesseAchat.dateLimiteInspection` | string | Calculée |
 | `promesseAchat.dateLimiteFinancement` | string | Calculée (peut coexister avec `offre.dateLimiteFinancement`) |
 | `promesseAchat.dateLimitePermis` | string | Calculée |
+| `promesseAchat.dateLimiteDeduitLci` | string | Calculée — dédit LCI art. 73.2 (3 jours calendaires) |
 | `promesseAchat.delais.visiteLieuxJours` | number \| null | Jours — éditable ; sérialisé `null` si vide |
 | `promesseAchat.delais.verificationDocumentsJours` | number \| null | Jours |
 | `promesseAchat.delais.inspectionJours` | number \| null | Jours |
