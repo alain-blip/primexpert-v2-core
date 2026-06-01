@@ -230,7 +230,7 @@ function AuditRneToggle({
         >
           <input
             type="radio"
-            id="finance-bank-noi-audited"
+            id="finance-bank-noi-verified"
             name="finance-bank-noi-basis"
             checked={optionB}
             disabled={disabled}
