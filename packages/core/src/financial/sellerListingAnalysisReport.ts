@@ -205,7 +205,7 @@ export function buildSellerListingAnalysisModel(
     narrativeBulletsFr: [
       'Analyse de valeur et stratégie de mise en marché — document vendeur (non-évaluation agréée).',
       capRateImpliedPct != null
-        ? `Taux de capitalisation (TGA) implicite au prix demandé : ${formatPercentRaw(capRateImpliedPct, { decimals: 2 })}.`
+        ? `Taux de capitalisation (TGA) implicite au prix demandé : ${formatPercentRaw(capRateImpliedPct, 2)}.`
         : 'Complétez le prix demandé pour le TGA implicite.',
       ...(tgaAdjustment
         ? [`Ajustement risque marché : TGA ${tgaAdjustment.basePct.toFixed(2)} % → ${tgaAdjustment.adjustedPct.toFixed(2)} %.`]
@@ -215,7 +215,7 @@ export function buildSellerListingAnalysisModel(
     narrativeBulletsEn: [
       'Value analysis and go-to-market strategy — seller document (not a certified appraisal).',
       capRateImpliedPct != null
-        ? `Implied capitalization rate (cap rate) at asking: ${formatPercentRaw(capRateImpliedPct, { decimals: 2 })}.`
+        ? `Implied capitalization rate (cap rate) at asking: ${formatPercentRaw(capRateImpliedPct, 2)}.`
         : 'Complete asking price for implied cap rate.',
       ...rationale.slice(0, 2),
     ],

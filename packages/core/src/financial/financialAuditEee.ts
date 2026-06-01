@@ -5,8 +5,7 @@
 
 import { DSCR_RULES } from './financialRules';
 import { sumDeclaredOperatingExpenses, type FinancialBaseData, type FinancialCalc } from './normalizeFinancialData';
-
-export const CAPEX_RESERVE_PER_UNIT_ANNUAL = 500;
+import { CAPEX_RESERVE_PER_UNIT_ANNUAL } from './normalizationSuggestions';
 
 export interface FinancialAuditEeeAlert {
   severity: 'warning' | 'error';
