@@ -17,6 +17,7 @@ import {
 import { formatCertifiableReportTimestamp } from './certifiableFinancialReport';
 import type { CertifiableReportBrokerFooter } from './certifiableFinancialReport';
 import type { FinancialCalc, FinancialDataV2Doc, ResidenceFinancialHints } from './normalizeFinancialData';
+import { computeCapitalizationRateFromNoi, normalizeCapitalizationRate } from './capitalizationMetrics';
 
 export interface AcmPresentationBrokerBlock extends CertifiableReportBrokerFooter {
   phone?: string;
@@ -108,13 +109,9 @@ function parseExtractedComparables(
       const capPct = finiteNum(o.capRatePct);
       const noi = finiteNum(o.noi) ?? finiteNum(o.netIncomePerUnit);
       const capRate =
-        capPct != null && capPct > 0
-          ? capPct > 1
-            ? capPct / 100
-            : capPct
-          : noi != null && salePrice > 0
-            ? noi / salePrice
-            : 0;
+        normalizeCapitalizationRate(capPct) ??
+        computeCapitalizationRateFromNoi(noi, salePrice) ??
+        0;
       return {
         id: `ext-${i}`,
         salePrice,

@@ -9,6 +9,7 @@ import {
   type ResidenceFinancialHints,
 } from '../financial/normalizeFinancialData';
 import { applyCanonicalMetricsToCalc, resolveCanonicalFinancialMetrics } from '../financial/resolveCanonicalRne';
+import { computeCapitalizedValueFromNoi, normalizeCapitalizationRate } from '../financial/capitalizationMetrics';
 import type { MarketGpsTransaction } from '../market/marketGpsViewModel';
 import {
   selectGpsCapRateMedian,
@@ -318,7 +319,7 @@ export function bootstrapResidenceAcm(
   });
 
   const suggestedCapRatePct = gpsSelection.capRatePct;
-  valuationInputs.targetCapRate = suggestedCapRatePct / 100;
+  valuationInputs.targetCapRate = normalizeCapitalizationRate(suggestedCapRatePct) ?? 0.085;
 
   const askingPrice =
     finiteNum(calc.prixDemande) ??
@@ -330,9 +331,7 @@ export function bootstrapResidenceAcm(
     valuationMode: 'acm_unified_cap',
   });
   const regionalCapRatePerformanceValue =
-    rne > 0 && suggestedCapRatePct > 0
-      ? roundToNearestThousand(rne / (suggestedCapRatePct / 100))
-      : 0;
+    roundToNearestThousand(computeCapitalizedValueFromNoi(rne, suggestedCapRatePct) ?? 0);
 
   return {
     residenceLabel: resolveResidenceLabel(residence, residenceDoc),

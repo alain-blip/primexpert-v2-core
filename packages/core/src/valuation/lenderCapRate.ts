@@ -9,6 +9,11 @@
  * La banque valorise le RISQUE, pas le POTENTIEL.
  */
 
+import {
+  computeCapitalizationRateFromNoi,
+  computeCapitalizedValueFromNoi,
+} from '../financial/capitalizationMetrics';
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -280,7 +285,7 @@ export function calculateBankValueWithAdjustedCapRate(
   capRateResult: LenderCapRateResult;
 } {
   const capRateResult = calculateAdjustedLenderCapRate(input);
-  const bankValue = noi / capRateResult.adjustedCapRate;
+  const bankValue = computeCapitalizedValueFromNoi(noi, capRateResult.adjustedCapRate) ?? 0;
 
   return {
     bankValue,
@@ -311,7 +316,7 @@ export function compareSellerVsBankValue(
   explanation: string;
 } {
   const { bankValue, capRateResult } = calculateBankValueWithAdjustedCapRate(noi, input);
-  const sellerCapRate = noi / sellerValue;
+  const sellerCapRate = computeCapitalizationRateFromNoi(noi, sellerValue) ?? 0;
   const gap = sellerValue - bankValue;
   const gapPercent = (gap / bankValue) * 100;
 

@@ -6,6 +6,7 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import {
   EXPENSE_FIELDS,
   EXPENSE_KEYS,
+  computeCapitalizationRateFromNoi,
   mergeExtractedIntoFinancialDataV2,
   recomputeFinancialCalculatedResults,
   sumNormalizedOperatingExpenses,
@@ -75,33 +76,32 @@ export async function saveExpenseAdjustmentsToFinancial(
 
   const depensesTotalesNormalisees =
     sumNormalizedOperatingExpenses(dep, adjFirestore) ?? 0;
-  const rbe =
-    parseNum(financialData.calculatedResults?.revenuBrutEffectif) ||
-    parseNum(financialData.baseData?.revenusAnnuels);
-  const revenuNetExploitation =
-    rbe > 0 ? Math.round(rbe - depensesTotalesNormalisees) : null;
-
   const prixDemande = parseNum(
     (financialData.calculatedResults as Record<string, unknown> | undefined)?.prixDemande
   );
-  const tauxCapitalisation =
-    revenuNetExploitation != null &&
-    revenuNetExploitation > 0 &&
-    prixDemande > 0
-      ? revenuNetExploitation / prixDemande
-      : undefined;
+  const baseData: FinancialBaseData = {
+    ...(financialData.baseData ?? {}),
+    expenseAdjustments: adjFirestore,
+  };
+  const calculatedResults = recomputeFinancialCalculatedResults(baseData, {
+    ...(financialData.calculatedResults ?? {}),
+    depensesTotalesNormalisees,
+    ...(prixDemande > 0 ? { prixDemande } : {}),
+  });
+  const revenuNetExploitation = calculatedResults?.revenuNetExploitation ?? null;
+  const tauxCapitalisation = computeCapitalizationRateFromNoi(
+    revenuNetExploitation,
+    prixDemande
+  );
 
   const docRef = doc(db, 'residences', residenceId, 'financial', 'dataV2');
   await setDoc(
     docRef,
     stripUndefinedDeep({
-      baseData: {
-        ...(financialData.baseData ?? {}),
-        expenseAdjustments: adjFirestore,
-      },
+      baseData,
       lastUpdated: serverTimestamp(),
       calculatedResults: {
-        ...(financialData.calculatedResults ?? {}),
+        ...(calculatedResults ?? financialData.calculatedResults ?? {}),
         depensesTotalesNormalisees,
         revenuNetExploitation,
         ...(tauxCapitalisation != null ? { tauxCapitalisation } : {}),
@@ -315,9 +315,8 @@ export async function saveManualFinancialEntry(
       ...(prix > 0 ? { prixDemande: prix } : {}),
     };
     const rne = calculatedResults.revenuNetExploitation;
-    if (rne != null && rne > 0 && prix > 0) {
-      calculatedResults.tauxCapitalisation = rne / prix;
-    }
+    const tauxCapitalisation = computeCapitalizationRateFromNoi(rne, prix);
+    if (tauxCapitalisation != null) calculatedResults.tauxCapitalisation = tauxCapitalisation;
     const mensuel = parseNum(draft.financement.paiementMensuel);
     if (mensuel > 0) {
       calculatedResults.paiementMensuel = mensuel;
