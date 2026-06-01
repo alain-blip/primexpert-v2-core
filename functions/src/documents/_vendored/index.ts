@@ -7,3 +7,4 @@
 export * from './extractionSchemas';
 export * from './marketReportTypes';
 export * from './marketReportNormalize';
+export * from './marketMetrics';

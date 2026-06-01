@@ -8,8 +8,8 @@ import { BarChart3, Coins, Landmark, Microscope, Percent, ShieldAlert } from 'lu
 import { motion } from 'motion/react';
 import { cn } from '../../../lib/utils';
 import { useLanguage } from '../../../lib/i18n';
+import { useUnifiedResidence, useResidenceFinancialHints } from '../../../context/ResidenceDataContext';
 import { useFinancialData } from '../../../context/FinancialDataContext';
-import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { FinanceHubLockProvider } from '../../../context/FinanceHubLockContext';
 import { normalizeFinancialData } from '@primexpert/core/financial';
 import { isFinanceHubSealed } from '@primexpert/core/diffusion';
@@ -83,23 +83,24 @@ function resolveFinanceLockInput(
   };
 }
 
-export function FinanceHubTab({ residence, isVendorMode = false }: FinanceHubTabProps) {
+export function FinanceHubTab({ residence: residenceProp, isVendorMode = false }: FinanceHubTabProps) {
   const { language, t } = useLanguage();
   const [subTab, setSubTab] = useState<FinanceSubTab>('bilan');
   const { financialData, loading } = useFinancialData();
-  const { residenceDoc } = useResidenceDocument();
+  const { residence, residenceRecord } = useUnifiedResidence(residenceProp);
+  const financialHints = useResidenceFinancialHints(residenceProp);
 
   const inputsLocked = useMemo(
     () =>
       isVendorMode ||
-      isFinanceHubSealed(resolveFinanceLockInput(residenceDoc ?? undefined)),
-    [isVendorMode, residenceDoc]
+      isFinanceHubSealed(resolveFinanceLockInput(residenceRecord)),
+    [isVendorMode, residenceRecord]
   );
 
   const hasFinancials = useMemo(() => {
-    const hints = { prixDemande: residence.price, askingPrice: residence.price };
+    const hints = financialHints;
     return normalizeFinancialData(financialData, hints).hasFinancials;
-  }, [financialData, residence.price]);
+  }, [financialData, financialHints]);
 
   const panel = useMemo(() => {
     switch (subTab) {

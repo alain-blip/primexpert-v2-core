@@ -3,7 +3,7 @@
  * Les onglets métier (Hub CFO, Identité fusionnée, etc.) arrivent en phases suivantes.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   Building2,
@@ -19,8 +19,12 @@ import {
 } from 'lucide-react';
 import { cn, formatCurrency } from '../../lib/utils';
 import { useLanguage } from '../../lib/i18n';
-import type { Residence, ResidenceStatus } from '../../services/residences';
+import type { Residence } from '../../services/residences';
 import { ResidenceIntelligencePanel } from '../ResidenceIntelligencePanel';
+import {
+  ResidenceDataProvider,
+  useResidenceData,
+} from '../../context/ResidenceDataContext';
 import { FinancialDataProvider } from '../../context/FinancialDataContext';
 import { FinancialHubDraftProvider } from '../../context/FinancialHubDraftContext';
 import { FinanceHubTab } from './tabs/FinanceHubTab';
@@ -37,6 +41,8 @@ import { Synthese360Tab } from './tabs/Synthese360Tab';
 import { DiffusionWebTab } from './diffusion/DiffusionWebTab';
 import { ResidenceTransactionBanner } from './ResidenceTransactionBanner';
 import { ResidenceAccesVendeurButton } from './ResidenceAccesVendeurButton';
+import { InscriptionStatusDropdown } from '../inscriptions/InscriptionStatusDropdown';
+import { ResidenceTabErrorBoundary } from './ResidenceTabErrorBoundary';
 
 export type ResidenceDetailTab =
   | 'synthese'
@@ -48,15 +54,6 @@ export type ResidenceDetailTab =
   | 'intelligence'
   | 'promesse'
   | 'diffusion';
-
-const STATUS_LABELS: Record<ResidenceStatus, { fr: string; en: string }> = {
-  prospect: { fr: 'Prospection', en: 'Prospecting' },
-  mandate: { fr: 'En mandat', en: 'Listed' },
-  promise: { fr: 'En promesse', en: 'Under promise' },
-  expired: { fr: 'Expiré', en: 'Expired' },
-  unsigned: { fr: 'Non signé', en: 'Unsigned' },
-  sold: { fr: 'Vendu', en: 'Sold' },
-};
 
 const TABS: {
   id: ResidenceDetailTab;
@@ -188,23 +185,22 @@ export interface ResidenceDetailProps {
 
 function ResidenceDetailContent({
   brokerId,
-  residence,
   onClose,
   initialTab,
-}: ResidenceDetailProps & { initialTab: ResidenceDetailTab }) {
+}: Omit<ResidenceDetailProps, 'residence'> & { initialTab: ResidenceDetailTab }) {
   const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<ResidenceDetailTab>(initialTab);
+  const { residence, listingPrice, applyOptimisticPatch } = useResidenceData();
 
-  const addrTitle = residence.city
+  const openFinanceTab = useCallback(() => setActiveTab('finances'), []);
+  const residenceId = residence?.id ?? '';
+
+  const addrTitle = residence?.city
     ? `${residence.address}, ${residence.city}`
-    : residence.address;
-
-  const statusLabel = useMemo(() => {
-    const row = STATUS_LABELS[residence.status];
-    return language === 'fr' ? row.fr : row.en;
-  }, [residence.status, language]);
+    : residence?.address ?? '';
 
   const tabContent = useMemo(() => {
+    if (!residenceId || !residence) return null;
     switch (activeTab) {
       case 'intelligence':
         return (
@@ -243,6 +239,7 @@ function ResidenceDetailContent({
             residenceRegionHint={residence.city}
             assetNiche={residence.assetNiche}
             propertyType={residence.propertyType}
+            contractPrice={listingPrice}
           />
         );
       case 'promesse':
@@ -252,15 +249,34 @@ function ResidenceDetailContent({
       default:
         return null;
     }
-  }, [activeTab, brokerId, residence, onClose, t]);
+  }, [activeTab, brokerId, residence, residenceId, listingPrice, onClose, language]);
 
   const panelContent = useMemo(
-    () => wrapInstitutionalTab(activeTab, tabContent, residence, language === 'fr' ? 'fr' : 'en'),
+    () =>
+      residence
+        ? wrapInstitutionalTab(activeTab, tabContent, residence, language === 'fr' ? 'fr' : 'en')
+        : tabContent,
     [activeTab, tabContent, residence, language]
   );
 
+  const activeTabLabel =
+    language === 'fr'
+      ? TABS.find((t) => t.id === activeTab)?.labelFr ?? activeTab
+      : TABS.find((t) => t.id === activeTab)?.labelEn ?? activeTab;
+
+  if (!residenceId) {
+    return (
+      <div className="rounded-xl border border-amber-300 bg-amber-50 px-6 py-8 text-sm text-amber-900">
+        {t(
+          'Fiche résidence indisponible — identifiant manquant.',
+          'Residence file unavailable — missing identifier.'
+        )}
+      </div>
+    );
+  }
+
   return (
-    <FinancialHubDraftProvider onOpenFinanceTab={() => setActiveTab('finances')}>
+    <FinancialHubDraftProvider onOpenFinanceTab={openFinanceTab}>
     <div className="space-y-6 min-h-[70vh] font-sans">
       {/* En-tête institutionnel */}
       <div className="rounded-xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
@@ -283,9 +299,15 @@ function ResidenceDetailContent({
                 <ResidenceTransactionBanner />
               </div>
               <p className="text-[11px] font-bold text-slate-600 mt-1 font-mono">
-                <span className="text-[#142c6a]">{formatCurrency(residence.price)}</span> · {statusLabel} · ID{' '}
+                <span className="text-[#142c6a]">{formatCurrency(listingPrice)}</span> · ID{' '}
                 {residence.id}
               </p>
+              <div className="mt-2">
+                <InscriptionStatusDropdown
+                  residence={residence}
+                  onUpdated={(patch) => applyOptimisticPatch(patch)}
+                />
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -330,7 +352,9 @@ function ResidenceDetailContent({
       </div>
 
       <div key={activeTab} role="tabpanel">
-        {panelContent}
+        <ResidenceTabErrorBoundary tabLabel={activeTabLabel}>
+          {panelContent}
+        </ResidenceTabErrorBoundary>
       </div>
     </div>
     </FinancialHubDraftProvider>
@@ -343,14 +367,19 @@ export function ResidenceDetail({
   onClose,
   initialTab = 'synthese',
 }: ResidenceDetailProps) {
+  if (!residence?.id) {
+    return null;
+  }
+
   return (
     <ResidenceDocumentProvider residenceId={residence.id}>
-      <ResidenceDetailContent
-        brokerId={brokerId}
-        residence={residence}
-        onClose={onClose}
-        initialTab={initialTab}
-      />
+      <ResidenceDataProvider baseResidence={residence}>
+        <ResidenceDetailContent
+          brokerId={brokerId}
+          onClose={onClose}
+          initialTab={initialTab}
+        />
+      </ResidenceDataProvider>
     </ResidenceDocumentProvider>
   );
 }
