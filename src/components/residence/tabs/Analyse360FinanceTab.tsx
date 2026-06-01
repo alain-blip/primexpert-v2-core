@@ -131,8 +131,8 @@ export function Analyse360FinanceTab({ residence }: Analyse360FinanceTabProps) {
 
       <p className={inst.note}>
         {t(
-          'Comparaison du revenu brut effectif (RBE) et des dépenses normalisées (grille comptable professionnel agréé (CPA)) aux références marché. L’écart de revenu net d’exploitation (RNE) annuel est capitalisé au taux de la fiche : ΔV = ΔRNE ÷ taux de capitalisation.',
-          'Compare effective gross income (EGI) and normalized expenses (CPA grid) to market references. Annual net operating income (NOI) gap is capitalized at listing cap rate: ΔV = ΔNOI ÷ cap rate.'
+          'Comparaison du revenu brut effectif (RBE) et des dépenses normalisées (grille comptable professionnel agréé (CPA)) aux références marché. L’écart de revenu net d’exploitation (RNE) annuel est valorisé par le moteur financier SSOT.',
+          'Compare effective gross income (EGI) and normalized expenses (CPA grid) to market references. Annual net operating income (NOI) gap is valued by the financial SSOT engine.'
         )}{' '}
         <span className="text-slate-600">
           {t(

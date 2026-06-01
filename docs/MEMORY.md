@@ -623,7 +623,7 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 | Élément | Détail |
 |---------|--------|
 | **Règle #0** | Enrichissement SSOT `@primexpert/core/market/centrisComparableCapRate.ts` — aucun moteur parallèle. |
-| **Calcul TGA réel** | `calculateComparableCapRate()` — taux de capitalisation global (TGA) = revenu net d’exploitation (RNE) ÷ prix vendu × 100. |
+| **Calcul TGA réel** | `resolveCapitalizationRateFromRne()` (`@primexpert/core/financial`) — taux de capitalisation global (TGA) résolu par le module financier SSOT. |
 | **Sources Big Data** | Fusion `listings_cache` (Centris Matrix, `source: centris_odata`) + `market_analytics_raw` filtrés par `regionAdministrative` et classe RPA. |
 | **Service client** | `marketAnalyticsService.ts` + `useTerritorialCompetition` — abonnement temps réel, tri par récence. |
 | **Workspace ACM** | `AcmValuationWorkspace.tsx` — taux de capitalisation global (TGA) médian dynamique ; ajustement qualitatif courtier (ex. +0,25 % vétusté) recalcule la valorisation SSOT instantanément. |
@@ -644,7 +644,7 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 | **Règle #0** | SSOT `@primexpert/core/market/internalMarketFlywheel.ts` — enrichit le pipeline Big Data existant (`market_analytics_raw`, `marketSnapshots/v1`). |
 | **Déclencheur** | Cloud Function `onTransactionConcludedFlywheel` — `onDocumentUpdated` sur `residences/{residenceId}`. |
 | **Conditions** | Transition vers **promesse d'achat acceptée** (`promise` / `pa-acceptee`) ou **vendu** (`sold` / `vendue`) depuis un statut non terminal. |
-| **Anonymisation** | Variables de performance seulement : classe d'actif, prix réel, taux de capitalisation global (TGA) via `calculateComparableCapRate`, prix au pi², région, ville, FSALDU-3. Purge : noms, UID, orgId, adresses exactes, cadastre, numéro d'inscription lié. |
+| **Anonymisation** | Variables de performance seulement : classe d'actif, prix réel, taux de capitalisation global (TGA) via `resolveCapitalizationRateFromRne`, prix au pi², région, ville, FSALDU-3. Purge : noms, UID, orgId, adresses exactes, cadastre, numéro d'inscription lié. |
 | **Injection** | Collection `market_analytics_raw` — `dataSource: 'internal_flywheel'`, empreinte `internalFlywheelFingerprint`. |
 | **Snapshot** | `refreshRegionalMarketSnapshotForFlywheel()` dans `injectMarketMacroStats.ts` — recalcul immédiat `marketSnapshots/v1` pour la région. |
 | **Idempotence** | Marqueur `internalFlywheelIngestion` sur la fiche résidence (`promiseAtMillis` / `soldAtMillis`). |
@@ -693,8 +693,8 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 | Élément | Détail |
 |---------|--------|
 | **Prix SSOT** | `resolvePrixDemande()` — interdit le `calc.prixDemande` legacy (3,5 M$) ; force `getListingPrice()` (2 558 000 $). |
-| **RNE** | `resolveAdmissibleOpex()` — `depensesTotales` déclaré prioritaire si grille Firestore incomplète ; RNE = RBE − dépenses (**529 489 $** = 1 129 749 $ − 600 260 $). |
-| **TGA réel** | Recalculé : 529 489 $ ÷ 2 558 000 $ = **20,70 %** (`syncCalcWithCanonicalListingPrice`). |
+| **RNE** | `resolveCanonicalFinancialMetrics()` + `resolveAdmissibleOpex()` — `depensesTotales` déclaré prioritaire si grille Firestore incomplète ; RNE canonique **529 489 $** sur le dossier étalon. |
+| **TGA réel** | Recalculé par `resolveCapitalizationRateFromRne()` sur le dossier étalon : **20,70 %**. |
 | **Emprunt + MFR** | Réalignement automatique quand le prix canonique diffère du `calculatedResults` figé ; somme = prix demandé. |
 | **Hub Finance** | `useResidenceFinancialHints()` + `buildResidenceFinancialHints()` — hints unifiés sur tous les sous-onglets. |
 | **Crash UI** | `ResidenceTabErrorBoundary` ; contextes `ResidenceDocument` / `FinancialData` mémoïsés ; gardes `ResidenceDetail`. |
@@ -902,7 +902,7 @@ Cible : https://primexpert-app-v2.web.app
 | **Legacy expulsée** | Copilote-RPA : `docxGenerator.js` (docxtemplater + PizZip) — **identifiée, non portée en V2**. Gabarit référence : `00_RPA_SYSTEME_APP/…/gabarits-v3/Promesse d'achat ACTIFS.docx`. |
 | **Schéma parenthèses** | `annexeFieldSchema.ts` — `AnnexePrixFields.nouveauPrixNumerique` `( $ )`, `AnnexeRFields.retributionPct` `( % )`, `AnnexeGFields.ccvReference` `CCV-…` ; `ContractAssemblerFieldState`. |
 | **Rendu dynamique** | `renderDynamicParenthesis.ts` — `.dynamic-value` / `.is-empty` ; `renderParenthesisMoney`, `renderParenthesisPercent`, `renderCcvReference`. |
-| **Defaults ACM** | `buildContractAssemblerDefaults.ts` — prix annexe depuis RNE ÷ taux de capitalisation global (TGA) ajusté (`resolveCanonicalRne`, bootstrap ACM). |
+| **Defaults ACM** | `buildContractAssemblerDefaults.ts` — prix annexe depuis les helpers SSOT financiers (`resolveCanonicalRne`, `resolveCapitalizedValueFromRne`) et le bootstrap ACM. |
 | **Dossier HTML** | `renderContractAssemblerToHtml.ts` — contrat courtage + annexes cochées + promesse d'achat actifs (V3.4 `renderPaActifsToHtml`). |
 | **UI** | `ContractAssemblerPanel.tsx` — checkboxes annexes, champs conditionnels, export HTML ; câblé dans `PromesseAchatTab` (`955410e` + `63286dc`). |
 | **Alias build** | `@primexpert/core/forms` — `vite.config.ts` + `tsconfig.json`. |
@@ -955,7 +955,7 @@ Cible : https://primexpert-app-v2.web.app
 | Axe | Décision / fait source |
 |-----|------------------------|
 | **QA RPA** | Workflow `.github/workflows/rpa-transaction-test-coverage.yml`, `npm run test:rpa-coverage`, couverture Kanban `resolveColumnId` + délais PA acceptée ; aucun nouveau slug pipeline (`promise` reste la colonne PA). |
-| **Règle #0 financière** | Les libellés UI retirent l'exposition `RNE ÷ TGA`; `noiGapToMarketValue()` et `resolveAdmissibleOpex()` restent dans `@primexpert/core/financial`. |
+| **Règle #0 financière** | Les libellés UI retirent l'exposition des formules RNE/TGA ; `noiGapToMarketValue()`, `resolveAdmissibleOpex()` et `resolveCapitalizedValueFromRne()` restent dans `@primexpert/core/financial`. |
 | **Inscriptions MLS / hors marché** | `listingSource: 'centris' \| 'off_market'`, `CreateInscriptionForm`, `InscriptionStatusDropdown`, sync Centris nocturne ignorée si hors marché ou override manuel. |
 | **Concurrence territoriale** | `TerritorialCentrisCompetitionSection`, `useTerritorialCompetition`, `marketAnalyticsService` ; lecture `listings_cache` + `market_analytics_raw` pour médiane TGA ACM. |
 | **Data Flywheel** | `onTransactionConcludedFlywheel` sur `residences/{residenceId}` ; transition `promise` / `sold` → document anonymisé `market_analytics_raw` + marqueur `internalFlywheelIngestion`. |

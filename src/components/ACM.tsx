@@ -358,7 +358,7 @@ export function ACM() {
                 {formatCurrency(stressSummary.occ100)}
               </p>
               <p className="text-lg font-black text-emerald-300">
-                {t('Prix recommandé (RNE ÷ TGA cible)', 'Recommended price (NOI ÷ target cap rate)')} :{' '}
+                {t('Prix recommandé (moteur financier SSOT)', 'Recommended price (financial SSOT engine)')} :{' '}
                 {formatCurrency(recommendedPrice)}
               </p>
             </div>

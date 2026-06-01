@@ -347,7 +347,7 @@ Neuf onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Ratios performance | `PerformanceRatiosTab` | `computePerformanceRatiosViewModel()` |
 | Vérification performance | `Analyse360FinanceTab` | `computePerformanceAudit360()` |
 
-**SSOT prix & hints finance (`d232673`) :** `ResidenceDataProvider` normalise `price` / `prixAnnonce` / `prixDemande` ; `useResidenceFinancialHints()` injecte le prix canonique dans tous les sous-onglets ; core `resolveAdmissibleOpex()` — RNE = RBE − dépenses **déclarées** (pas le normalisé seul).
+**SSOT prix & hints finance (`d232673`) :** `ResidenceDataProvider` normalise `price` / `prixAnnonce` / `prixDemande` ; `useResidenceFinancialHints()` injecte le prix canonique dans tous les sous-onglets ; core `resolveCanonicalFinancialMetrics()` + `resolveAdmissibleOpex()` — RNE résolu par `@primexpert/core/financial` (pas le normalisé seul).
 
 **Règle #0 :** le Hub Finance et l’identité consomment `@primexpert/core` — pas de moteur financier dupliqué dans l’UI. L’onglet **Synthèse** affiche une **lecture** rétribution / jalons (cascade sur champs `residences` + formatage), distincte du SSOT `financial/dataV2`.
 

@@ -630,7 +630,7 @@ Normalisation : `normalizeFinancialData()` → source `calculatedResults` | `der
 | Règle | Module core |
 |-------|-------------|
 | Prix affiché / emprunt / MFR | `getListingPrice()` + `syncCalcWithCanonicalListingPrice()` — ignore `calculatedResults.prixDemande` figé (ex. 3,5 M$) |
-| RNE canonique | `resolveAdmissibleOpex()` — **`depensesTotales` déclaré** prioritaire ; RNE = RBE − OPEX déclaré (pas le normalisé seul) |
+| RNE canonique | `resolveCanonicalFinancialMetrics()` + `resolveAdmissibleOpex()` — **`depensesTotales` déclaré** prioritaire ; RNE résolu par le module financier SSOT (pas le normalisé seul) |
 | Hints UI inter-onglets | `ResidenceDataContext` → `useResidenceFinancialHints()` → `buildResidenceFinancialHints()` |
 | Étalon QA | 198 chemin du Roy : 2 558 000 $ · RBE 1 129 749 $ · dépenses 600 260 $ · **RNE 529 489 $** · **TGA 20,70 %** |
 
@@ -943,7 +943,7 @@ Sous-collection documents PA : `residences/{id}/documents` (filtre type promesse
 | `annexeR` | `retributionPct` | number — zone `(       % )` |
 | `annexeG` | `ccvReference` | string — zone `CCV-     ` |
 
-**Defaults :** `buildContractAssemblerDefaults()` — prix annexe depuis revenu net d'exploitation (RNE) ÷ taux de capitalisation global (TGA) ACM (`resolveCanonicalRne`, `bootstrapResidenceAcm`).
+**Defaults :** `buildContractAssemblerDefaults()` — prix annexe depuis les helpers SSOT financiers (`resolveCanonicalRne`, `resolveCapitalizedValueFromRne`) et le bootstrap ACM.
 
 **UI :** `ContractAssemblerPanel.tsx` dans onglet Promesse — consomme `residence`, `residenceDoc`, `financial/dataV2`.
 

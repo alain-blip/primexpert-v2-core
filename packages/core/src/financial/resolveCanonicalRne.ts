@@ -110,6 +110,42 @@ export function resolveCanonicalFinancialMetrics(
   return { rbe, opex, rne, rneIntegrityOk, rneIntegrityIssueFr, rneIntegrityIssueEn };
 }
 
+/** Résout le taux de capitalisation à partir du RNE et du prix demandé. */
+export function resolveCapitalizationRateFromRne(
+  rne: unknown,
+  prixDemande: unknown
+): number | null {
+  const resolvedRne = finiteNum(rne);
+  const resolvedPrixDemande = finiteNum(prixDemande);
+  if (
+    resolvedRne == null ||
+    resolvedRne <= 0 ||
+    resolvedPrixDemande == null ||
+    resolvedPrixDemande <= 0
+  ) {
+    return null;
+  }
+  return resolvedRne / resolvedPrixDemande;
+}
+
+/** Résout une valeur capitalisée à partir du RNE et d'un TGA en pourcentage. */
+export function resolveCapitalizedValueFromRne(
+  rne: unknown,
+  tgaPct: unknown
+): number | null {
+  const resolvedRne = finiteNum(rne);
+  const resolvedTgaPct = finiteNum(tgaPct);
+  if (
+    resolvedRne == null ||
+    resolvedRne <= 0 ||
+    resolvedTgaPct == null ||
+    resolvedTgaPct <= 0
+  ) {
+    return null;
+  }
+  return resolvedRne / (resolvedTgaPct / 100);
+}
+
 /** Applique RBE/RNE/OPEX cohérents sur un FinancialCalc (SSOT lecture). */
 export function applyCanonicalMetricsToCalc(
   calc: FinancialCalc,

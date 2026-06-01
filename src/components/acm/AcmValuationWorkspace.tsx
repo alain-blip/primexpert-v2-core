@@ -44,10 +44,11 @@ import {
   type MarketGpsTransaction,
 } from '@primexpert/core/market';
 import { AcmHistoricalTrendsSection } from './AcmHistoricalTrendsSection';
-import type {
-  CertifiableReportBrokerFooter,
-  FinancialDataV2Doc,
-  TerritorialAcmMedians,
+import {
+  resolveCapitalizedValueFromRne,
+  type CertifiableReportBrokerFooter,
+  type FinancialDataV2Doc,
+  type TerritorialAcmMedians,
 } from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
@@ -427,7 +428,7 @@ export function AcmValuationWorkspace({
       : null;
     const performanceBased =
       territorialMedians?.tgaPct && territorialMedians.tgaPct > 0
-        ? bootstrap.revenuNetExploitation / (territorialMedians.tgaPct / 100)
+        ? resolveCapitalizedValueFromRne(bootstrap.revenuNetExploitation, territorialMedians.tgaPct)
         : null;
     const maxPotential = stressSummary?.occ100 ?? null;
     const rows = [
@@ -825,8 +826,8 @@ export function AcmValuationWorkspace({
               </p>
               <p className={`text-lg ${ACM_METRIC_VALUE_CLASS}`}>
                 {t(
-                  'Prix recommandé (revenu net d’exploitation (RNE) ÷ taux de capitalisation global (TGA) cible)',
-                  'Recommended price (net operating income (NOI) ÷ target global cap rate)'
+                  'Prix recommandé (moteur financier SSOT)',
+                  'Recommended price (financial SSOT engine)'
                 )}{' '}
                 : {formatCurrency(recommendedPrice)}
               </p>

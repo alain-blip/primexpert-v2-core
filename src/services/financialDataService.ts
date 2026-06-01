@@ -8,6 +8,8 @@ import {
   EXPENSE_KEYS,
   mergeExtractedIntoFinancialDataV2,
   recomputeFinancialCalculatedResults,
+  resolveCapitalizationRateFromRne,
+  resolveCanonicalFinancialMetrics,
   sumNormalizedOperatingExpenses,
   type FinancialBaseData,
   type FinancialDataV2Doc,
@@ -78,18 +80,24 @@ export async function saveExpenseAdjustmentsToFinancial(
   const rbe =
     parseNum(financialData.calculatedResults?.revenuBrutEffectif) ||
     parseNum(financialData.baseData?.revenusAnnuels);
-  const revenuNetExploitation =
-    rbe > 0 ? Math.round(rbe - depensesTotalesNormalisees) : null;
+  const canonicalMetrics = resolveCanonicalFinancialMetrics(
+    {
+      ...(financialData.calculatedResults ?? {}),
+      ...(rbe > 0 ? { revenuBrutEffectif: rbe, revenusAnnuels: rbe } : {}),
+    },
+    {
+      ...(financialData.baseData ?? {}),
+      depenses: dep,
+      expenseAdjustments: adjFirestore,
+    }
+  );
+  const revenuNetExploitation = canonicalMetrics.rne;
 
   const prixDemande = parseNum(
     (financialData.calculatedResults as Record<string, unknown> | undefined)?.prixDemande
   );
   const tauxCapitalisation =
-    revenuNetExploitation != null &&
-    revenuNetExploitation > 0 &&
-    prixDemande > 0
-      ? revenuNetExploitation / prixDemande
-      : undefined;
+    resolveCapitalizationRateFromRne(revenuNetExploitation, prixDemande) ?? undefined;
 
   const docRef = doc(db, 'residences', residenceId, 'financial', 'dataV2');
   await setDoc(
@@ -314,9 +322,12 @@ export async function saveManualFinancialEntry(
       _confidence: options?.humanValidatedFromIa ? 'human_validated' : 'validation_required',
       ...(prix > 0 ? { prixDemande: prix } : {}),
     };
-    const rne = calculatedResults.revenuNetExploitation;
-    if (rne != null && rne > 0 && prix > 0) {
-      calculatedResults.tauxCapitalisation = rne / prix;
+    const tauxCapitalisation = resolveCapitalizationRateFromRne(
+      calculatedResults.revenuNetExploitation,
+      prix
+    );
+    if (tauxCapitalisation != null) {
+      calculatedResults.tauxCapitalisation = tauxCapitalisation;
     }
     const mensuel = parseNum(draft.financement.paiementMensuel);
     if (mensuel > 0) {
