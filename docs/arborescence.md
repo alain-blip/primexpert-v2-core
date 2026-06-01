@@ -23,23 +23,53 @@
 │   └── core/                      # @primexpert/core — logique métier SSOT (zéro calcul dans l’UI)
 │       ├── package.json
 │       └── src/
-│           ├── index.ts             # Barrel (canonical, valuation, financial, identity…)
+│           ├── index.ts             # Barrel (canonical, valuation, financial, analytics, security, forms…)
 │           ├── canonical/           # Champs canoniques & alias
-│           ├── financial/           # normalizeFinancialData, bilan, ratios, SCHL…
+│           ├── financial/           # normalizeFinancialData, capitalization, mergeExtractedFinancials, bilan, ratios, SCHL…
 │           ├── identity/            # buildIdentityViewModel, sections MSSS/RPA
 │           ├── transaction/         # Promesse d'achat — offre SSOT, délais, commission
 │           │   ├── offreTronc.ts
 │           │   ├── offreConditions.ts
 │           │   ├── offreCloture.ts
 │           │   └── promesseAchatEngine.ts
+│           ├── forms/                 # Générateur natif contrats / PA — sans OpenXML (V3.4–V3.5)
+│           │   ├── annexeFieldSchema.ts       # Schéma champs entre parenthèses ( $ ) ( % ) CCV-
+│           │   ├── renderDynamicParenthesis.ts
+│           │   ├── buildContractAssemblerDefaults.ts
+│           │   ├── renderContractAssemblerToHtml.ts
+│           │   ├── paActifsTypes.ts
+│           │   ├── buildPaActifsRenderData.ts
+│           │   ├── renderPaActifsToHtml.ts
+│           │   ├── templates/contratCourtageRpaTemplate.ts
+│           │   ├── templates/contratCourtageAchatTemplate.ts
+│           │   ├── templates/annexesCoordinationTemplate.ts
+│           │   ├── templates/annexesModificationTemplate.ts
+│           │   ├── templates/annexesProtectionTemplate.ts
+│           │   ├── templates/paActifsTemplate.ts
+│           │   └── index.ts
 │           ├── crm/                   # Contacts CRM — organizations/{orgId}/contacts
 │           │   ├── contactTypes.ts    # LCI, buyerCriteria, sellerCriteria, deriveBuyerTier
+│           │   ├── contactSearch.ts   # Recherche multi-critères LCI (haystack normalisé)
 │           │   ├── contactUiHelpers.ts
 │           │   ├── coBuyers.ts / coSellers.ts
 │           │   ├── legacyContactImport.ts
+│           │   ├── morningBriefing.ts   # Briefing du matin — tâches, RDV, hot leads
+│           │   ├── radarOpportunitesEngine.ts  # Radar off-market — signaux faibles
+│           │   ├── hotLeadsEngine.ts
 │           │   └── raphaelEngine.ts   # Matchmaker acheteurs QUALIFIED ↔ résidence
 │           ├── ai/
-│           │   └── voiceParser.ts     # Intentions note vocale → note + tâche
+│           │   ├── oaciqSpecsTypes.ts   # Specs OACIQ — modes négociation / LOI
+│           │   ├── negotiationEngine.ts # Copilote clauses — HITL manualVerifications
+│           │   ├── negotiationPrompts.ts
+│           │   └── voiceParser.ts       # Intentions note vocale → note + tâche
+│           ├── analytics/              # OER, ratios marché, exports @primexpert/core/analytics
+│           │   └── marketMetrics.ts
+│           ├── security/               # Vault WORM, journal conformité, profil courtier
+│           │   ├── vaultSpecsTypes.ts
+│           │   └── brokerProfileCompliance.ts
+│           ├── services/
+│           │   └── gemini.ts            # Port JSON Gemini (négociation V2.6)
+│           ├── narrative/               # Lint OACIQ descriptions Centris (ContentGen)
 │           ├── telephony/             # VoIP — canUseVoip, types Twilio
 │           ├── scripts/               # migrateLegacyContacts, testVoiceNote, testIncomingSms
 │           ├── diffusion/             # Syndication Web (rpaavendre.com, guardrails OACIQ)
@@ -47,23 +77,34 @@
 │           │   ├── residenceAcmBootstrap.ts   # Bootstrap ACM — SSOT calculatedResults + TGA GPS
 │           │   ├── stressTest.ts / priceStrategy.ts / penetrationTgaAdjustment.ts
 │           │   └── sellerListingAnalysisReport.ts
-│           ├── narrative/           # Narratif vendeur
 │           ├── intelligence/        # Priorités suivi KISS, rapport vendeur, contactTimeline
-│           ├── residence/             # partiesImpliquees, complianceChecklist, listingCommission, quebecRegions, pipelineDragRules
+│           ├── residence/             # partiesImpliquees, listingSource, inscriptionBrokerageStatus, listingCommission, quebecRegions
 │           │   ├── vendorPortalTimeline.ts   # Accès Vendeur — étapes timeline (Règle #0)
+│           │   ├── vendorPortalCatalogue.ts  # Catalogue 85 pièces (82 + 3 hors liste)
+│           │   ├── vendorPortalCompliance.ts # Jauge conformité catalogue
+│           │   ├── listingSource.ts          # Centris vs hors marché ; skip sync
+│           │   ├── inscriptionBrokerageStatus.ts
 │           │   └── mandateCompleteness.ts    # Jauge preuves de conformité mandat (portail vendeur)
 │           ├── documents/             # extraction rapports marché, schémas Gemini (MARKET_REPORT omnivore)
-│           ├── market/                # haversine, zonePenetration, gpsCapRateByRegionClass, marketDeduplication
+│           ├── market/                # Centris comparables, flywheel, semantic anchors, dedupe, closingEngine
+│           │   ├── centrisComparableCapRate.ts
+│           │   ├── internalMarketFlywheel.ts
+│           │   ├── marketPdfSemanticAnchors.ts
+│           │   └── marketDeduplication.ts
 │           ├── quality/             # Score qualité fiche
 │           ├── sources/             # Sources externes
 │           ├── export/              # Export dataset / politique
 │           ├── tenant/              # Multi-tenant (courtiersResponsables)
 │           ├── mail/                # mailParser, contactMatch, messageUrgency, types omnicanal
-│           ├── financial/
-│           │   └── mergeExtractedFinancials.ts
 │           ├── audio/               # Transcription (legacy)
 │           └── utils/formatting.ts
 ├── functions/                       # Cloud Functions Gen2 (us-central1 + régions ciblées)
+│   ├── scripts/                     # Prebuild vendor @primexpert/core vers Functions
+│   │   ├── sync-core-analytics-flywheel.cjs
+│   │   ├── sync-core-security.cjs
+│   │   ├── sync-core-residence.cjs
+│   │   ├── sync-core-documents.cjs
+│   │   └── sync-core-market.cjs
 │   └── src/
 │       ├── index.ts                 # Exports onCall / onRequest
 │       ├── services/
@@ -71,8 +112,9 @@
 │       ├── documents/
 │       │   ├── scanPropertyDocument.ts
 │       │   ├── parsePropertyDocument.ts
-│       │   ├── parseMarketDocument.ts       # Parse rapports marché (Vertex)
+│       │   ├── parseMarketDocument.ts       # Parse rapports marché (Vertex + cache MD5)
 │       │   ├── injectMarketMacroStats.ts
+│       │   ├── marketPdfSlice.ts            # Découpage sémantique avant Vertex
 │       │   ├── geminiExtract.ts     # Extraction JSON via gemini-2.0-flash-001
 │       │   ├── documentTaxonomy.ts  # Taxonomie catégories documents
 │       │   ├── validateStorageDocument.ts
@@ -89,6 +131,12 @@
 │       │   ├── hydrateThreadMessages.ts
 │       │   └── mailMessageAnalysis.ts
 │       ├── messaging/               # Hub omnicanal — ingestOmnichannelMessage, webhooks SMS/Meta (Montréal)
+│       ├── analytics/               # onTransactionConcludedFlywheel + ingestion market_analytics_raw
+│       ├── security/                # onVaultDocumentWrite + LegalComplianceLog SHA-256
+│       ├── centris/                 # centrisListingsSyncNightly + sync listings_cache
+│       ├── cron/                    # morningBriefingGenerator (06:00 Toronto) + _vendored/crm
+│       ├── vendor/                  # createVendorPortalInvite, validateVendorPortalToken
+│       ├── ai/                      # negotiationWithVertex + _vendored/ (@primexpert/core/ai prebuild)
 │       ├── audio/                   # onVoiceNoteUploaded (us-east1), hydrateVoiceNote, geminiTranscribe
 │       └── telephony/               # getTwilioToken, twilioVoiceResponse ; sync-core-telephony.cjs
 ├── scripts/
@@ -107,19 +155,20 @@
 ├── storage.rules
 ├── index.html
 ├── package.json
-├── vite.config.ts                   # Alias @primexpert/core/* + code-splitting
+├── vite.config.ts                   # Alias @primexpert/core/* + @primexpert/core/forms + code-splitting
 ├── public/                          # Logos silo, Primexpert…
-└── src/
-    ├── main.tsx
-    ├── index.css                    # Tailwind v4 — @config ../tailwind.config.js, @theme primexpert-*
-    ├── App.tsx                      # Routes, garde billing, lazy routes Workhub
-    ├── components/
+├── src/
+│   ├── App.tsx                      # Entrée publique — BrowserRouter + lazy AuthenticatedApp
+│   ├── AuthenticatedApp.tsx         # Routes /workhub, /acces-vendeur ; garde billing ; lazy Workhub
+│   ├── main.tsx
+│   ├── index.css                    # Tailwind v4 — @config ../tailwind.config.js, @theme primexpert-*
+│   ├── components/
     │   ├── Layout.tsx               # Sidebar Radar, header
     │   ├── Settings.tsx             # Profil + Finance (admin_system) + comptes courriel
     │   ├── settings/
     │   │   └── EmailAccountsSettings.tsx
     │   ├── AdminSubscriptionsDashboard.tsx
-    │   ├── Dashboard.tsx            # + PriorityFollowUpList (KISS J+3/J+5/J+7)
+    │   ├── Dashboard.tsx            # Briefing matin, radar off-market, PriorityFollowUpList (KISS)
     │   ├── dashboard/
     │   │   └── PriorityFollowUpList.tsx
     │   ├── intelligence/
@@ -128,6 +177,10 @@
     │   ├── mobile/
     │   │   └── AudioRecorderButton.tsx   # Note vocale → Storage voice_notes
     │   ├── Listings.tsx             # Mes inscriptions — pipeline Kanban 4 colonnes + inventaire + DnD + filtres régions
+    │   ├── BrokerPhotoComplianceBanner.tsx  # Alerte photo permis courtier > 5 ans
+    │   ├── inscriptions/
+    │   │   ├── CreateInscriptionForm.tsx    # Création Centris ou hors marché
+    │   │   └── InscriptionStatusDropdown.tsx # Statut MLS verrouillé sauf override / hors marché
     │   ├── listings/
     │   │   ├── ListingsPipelineKanban.tsx   # @hello-pangea/dnd
     │   │   └── ListingsRegionFilterPanel.tsx
@@ -137,13 +190,15 @@
     │   ├── BrokerToolsDocuments.tsx # Outils courtier — documents
     │   ├── ResidenceIntelligencePanel.tsx  # Chronologie appels / courriels (onglet Intelligence)
     │   ├── vendor/                    # Accès Vendeur — portail client mobile-first
-    │   │   ├── AccesVendeurPage.tsx
+    │   │   ├── AccesVendeurPage.tsx   # Modes broker | client (?token=)
+    │   │   ├── VendorPortalSkeleton.tsx
     │   │   ├── VendorTimeline.tsx
     │   │   ├── VendorComplianceGauge.tsx
     │   │   ├── VendorDocumentDropzone.tsx
     │   │   └── VendorOfferPanel.tsx
     │   ├── residence/
-    │   │   ├── ResidenceDetail.tsx  # Coquille fiche — 8 onglets + InstitutionalResidenceTabShell
+    │   │   ├── ResidenceDetail.tsx  # Coquille fiche — 9 onglets + InstitutionalResidenceTabShell + ErrorBoundary
+    │   │   ├── ResidenceTabErrorBoundary.tsx  # Attrape crash rendu par onglet (évite écran noir)
     │   │   ├── ResidenceAccesVendeurButton.tsx  # Lien portail vendeur (parties VENDEUR)
     │   │   ├── institutional/
     │   │   │   └── InstitutionalUi.tsx   # Kit UI institutionnel (coquilles, KPI, sections)
@@ -151,16 +206,24 @@
     │   │   │   ├── ResponsibleBrokerCard.tsx   # courtiersResponsables
     │   │   │   └── PartiesIntervenantsSection.tsx
     │   │   ├── finance/
-    │   │   │   └── FinanceHubMasterPanel.tsx
+    │   │   │   ├── FinanceHubMasterPanel.tsx
+    │   │   │   ├── FinanceManualEntryPanel.tsx
+    │   │   │   └── FinancialHubDraftContext.tsx
     │   │   ├── diffusion/
+    │   │   │   ├── DiffusionWebTab.tsx
     │   │   │   └── DraftPreviewModal.tsx
+    │   │   ├── market/
+    │   │   │   ├── ResidenceAcmValuationPanel.tsx
+    │   │   │   ├── AcmTab.tsx
+    │   │   │   └── TerritorialCentrisCompetitionSection.tsx
     │   │   ├── promesse/            # Panneaux cockpit PA (tronc offre, conditions, clôture, délais, commission)
     │   │   │   ├── OffreTroncFinancierSection.tsx
     │   │   │   ├── OffreConditionsLegalesSection.tsx
     │   │   │   ├── OffreClotureRetributionSection.tsx
     │   │   │   ├── PromesseDelaisPaSection.tsx
     │   │   │   ├── PromesseCommissionPaSection.tsx
-    │   │   │   └── PaConfortPanel.tsx
+    │   │   │   ├── PaConfortPanel.tsx
+    │   │   │   └── ContractAssemblerPanel.tsx   # V3.5 — assemblage contrat + annexes (export HTML)
     │   │   ├── documents/           # Espace Documents — diligence 3 colonnes
     │   │   │   ├── DocumentsDiligenceTab.tsx
     │   │   │   ├── DocumentCategorySidebar.tsx
@@ -168,7 +231,9 @@
     │   │   │   ├── DocumentMetadataPanel.tsx
     │   │   │   ├── DocumentTabs.tsx
     │   │   │   ├── DocumentDistributionPanel.tsx
-    │   │   │   └── DocumentEmailPanel.tsx
+    │   │   │   ├── DocumentEmailPanel.tsx
+    │   │   │   ├── LegalVaultWormPanel.tsx
+    │   │   │   └── LegalVaultWormLockModal.tsx
     │   │   └── tabs/
     │   │       ├── Synthese360Tab.tsx      # Bilan 360°, notes, AudioRecorder, RaphaelMatchmakerPanel
     │   │       ├── RaphaelMatchmakerPanel.tsx
@@ -188,7 +253,7 @@
     │   │   └── FinancialReportsSection.tsx
     │   ├── mailbox/                 # Email Center — MailboxContainer (Nylas temps réel)
     │   │   ├── MailboxContainer.tsx
-    │   │   ├── MailContactLinkBar.tsx   # Phase 2 — liaison dossier client
+    │   │   ├── MailContactLinkBar.tsx
     │   │   ├── ChatWindow.tsx
     │   │   └── MessageComposer.tsx
     │   ├── market/
@@ -206,7 +271,7 @@
     │   │   ├── BuyerTierBadge.tsx
     │   │   └── ContactCriteriaDocumentsSection.tsx
     │   ├── CRM.tsx                    # Route Workhub → ContactsListPage
-    │   ├── ACM.tsx, ContentGen.tsx
+    │   ├── ACM.tsx, ContentGen.tsx    # ACM Workhub + rédacteur IA Centris / lint OACIQ
     │   ├── Drive/, Softphone/
     │   ├── GracePeriodBanner.tsx
     │   ├── SuspendedAccountScreen.tsx
@@ -214,12 +279,14 @@
     │   └── UpsellModal.tsx, RadarLockBadge.tsx
     ├── context/
     │   ├── SiloContext.tsx
-    │   ├── FinancialDataContext.tsx      # onSnapshot residences/{id}/financial/dataV2
-    │   └── ResidenceDocumentContext.tsx  # onSnapshot residences/{id}
+    │   ├── FinancialDataContext.tsx      # onSnapshot residences/{id}/financial/dataV2 (value mémoïsée)
+    │   ├── ResidenceDocumentContext.tsx  # onSnapshot residences/{id} (value mémoïsée)
+    │   └── ResidenceDataContext.tsx      # SSOT inter-onglets : prix, unités, hints finance (`useUnifiedResidence`, `useResidenceFinancialHints`)
     ├── hooks/
     │   ├── useResidences.ts
     │   ├── useGlobalFinancialBenchmark.ts
-    │   └── useListings.ts
+    │   ├── useListings.ts
+    │   └── useTerritorialCompetition.ts
     ├── lib/
     │   ├── auth.tsx
     │   ├── firebase.ts
@@ -242,13 +309,18 @@
     │   └── …
     ├── services/
     │   ├── contacts.ts              # organizations/{orgId}/contacts
+    │   ├── morningBriefingService.ts  # Briefing matin + radar off-market (dashboard)
+    │   ├── vendorPortalService.ts
+    │   ├── vendorPortalAccessService.ts  # Jetons invitation portail vendeur
     │   ├── communicationTimelineService.ts
     │   ├── residences.ts            # Queries multi-tenant residences
     │   ├── propertyDocumentsService.ts  # Upload Storage + Firestore documents/
+    │   ├── inscriptionsService.ts       # CRUD inscriptions hors marché
+    │   ├── legalVaultService.ts         # WORM organizations/{orgId}/legal_vault
+    │   ├── marketAnalyticsService.ts    # listings_cache + market_analytics_raw
     │   ├── dashboardPriorityFollowUp.ts
     │   ├── transcriptionService.ts
     │   ├── mailboxAnalysis.ts       # Lecture analyses — collectionGroup messages (SSOT)
-    │   ├── communicationTimelineService.ts
     │   ├── emailAccountService.ts
     │   ├── emailSyncService.ts
     │   ├── nylasClient.ts
@@ -273,7 +345,7 @@
 
 ## Fiche résidence — onglets (`ResidenceDetail.tsx`)
 
-Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`) sur les onglets concernés.
+Neuf onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`) sur les onglets concernés et `ResidenceTabErrorBoundary` autour de chaque rendu.
 
 | Onglet | Composant | Statut |
 |--------|-----------|--------|
@@ -284,7 +356,8 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Marché | `MarcheConcurrenceTab` | ✅ **Analyse de mise en marché (ACM)** en tête + pénétration / comparables / diagnostic territorial |
 | Documents | `DocumentsDiligenceTab` | ✅ Financier / Technique / Légal + scan + parse IA + onglets / distribution / courriel |
 | Intelligence | `ResidenceIntelligencePanel` + `IntelligenceChronologie` | ✅ Appels E-3 + courriels `email_threads/messages` + rapport vendeur |
-| Promesse | `PromesseAchatTab` + `residence/promesse/*` | ✅ Cockpit PA — `offre` + `promesseAchat` (core/transaction) |
+| Promesse | `PromesseAchatTab` + `residence/promesse/*` | ✅ Cockpit PA — `offre` + `promesseAchat` (core/transaction) + assembleur contrat V3.5 |
+| Diffusion | `DiffusionWebTab` | ✅ Publication Web, garde-fous OACIQ, filigrane hors marché |
 
 ### Hub Finance — sous-onglets (`FinanceHubTab.tsx`)
 
@@ -296,6 +369,8 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Ratios performance | `PerformanceRatiosTab` | `computePerformanceRatiosViewModel()` |
 | Vérification performance | `Analyse360FinanceTab` | `computePerformanceAudit360()` |
 
+**SSOT prix & hints finance (`d232673`) :** `ResidenceDataProvider` normalise `price` / `prixAnnonce` / `prixDemande` ; `useResidenceFinancialHints()` injecte le prix canonique dans tous les sous-onglets ; core `resolveAdmissibleOpex()` — RNE = RBE − dépenses **déclarées** (pas le normalisé seul).
+
 **Règle #0 :** le Hub Finance et l’identité consomment `@primexpert/core` — pas de moteur financier dupliqué dans l’UI. L’onglet **Synthèse** affiche une **lecture** rétribution / jalons (cascade sur champs `residences` + formatage), distincte du SSOT `financial/dataV2`.
 
 ---
@@ -305,11 +380,11 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Service | Détail |
 |---------|--------|
 | **Projet** | `primexpert-app-v2` |
-| **Hosting** | `dist/` — SPA, réécriture `**` → `index.html` |
+| **Hosting** | `dist/` — SPA, réécriture `**` → `index.html`, `no-cache` explicite sur `/workhub{,/**}` et `/acces-vendeur{,/**}` |
 | **URL prod** | https://primexpert-app-v2.web.app |
-| **Firestore** | Bases `(default)` + `ai-studio-1214d671-efd2-47da-93b7-425feb92155a` (même rules/indexes) |
+| **Firestore** | Bases `(default)` + `ai-studio-1214d671-efd2-47da-93b7-425feb92155a` (même rules/indexes) ; WORM `legal_vault`, `listings_cache`, `market_*` multi-tenant |
 | **Storage** | `primexpert/{orgId}/contacts/…` ; `primexpert/{brokerId}/properties/{id}/documents/…` ; **`primexpert/{brokerId}/market_documents/…`** |
-| **Functions** | `functions/` — Nylas, Espace Documents, **Statistiques du marché**, benchmark global |
+| **Functions** | `functions/` — Nylas, Espace Documents, **Statistiques du marché**, benchmark global, WORM, flywheel, Centris nightly |
 | **Compte de service Functions** | `250702494735-compute@developer.gserviceaccount.com` (`roles/aiplatform.user`) |
 | **Vertex AI** | `aiplatform.googleapis.com` — modèle `gemini-2.0-flash-001`, région `us-central1` |
 
@@ -320,32 +395,41 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Domaine | Fichiers |
 |---------|----------|
 | Multi-tenant résidences | `src/services/residences.ts`, `packages/core/src/tenant/`, `firestore.rules` |
-| Données financières | `src/context/FinancialDataContext.tsx`, `packages/core/src/financial/` |
+| Données financières | `src/context/FinancialDataContext.tsx`, `src/context/ResidenceDataContext.tsx`, `packages/core/src/financial/` (`capitalization.ts`, `resolveCanonicalRne.ts`) |
 | Identité immeuble | `src/context/ResidenceDocumentContext.tsx`, `packages/core/src/identity/`, `IdentiteImmeubleTab` |
-| Promesse d'achat | `PromesseAchatTab.tsx`, `src/components/residence/promesse/`, `packages/core/src/transaction/` |
+| Promesse d'achat | `PromesseAchatTab.tsx`, `src/components/residence/promesse/`, `packages/core/src/transaction/`, **`packages/core/src/forms/`** (V3.4–V3.5) |
 | Charte UI institutionnelle | `tailwind.config.js`, `src/index.css` (`@theme` / `@config`), `src/lib/institutionalTheme.ts`, `InstitutionalUi.tsx` |
-| Inscriptions (cartes, view model, Kanban DnD) | `Listings.tsx`, `listings/ListingsPipelineKanban.tsx`, `ListingInstitutionalCard.tsx`, `listingCardViewModel.ts`, `packages/core/src/residence/listingCommission.ts`, `mandateCompleteness.ts`, `quebecRegions.ts` |
+| Inscriptions (cartes, view model, Kanban DnD) | `Listings.tsx`, `inscriptions/CreateInscriptionForm.tsx`, `InscriptionStatusDropdown.tsx`, `ListingInstitutionalCard.tsx`, `listingCardViewModel.ts`, `packages/core/src/residence/listingSource.ts`, `listingCommission.ts` |
 | Messagerie ↔ CRM (Phase 2) | `MailContactLinkBar.tsx`, `emailSyncService.linkEmailThreadToContact`, `packages/core/src/mail/contactMatch.ts`, `matchedContactId` |
-| Bibliothèque marché (Statistiques du marché) | `MarketLibraryDashboard.tsx`, `marketDocumentsService.ts`, `parseMarketDocument.ts`, `injectMarketMacroStats.ts`, `marketDeduplication.ts` |
+| Bibliothèque marché (Statistiques du marché) | `MarketLibraryDashboard.tsx`, `marketDocumentsService.ts`, `parseMarketDocument.ts`, `marketPdfSlice.ts`, `injectMarketMacroStats.ts`, `marketDeduplication.ts` |
+| Analyse de mise en marché (ACM) | `AcmValuationWorkspace`, `ResidenceAcmValuationPanel`, `TerritorialCentrisCompetitionSection`, `useTerritorialCompetition`, `centrisComparableCapRate.ts`, `residenceAcmBootstrap.ts` |
+| Data Flywheel | `onTransactionConcludedTrigger.ts`, `flywheelIngestion.ts`, `internalMarketFlywheel.ts`, `sync-core-analytics-flywheel.cjs` |
+| Coffre-fort WORM | `LegalVaultWormPanel.tsx`, `LegalVaultWormLockModal.tsx`, `legalVaultService.ts`, `onVaultDocumentWrite.ts`, `vaultSpecsTypes.ts` |
 | Benchmark finance global | `getGlobalFinancialBenchmark.ts`, `useGlobalFinancialBenchmark.ts`, `globalFinancialBenchmark.ts` |
 | Billing / Chérif | `src/lib/billingAccess.ts`, `src/App.tsx`, `SuspendedAccountScreen.tsx` |
 | Rôles & essai | `src/lib/auth.tsx`, `firestore.rules` (`users`) |
 | KPIs Finance admin | `AdminSubscriptionsDashboard.tsx`, `subscriptionPricing.ts` |
 | Migration Copilote | `migrate_financial_subcollections.js` |
-| Espace Documents | `DocumentsDiligenceTab`, `propertyDocumentsService.ts`, `functions/src/documents/` |
+| Espace Documents | `DocumentsDiligenceTab`, `propertyDocumentsService.ts`, `legalVaultService.ts`, `functions/src/documents/`, `functions/src/security/` |
 | Parse IA financier | `geminiExtract.ts` + `vertexClient.ts` (ADC, pas de clé JSON en prod) |
 | Priorités tableau de bord | `dashboardPriorityFollowUp.ts`, `PriorityFollowUpList.tsx` |
 | CRM contacts | `packages/core/src/crm/`, `src/services/contacts.ts`, `src/components/contacts/` |
-| Accès Vendeur | `src/components/vendor/`, `ResidenceAccesVendeurButton.tsx`, `vendorPortalService.ts`, `vendorPortalTimeline.ts` |
+| Accès Vendeur | `AccesVendeurPage.tsx`, `vendorPortalCatalogue.ts`, `vendorPortalCompliance.ts`, `vendorPortalAccess.ts`, `ResidenceAccesVendeurButton.tsx` |
+| Briefing matin & radar | `morningBriefing.ts`, `radarOpportunitesEngine.ts`, `morningBriefingGenerator.ts`, `morningBriefingService.ts`, `Dashboard.tsx` |
+| Recherche CRM | `contactSearch.ts`, `ContactsListPage` |
 | Import contacts Maillon 1 | `legacyContactImport.ts`, `migrate-legacy-contacts-to-v2.mjs` |
 | Parties ↔ contacts | `packages/core/src/residence/partiesImpliquees.ts`, `PartiesIntervenantsSection.tsx` |
 | Chronologie omnicanale | `contactTimeline.ts`, `CommunicationTimelineFeed.tsx`, `CommunicationHub.tsx`, `ingestOmnichannelMessage.ts` |
 | Matchmaker Raphaël | `raphaelEngine.ts`, `RaphaelMatchmakerPanel.tsx`, `Synthese360Tab.tsx` |
 | Notes vocales | `voiceParser.ts`, `onVoiceNoteUploaded.ts`, `AudioRecorderButton.tsx`, `voiceNoteService.ts` |
 | VoIP Twilio | `telephony/`, `twilioVoiceService.ts`, `getTwilioToken.ts` |
+| Copilote négociation V2.6 | `negotiationEngine.ts`, `oaciqSpecsTypes.ts`, `functions/src/ai/negotiationWithVertex.ts` |
+| Après-vente closing V2.7 | `closingEngine.ts`, [`CLOSING_AND_COMPLIANCE_DRAFT.md`](./CLOSING_AND_COMPLIANCE_DRAFT.md) |
+| Rédacteur IA Centris | `ContentGen.tsx`, `@primexpert/core/narrative` |
 | Import CRM Storage | `migrateLegacyContacts.ts` — `npm run migrate:contacts` |
 | Identité — courtier responsable | `ResponsibleBrokerCard.tsx`, champ `courtiersResponsables` |
 | Hub Finance master | `FinanceHubMasterPanel.tsx`, `FinanceHubLockContext.tsx`, rapports PDF |
+| Assembleur contrat / PA (V3.5) | `ContractAssemblerPanel.tsx`, `annexeFieldSchema.ts`, `renderContractAssemblerToHtml.ts`, `@primexpert/core/forms` |
 
 ### Cloud Functions — Espace Documents
 
@@ -363,12 +447,18 @@ Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only func
 
 | Fonction | Rôle |
 |----------|------|
-| `marketDocumentParseIA` | Parse Vertex rapports marché (~100 p.) — **2 GiB**, **540 s** |
-| `injectMarketMacroStats` | Injection HITL idempotente → `market_macro_stats`, `market_analytics_raw`, `marketSnapshots/v1` |
+| `marketDocumentParseIA` | Parse Vertex rapports marché — **512 MiB**, **60 s**, slice sémantique `marketPdfSlice.ts` + cache `contentHashMd5` |
+| `injectMarketMacroStats` | Injection HITL idempotente avec `orgId` → `market_macro_stats`, `market_analytics_raw`, `marketSnapshots/v1` |
 | `getGlobalFinancialBenchmark` | Médianes régionales / portefeuille pour Hub Finance |
+
+### Cloud Functions — sécurité, Centris et flywheel
+
+| Fonction | Rôle |
+|----------|------|
+| `onVaultDocumentWrite` | Trigger Montréal `organizations/{orgId}/legal_vault/{documentId}` → journal `compliance_logs` SHA-256 |
+| `onTransactionConcludedFlywheel` | Trigger `residences/{residenceId}` → transaction anonymisée dans `market_analytics_raw` |
+| `centrisListingsSyncNightly` | Sync nocturne Centris vers `listings_cache` ; ignore `listingSource === 'off_market'` |
 
 ---
 
-| Analyse de mise en marché (ACM) | `AcmValuationWorkspace`, `ResidenceAcmValuationPanel`, `residenceAcmBootstrap.ts`, `gpsCapRateByRegionClass.ts` |
-
-*Dernière mise à jour : 2026-05-28 — CRM Storage, Matchmaker, notes vocales, hub omnicanal, VoIP parallèle.*
+*Dernière mise à jour : 2026-06-01 — PR #10 : QA RNE/TGA centralisés, WORM, flywheel, Centris, hors marché et arborescence docs-only.*

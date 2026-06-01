@@ -1,14 +1,19 @@
 # Dictionnaire canonique — données Primexpert V2
 
-Aligné sur `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2`.  
+Aligné sur `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2`.
 Les champs **serveur** (`billingStatus`, `gracePeriodStartedAt`) ne sont **pas** modifiables par le client (absents de `users` `allow update` dans `firestore.rules`).
 
-Référence alias / provenance : `packages/core/src/canonical/`.  
-**Identité Phase 4 (lecture + écriture)** : `packages/core/src/identity/` — définitions UI dans `identitySections.ts`, `buildingAuditSections.ts`, `servicesRecognition.ts`, `rentPricingGrid.ts`.  
-**Promesse d'achat (PA)** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`.  
-**Messagerie (Hub omnicanal)** : **SSOT unique** `users/{uid}/email_threads` (alias canonique `communication_threads` dans `@primexpert/core/mail`) + `messages` — Nylas, SMS Twilio, Meta ; analyse `@primexpert/core/mail` à l’écriture serveur.  
-**Diffusion Web** : `packages/core/src/diffusion/` — vendoré dans `functions/src/diffusion/_vendored/` au prebuild.  
-**CRM Contacts** : `packages/core/src/crm/` — fiche `organizations/{orgId}/contacts` ; liaisons `coBuyerIds` / `coSellerIds` ; typologie acheteur `deriveBuyerTier`.
+Référence alias / provenance : `packages/core/src/canonical/`.
+**Identité Phase 4 (lecture + écriture)** : `packages/core/src/identity/` — définitions UI dans `identitySections.ts`, `buildingAuditSections.ts`, `servicesRecognition.ts`, `rentPricingGrid.ts`.
+**Promesse d'achat (PA)** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`.
+**Assembleur contrat / formulaires natifs (V3.4–V3.5)** : `packages/core/src/forms/` — HTML sans OpenXML ; schéma parenthèses `annexeFieldSchema.ts` ; PA Actifs `paActifsTypes.ts`, `renderPaActifsToHtml.ts`.
+**Messagerie (Hub omnicanal)** : **SSOT unique** `users/{uid}/email_threads` (alias canonique `communication_threads` dans `@primexpert/core/mail`) + `messages` — Nylas, SMS Twilio, Meta ; analyse `@primexpert/core/mail` à l’écriture serveur.
+**Diffusion Web** : `packages/core/src/diffusion/` — vendoré dans `functions/src/diffusion/_vendored/` au prebuild.
+**CRM Contacts** : `packages/core/src/crm/` — fiche `organizations/{orgId}/contacts` ; liaisons `coBuyerIds` / `coSellerIds` ; typologie acheteur `deriveBuyerTier` ; **Loi 25** — `QuebecLaw25Consent` + `validateLaw25Compliance()`.
+**Après-vente (V2.7)** : `packages/core/src/market/closingEngine.ts` — tâches `source: 'closing_pipeline'` dans `residences/{id}/tasks`.
+**Copilote négociation (V2.6)** : `packages/core/src/ai/` — brouillons HITL `manualVerifications` (`kind: 'commercial_negotiation_clause'`).
+**Coffre-fort WORM (V3.0–V3.1)** : `packages/core/src/security/` — `LegalVaultDocument`, `LegalComplianceLogEntry`, règles `organizations/{orgId}/legal_vault`.
+**Analytics marché (V3.2–V3.7)** : `packages/core/src/analytics/`, `packages/core/src/market/` — ratio des dépenses d'exploitation (RDE), comparables Centris, flywheel anonymisé et TGA centralisé.
 
 ---
 
@@ -36,7 +41,7 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 | **`buyerQualificationStatus`** | string \| null | État pipeline acheteur **aplati** (pas de collection `buyerPipeline/` en V2). Valeurs : `PENDING_NDA`, `NDA_SIGNED`, `FUNDS_VERIFIED`, `QUALIFIED`. Import legacy : voir règle ci-dessous. |
 | **`buyerCriteria`** | map | Critères acheteur — voir ci-dessous |
 | **`sellerCriteria`** | map | Critères vendeur — voir ci-dessous |
-| **`communicationPreferences`** | map | `unsubscribedFromEmails`, `excludedFromMassMailing` (Loi 25 / LCAP) |
+| **`communicationPreferences`** | map | `unsubscribedFromEmails`, `excludedFromMassMailing` (Loi 25 / LCAP) ; voir **`law25Consent`** ci-dessous |
 | `legalVerification` | map | OACIQ art. 30 — identité / sollicitation |
 | **`importMeta`** | map | Import legacy — voir ci-dessous |
 | `notes` | string | Notes libres |
@@ -92,6 +97,121 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 | `primexpert/{orgId}/contacts/{contactId}/id_proofs/…` | Pièce d’identité LCI |
 | `primexpert/{orgId}/contacts/{contactId}/buyer_documents/{kind}/…` | Pièces acheteur |
 | `primexpert/{orgId}/contacts/{contactId}/seller_documents/{kind}/…` | Pièces vendeur |
+
+### Objet `communicationPreferences.law25Consent` (`QuebecLaw25Consent`)
+
+Preuve affirmative Loi 25 — requis avant envois SMS/courriel marketing omnicanal (garde-fou `ingestOmnichannelMessage` planifié).
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `smsOptIn` | bool | Consentement SMS |
+| `emailOptIn` | bool | Consentement courriel |
+| `consentGrantedTimestamp` | number | Horodatage collecte (ms) |
+| `collectedFromIpAddress` | string | Adresse IP formulaire |
+| `consentSourceForm` | string | ex. `RpaEvaluationRequestForm`, `VendorPortalSignup` |
+| `dataRetentionExpiryTimestamp` | number | Fin rétention — **6 ans** après collecte (`computeLaw25DataRetentionExpiryMillis`) |
+| `consentRevokedTimestamp` | number | optionnel — révocation |
+
+Validation : `validateLaw25Compliance(consent)` dans `contactTypes.ts`.
+
+---
+
+## Sous-collection `organizations/{orgId}/tasks/{taskId}`
+
+Tâches courtier (CRM, SMS critique, téléversement portail vendeur).
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `title` | string | Intitulé |
+| `description` | string | Détail |
+| `dueAtMillis` | number | Échéance (ms) |
+| `ownerId` | string | UID courtier assigné |
+| `status` | string | `a_faire` \| `fait` |
+| `priority` | string | optionnel |
+| `source` | string | `voice_intent`, `vendor_portal_upload`, … |
+| `residenceId` | string | optionnel |
+
+---
+
+## Document `organizations/{orgId}/morning_briefings/{brokerId}`
+
+Briefing du matin — cron `morningBriefingGenerator` (06:00 Toronto) ou recalcul client.
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `dateKey` | string | Jour `yyyy-mm-dd` |
+| `generatedAtMillis` | number | Horodatage génération |
+| `brokerId`, `orgId` | string | Contexte |
+| `criticalTasks` | array | Tâches critiques |
+| `appointments` | array | Rendez-vous |
+| `hotLeadsTop3` | array | Top 3 contacts chauds |
+
+---
+
+## Document `organizations/{orgId}/prospects_radar/{prospectId}`
+
+Radar off-market — signaux faibles (`radarOpportunitesEngine.ts`).
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `brokerId`, `orgId`, `residenceId` | string | Contexte |
+| `signalType` | string | `occupancy_drop` \| `certification_expiry` |
+| `score` | number | 0–100 |
+| `propertyLabel`, `titleFr`, `titleEn`, `summaryFr`, `summaryEn` | string | Affichage |
+| `detectedAtMillis` | number | Détection |
+
+> ID : `{residenceId}__{signalType}`.
+
+---
+
+## Collection `vendor_portal_invites/{token}`
+
+Jetons portail vendeur autonome (TTL 30 j).
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `token`, `orgId`, `contactId`, `residenceId`, `brokerId` | string | Contexte |
+| `createdAtMillis`, `expiresAtMillis` | number | Validité |
+| `active` | bool | Révoqué si `false` |
+
+**Callables :** `createVendorPortalInvite` · `validateVendorPortalToken` (+ `customToken` Auth).
+
+---
+
+## Collection `organizations/{orgId}/legal_vault/{documentId}`
+
+Coffre-fort légal WORM — documents OACIQ verrouillables une seule fois. Règles Firestore : lecture/création par membre de l'organisation, update uniquement pour la transition `isFinalWormLocked: false → true`, suppression interdite.
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `documentId` | string | ID déterministe, généralement `{propertyId}__{propertyDocumentId}` |
+| `documentType` | string | `CONTRAT_COURTAGE` \| `PROMESSE_ACHAT` \| `FICHE_DESCRIPTIVE` \| `ACM_REPORT` |
+| `storageUrl` | string | URL Storage du document archivé |
+| `isFinalWormLocked` | bool | `false` brouillon ; `true` verrou WORM final, non réversible |
+| `createdAtMillis` | number | Création brouillon |
+| `lockedAtMillis` | number | Horodatage verrou final |
+| `lastWriteClientIp` | string | IP client captée lors du verrouillage (`0.0.0.0` si indisponible) |
+| `brokerId` | string | UID courtier responsable |
+| `orgId` | string | Organisation propriétaire |
+| `propertyId` | string | Résidence liée |
+| `propertyDocumentId` | string | Document diligence source (`residences/{id}/documents/{documentId}`) |
+| `oaciqRetentionExpiryTimestamp` | number | Fin de conservation stricte OACIQ (2190 jours) |
+| `metadataFieldsCrossChecked` | map | `{ contractPrice, validatedLicenseName, licenseType }` validés dans la modale LCI |
+
+### Sous-collection `organizations/{orgId}/legal_vault/{documentId}/compliance_logs/{entryId}`
+
+Journal de conformité append-only par Admin SDK (`onVaultDocumentWrite`) ; écriture client interdite.
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `entryId` | string | ID entrée |
+| `userId` | string | UID auteur / serveur |
+| `userRole` | string | `COURTIER` \| `ADJOINT` \| `DIRIGEANT` \| `SUPPORT` |
+| `actionType` | string | `READ` \| `WRITE` \| `LOCK` \| `EXPORT_ZIP` |
+| `targetDocumentId` | string | Document vault visé |
+| `timestampMillis` | number | Horodatage |
+| `clientIpAddress` | string | Adresse IP consignée |
+| `integrityHash` | string | SHA-256 du payload canonique + hash précédent |
 
 ---
 
@@ -203,12 +323,16 @@ Document racine — **SSOT onglet Identité** (`ResidenceDocumentContext`) + Rad
 |--------|------|-------------|
 | **`courtiersResponsables`** | string | **UID courtier propriétaire** (clé multi-tenant) |
 | `address`, `city` | string | Adresse affichée |
-| `price` / `prixDemande` | number | Prix demandé (priorité finance V2) |
+| `price` / `prixDemande` | number | Prix demandé — **SSOT lecture** : `getListingPrice()` (`price` prime sur `prixAnnonce` legacy) via `ResidenceDataContext` |
+| `prixAnnonce` | number | Miroir legacy Copilote — **ne pas utiliser seul** pour Hub Finance si `price` présent |
 | `askingPrice` | number | Alias / miroir prix demandé (cartes inscriptions, Synthèse) |
 | **`residenceName`**, `commercialName`, `nomCommercial`, `nom_commercial`, `name` | string | Nom commercial affiché (cartes inscriptions, mapping `mapCommercialName`) |
 | **`commissionRate`**, `tauxCommission`, `commissionPct` | number | Taux commission (%) — lecture UI rétribution / inscriptions |
 | **`potentialRevenue`**, `revenuPotentiel`, … | number | Revenu potentiel affiché si présent ; sinon dérivé `prix × taux` côté affichage |
 | **`status`** | string | `prospect`, `mandate`, `promise`, `expired`, `unsigned`, `sold` — **ne pas renommer** |
+| **`listingSource`** | string | `centris` \| `off_market` ; défaut historique `centris` |
+| **`isManuallyOverridden`** | bool | Verrou courtier : empêche le statut MLS descendant d'écraser la fiche |
+| **`internalFlywheelIngestion`** | map | Marqueurs idempotence flywheel (`promiseAtMillis`, `soldAtMillis`) |
 | **`region`** | string | Région administrative Québec (filtre inscriptions — `QUEBEC_REGIONS`) |
 | **`prixAccepte`** | number | Prix accepté (promesse) — requis pour glisser vers colonne `promise` (DnD Kanban) |
 | **`contratCourtage`** | map | Mandat courtage — complétude OACIQ (`mandateCompleteness.ts`) |
@@ -489,6 +613,15 @@ Effet : `shouldShowRaphaelForField()` retourne `false` pour ce `fieldId` précis
 
 Normalisation : `normalizeFinancialData()` → source `calculatedResults` | `derivedData` | `none`, avec **fail-safe RBE** depuis `tarificationLoyers` si revenus absents.
 
+**Règles SSOT lecture (`d232673`) — ne pas recalculer dans React :**
+
+| Règle | Module core |
+|-------|-------------|
+| Prix affiché / emprunt / MFR | `getListingPrice()` + `syncCalcWithCanonicalListingPrice()` — ignore `calculatedResults.prixDemande` figé (ex. 3,5 M$) |
+| RNE canonique | `resolveAdmissibleOpex()` — **`depensesTotales` déclaré** prioritaire ; RNE = RBE − OPEX déclaré (pas le normalisé seul) |
+| Hints UI inter-onglets | `ResidenceDataContext` → `useResidenceFinancialHints()` → `buildResidenceFinancialHints()` |
+| Étalon QA | 198 chemin du Roy : 2 558 000 $ · RBE 1 129 749 $ · dépenses 600 260 $ · **RNE 529 489 $** · **TGA 20,70 %** |
+
 ### Sous-collection `residences/{id}/documents/{documentId}`
 
 **SSOT Espace Documents** — UI `DocumentsDiligenceTab`, listener temps réel par fiche.
@@ -509,6 +642,9 @@ Normalisation : `normalizeFinancialData()` → source `calculatedResults` | `der
 | **`extractedData`** | map | — | JSON structuré Vertex : `amounts`, `dates`, `taxes`, `revenus`, `depenses`, `annee` |
 | `parsedAtMillis` | number | optionnel | Fin d’analyse IA |
 | **`parsingError`** | string | optionnel | Message d’échec (tronqué 500 car.) si `failed` |
+| **`uploadSource`** | string | optionnel | `vendor_portal` \| `broker` |
+| **`vendorPortalTypeId`** | string | optionnel | ID catalogue `vendorPortalCatalogue.ts` |
+| **`vendorPortalLabelFr`** | string | optionnel | Libellé portail vendeur |
 
 #### Chemins Storage
 
@@ -549,9 +685,16 @@ Téléchargement client : autorisé **uniquement** si `virusScanStatus === 'clea
 | `drive_documents/{id}` | `courtiersResponsables` | Drive OACIQ — **delete interdit** |
 | `organizations/{orgId}` | `orgId` | Agence |
 | **`organizations/{orgId}/contacts`** | `ownerId` + `visibility` | Répertoire CRM LCI (SSOT parties) |
+| **`organizations/{orgId}/legal_vault`** | `orgId` | Coffre-fort WORM OACIQ ; verrou final non réversible |
+| **`organizations/{orgId}/legal_vault/{documentId}/compliance_logs`** | `orgId` | Journal SHA-256 append-only (Admin SDK) |
+| **`organizations/{orgId}/morning_briefings/{brokerId}`** | `brokerId` | Briefing du matin (cron 06:00 Toronto) |
+| **`organizations/{orgId}/prospects_radar/{id}`** | `brokerId` | Radar off-market — signaux faibles |
+| **`organizations/{orgId}/tasks`** | `ownerId` | Tâches courtier (org-wide) |
+| **`vendor_portal_invites/{token}`** | `brokerId` | Jetons portail vendeur autonome (30 j) |
 | **`market_documents/{docId}`** | `uploadedBy` | Vault rapports marché (Statistiques du marché — Workhub) |
-| **`market_macro_stats/{fingerprint}`** | — | Stats macro validées (écriture serveur `injectMarketMacroStats`) |
-| **`market_analytics_raw/{fingerprint}`** | — | Transactions comparables & ratios anonymisés (écriture serveur) |
+| **`market_macro_stats/{fingerprint}`** | `orgId` | Stats macro validées (écriture serveur `injectMarketMacroStats`) |
+| **`market_analytics_raw/{fingerprint}`** | `orgId` si disponible ; anonymisé côté flywheel | Transactions comparables & ratios anonymisés (écriture serveur) |
+| **`listings_cache/{entryId}`** | lecture authentifiée | Cache Centris Matrix (Admin SDK seulement) pour comparables territoriaux |
 | **`marketSnapshots/v1`** | — | Agrégat lecture macro + transactions + benchmarks (merge dédupliqué) |
 | **`market_financial_benchmarks/{entryId}`** | — | Médianes régionales benchmark Hub Finance (lecture client, écriture serveur) |
 
@@ -562,6 +705,7 @@ Collection **top-level** (pas sous `organizations/`).
 | Champ | Type | Description |
 |--------|------|-------------|
 | `uploadedBy` | string | UID courtier propriétaire |
+| `orgId` | string | Organisation ; obligatoire pour nouveaux uploads multi-tenant |
 | `uploadedAtMillis` | number | Horodatage téléversement (index composite) |
 | `fileName` | string | Nom fichier |
 | `mimeType` | string | `application/pdf` |
@@ -574,6 +718,14 @@ Collection **top-level** (pas sous `organizations/`).
 | `extractedData` | map | Extraction omnivore Vertex — `macroTrends`, `comparableTransactions`, `operationalBenchmarks` (@primexpert/core/documents) |
 | `isValidated` | bool | HITL complété |
 | `validatedAtMillis` | number | Horodatage validation / injection |
+| `contentHashMd5` | string | Empreinte binaire du PDF ; index pour cache de parse |
+| `parseCacheHit` | bool | `true` si extraction clonée depuis un document déjà parsé |
+| `cacheSourceDocumentId` | string | ID source de l'extraction clonée |
+| `originalPageCount` | number | Nombre de pages PDF avant découpage |
+| `semanticPageCount` | number | Nombre de pages envoyées à Vertex |
+| `semanticHit` | bool | `true` si le slice a trouvé des pages à ancrages métier |
+
+Variables d'extraction ajoutées à `extractedData` si présentes dans le PDF : `tgaPct`, `population75_plus`, `monthsOfInventory`, `sellingPriceListingPriceRatio`, `operatingExpenseRatio`, `operatingExpenseRatioValidation`, `assetClassHint`.
 
 ### Document `market_macro_stats/{fingerprint}`
 
@@ -585,6 +737,7 @@ Collection **top-level** (pas sous `organizations/`).
 | `anneeDonnees` | number | Année de référence |
 | `tauxPenetration`, `coutRemplacementNeuf`, … | mixed | Données macro extraites |
 | `marketDocumentId` | string | Provenance vault |
+| `orgId` | string | Organisation injectrice (nouveaux enregistrements) |
 | `injectedAtMillis` | number | Horodatage injection |
 | `validatedBy` | string | UID courtier |
 
@@ -593,6 +746,8 @@ Collection **top-level** (pas sous `organizations/`).
 | Champ | Type | Description |
 |--------|------|-------------|
 | **`dedupeFingerprint`** | string | ID document = empreinte transaction ou benchmark |
+| `orgId` | string | Organisation d'origine si applicable ; absent/purgé pour certains enregistrements anonymisés |
+| `dataSource` | string | `market_report` implicite ou `internal_flywheel` pour le flywheel |
 | `siloType` | string | ex. `rpa_ri_chsld` |
 | `regionAdministrative` | string | Région |
 | `anneeDonnees` | number | Année |
@@ -605,6 +760,23 @@ Collection **top-level** (pas sous `organizations/`).
 | `validatedBy` | string | UID courtier |
 
 > **Anti-doublons :** réinjection du même PDF ou rapports chevauchants → `set(..., { merge: true })` sur l'ID empreinte ; pas de `add()` aveugle. Legacy : `packages/core/src/market/marketDeduplication.ts` (adresse normalisée + prix + date ±3 jours pour détection UI).
+
+### Document `listings_cache/{entryId}`
+
+Cache Centris Matrix alimenté serveur, lecture client authentifiée seulement ; écriture client interdite dans `firestore.rules`.
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `source` | string | `centris_odata` |
+| `centrisListingId` | string | Numéro inscription / MLS |
+| `canonicalPreview` | map | Aperçu normalisé (`prixVente`, `prixDemande`, `regionAdministrative`, `classeImmeuble`, `financials`, etc.) |
+| `financials` | map | `revenuBrutEffectif`, `depensesExploitation`, RNE si disponible |
+| `closedAtMillis` | number | Date vente/clôture utilisée pour tri récence |
+| `modificationTimestamp`, `receivedAt` | timestamp/string | Horodatages source |
+| `regionAdministrative` | string | Région Québec normalisée |
+| `classeImmeuble` | string | Classe RPA / actif pour médiane TGA |
+
+Lecture ACM : `marketAnalyticsService.ts` fusionne `listings_cache` et `market_analytics_raw` via `mergeCentrisTerritorialComparables()` ; le taux de capitalisation (TGA) est recalculé par `calculateComparableCapRate()`.
 
 ### ~~Document `organizations/…/market_documents`~~
 
@@ -649,11 +821,21 @@ Collection **top-level** (pas sous `organizations/`).
 | Webhooks SMS / Meta | `twilioSmsWebhook`, `metaMessagingWebhook` (`northamerica-northeast1`) |
 | Note vocale — Functions | `onVoiceNoteUploaded` (trigger Storage ; STT Whisper ou Gemini) |
 | Matchmaker Raphaël | `packages/core/src/crm/raphaelEngine.ts` + `Synthese360Tab` |
+| Portail vendeur — catalogue 85 pièces | `vendorPortalCatalogue.ts`, `vendorPortalCompliance.ts`, `vendorPortalAccess.ts` |
+| Briefing matin & radar | `morningBriefing.ts`, `radarOpportunitesEngine.ts`, `morningBriefingService.ts`, `morningBriefingGenerator.ts` |
+| Recherche CRM multi-critères | `contactSearch.ts`, `filterContactsBySearchQuery` |
+| Loi 25 consentement contact | `QuebecLaw25Consent`, `validateLaw25Compliance`, `communicationPreferences.law25Consent` |
+| Après-vente closing | `closingEngine.ts`, `CLOSING_TASK_CODES` |
+| Copilote négociation | `negotiationEngine.ts`, `oaciqSpecsTypes.ts`, `generateNegotiationClauseWithGemini` |
 | Courtier responsable inscription | `ResponsibleBrokerCard.tsx`, `courtiersResponsables` |
 | Liaison messagerie ↔ CRM | `matchedContactId`, `linkEmailThreadToContact`, `contactMatch.ts`, `MailContactLinkBar.tsx` |
 | Inscriptions Kanban DnD | `ListingsPipelineKanban.tsx`, `pipelineDragRules.ts`, `updateResidencePipelineStatus` |
-| Bibliothèque marché | `marketDocumentsService.ts`, `parseMarketDocument.ts`, `injectMarketMacroStats.ts`, `MarketLibraryDashboard.tsx`, `marketDeduplication.ts` |
+| Inscriptions hors marché | `CreateInscriptionForm.tsx`, `InscriptionStatusDropdown.tsx`, `inscriptionsService.ts`, `listingSource.ts`, `centrisListingsSyncNightly.ts` |
+| Coffre-fort WORM | `legalVaultService.ts`, `LegalVaultWormPanel.tsx`, `onVaultDocumentWrite.ts`, `vaultSpecsTypes.ts`, `firestore.rules` |
+| Bibliothèque marché | `marketDocumentsService.ts`, `parseMarketDocument.ts`, `marketPdfSlice.ts`, `injectMarketMacroStats.ts`, `MarketLibraryDashboard.tsx`, `marketDeduplication.ts` |
+| Data Flywheel & Centris | `onTransactionConcludedTrigger.ts`, `flywheelIngestion.ts`, `internalMarketFlywheel.ts`, `marketAnalyticsService.ts`, `centrisComparableCapRate.ts` |
 | Anti-doublons Big Data | `marketTransactionFingerprint`, `marketMacroRegionFingerprint`, empreintes Firestore merge |
+| Assembleur contrat V3.5 | `annexeFieldSchema.ts`, `renderContractAssemblerToHtml.ts`, `ContractAssemblerPanel.tsx` |
 
 ---
 
@@ -720,6 +902,27 @@ Sous-collection documents PA : `residences/{id}/documents` (filtre type promesse
 
 ---
 
+## Assembleur de contrat — état UI (V3.5 — éphémère client)
+
+**SSOT rendu :** `@primexpert/core/forms` — **non persisté Firestore en V3.5** (export HTML navigateur uniquement).
+
+### Objet `ContractAssemblerFieldState` (TypeScript — panneau)
+
+| Bloc | Champs | Description |
+|------|--------|-------------|
+| `selection` | `contratCourtage`, `annexePrix`, `annexeG`, `annexeR`, `promesseActifs` | bool — pièces incluses dans le dossier HTML |
+| `annexePrix` | `nouveauPrixNumerique` | number — zone `(       $ )` |
+| `annexeR` | `retributionPct` | number — zone `(       % )` |
+| `annexeG` | `ccvReference` | string — zone `CCV-     ` |
+
+**Defaults :** `buildContractAssemblerDefaults()` — prix annexe depuis revenu net d'exploitation (RNE) ÷ taux de capitalisation global (TGA) ACM (`resolveCanonicalRne`, `bootstrapResidenceAcm`).
+
+**UI :** `ContractAssemblerPanel.tsx` dans onglet Promesse — consomme `residence`, `residenceDoc`, `financial/dataV2`.
+
+**Persistance planifiée (été 2026) :** sous-objet optionnel `residences/{id}.contractAssembler` ou doc dédié — hors scope commit `63286dc`.
+
+---
+
 ## Sous-collection `residences/{id}/notes/{noteId}`
 
 Notes courtier (diligence) — écoute temps réel dans l’onglet Synthèse ; tri `orderBy('createdAt', 'desc')`.
@@ -739,7 +942,7 @@ Lors de l’ajout d’une note : mise à jour document racine `lastCommunication
 
 ### Sous-collection `residences/{id}/tasks/{taskId}`
 
-Tâches et rendez-vous courtier (Synthèse 360°) ; création auto depuis note vocale si intention détectée.
+Tâches et rendez-vous courtier (Synthèse 360°) ; création auto depuis note vocale ou pipeline closing V2.7.
 
 | Champ | Type | Description |
 |--------|------|-------------|
@@ -748,8 +951,12 @@ Tâches et rendez-vous courtier (Synthèse 360°) ; création auto depuis note v
 | `dueAtMillis` | number | Échéance (ms) |
 | `kind` | string | `task` \| `appointment` |
 | `status` | string | `a_faire` \| `fait` |
-| **`source`** | string | `voice_intent` si créée par pipeline note vocale |
+| **`source`** | string | `voice_intent` \| **`closing_pipeline`** |
 | **`voiceUploadId`** | string | Lien note vocale source |
+| **`closingPackId`** | string | Idempotence pack closing (`closingRunId`) — V2.7 |
+| **`closingTaskCode`** | string | `CLOSING_RPA_DOSSIER_HYPOTHEQUE` \| `CLOSING_SUIVI_INSPECTION` \| `CLOSING_ENVOI_NOTAIRE` |
+| **`priority`** | string | `high` \| `normal` |
+| **`orgId`** | string | Organisation |
 
 ### Storage — notes vocales & documents contact
 
@@ -791,6 +998,17 @@ Tâches et rendez-vous courtier (Synthèse 360°) ; création auto depuis note v
 
 **UI éditable (non persisté automatiquement sur le doc)** : TGA cible (%) et pénétration RPA 75+ (%) dans `AcmValuationWorkspace` — recalcul client uniquement jusqu’à action d’enregistrement explicite future.
 
+### Brouillons HITL — `manualVerifications` (UI ACM / négociation)
+
+État client éphémère ou persisté sur fiche — validation humaine avant application.
+
+| Contexte | `kind` | SSOT |
+|----------|--------|------|
+| Suggestions prix ACM | `pricingSuggestions[]` | `AcmValuationWorkspace.tsx` — statut `pending_human_review` |
+| Copilote négociation V2.6 | `commercial_negotiation_clause` | `negotiationEngine.ts`, `oaciqSpecsTypes.ts` |
+
+Modes négociation : `OACIQ_FORM`, `CUSTOM_CONTRACT`, `LETTER_OF_INTENT`.
+
 ---
 
-*Dernière mise à jour : 2026-05-28 — Hub omnicanal (`email_threads` + `channel`), notes vocales, Matchmaker Raphaël, migration CRM Storage, VOIP Twilio (parallèle).*
+*Dernière mise à jour : 2026-06-01 — PR #10 : legal_vault, listings_cache, market_* multi-tenant, flywheel, hors marché et RNE/TGA centralisés.*
