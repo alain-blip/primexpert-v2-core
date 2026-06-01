@@ -8,6 +8,7 @@ import {
   EXPENSE_KEYS,
   mergeExtractedIntoFinancialDataV2,
   recomputeFinancialCalculatedResults,
+  computeTgaRatioFromRneAndPrice,
   sumNormalizedOperatingExpenses,
   type FinancialBaseData,
   type FinancialDataV2Doc,
@@ -85,11 +86,7 @@ export async function saveExpenseAdjustmentsToFinancial(
     (financialData.calculatedResults as Record<string, unknown> | undefined)?.prixDemande
   );
   const tauxCapitalisation =
-    revenuNetExploitation != null &&
-    revenuNetExploitation > 0 &&
-    prixDemande > 0
-      ? revenuNetExploitation / prixDemande
-      : undefined;
+    computeTgaRatioFromRneAndPrice(revenuNetExploitation, prixDemande) ?? undefined;
 
   const docRef = doc(db, 'residences', residenceId, 'financial', 'dataV2');
   await setDoc(
