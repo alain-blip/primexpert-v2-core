@@ -8,6 +8,8 @@
 
 import { safeNum } from './safeNumbers';
 
+export const DEFAULT_RPA_CAPITALIZATION_RATE = 0.085;
+
 export function normalizeCapitalizationRate(value: unknown): number | null {
   const n = safeNum(value);
   if (n == null || n <= 0) return null;

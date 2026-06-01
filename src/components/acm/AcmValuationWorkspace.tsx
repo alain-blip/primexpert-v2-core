@@ -51,6 +51,7 @@ import {
   safeRatioDecimal,
   type CertifiableReportBrokerFooter,
   type FinancialDataV2Doc,
+  type ResidenceFinancialHints,
   type TerritorialAcmMedians,
 } from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
@@ -400,7 +401,7 @@ export function AcmValuationWorkspace({
         residenceId: pdfExport.residenceId,
         residenceAddress: pdfExport.residenceAddress,
         financialData: pdfExport.financialData,
-        residence: pdfExport.residence,
+        residence: pdfExport.residence as unknown as ResidenceFinancialHints,
         effectiveCapRate,
         recommendedPrice,
         sellerNarrative: narrative?.signedReading ?? null,
@@ -814,7 +815,8 @@ export function AcmValuationWorkspace({
                 )}
               </p>
               <p className={`text-sm ${ACM_METRIC_VALUE_CLASS}`}>
-                {(tgaAdjustment.baseTga * 100).toFixed(2)} % → {(tgaAdjustment.finalTga * 100).toFixed(2)} %
+                {normalizeCapitalizationRatePercent(tgaAdjustment.baseTga)?.toFixed(2) ?? '—'} % →{' '}
+                {normalizeCapitalizationRatePercent(tgaAdjustment.finalTga)?.toFixed(2) ?? '—'} %
               </p>
             </div>
           ) : null}
@@ -830,8 +832,8 @@ export function AcmValuationWorkspace({
               </p>
               <p className={`text-lg ${ACM_METRIC_VALUE_CLASS}`}>
                 {t(
-                  'Prix recommandé (revenu net d’exploitation (RNE) ÷ taux de capitalisation global (TGA) cible)',
-                  'Recommended price (net operating income (NOI) ÷ target global cap rate)'
+                  'Prix recommandé (moteur financier partagé)',
+                  'Recommended price (shared financial engine)'
                 )}{' '}
                 : {formatCurrency(recommendedPrice)}
               </p>

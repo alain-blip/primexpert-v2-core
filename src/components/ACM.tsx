@@ -34,6 +34,11 @@ import {
   type SellerNarrativeDecision,
   type ResidenceFinancials,
 } from '@primexpert/core/narrative';
+import {
+  normalizeCapitalizationRate,
+  normalizeCapitalizationRatePercent,
+  safeRatioDecimal,
+} from '@primexpert/core/financial';
 
 interface SimpleForm {
   askingPrice: number;
@@ -64,10 +69,10 @@ function buildInputs(form: SimpleForm, targetCapRateOverride?: number): Valuatio
     units: form.units,
     potentialRevenue: form.potentialRevenue,
     otherIncome: form.otherIncome,
-    vacancyRate: form.vacancyRate / 100,
+    vacancyRate: safeRatioDecimal(form.vacancyRate, 0),
     operatingExpenses: { total: form.operatingExpensesTotal },
     customExpenses: [],
-    targetCapRate: targetCapRateOverride ?? form.targetCapRate / 100,
+    targetCapRate: targetCapRateOverride ?? normalizeCapitalizationRate(form.targetCapRate) ?? 0,
     valuationMode: 'acm_unified_cap',
     weights: { capRate: 1, mrb: 0, mrn: 0, pricePerUnit: 0 },
   });
@@ -115,11 +120,11 @@ export function ACM() {
     setRecommendedPrice(null);
     setStressSummary(null);
     try {
-      let adjustedCap = form.targetCapRate / 100;
+      let adjustedCap = normalizeCapitalizationRate(form.targetCapRate) ?? 0;
       if (form.penetrationRatePct > 0) {
         const adj = computeTgaAdjustment({
           baseTga: adjustedCap,
-          tauxPenetrationRPA: form.penetrationRatePct / 100,
+          tauxPenetrationRPA: safeRatioDecimal(form.penetrationRatePct, 0),
           nombreUnites: form.units,
         });
         adjustedCap = adj.finalTga;
@@ -129,7 +134,7 @@ export function ACM() {
       const out = calculateValuation(inputs);
       setResult(out);
 
-      const occupancy = Math.max(0.01, 1 - form.vacancyRate / 100);
+      const occupancy = Math.max(0.01, 1 - safeRatioDecimal(form.vacancyRate, 0));
       const capRange = capRateRangeFromMedian(adjustedCap);
       const stress = runStressTests(out.noiAccounting, occupancy, capRange);
       const baseline = selectBaselineStressTest(occupancy, stress);
@@ -173,7 +178,7 @@ export function ACM() {
     selectSellerNarrative(
       financials,
       DEFAULT_MARKET_BENCHMARKS,
-      { capRateMedian: form.targetCapRate / 100 },
+      { capRateMedian: normalizeCapitalizationRate(form.targetCapRate) ?? 0 },
       { narrativeMode: 'RULES' }
     )
       .then((decision) => {
@@ -194,8 +199,9 @@ export function ACM() {
 
   const ratios = useMemo(() => {
     if (!result) return null;
+    const impliedCapRatePct = normalizeCapitalizationRatePercent(result.capRateImpliedAtAsking);
     return [
-      { label: t('Taux de capitalisation implicite (TGA)', 'Implied capitalization rate (cap rate)'), value: result.capRateImpliedAtAsking !== undefined ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%` : '—' },
+      { label: t('Taux de capitalisation implicite (TGA)', 'Implied capitalization rate (cap rate)'), value: impliedCapRatePct != null ? `${impliedCapRatePct.toFixed(2)}%` : '—' },
       { label: t('Multiple du revenu brut réel (MRB)', 'Actual gross rent multiplier (GRM)'), value: result.actualMrbAtAsking.toFixed(2) },
       { label: t('Ratio de couverture du service de la dette (DSCR)', 'Debt service coverage ratio (DSCR)'), value: result.dscrAtAsking.toFixed(2) },
       { label: t('Revenu net d’exploitation comptable (RNE)', 'Accounting net operating income (NOI)'), value: formatCurrency(result.noiAccounting, { maxDecimals: 2 }) },
@@ -338,7 +344,8 @@ export function ACM() {
                 {t('Ajustement TGA — pénétration & taille', 'Cap rate adjustment — penetration & size')}
               </p>
               <p className="text-sm font-bold text-white">
-                {(tgaAdjustment.baseTga * 100).toFixed(2)} % → {(tgaAdjustment.finalTga * 100).toFixed(2)} %
+                {normalizeCapitalizationRatePercent(tgaAdjustment.baseTga)?.toFixed(2) ?? '—'} % →{' '}
+                {normalizeCapitalizationRatePercent(tgaAdjustment.finalTga)?.toFixed(2) ?? '—'} %
               </p>
               <ul className="text-[11px] text-blue-100 space-y-1">
                 {tgaAdjustment.rationale.slice(0, 3).map((line) => (
@@ -358,7 +365,7 @@ export function ACM() {
                 {formatCurrency(stressSummary.occ100)}
               </p>
               <p className="text-lg font-black text-emerald-300">
-                {t('Prix recommandé (RNE ÷ TGA cible)', 'Recommended price (NOI ÷ target cap rate)')} :{' '}
+                {t('Prix recommandé (moteur financier partagé)', 'Recommended price (shared financial engine)')} :{' '}
                 {formatCurrency(recommendedPrice)}
               </p>
             </div>
