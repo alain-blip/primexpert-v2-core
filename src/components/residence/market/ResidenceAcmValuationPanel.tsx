@@ -81,11 +81,12 @@ export function ResidenceAcmValuationPanel({
   const pdfExport = useMemo(() => {
     if (!financialData) return undefined;
     const addressParts = [residenceLive.address, residenceLive.city].filter(Boolean);
+    const locale: 'fr' | 'en' = language === 'fr' ? 'fr' : 'en';
     return {
       residenceId: residenceLive.id,
       residenceAddress: addressParts.length ? addressParts.join(', ') : undefined,
       broker: buildBrokerFooterFromProfile(profile),
-      locale: language === 'fr' ? 'fr' : 'en',
+      locale,
       financialData: financialData as FinancialDataV2Doc,
       residence: residenceLive as unknown as ResidenceFinancialHints,
     };
