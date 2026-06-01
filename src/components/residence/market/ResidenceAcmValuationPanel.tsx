@@ -85,7 +85,7 @@ export function ResidenceAcmValuationPanel({
       residenceId: residenceLive.id,
       residenceAddress: addressParts.length ? addressParts.join(', ') : undefined,
       broker: buildBrokerFooterFromProfile(profile),
-      locale: (language === 'fr' ? 'fr' : 'en') as const,
+      locale: language === 'fr' ? 'fr' : 'en',
       financialData: financialData as FinancialDataV2Doc,
       residence: residenceLive as unknown as ResidenceFinancialHints,
     };
