@@ -48,6 +48,12 @@ export function safeNum(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Nombre strictement positif, après normalisation numérique fail-safe. */
+export function safePositiveNum(value: unknown): number | null {
+  const n = safeNum(value);
+  return n != null && n > 0 ? n : null;
+}
+
 /** Taux ou ratio en % (ex. 6.5, « 6,5 % », 0.065) → nombre en points de pourcentage (6.5). */
 export function safeRatePercent(value: unknown, fallbackPct: number): number {
   const n = safeNum(value);
