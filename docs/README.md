@@ -53,6 +53,10 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 13. **Statistiques du marché** — Vault `market_documents` ; injection idempotente vers `market_analytics_raw` / `market_macro_stats` (`marketDeduplication.ts`).
 14. **Analyse de mise en marché (ACM)** — Fiche résidence, onglet Marché : bootstrap `residenceAcmBootstrap.ts`, workspace `AcmValuationWorkspace`, TGA médian GPS par région/classe, recalcul live.
 15. **VoIP** (parallèle) — Twilio Voice SDK ; `packages/core/src/telephony/`, Functions `getTwilioToken` / `twilioVoiceResponse`.
+16. **Portail vendeur autonome** — Jetons `vendor_portal_invites` (TTL 30 j), custom claims vendeur, catalogue documentaire 82 types canoniques + 3 hors liste.
+17. **Briefing matin & radar off-market** — Cron `morningBriefingGenerator` (06:00 America/Toronto) ; collections `organizations/{orgId}/morning_briefings` et `prospects_radar`.
+18. **Négociation OACIQ / LOI** — `@primexpert/core/ai` génère uniquement des brouillons HITL `pending_human_review` ; Vertex serveur et Gemini navigateur.
+19. **Closing PA acceptée** — `@primexpert/core/market/closingEngine.ts` prépare 3 tâches idempotentes `source: 'closing_pipeline'` sous `residences/{id}/tasks`.
 
 ---
 
@@ -74,8 +78,9 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 |--------|-------|------|
 | **Mes inscriptions** | `Listings.tsx` | Pipeline Kanban 4 colonnes, DnD, filtres régions |
 | **CRM** | `ContactsListPage` | `organizations/{orgId}/contacts` ; Matchmaker dans Bilan 360° |
-| **Accès Vendeur** | `/acces-vendeur` · bouton fiche résidence | `vendorPortalTimeline`, `vendorPortalService`, contact VENDEUR lié |
+| **Accès Vendeur** | `/acces-vendeur` · bouton fiche résidence · lien public `?token=` | `vendorPortalTimeline`, catalogue 85 lignes UI, contact VENDEUR lié, invitations serveur |
 | **Messagerie** | `MailboxContainer` + `CommunicationHub` | `email_threads` / `messages` — courriel, SMS, Meta |
+| **Briefing matin / radar** | `Dashboard.tsx` | `morningBriefingService`, `morningBriefingGenerator`, signaux off-market |
 | **Statistiques du marché** | `MarketLibraryDashboard` | `market_documents`, parse Vertex, injection HITL |
 | **Paramètres** | `Settings.tsx` | Profil, comptes courriel, Finance (admin_system) |
 
@@ -110,15 +115,15 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 
 | Onglet | Statut |
 |--------|--------|
-| Synthèse | ✅ Bilan, rétribution, C-73.2, notes, **note vocale** (`AudioRecorderButton`), **Matchmaker Raphaël** |
+| Synthèse | ✅ Bilan, rétribution, C-73.2, notes, **note vocale** (`AudioRecorderButton`), **Matchmaker Raphaël**, prix demandé/commissions éditables |
 | Identité | ✅ Édition inline Confort 66+ ; courtier responsable |
 | Finances (Hub 5 sous-onglets) | ✅ + benchmark global |
 | Déclaration | ✅ Questionnaire OACIQ |
 | Marché | ✅ **Analyse de mise en marché (ACM)** (SSOT finances + TGA GPS) + concurrence territoriale |
-| Documents | ✅ Scan + parse Vertex + distribution |
+| Documents | ✅ Scan + parse Vertex + distribution + métadonnées portail vendeur (`vendorPortalTypeId`, `uploadSource`) |
 | Intelligence | ✅ Chronologie + **`CommunicationHub`** (SMS / Meta / courriel) |
-| Accès Vendeur (depuis fiche) | ✅ Portail vendeur — timeline, conformité mandat, pièces |
-| Promesse | ✅ Cockpit PA (`offre` SSOT) |
+| Accès Vendeur (depuis fiche) | ✅ Portail vendeur autonome — jeton 30 j, timeline, conformité catalogue, pièces |
+| Promesse | ✅ Cockpit PA (`offre` SSOT) + date notaire prévue + moteur closing core |
 
 **Tableau de bord :** priorités KISS (J+3 / J+5 / J+7).
 
@@ -132,4 +137,4 @@ Copie possible sur disque de sauvegarde (`00_PRIMEXPERT_SYSTEME_APP/docs/` ou vo
 
 ---
 
-*Index mis à jour : 2026-05-28 — CRM Storage, notes vocales, hub omnicanal, Matchmaker, VoIP/finance parallèle.*
+*Index mis à jour : 2026-06-01 — alignement documentaire groupé sur V2.8/V2.9 : portail vendeur autonome, briefing/radar, négociation OACIQ/LOI, closing PA acceptée.*

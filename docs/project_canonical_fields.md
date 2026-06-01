@@ -25,17 +25,24 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 | `visibility` | string | `PRIVATE` \| `AGENCY_SHARED` (pool RPA seulement) |
 | `leadSource` | string | `AGENCY_AD`, `BROKER_GENERATED`, `REFERRAL`, `IMPORT_LEGACY`, `OTHER` |
 | `nom`, `prenom` | string | LCI |
+| `entreprise` | string | Raison sociale / groupe d'investissement (recherche CRM) |
 | `adresse` | map | `ligne1`, `ville`, `province`, `codePostal` |
 | `dateNaissance` | string | ISO `yyyy-mm-dd` |
 | `occupationProfession` | string | Métier de la partie (≠ taux d’occupation immeuble) |
 | `relationRoles` | array | `buyer`, `seller`, `professional`, `broker`, `former_owner`, `blacklist` |
+| `rpaTypologies` | array | `vendeur_proprietaire`, `acheteur_investisseur`, `groupe_rpa`, `notaire`, `avocat`, `courtier_collaborateur` |
 | `email`, `telephone` | string | Coordonnées |
+| `relations` | array | Liens CRM cartographiés `{ contactId, type, notes? }` |
 | **`residenceIds`** | array | Dossiers résidence liés (cache bidirectionnel avec `partiesImpliquees`) |
 | **`coBuyerIds`** | array | Coacheteurs — liaison bidirectionnelle writeBatch |
 | **`coSellerIds`** | array | Covendeurs — liaison bidirectionnelle writeBatch |
+| `notaryIds`, `lawyerIds`, `collaboratorBrokerIds` | array | Professionnels / collaborateurs liés à la transaction RPA |
 | **`buyerQualificationStatus`** | string \| null | État pipeline acheteur **aplati** (pas de collection `buyerPipeline/` en V2). Valeurs : `PENDING_NDA`, `NDA_SIGNED`, `FUNDS_VERIFIED`, `QUALIFIED`. Import legacy : voir règle ci-dessous. |
+| `buyerCommercialTier` | string \| null | Typologie dérivée RPA `PRIVILEGED` \| `QUALIFIED` selon pièces acheteur |
 | **`buyerCriteria`** | map | Critères acheteur — voir ci-dessous |
 | **`sellerCriteria`** | map | Critères vendeur — voir ci-dessous |
+| `brokerCriteria` | map | Courtier contact — `agencyName`, `managedBuyerIds[]` |
+| `professionalType` | string | `NOTARY`, `LAWYER`, `MORTGAGE_BROKER`, `BANK_REP_DDH`, `APPRAISER`, `TAX_SPECIALIST`, `ACCOUNTANT` |
 | **`communicationPreferences`** | map | `unsubscribedFromEmails`, `excludedFromMassMailing` (Loi 25 / LCAP) |
 | `legalVerification` | map | OACIQ art. 30 — identité / sollicitation |
 | **`importMeta`** | map | Import legacy — voir ci-dessous |
@@ -74,7 +81,7 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 | `hasBroker` | bool | Déjà accompagné d’un courtier |
 | `timeline` | string | Échéancier acquisition (`IMMEDIATE`, `0_3_MONTHS`, …) |
 
-> **Typologie dérivée (non éditable)** : `deriveBuyerTier()` → `PRIVILEGED` \| `CONFIDENTIAL` \| null.
+> **Typologie dérivée (non éditable)** : `deriveBuyerTier()` → `PRIVILEGED` \| `QUALIFIED` \| null.
 
 ### Objet `sellerCriteria`
 
@@ -84,6 +91,22 @@ Référence alias / provenance : `packages/core/src/canonical/`.
 | `ownershipProofFile` | map | Titre de propriété |
 | `sellerDeclarationFile` | map | Déclaration du vendeur |
 | `corporateMandate` | map | Inc. / NEQ / REQ — Storage `seller_documents/{kind}/` |
+
+### Objet `communicationPreferences.law25Consent`
+
+Preuve de consentement Loi 25 (Québec) lorsque le contact autorise un canal marketing ou transactionnel.
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `smsOptIn` | bool | Consentement SMS actif |
+| `emailOptIn` | bool | Consentement courriel actif |
+| `consentGrantedTimestamp` | number | Horodatage ms de collecte |
+| `collectedFromIpAddress` | string | Adresse IP source du formulaire |
+| `consentSourceForm` | string | Formulaire source (`RpaEvaluationRequestForm`, `VendorPortalSignup`, …) |
+| `dataRetentionExpiryTimestamp` | number | Expiration conservation (6 ans après collecte) |
+| `consentRevokedTimestamp` | number | Révocation optionnelle ; si présent, les opt-in doivent être `false` |
+
+Validation core : `validateLaw25Compliance()` ; calcul expiration : `computeLaw25DataRetentionExpiryMillis()`.
 
 ### Chemins Storage contact
 
@@ -212,6 +235,8 @@ Document racine — **SSOT onglet Identité** (`ResidenceDocumentContext`) + Rad
 | **`region`** | string | Région administrative Québec (filtre inscriptions — `QUEBEC_REGIONS`) |
 | **`prixAccepte`** | number | Prix accepté (promesse) — requis pour glisser vers colonne `promise` (DnD Kanban) |
 | **`contratCourtage`** | map | Mandat courtage — complétude OACIQ (`mandateCompleteness.ts`) |
+| `vendorPortalLastUploadAtMillis` | number | Dernier téléversement reçu via portail vendeur / courtier |
+| `vendorPortalLastUploadLabel` | string | Libellé du dernier document signalé au courtier |
 | `assetNiche` | string | `RPA` \| `CPE` \| `PLEX` |
 | `propertyType` | string | `rpa`, `cpe`, `plex`, `commercial` |
 | `date` | string | Date inscription / mandat (UI) |
@@ -503,6 +528,9 @@ Normalisation : `normalizeFinancialData()` → source `calculatedResults` | `der
 | `sizeBytes` | number | — | Taille octets |
 | `uploadedAtMillis` | number | — | Horodatage téléversement |
 | `uploadedBy` | string | UID | Courtier ayant téléversé |
+| `vendorPortalTypeId` | string | optionnel | ID catalogue vendeur (82 types canoniques ; absent pour hors liste) |
+| `vendorPortalLabelFr` | string | optionnel | Libellé vendeur affiché si fourni |
+| `uploadSource` | string | `vendor_portal` \| `broker` | Provenance téléversement portail vendeur / courtier |
 | **`virusScanStatus`** | string | `pending` \| `clean` \| `infected` | Scan format serveur (callable `propertyDocumentScanDocument`) |
 | **`parsingStatus`** | string | `not_applicable` \| `pending` \| `completed` \| `failed` | Parse IA (dossier Financier + `clean` uniquement) |
 | **`parsingEligible`** | boolean | — | `true` si PDF/tableur Financier éligible au parseur |
@@ -541,14 +569,88 @@ Téléchargement client : autorisé **uniquement** si `virusScanStatus === 'clea
 
 ---
 
+## Collection `vendor_portal_invites/{token}`
+
+Jetons opaques créés par `createVendorPortalInvite` pour l'Accès Vendeur autonome. Lecture/écriture client interdites dans `firestore.rules` ; accès via Cloud Functions uniquement.
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `token` | string | ID document et secret d'accès (`randomBytes(24).hex`) |
+| `orgId` | string | Organisation du contact vendeur |
+| `contactId` | string | Contact VENDEUR lié |
+| `residenceId` | string | Résidence autorisée |
+| `brokerId` | string | Courtier propriétaire du portail |
+| `createdBy` | string | UID créateur |
+| `createdAtMillis` | number | Horodatage création |
+| `expiresAtMillis` | number | Expiration TTL 30 jours |
+| `active` | bool | Invitation active |
+
+Validation : `validateVendorPortalToken` émet un custom token Firebase avec claims `vendorPortal`, `orgId`, `contactId`, `residenceId`, `brokerId`.
+
+---
+
+## Sous-collections opérationnelles `organizations/{orgId}/…`
+
+### `tasks/{taskId}`
+
+Tâches organisation (créées par notes vocales contact, omnicanal critique, notifications portail vendeur).
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `ownerId` | string | Courtier responsable |
+| `title`, `description` | string | Contenu tâche |
+| `dueAtMillis` | number | Échéance |
+| `status` | string | `a_faire` \| `fait` |
+| `source` | string | `voice_intent`, `omnichannel`, `vendor_portal_upload`, … |
+| `priority` | string | `high` / `haute` si critique |
+| `residenceId`, `contactId`, `documentId` | string | Liens métier optionnels |
+
+### `morning_briefings/{brokerId}`
+
+Généré par `morningBriefingGenerator` (06:00 America/Toronto) et lu par le tableau de bord.
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `dateKey` | string | Date locale `en-CA` |
+| `generatedAtMillis` | number | Horodatage génération |
+| `brokerId`, `orgId` | string | Courtier / organisation |
+| `criticalTasks` | array | Tâches critiques triées par échéance |
+| `appointments` | array | Rendez-vous du jour |
+| `hotLeadsTop3` | array | Top 3 contacts chauds `{ contactId, displayName, score, summary }` |
+| `radarHitsCount` | number | Nombre de signaux radar actifs |
+| `radarActiveDocIds` | array | IDs actifs dans `prospects_radar` |
+| `updatedAt` | Timestamp | Écriture serveur |
+
+### `prospects_radar/{id}`
+
+Signaux faibles off-market générés serveur (`radarOpportunitesEngine.ts`) ; lecture organisation, écriture client interdite.
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `id` | string | `{residenceId}_{signalType}` |
+| `orgId`, `brokerId`, `residenceId` | string | Portée |
+| `signalType` | string | `occupancy_drop` \| `certification_expiry` |
+| `score` | number | Score 0–100 |
+| `propertyLabel` | string | Adresse / libellé |
+| `titleFr`, `titleEn` | string | Titre bilingue |
+| `summaryFr`, `summaryEn` | string | Résumé bilingue |
+| `detectedAtMillis` | number | Détection |
+| `updatedAt` | Timestamp | Écriture serveur |
+
+---
+
 ## Collections connexes
 
 | Collection | Tenant | Usage |
 |------------|--------|--------|
 | `proprietes/{id}` | `courtiersResponsables` | Dossiers Copilote migrés (Phase 2) |
 | `drive_documents/{id}` | `courtiersResponsables` | Drive OACIQ — **delete interdit** |
+| **`vendor_portal_invites/{token}`** | serveur | Jetons Accès Vendeur — lecture/écriture client interdites |
 | `organizations/{orgId}` | `orgId` | Agence |
 | **`organizations/{orgId}/contacts`** | `ownerId` + `visibility` | Répertoire CRM LCI (SSOT parties) |
+| **`organizations/{orgId}/tasks`** | `ownerId` | Tâches courtier, omnicanal, notes vocales, portail vendeur |
+| **`organizations/{orgId}/morning_briefings`** | `brokerId` | Briefing quotidien généré par cron |
+| **`organizations/{orgId}/prospects_radar`** | `brokerId` | Signaux off-market (`occupancy_drop`, `certification_expiry`) |
 | **`market_documents/{docId}`** | `uploadedBy` | Vault rapports marché (Statistiques du marché — Workhub) |
 | **`market_macro_stats/{fingerprint}`** | — | Stats macro validées (écriture serveur `injectMarketMacroStats`) |
 | **`market_analytics_raw/{fingerprint}`** | — | Transactions comparables & ratios anonymisés (écriture serveur) |
@@ -715,8 +817,30 @@ SSOT moteur : `promesseAchatEngine.ts` — dates limites dérivées de `dateAcce
 | `promesseAchat.commission.inscripteurPct` | number \| null | Part inscripteur (%) |
 | `promesseAchat.commission.collaborateurPct` | number \| null | Part collaborateur (%) |
 | `promesseAchat.collaborateur` | map | `nom`, `telephone`, `courriel`, `partCommissionPct` |
+| `promesseAchat.dateNotairePrevue` | string | Date de clôture notariale prévue (utilisée par bannière transaction et `closingEngine`) |
 
 Sous-collection documents PA : `residences/{id}/documents` (filtre type promesse ; règles `canReadResidenceSubcollection`).
+
+---
+
+## Brouillons HITL `manualVerifications`
+
+Type core : `ManualVerificationClauseDraft` dans `packages/core/src/ai/oaciqSpecsTypes.ts`. La persistance est injectée par port (`configureManualVerificationPersistence`) : collection ou sous-objet possible selon l'intégration, mais le statut doit rester **HITL** avant toute transmission.
+
+| Champ | Type | Description |
+|--------|------|-------------|
+| `kind` | string | `commercial_negotiation_clause` |
+| `status` | string | `pending_human_review` (obligatoire) |
+| `frictionContext` | string | Contexte de négociation fourni par le courtier |
+| `transactionState` | string | `negotiation`, `accepted_pipeline`, `promise`, `due_diligence`, … |
+| `output.contractSupportType` | string | `OACIQ_FORM` \| `CUSTOM_CONTRACT` \| `LETTER_OF_INTENT` |
+| `output.oaciqFormCode` | string | `CPC`, `M`, `AM`, `N` si mode formulaire |
+| `output.targetSectionIdentifier` | string | Section cible (ex. `Section M3`) |
+| `output.generatedClauseText` | string | Clause proposée |
+| `output.commercialEmailDraft` | string | Courriel d'accompagnement proposé |
+| `output.requiredBrokerWarning` | string | Avertissement obligatoire au courtier |
+| `output.complianceJustification` | string | Justification OACIQ si applicable |
+| `createdAt` | string | ISO 8601 |
 
 ---
 
@@ -750,6 +874,12 @@ Tâches et rendez-vous courtier (Synthèse 360°) ; création auto depuis note v
 | `status` | string | `a_faire` \| `fait` |
 | **`source`** | string | `voice_intent` si créée par pipeline note vocale |
 | **`voiceUploadId`** | string | Lien note vocale source |
+| `closingPackId` | string | Pack idempotent généré par `buildClosingPackId()` si `source: 'closing_pipeline'` |
+| `closingTaskCode` | string | `CLOSING_RPA_DOSSIER_HYPOTHEQUE`, `CLOSING_SUIVI_INSPECTION`, `CLOSING_ENVOI_NOTAIRE` |
+| `priority` | string | `high` pour tâches closing / urgences |
+| `authorId`, `authorName` | string | Courtier auteur |
+| `orgId` | string | Organisation |
+| `requiresManualDate` | bool | `true` si date notaire absente et échéance provisoire J+30 |
 
 ### Storage — notes vocales & documents contact
 
@@ -793,4 +923,4 @@ Tâches et rendez-vous courtier (Synthèse 360°) ; création auto depuis note v
 
 ---
 
-*Dernière mise à jour : 2026-05-28 — Hub omnicanal (`email_threads` + `channel`), notes vocales, Matchmaker Raphaël, migration CRM Storage, VOIP Twilio (parallèle).*
+*Dernière mise à jour : 2026-06-01 — Portail vendeur autonome (`vendor_portal_invites`, métadonnées documents), briefing/radar org, consentement Loi 25, négociation HITL et tâches closing PA acceptée.*
