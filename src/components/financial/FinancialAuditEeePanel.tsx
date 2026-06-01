@@ -28,14 +28,17 @@ export function FinancialAuditEeePanel({
   const { financialData } = useFinancialData();
   const calc = financialData?.calculatedResults;
   const baseData = financialData?.baseData ?? null;
+  const nicheUnits =
+    residence.nicheMetadata?.rpaFields?.units ??
+    residence.nicheMetadata?.plexFields?.units;
 
   const audit = useMemo(
     () =>
       computeFinancialAuditEee({
         residence: {
           ...residence,
-          nombreUnitesTotal: residence.nicheMetadata?.nombreUnites,
-          nombreUnites: residence.nicheMetadata?.nombreUnites,
+          nombreUnitesTotal: nicheUnits,
+          nombreUnites: nicheUnits,
           prixDemande: prixDemande ?? residence.price,
         },
         calc,
@@ -43,7 +46,7 @@ export function FinancialAuditEeePanel({
         prixDemande: prixDemande ?? residence.price ?? 0,
         paiementAnnuelDette,
       }),
-    [residence, calc, baseData, prixDemande, paiementAnnuelDette]
+    [residence, calc, baseData, nicheUnits, prixDemande, paiementAnnuelDette]
   );
 
   if (!calc || (audit.noiReported <= 0 && audit.alerts.length === 0)) return null;
