@@ -7,6 +7,7 @@
 import {
   buildRevenusDepensesGrid,
   computeFinancabilite,
+  resolveAdmissibleOpex,
   resolveEmpruntMaximumAutorise,
   resolveMiseDeFondsRequiseAcheteur,
   type CertifiableReportBrokerFooter,
@@ -139,16 +140,18 @@ function resolveBrokerTitle(broker: CertifiableReportBrokerFooter, locale: 'fr' 
 }
 
 function resolveOpexAmount(
-  bootstrap: ResidenceAcmBootstrap,
   valuation: ValuationOutputs,
-  depensesFromGrid: number
+  depensesFromGrid: number,
+  financialData: FinancialDataV2Doc
 ): number {
   if (depensesFromGrid > 0) return depensesFromGrid;
+  const canonicalOpex = resolveAdmissibleOpex(
+    financialData.calculatedResults ?? null,
+    financialData.baseData ?? null
+  );
+  if (canonicalOpex != null && canonicalOpex > 0) return canonicalOpex;
   const fromEngine = valuation.operatingExpensesTotal;
   if (Number.isFinite(fromEngine) && fromEngine > 0) return fromEngine;
-  const rbe = bootstrap.revenuBrutEffectif;
-  const rne = bootstrap.revenuNetExploitation;
-  if (rbe > 0 && rne >= 0 && rne < rbe) return rbe - rne;
   return 0;
 }
 
@@ -264,7 +267,7 @@ export function buildAcmVendorCraftMyPdfPayload(
   const liste_revenus = mapGrilleRowsToListe(grilleRevenus);
   const liste_depenses = mapGrilleRowsToListe(grilleDepenses);
 
-  const opexAmount = resolveOpexAmount(bootstrap, valuation, banking.depensesTotales);
+  const opexAmount = resolveOpexAmount(valuation, banking.depensesTotales, financialData);
   const capPct =
     Number.isFinite(input.effectiveCapRate) && input.effectiveCapRate > 0
       ? input.effectiveCapRate > 1

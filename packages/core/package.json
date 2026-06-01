@@ -27,8 +27,8 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "test": "vitest run --config ../../vitest.config.ts src/config/__tests__ packages/core/src/transaction/__tests__",
-    "test:rpa": "vitest run --config ../../vitest.config.ts src/config/__tests__/resolveColumnId.test.ts packages/core/src/transaction/__tests__/paAccepteeCriticalDeadlines.test.ts",
+    "test": "vitest run --config ../../vitest.config.ts ../../src/config/__tests__ src/transaction/__tests__",
+    "test:rpa": "npm run test:rpa-coverage --prefix ../..",
     "lint": "tsc --noEmit"
   },
   "devDependencies": {

@@ -39,6 +39,10 @@ function calculateComparableCapRate(
     revenuBrutEffectif: number;
     densesExploitation: number;
     netOperatingIncome: number;
+    mlsNumber?: string;
+    closedAtMillis?: number;
+    regionAdministrative?: string;
+    classeImmeuble?: string;
   }
 ): number {
   if (!listing.soldPrice || listing.soldPrice <= 0) return 0;
@@ -61,6 +65,10 @@ function main() {
   body = body.replace(
     "import { internalFlywheelFingerprint } from './marketDeduplication';",
     "import { internalFlywheelFingerprint } from '../../documents/_vendored/marketDeduplication';"
+  );
+  body = body.replace(
+    "import { calculateComparableCapRate } from './centrisComparableCapRate';",
+    CAP_RATE_FN.trimStart()
   );
 
   fs.writeFileSync(TARGET, HEADER_BANNER + body, 'utf-8');

@@ -10,21 +10,27 @@
  */
 
 import { internalFlywheelFingerprint } from '../../documents/_vendored/marketDeduplication';
-
-function computeFlywheelCapRatePct(input: {
-  soldPrice: number;
-  revenuBrutEffectif: number;
-  depensesExploitation: number;
-  netOperatingIncome: number;
-}): number {
-  if (!input.soldPrice || input.soldPrice <= 0) return 0;
+function calculateComparableCapRate(
+  listing: {
+    soldPrice: number;
+    revenuBrutEffectif: number;
+    densesExploitation: number;
+    netOperatingIncome: number;
+    mlsNumber?: string;
+    closedAtMillis?: number;
+    regionAdministrative?: string;
+    classeImmeuble?: string;
+  }
+): number {
+  if (!listing.soldPrice || listing.soldPrice <= 0) return 0;
   const rne =
-    input.netOperatingIncome > 0
-      ? input.netOperatingIncome
-      : input.revenuBrutEffectif - input.depensesExploitation;
+    listing.netOperatingIncome > 0
+      ? listing.netOperatingIncome
+      : listing.revenuBrutEffectif - listing.densesExploitation;
   if (!Number.isFinite(rne) || rne <= 0) return 0;
-  return Number(((rne / input.soldPrice) * 100).toFixed(2));
+  return Number(((rne / listing.soldPrice) * 100).toFixed(2));
 }
+
 
 export const INTERNAL_FLYWHEEL_DATA_SOURCE = 'internal_flywheel' as const;
 
@@ -290,11 +296,15 @@ export function buildAnonymizedFlywheelAnalyticsDoc(
 
   const closedAtMillis = input.closedAtMillis ?? Date.now();
   const financials = extractFlywheelFinancialSnapshot(financialData, residenceData);
-  const capRatePct = computeFlywheelCapRatePct({
+  const capRatePct = calculateComparableCapRate({
+    mlsNumber: 'internal-flywheel',
     soldPrice,
     revenuBrutEffectif: financials.revenuBrutEffectif,
-    depensesExploitation: financials.depensesExploitation,
+    densesExploitation: financials.depensesExploitation,
     netOperatingIncome: financials.netOperatingIncome,
+    closedAtMillis,
+    regionAdministrative,
+    classeImmeuble: assetClassLabel,
   });
   if (capRatePct <= 0) return null;
 

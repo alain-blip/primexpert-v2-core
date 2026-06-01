@@ -13,7 +13,6 @@ import {
   validatePaAccepteeCriticalDeadlines,
 } from '../promesseAchatEngine';
 import { deriveOffreConditionDatesFromDelais } from '../offreSync';
-import { resolveColumnId } from '../../../../../src/config/pipelineStages';
 
 const DATE_ACCEPTATION = '2026-03-15';
 const DATE_RECEPTION = '2026-03-01';
@@ -140,10 +139,5 @@ describe('PA acceptée — 7 délais critiques (inspection, financement, permis,
     expect(derived.dateLimitePermisMsss).toBe(
       addCalendarDays(DATE_ACCEPTATION, DELAIS_COMPLETS.permisJours)
     );
-  });
-
-  it('aligne statut Kanban pa-acceptee avec colonne promise (PA acceptée)', () => {
-    expect(resolveColumnId('pa-acceptee')).toBe('promise');
-    expect(resolveColumnId('PA_ACCEPTEE')).toBe('promise');
   });
 });

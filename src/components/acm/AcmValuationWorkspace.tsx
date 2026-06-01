@@ -54,6 +54,7 @@ import type {
   FinancialDataV2Doc,
   TerritorialAcmMedians,
 } from '@primexpert/core/financial';
+import { noiGapToMarketValue } from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
 import {
@@ -499,7 +500,7 @@ export function AcmValuationWorkspace({
       : null;
     const performanceBased =
       dynamicMarketTgaPct > 0
-        ? bootstrap.revenuNetExploitation / (dynamicMarketTgaPct / 100)
+        ? noiGapToMarketValue(bootstrap.revenuNetExploitation, dynamicMarketTgaPct)
         : null;
     const maxPotential = stressSummary?.occ100 ?? null;
     const rows = [
@@ -804,8 +805,8 @@ export function AcmValuationWorkspace({
               />
               <p id="acm-tga-qualitative-hint" className="text-[11px] font-semibold text-slate-700">
                 {t(
-                  'Ex. +0,25 % pour vétusté — recalcule instantanément la valeur marchande indicative (revenu net d’exploitation (RNE) ÷ taux de capitalisation global (TGA) ajusté).',
-                  'E.g. +0.25% for obsolescence — instantly recalculates indicative market value (net operating income (NOI) ÷ adjusted global cap rate).'
+                  'Ex. +0,25 % pour vétusté — recalcule instantanément la valeur marchande indicative via le module financier central.',
+                  'E.g. +0.25% for obsolescence — instantly recalculates indicative market value through the central financial module.'
                 )}
               </p>
             </label>
@@ -973,8 +974,8 @@ export function AcmValuationWorkspace({
               </p>
               <p className={`text-lg ${ACM_METRIC_VALUE_CLASS}`}>
                 {t(
-                  'Prix recommandé (revenu net d’exploitation (RNE) ÷ taux de capitalisation global (TGA) cible)',
-                  'Recommended price (net operating income (NOI) ÷ target global cap rate)'
+                  'Prix recommandé (module financier central)',
+                  'Recommended price (central financial module)'
                 )}{' '}
                 : {formatCurrency(recommendedPrice)}
               </p>
