@@ -7,6 +7,7 @@ export interface ComparableCapRateInput {
   revenuBrutEffectif: number;
   densesExploitation: number;
   netOperatingIncome: number;
+  [key: string]: unknown;
 }
 
 export function calculateComparableCapRate(listing: ComparableCapRateInput): number {

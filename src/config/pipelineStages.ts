@@ -93,6 +93,10 @@ function normalizeRawStatut(raw: unknown): string {
   return String(raw).toLowerCase().trim();
 }
 
+function stripDiacritics(value: string): string {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 /**
  * Résout un statut brut vers l’ID de colonne Kanban (slug Firestore canonique).
  * Retourne null si hors pipeline actif (expiré, archive, froid, etc.).

@@ -14,12 +14,10 @@ import { useResidenceDocument } from '../../../context/ResidenceDocumentContext'
 import { useMarketData } from '../../../hooks/useMarketData';
 import { useGlobalFinancialBenchmark } from '../../../hooks/useGlobalFinancialBenchmark';
 import { resolveRegionalOerMedianFromRatioSamples } from '@primexpert/core/analytics';
+import type { TerritorialCompetitionSnapshot } from '@primexpert/core/market';
 import { getListingPrice } from '@primexpert/core/residence';
 import type { Residence } from '../../../services/residences';
-import {
-  AcmValuationWorkspace,
-  type TerritorialCompetitionSnapshot,
-} from '../../acm/AcmValuationWorkspace';
+import { AcmValuationWorkspace } from '../../acm/AcmValuationWorkspace';
 import { AcmTab } from './AcmTab';
 import type { useTerritorialCompetition } from '../../../hooks/useTerritorialCompetition';
 import {
@@ -113,7 +111,7 @@ export function ResidenceAcmValuationPanel({
       residenceId: residenceLive.id,
       residenceAddress: addressParts.length ? addressParts.join(', ') : undefined,
       broker: buildBrokerFooterFromProfile(profile),
-      locale: (language === 'fr' ? 'fr' : 'en') as const,
+      locale: language === 'fr' ? ('fr' as const) : ('en' as const),
       financialData: financialData as FinancialDataV2Doc,
       residence: residenceLive,
     };
