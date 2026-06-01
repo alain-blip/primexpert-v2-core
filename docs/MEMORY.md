@@ -949,4 +949,27 @@ Cible : https://primexpert-app-v2.web.app
 
 ---
 
-*Journal mis à jour : 2026-05-30 — Redressement finance SSOT fiche résidence (`d232673`) + hosting prod déployé.*
+## Passage secrétaire — rapport groupé 2026-06-01 (`9e6f58d` → `38a7779` → `c33c109`)
+
+**Statut :** **[DOCUMENTATION ENRICHIE — rapport unique groupé, aucune PR par fichier]**
+
+| Chantier | Décisions / livrables |
+|----------|-----------------------|
+| **Stabilisation cockpit & gabarits** | `firebase.json` force `no-cache` sur `/workhub{,/**}` et `/acces-vendeur{,/**}` ; `AppResponsiveLayout` corrige les hauteurs `100dvh` / `min-h-0` qui pouvaient figer l'interface ; `BrokerPhotoComplianceBanner` reste une notification non bloquante. |
+| **Assembleur natif V3.5+** | `@primexpert/core/forms` passe d'un mini-état annexes à un **catalogue contractuel** : contrat courtage vente RPA, contrat courtage achat commercial, promesse actifs, annexes G/R/E/PR/C, modifications prix / mise hors marché / modèle Rimouski. Les valeurs entre parenthèses sont maintenant plates (`ParenthesisValueMap`) et rendues par gabarits `templates/*` ; export HTML natif maintenu, sans OpenXML ni docxtemplater. |
+| **Protection transaction RPA** | `resolveColumnId()` est protégé par `ACTIVE_PIPELINE_RAW_STATUTS`, tests Vitest et script Istanbul `scripts/check-resolveColumnId-coverage.mjs` (**100 %** exigé). `PA_ACCEPTEE_CRITICAL_DEADLINE_KEYS` impose les **7 délais critiques** de PA acceptée, incluant le dédit Loi sur le courtage immobilier (C-73.2) de 3 jours calendaires. Workflow bloquant : `.github/workflows/rpa-transaction-test-coverage.yml` → `npm run test:rpa-coverage`. |
+| **Capitalisation financière SSOT** | Nouveau module `packages/core/src/financial/capitalization.ts` : `resolveNetOperatingIncome`, `computeCapitalizationRatePct`, `computeCapitalizationRateDecimal`, `capitalizeNoiAtCapRatePct`. Consommateurs alignés : aperçu Revenus & Dépenses, Analyse 360°, Finançabilité, ACM, comparables Centris / Matrix et flywheel analytique (`functions/src/analytics/_vendored/capitalization.ts`). |
+| **Rendus stratégiques docs** | Ajout de fichiers de référence dans `docs/` (`RPA - Dossier d'investissement.*`, `RPA - Analyse de la valeur marchande.pdf`, `Rapport_Strategique_Ecosysteme_Primexpert.pdf`) comme actifs documentaires, sans changement de SSOT applicatif. |
+
+### Impact Firestore / types
+
+- **Aucune nouvelle collection** : enrichissement de modules existants seulement.
+- `residences/{id}.promesseAchat` : les champs de délais existants deviennent contractuellement vérifiés via `PA_ACCEPTEE_CRITICAL_DEADLINE_KEYS`; pas de sous-collection parallèle.
+- `residences/{id}.offre` : `deriveOffreConditionDatesFromDelais()` synchronise `offre.dateLimiteFinancement` et `offre.dateLimitePermisMsss` depuis les délais PA.
+- Assembleur : état toujours **éphémère client** en V3.5+ (`ContractAssemblerFieldState.selection` + `values`), persistance Firestore encore hors périmètre.
+
+**HITL :** les nouveaux contrôles bloquent les régressions techniques ; le courtier titulaire de permis conserve la validation juridique et financière avant diffusion, signature ou recommandation.
+
+---
+
+*Journal mis à jour : 2026-06-01 — RNE/TGA centralisés (`c33c109`) + protection transaction RPA CI (`38a7779`) + assembleur V3.5+ étendu.*

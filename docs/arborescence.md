@@ -26,13 +26,15 @@
 │           ├── index.ts             # Barrel (canonical, valuation, financial, identity…)
 │           ├── canonical/           # Champs canoniques & alias
 │           ├── financial/           # normalizeFinancialData, bilan, ratios, SCHL…
+│           │   ├── capitalization.ts # SSOT RNE ↔ valeur ↔ taux de capitalisation (TGA)
+│           │   └── mergeExtractedFinancials.ts
 │           ├── identity/            # buildIdentityViewModel, sections MSSS/RPA
 │           ├── transaction/         # Promesse d'achat — offre SSOT, délais, commission
 │           │   ├── offreTronc.ts
 │           │   ├── offreConditions.ts
 │           │   ├── offreCloture.ts
 │           │   └── promesseAchatEngine.ts
-│           ├── forms/                 # Générateur natif contrats / PA — sans OpenXML (V3.4–V3.5)
+│           ├── forms/                 # Générateur natif contrats / PA — sans OpenXML (V3.4–V3.5+)
 │           │   ├── annexeFieldSchema.ts       # Schéma champs entre parenthèses ( $ ) ( % ) CCV-
 │           │   ├── renderDynamicParenthesis.ts
 │           │   ├── buildContractAssemblerDefaults.ts
@@ -41,6 +43,11 @@
 │           │   ├── buildPaActifsRenderData.ts
 │           │   ├── renderPaActifsToHtml.ts
 │           │   ├── templates/paActifsTemplate.ts
+│           │   ├── templates/contratCourtageRpaTemplate.ts
+│           │   ├── templates/contratCourtageAchatTemplate.ts
+│           │   ├── templates/annexesModificationTemplate.ts
+│           │   ├── templates/annexesProtectionTemplate.ts
+│           │   ├── templates/annexesCoordinationTemplate.ts
 │           │   └── index.ts
 │           ├── crm/                   # Contacts CRM — organizations/{orgId}/contacts
 │           │   ├── contactTypes.ts    # LCI, buyerCriteria, sellerCriteria, deriveBuyerTier
@@ -81,8 +88,6 @@
 │           ├── export/              # Export dataset / politique
 │           ├── tenant/              # Multi-tenant (courtiersResponsables)
 │           ├── mail/                # mailParser, contactMatch, messageUrgency, types omnicanal
-│           ├── financial/
-│           │   └── mergeExtractedFinancials.ts
 │           ├── audio/               # Transcription (legacy)
 │           └── utils/formatting.ts
 ├── functions/                       # Cloud Functions Gen2 (us-central1 + régions ciblées)
@@ -115,12 +120,18 @@
 │       ├── vendor/                  # createVendorPortalInvite, validateVendorPortalToken
 │       ├── ai/                      # negotiationWithVertex + _vendored/ (@primexpert/core/ai prebuild)
 │       ├── audio/                   # onVoiceNoteUploaded (us-east1), hydrateVoiceNote, geminiTranscribe
+│       ├── analytics/
+│       │   └── _vendored/           # internalMarketFlywheel + capitalization.ts (prebuild)
 │       └── telephony/               # getTwilioToken, twilioVoiceResponse ; sync-core-telephony.cjs
 ├── scripts/
 │   ├── migrate-legacy-contacts-to-v2.mjs   # Maillon 1 Firestore — contacts Copilote (dry-run défaut)
 │   # npm run migrate:contacts → packages/core/src/scripts/migrateLegacyContacts.ts (Storage legacy)
 │   ├── deploy-diffusion-jour-4-5.sh
+│   ├── check-resolveColumnId-coverage.mjs # Couverture 100 % Kanban RPA (Istanbul JSON)
 │   └── output/                      # Rapports dry-run migration (gitignored)
+├── .github/
+│   └── workflows/
+│       └── rpa-transaction-test-coverage.yml # CI Kanban + 7 délais PA acceptée
 ├── audit_tenant_uids.js             # Ops — audit tenant Firestore
 ├── backfill_tenant.js
 ├── hydrate_pipeline.js
@@ -132,6 +143,7 @@
 ├── storage.rules
 ├── index.html
 ├── package.json
+├── vitest.config.ts                 # Couverture ciblée RPA / transaction
 ├── vite.config.ts                   # Alias @primexpert/core/* + @primexpert/core/forms + code-splitting
 ├── public/                          # Logos silo, Primexpert…
 ├── src/
@@ -248,6 +260,9 @@
     │   ├── FinancialDataContext.tsx      # onSnapshot residences/{id}/financial/dataV2 (value mémoïsée)
     │   ├── ResidenceDocumentContext.tsx  # onSnapshot residences/{id} (value mémoïsée)
     │   └── ResidenceDataContext.tsx      # SSOT inter-onglets : prix, unités, hints finance (`useUnifiedResidence`, `useResidenceFinancialHints`)
+    ├── config/
+    │   ├── pipelineStages.ts             # Statuts Kanban + resolveColumnId() protégé
+    │   └── __tests__/resolveColumnId.test.ts
     ├── hooks/
     │   ├── useResidences.ts
     │   ├── useGlobalFinancialBenchmark.ts
@@ -319,7 +334,7 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Marché | `MarcheConcurrenceTab` | ✅ **Analyse de mise en marché (ACM)** en tête + pénétration / comparables / diagnostic territorial |
 | Documents | `DocumentsDiligenceTab` | ✅ Financier / Technique / Légal + scan + parse IA + onglets / distribution / courriel |
 | Intelligence | `ResidenceIntelligencePanel` + `IntelligenceChronologie` | ✅ Appels E-3 + courriels `email_threads/messages` + rapport vendeur |
-| Promesse | `PromesseAchatTab` + `residence/promesse/*` | ✅ Cockpit PA — `offre` + `promesseAchat` (core/transaction) + assembleur contrat V3.5 |
+| Promesse | `PromesseAchatTab` + `residence/promesse/*` | ✅ Cockpit PA — `offre` + `promesseAchat` (core/transaction) + assembleur contrat V3.5+ |
 
 ### Hub Finance — sous-onglets (`FinanceHubTab.tsx`)
 
@@ -331,6 +346,7 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Ratios performance | `PerformanceRatiosTab` | `computePerformanceRatiosViewModel()` |
 
 **SSOT prix & hints finance (`d232673`) :** `ResidenceDataProvider` normalise `price` / `prixAnnonce` / `prixDemande` ; `useResidenceFinancialHints()` injecte le prix canonique dans tous les sous-onglets ; core `resolveAdmissibleOpex()` — RNE = RBE − dépenses **déclarées** (pas le normalisé seul).
+**SSOT capitalisation (`c33c109`) :** `capitalization.ts` centralise `resolveNetOperatingIncome()`, `computeCapitalizationRatePct()` et `capitalizeNoiAtCapRatePct()` pour Hub Finance, ACM, comparables Centris et flywheel analytique.
 | Vérification performance | `Analyse360FinanceTab` | `computePerformanceAudit360()` |
 
 **Règle #0 :** le Hub Finance et l’identité consomment `@primexpert/core` — pas de moteur financier dupliqué dans l’UI. L’onglet **Synthèse** affiche une **lecture** rétribution / jalons (cascade sur champs `residences` + formatage), distincte du SSOT `financial/dataV2`.
@@ -360,6 +376,7 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Données financières | `src/context/FinancialDataContext.tsx`, `packages/core/src/financial/` |
 | Identité immeuble | `src/context/ResidenceDocumentContext.tsx`, `packages/core/src/identity/`, `IdentiteImmeubleTab` |
 | Promesse d'achat | `PromesseAchatTab.tsx`, `src/components/residence/promesse/`, `packages/core/src/transaction/`, **`packages/core/src/forms/`** (V3.4–V3.5) |
+| Protection transaction RPA | `src/config/pipelineStages.ts`, `src/config/__tests__/resolveColumnId.test.ts`, `packages/core/src/transaction/__tests__/paAccepteeCriticalDeadlines.test.ts`, `.github/workflows/rpa-transaction-test-coverage.yml` |
 | Charte UI institutionnelle | `tailwind.config.js`, `src/index.css` (`@theme` / `@config`), `src/lib/institutionalTheme.ts`, `InstitutionalUi.tsx` |
 | Inscriptions (cartes, view model, Kanban DnD) | `Listings.tsx`, `listings/ListingsPipelineKanban.tsx`, `ListingInstitutionalCard.tsx`, `listingCardViewModel.ts`, `packages/core/src/residence/listingCommission.ts`, `mandateCompleteness.ts`, `quebecRegions.ts` |
 | Messagerie ↔ CRM (Phase 2) | `MailContactLinkBar.tsx`, `emailSyncService.linkEmailThreadToContact`, `packages/core/src/mail/contactMatch.ts`, `matchedContactId` |
@@ -412,6 +429,7 @@ Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only func
 ---
 
 | Analyse de mise en marché (ACM) | `AcmValuationWorkspace`, `ResidenceAcmValuationPanel`, `residenceAcmBootstrap.ts`, `gpsCapRateByRegionClass.ts` |
-| Assembleur contrat / PA (V3.5) | `ContractAssemblerPanel.tsx`, `annexeFieldSchema.ts`, `renderContractAssemblerToHtml.ts`, `@primexpert/core/forms` |
+| Assembleur contrat / PA (V3.5+) | `ContractAssemblerPanel.tsx`, `annexeFieldSchema.ts`, `renderContractAssemblerToHtml.ts`, `templates/*`, `@primexpert/core/forms` |
+| Capitalisation RNE / TGA | `packages/core/src/financial/capitalization.ts`, `functions/src/analytics/_vendored/capitalization.ts`, `centrisComparableCapRate.ts` |
 
-*Dernière mise à jour : 2026-05-30 — V3.5 : assembleur de mandats natif (commit `63286dc`), module `packages/core/src/forms/`.*
+*Dernière mise à jour : 2026-06-01 — V3.8 : capitalisation RNE/TGA (`c33c109`) + CI transaction RPA (`38a7779`).*

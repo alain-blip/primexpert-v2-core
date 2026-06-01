@@ -1,6 +1,6 @@
 # Pipeline GPS — abonnements, essai 45 j, facturation & fiche résidence
 
-Vision produit Primexpert **V2.8**.  
+Vision produit Primexpert **V3.8** — pipeline RPA protégé, capitalisation RNE/TGA centralisée.
 **Hosting prod :** https://primexpert-app-v2.web.app  
 **Journal détaillé :** [`MEMORY.md`](./MEMORY.md) — source primaire des statuts de chantier.
 
@@ -135,7 +135,7 @@ Dès qu’une PA passe à **`accepted`** (statut Kanban `pa-acceptee` → colonn
 4. `dateLimiteInspection` — inspection  
 5. `dateLimiteFinancement` — financement  
 6. `dateLimitePermis` — permis MSSS  
-7. `dateLimiteDeduitLci` — **débit LCI art. 73.2** (`DEDIT_LCI_ART_73_2_JOURS` = **3 jours calendaires**)
+7. `dateLimiteDeduitLci` — **dédit LCI art. 73.2** (`DEDIT_LCI_ART_73_2_JOURS` = **3 jours calendaires**)
 
 Tests bloquants CI : `npm run test:rpa-coverage` (workflow `.github/workflows/rpa-transaction-test-coverage.yml`).
 
@@ -154,6 +154,8 @@ normalizeFinancialData()
 ```
 
 Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquement où applicable.
+
+**Capitalisation RNE/TGA (2026-06-01 — certifié)** : toutes les conversions revenu net d'exploitation (RNE) ↔ valeur ↔ taux de capitalisation (TGA) passent par `packages/core/src/financial/capitalization.ts`. Consommateurs alignés : Hub Finance (`revenusDepensesPreview`, Finançabilité, Analyse 360°), ACM, comparables Centris / Matrix (`centrisComparableCapRate`) et flywheel analytique vendored (`functions/src/analytics/_vendored/capitalization.ts`).
 
 ---
 
@@ -208,7 +210,9 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 | **Loi 25 consentement CRM** | ✅ `QuebecLaw25Consent` + `validateLaw25Compliance` — garde-fous SMS/courriel **planifiés** |
 | **Rédacteur IA Centris** | ✅ `ContentGen.tsx` + lint `@primexpert/core/narrative` |
 | **VoIP Twilio** | ⏳ parallèle — non déployé prod |
-| **Assembleur contrat V3.5** | ✅ `@primexpert/core/forms` + `ContractAssemblerPanel` — export HTML natif ; commit `63286dc` |
+| **Assembleur contrat V3.5+** | ✅ `@primexpert/core/forms` + `ContractAssemblerPanel` — export HTML natif ; commit `63286dc` |
+| **Capitalisation RNE / TGA** | ✅ `capitalization.ts` — SSOT Hub Finance, ACM, Centris, flywheel (`c33c109`) |
+| **Tests transaction RPA** | ✅ `npm run test:rpa-coverage` — `resolveColumnId()` 100 % + 7 délais PA acceptée (`38a7779`) |
 
 ### Statut production certifié (conseil d’administration — 2026-05-28)
 
@@ -511,4 +515,33 @@ Dashboard — fetchProspectsRadar — tri par score
 
 ---
 
-*Dernière mise à jour : 2026-05-30 — V3.5 assembleur de mandats scellé ; branche feature `63286dc`.*
+## K. Session 2026-06-01 — Protection RPA + clôture capitalisation (`38a7779` → `c33c109`)
+
+| Jalon | Détail |
+|-------|--------|
+| **Kanban protégé** | `ACTIVE_PIPELINE_RAW_STATUTS` + `resolveColumnId()` couvrent slugs Firestore, Copilote, Centris/RESO et variantes FR ; `expired` / archives restent hors pipeline actif. |
+| **CI bloquante** | `.github/workflows/rpa-transaction-test-coverage.yml` lance `npm run test:rpa-coverage` sur PR/push ciblés ; `scripts/check-resolveColumnId-coverage.mjs` exige 100 % sur `resolveColumnId()`. |
+| **PA acceptée** | `PA_ACCEPTEE_CRITICAL_DEADLINE_KEYS` garantit les 7 échéances critiques (`dateLimiteReponse`, visite, documents, inspection, financement, permis, dédit LCI C-73.2). |
+| **RNE/TGA SSOT** | `capitalization.ts` centralise `resolveNetOperatingIncome`, `computeCapitalizationRatePct`, `computeCapitalizationRateDecimal`, `capitalizeNoiAtCapRatePct`. |
+| **Flywheel Functions** | `sync-core-analytics-flywheel.cjs` vendore aussi `capitalization.ts` dans `functions/src/analytics/_vendored/`. |
+
+```text
+Statut brut inscription / PA
+    → resolveColumnId(raw)     [jamais null pour les statuts actifs connus]
+    → colonne Kanban canonique
+    → si pa-acceptee / accepted
+        → buildPromesseAchatViewModel
+        → PA_ACCEPTEE_CRITICAL_DEADLINE_KEYS (7 champs)
+        → validation Vitest + CI
+```
+
+```text
+RBE / dépenses / RNE / prix
+    → resolveNetOperatingIncome
+    → computeCapitalizationRatePct ou capitalizeNoiAtCapRatePct
+    → Hub Finance · ACM · comparables Centris · flywheel
+```
+
+---
+
+*Dernière mise à jour : 2026-06-01 — V3.8 RNE/TGA (`c33c109`) + transaction RPA CI (`38a7779`).*
