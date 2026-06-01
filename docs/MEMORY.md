@@ -1,9 +1,9 @@
 # Primexpert — mémoire de décisions (journal)
 
-> **Index documentation :** [`README.md`](./README.md)  
-> **Emplacement canonique (code + doc jumeaux) :**  
-> `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`  
-> Miroir possible : `00_PRIMEXPERT_SYSTEME_APP/docs/` sur le disque de sauvegarde.  
+> **Index documentation :** [`README.md`](./README.md)
+> **Emplacement canonique (code + doc jumeaux) :**
+> `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`
+> Miroir possible : `00_PRIMEXPERT_SYSTEME_APP/docs/` sur le disque de sauvegarde.
 > **Gouvernance PO :** [`CHARTE SUPRÊME & GOUVERNANCE PRIMEXPERT .rtf`](./CHARTE%20SUPR%C3%8AME%20%26%20GOUVERNANCE%20PRIMEXPERT%20.rtf) (v2026.2) · [`Primexpert Normes d'implantation.rtf`](./Primexpert%20Normes%20d'implantation.rtf)
 
 ---
@@ -803,7 +803,7 @@ Statut officiel consolidé (conseil d'administration) :
 | Clauses négociation Gemini | **[CÂBLÉ — MOTEUR DYNAMIQUE ACTIF]** |
 | Coffre-fort WORM & sécurité | **[OPÉRATIONNEL — PRODUCTION LIVE]** |
 
-**URL production :** https://primexpert-app-v2.web.app  
+**URL production :** https://primexpert-app-v2.web.app
 **Modules V2.8 complémentaires (hors registre exécutif) :** portail vendeur autonome (85 pièces), briefing matin, radar off-market — voir section session 2026-05-29 ci-dessus.
 
 ---

@@ -1,7 +1,7 @@
 # Documentation Primexpert V2 (Bible)
 
-**Source unique avec le code :** `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`  
-**URL officielle :** https://primexpert-app-v2.web.app  
+**Source unique avec le code :** `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`
+**URL officielle :** https://primexpert-app-v2.web.app
 **Cycle technique :** **V3.8 — QA règles RPA & alignement Centris / marché / WORM** (PR #4, juin 2026) · **V3.5 — assembleur de mandats natif scellé** + **redressement finance SSOT fiche résidence (`d232673`)**
 
 ## Registre global des architectures sécurisées — mai 2026
