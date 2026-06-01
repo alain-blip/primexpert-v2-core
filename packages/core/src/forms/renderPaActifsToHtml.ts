@@ -150,7 +150,7 @@ const DYNAMIC_RENDERERS: Record<string, (data: PaActifsRenderData) => string[]> 
     }
     if (f.valeurMarchandeIndicative != null) {
       lines.push(
-        `Valeur marchande indicative (RNE ÷ TGA) : ${money(f.valeurMarchandeIndicative, d.locale)}.`
+        `Valeur marchande indicative (module financier central) : ${money(f.valeurMarchandeIndicative, d.locale)}.`
       );
     }
     if (d.territorial?.regionAdministrative) {

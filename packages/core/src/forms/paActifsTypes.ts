@@ -58,7 +58,7 @@ export interface PaActifsFinancialTerms {
   tgaAjustementQualitatifPct: number;
   /** TGA retenu pour valeur indicative (%) */
   tgaAppliquePct: number | null;
-  /** Valeur marchande indicative = RNE ÷ (TGA / 100) */
+  /** Valeur marchande indicative calculée par le module financier central. */
   valeurMarchandeIndicative: number | null;
   territorialSampleCount: number;
 }

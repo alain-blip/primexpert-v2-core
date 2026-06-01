@@ -2,6 +2,7 @@
  * Comparables Centris / Matrix — calcul TGA réel (RNE / prix de vente).
  */
 
+import { computeCapitalizationRatePct, resolveNetOperatingIncome } from '../financial/capitalization';
 import { normalizeAdministrativeRegion } from './marketRegionNormalize';
 import { normalizeRpaBuildingClass } from './gpsCapRateByRegionClass';
 
@@ -34,16 +35,21 @@ export interface TerritorialComparableMergeResult {
   filterScope: 'REGION_CLASS' | 'REGION' | 'ALL';
 }
 
+type TerritorialComparableFilterResult = Pick<
+  TerritorialComparableMergeResult,
+  'comparables' | 'filterScope'
+>;
+
 export function calculateComparableCapRate(
   listing: Omit<CentrisComparableListing, 'calculatedCapRate'>
 ): number {
-  if (!listing.soldPrice || listing.soldPrice <= 0) return 0;
-  const rne =
-    listing.netOperatingIncome > 0
-      ? listing.netOperatingIncome
-      : listing.revenuBrutEffectif - listing.densesExploitation;
-  if (!Number.isFinite(rne) || rne <= 0) return 0;
-  return Number(((rne / listing.soldPrice) * 100).toFixed(2));
+  const rne = resolveNetOperatingIncome({
+    netOperatingIncome: listing.netOperatingIncome,
+    revenuBrutEffectif: listing.revenuBrutEffectif,
+    depensesExploitation: listing.densesExploitation,
+  });
+  if (rne == null) return 0;
+  return computeCapitalizationRatePct(rne, listing.soldPrice, 2) ?? 0;
 }
 
 function parseNum(v: unknown): number {
@@ -78,11 +84,11 @@ function buildComparable(
 ): CentrisComparableListing | null {
   if (!partial.mlsNumber || partial.soldPrice <= 0) return null;
   const netOperatingIncome =
-    partial.netOperatingIncome != null && partial.netOperatingIncome > 0
-      ? partial.netOperatingIncome
-      : partial.revenuBrutEffectif > 0
-        ? partial.revenuBrutEffectif - partial.densesExploitation
-        : 0;
+    resolveNetOperatingIncome({
+      netOperatingIncome: partial.netOperatingIncome,
+      revenuBrutEffectif: partial.revenuBrutEffectif,
+      depensesExploitation: partial.densesExploitation,
+    }) ?? 0;
   const row: Omit<CentrisComparableListing, 'calculatedCapRate'> = {
     ...partial,
     netOperatingIncome,
@@ -176,10 +182,10 @@ export function mapListingsCacheToComparable(
   return { ...built, source: 'listings_cache', docId: id };
 }
 
-export function filterTerritorialComparables(
+function resolveTerritorialComparableFilter(
   rows: CentrisComparableListingWithSource[],
   query: TerritorialComparableQuery
-): CentrisComparableListingWithSource[] {
+): TerritorialComparableFilterResult {
   const regionTarget = normalizeAdministrativeRegion(query.regionAdministrative.trim());
   const classTarget = query.classeImmeuble
     ? normalizeRpaBuildingClass(query.classeImmeuble)
@@ -190,12 +196,23 @@ export function filterTerritorialComparables(
     const classOk = !classTarget || row.classeImmeuble === classTarget;
     return regionOk && classOk;
   });
-  if (regionClass.length >= 2) return regionClass;
+  if (regionClass.length >= 2) {
+    return { comparables: regionClass, filterScope: 'REGION_CLASS' };
+  }
 
   const regionOnly = rows.filter((row) => row.regionAdministrative === regionTarget);
-  if (regionOnly.length >= 2) return regionOnly;
+  if (regionOnly.length >= 2) {
+    return { comparables: regionOnly, filterScope: 'REGION' };
+  }
 
-  return rows;
+  return { comparables: rows, filterScope: 'ALL' };
+}
+
+export function filterTerritorialComparables(
+  rows: CentrisComparableListingWithSource[],
+  query: TerritorialComparableQuery
+): CentrisComparableListingWithSource[] {
+  return resolveTerritorialComparableFilter(rows, query).comparables;
 }
 
 export function sortComparablesByRecencyDesc(
@@ -220,40 +237,13 @@ export function mergeCentrisTerritorialComparables(
   query: TerritorialComparableQuery
 ): TerritorialComparableMergeResult {
   const merged = sortComparablesByRecencyDesc([...cacheRows, ...analyticsRows]);
-  const regionTarget = normalizeAdministrativeRegion(query.regionAdministrative.trim());
-  const classTarget = query.classeImmeuble
-    ? normalizeRpaBuildingClass(query.classeImmeuble)
-    : null;
-
-  const regionClass = merged.filter(
-    (r) =>
-      r.regionAdministrative === regionTarget &&
-      (!classTarget || r.classeImmeuble === classTarget)
-  );
-  if (regionClass.length >= 2) {
-    return {
-      comparables: regionClass,
-      medianTgaPct: medianComparableCapRate(regionClass),
-      sampleCount: regionClass.length,
-      filterScope: 'REGION_CLASS',
-    };
-  }
-
-  const regionOnly = merged.filter((r) => r.regionAdministrative === regionTarget);
-  if (regionOnly.length >= 2) {
-    return {
-      comparables: regionOnly,
-      medianTgaPct: medianComparableCapRate(regionOnly),
-      sampleCount: regionOnly.length,
-      filterScope: 'REGION',
-    };
-  }
+  const { comparables, filterScope } = resolveTerritorialComparableFilter(merged, query);
 
   return {
-    comparables: merged,
-    medianTgaPct: medianComparableCapRate(merged),
-    sampleCount: merged.length,
-    filterScope: 'ALL',
+    comparables,
+    medianTgaPct: medianComparableCapRate(comparables),
+    sampleCount: comparables.length,
+    filterScope,
   };
 }
 

@@ -10,21 +10,10 @@
  */
 
 import { internalFlywheelFingerprint } from '../../documents/_vendored/marketDeduplication';
-
-function computeFlywheelCapRatePct(input: {
-  soldPrice: number;
-  revenuBrutEffectif: number;
-  depensesExploitation: number;
-  netOperatingIncome: number;
-}): number {
-  if (!input.soldPrice || input.soldPrice <= 0) return 0;
-  const rne =
-    input.netOperatingIncome > 0
-      ? input.netOperatingIncome
-      : input.revenuBrutEffectif - input.depensesExploitation;
-  if (!Number.isFinite(rne) || rne <= 0) return 0;
-  return Number(((rne / input.soldPrice) * 100).toFixed(2));
-}
+import {
+  computeCapitalizationRatePct,
+  resolveNetOperatingIncome,
+} from './capitalization';
 
 export const INTERNAL_FLYWHEEL_DATA_SOURCE = 'internal_flywheel' as const;
 
@@ -228,9 +217,12 @@ export function extractFlywheelFinancialSnapshot(
   }
 
   const rne =
-    parseNum(calc.revenuNetExploitation) ||
-    parseNum(residence.revenuNetExploitation) ||
-    (rbe > 0 && totalDepenses > 0 ? rbe - totalDepenses : 0);
+    resolveNetOperatingIncome({
+      netOperatingIncome:
+        parseNum(calc.revenuNetExploitation) || parseNum(residence.revenuNetExploitation),
+      revenuBrutEffectif: rbe,
+      depensesExploitation: totalDepenses,
+    }) ?? 0;
 
   return {
     revenuBrutEffectif: rbe,
@@ -290,12 +282,8 @@ export function buildAnonymizedFlywheelAnalyticsDoc(
 
   const closedAtMillis = input.closedAtMillis ?? Date.now();
   const financials = extractFlywheelFinancialSnapshot(financialData, residenceData);
-  const capRatePct = computeFlywheelCapRatePct({
-    soldPrice,
-    revenuBrutEffectif: financials.revenuBrutEffectif,
-    depensesExploitation: financials.depensesExploitation,
-    netOperatingIncome: financials.netOperatingIncome,
-  });
+  const capRatePct =
+    computeCapitalizationRatePct(financials.netOperatingIncome, soldPrice, 2) ?? 0;
   if (capRatePct <= 0) return null;
 
   const anneeDonnees = new Date(closedAtMillis).getUTCFullYear();
