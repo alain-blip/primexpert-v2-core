@@ -101,6 +101,7 @@ Données : sous-collection **`residences/{id}/financial/dataV2`** (migration dep
 - API GCP : `aiplatform.googleapis.com` + IAM `roles/aiplatform.user` sur le compte compute.
 - Client : `functions/src/services/vertexClient.ts` ; erreurs typées (`VERTEX_API_DISABLED`, `VERTEX_MODEL_NOT_FOUND`, …).
 - Réconciliation UI : relance automatique des docs `pending` ou `failed` à l’ouverture de l’onglet.
+- **V3.1 (2026-05-29)** : verrouillage légal OACIQ client — `LegalVaultWormPanel`, `LegalVaultWormLockModal`, `legalVaultService.ts` ; badges Brouillon / Sécurisé WORM·OACIQ ; mutation `organizations/{orgId}/legal_vault/` (règles V3.0).
 
 ### Phase 4c — Onglets fiche résidence (Synthèse, Déclaration, Marché, Promesse)
 
@@ -110,7 +111,8 @@ Données : sous-collection **`residences/{id}/financial/dataV2`** (migration dep
 - **Promesse** : `PromesseAchatTab` — cockpit promesse d'achat (Sprints 5.1–5.4)
   - **SSOT** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`
   - **Firestore** : objet racine `offre` (tronc financier + conditions + clôture) ; bloc `promesseAchat` (statut, dates, délais en jours, commission, collaborateurs, documents)
-  - **UI** (`src/components/residence/promesse/`) : `OffreTroncFinancierSection`, `OffreConditionsLegalesSection`, `OffreClotureRetributionSection`, `PromesseDelaisPaSection` (jours éditables → dates calculées), `PromesseCommissionPaSection`, `PaConfortPanel` ; `TernaryToggle` partagé
+  - **UI** (`src/components/residence/promesse/`) : `OffreTroncFinancierSection`, `OffreConditionsLegalesSection`, `OffreClotureRetributionSection`, `PromesseDelaisPaSection` (jours éditables → dates calculées), `PromesseCommissionPaSection`, `PaConfortPanel`, **`ContractAssemblerPanel`** (V3.5 — assemblage contrat + annexes) ; `TernaryToggle` partagé
+  - **Générateur natif (V3.4–V3.5)** : `packages/core/src/forms/` — HTML sans OpenXML ; legacy Copilote `docxtemplater` / PizZip **non réintroduit**
   - **Épuration OACIQ (5.4)** : champs retirés de l’UI (Annexe 6, clause RNE/TGA, transfert fiducie, prorata MSSS) — clés core conservées pour migrations
   - **Sérialisation Firestore** : `undefined` → `null` sur `promesseAchat.delais.*` et commission (évite `Unsupported field value: undefined`)
   - **Écriture `offre`** : toujours envoyer l’objet `offre` complet via `serializeOffreForFirestore` (merge contexte = shallow ; un partial efface les autres clés)
@@ -124,11 +126,31 @@ Données : sous-collection **`residences/{id}/financial/dataV2`** (migration dep
 - Boutons : rapport vendeur / mise à jour → `contentGenPrefill` + onglet ContentGen.
 - Thème institutionnel (`InstitutionalResidenceTabShell` + tokens `primexpert-*`, 2026-05-19)
 
-### Authentification — développement local (2026-05-19)
+### Authentification — connexion Google (2026-05-19, recalé 2026-05-30)
 
-- En **`import.meta.env.DEV`**, connexion Google via **`signInWithPopup`** (évite les boucles `signInWithRedirect` sur localhost).
-- Production : **`signInWithRedirect`** inchangé.
+- **Production et développement : utilisation stricte et exclusive de `signInWithPopup`** afin de préserver l'intégrité des sessions face aux restrictions d'ITP / cookies tiers sur Firebase Hosting (le retour `signInWithRedirect` perdait la session).
+- En-tête `Cross-Origin-Opener-Policy: same-origin-allow-popups` déjà posé sur tous les chemins dans `firebase.json` pour autoriser les fenêtres (popups) OAuth.
+- Points d'entrée du popup : `src/lib/auth.tsx` (hook `useAuth`), `src/auth-signin.ts`, `src/lib/publicEntryAuth.ts`.
 - `App.tsx` : navigation vers `/workhub` après session effective ; garde courte si `auth.currentUser` est défini avant le contexte React.
+- Garde de chargement `/workhub` déjà en place (`ProtectedWorkhub` → `if (loading)`, `Suspense` racine, *timeout* de démarrage 15 s dans `onAuthStateChanged`).
+- Correctif 2026-05-30 : l'ancienne note « Production : `signInWithRedirect` inchangé » était discordante avec le code et a été remplacée.
+- Correctif PR #3 (2026-06-01) : `ProtectedWorkhub` attend `signInPending` / `?signin=1` avant de sortir vers la landing ; `PublicLandingRedirect` force un rechargement complet de `/` pour réafficher le HTML public après une route SPA inconnue ou une session absente.
+
+### Évaluation d'infrastructure moderne — Diagnostic de distribution réseau et isolation des comportements de cache CDN (exit 0) (2026-05-30)
+
+- **Symptôme** : écran noir persistant sur la production `/workhub`, sans erreur console, build `exit 0`.
+- **Cause racine (réseau, pas applicatif)** : les en-têtes Firebase Hosting s'évaluent sur le **chemin de requête entrant, avant les `rewrites`**. Les routes SPA sans extension (`/workhub`, `/acces-vendeur`) ne correspondaient à aucune règle `no-cache` (qui ne ciblaient que `/index.html` et `**/*.html`) et ne matchaient que le `**` global (COOP seul). Le HTML de ces routes pouvait donc être mis en cache → après redéploiement, références de *chunks* hachés obsolètes → import dynamique en 404 → `Suspense` racine figé sur fond `#0a0a0a` (écran noir).
+- **Correctif (config seule, `firebase.json`)** : ajout de blocs d'en-têtes `Cache-Control: no-cache, no-store, must-revalidate` (+ COOP) pour `"/workhub{,/**}"` et `"/acces-vendeur{,/**}"`, placés avant le `**` global.
+- **Déploiement** : `firebase deploy --only hosting` (publication atomique — invalide automatiquement le CDN Firebase ; aucun purge manuel requis). Le correctif d'en-tête traite le cache **navigateur** qui survivait au redéploiement.
+- **Point latent (cosmétique, non bloquant)** : le script *pré-paint* d'`index.html` pose `px-spa` sur `document.documentElement` (`<html>`) alors que les règles CSS ciblent `body.px-spa`. La bascule de visibilité fonctionne quand même car `bootstrap-spa.tsx` applique des styles *inline* sur `#root`, mais l'anti-flash de la page statique sur `/workhub` est inopérant. Non corrigé ici (hors écran noir).
+
+### Évaluation d'infrastructure moderne — Stabilisation des composants de conformité et protocole de surveillance réseau (2026-05-30)
+
+- **Contexte** : écran noir prod `/workhub` toujours présent après *hard refresh* ; hypothèses testées sur la bannière OACIQ (`BrokerPhotoComplianceBanner`).
+- **Réfutation** : le système i18n n'a **aucun dictionnaire** — `t(fr, en)` est un simple ternaire renvoyant l'un des deux littéraux passés en ligne (`src/lib/i18n.tsx`). Donc « clé manquante », « chaîne vide » et « `t()` qui plante » sont impossibles ici ; `useLanguage()` ne lève que hors `LanguageProvider`, qui enveloppe toute l'app (`App.tsx`).
+- **Garde-fou ajouté (défensif, sans effet fonctionnel attendu)** : `BrokerPhotoComplianceBanner` calcule `message` puis `if (!message) return null;` — pas de `try/catch` autour d'un *hook* (règles des *hooks*). Le composant ne peut pas bloquer le rendu du `Layout`.
+- **Limite** : ce garde-fou par composant **ne corrige pas** un échec de chargement de *chunk* (404). Si le *chunk* `Layout`/vendor tombe, c'est tout le sous-arbre qui échoue, pas seulement la bannière — relève alors du correctif de cache (déjà déployé) ou d'une `ErrorBoundary` racine (non encore en place).
+- **Protocole de surveillance** : le PO (Alain) extrait l'onglet **Réseau** de la prod pour isoler le fichier `.js`/locale en 404 ou échec. Diagnostic réel en attente de cette preuve.
 
 ### Tableau de bord — Priorités de suivi KISS (2026-05-17)
 
@@ -577,6 +599,129 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 ---
 
+## Vérification de conformité de l'infrastructure de données (2026-05-29)
+
+**Statut :** **[VALIDÉ PO — commit `feature/v2.8-market-stats-optimization` — 2026-05-29]**
+
+| Élément | Détail |
+|---------|--------|
+| **Décision technique** | Refonte pipeline `marketDocumentParseIA` + `injectMarketMacroStats` pour déploiement multi-tenant grand public (V2.8). |
+| **Découpage sémantique local** | `packages/core/src/market/marketPdfSemanticAnchors.ts` + `functions/src/documents/marketPdfSlice.ts` — extraction pages à ancrages québécois (taux de capitalisation (TGA), 75 ans et plus, MSSS, SCHL, indice de liquidité, SP/LP) avant Vertex. |
+| **Cache déterministe** | Empreinte `contentHashMd5` sur `market_documents` ; clone `extractedData` si hash déjà parsé — zéro appel IA sur doublon binaire. |
+| **Modèle IA** | `gemini-2.5-flash` conservé ; `responseMimeType: application/json` ; variables canoniques `tgaPct`, `population75_plus`, `monthsOfInventory`, `sellingPriceListingPriceRatio`. |
+| **Multi-tenant** | `orgId` propagé (upload client, injection HITL, règles Firestore `market_documents` / `market_macro_stats`). |
+| **Ressources Cloud Function** | `marketDocumentParseIA` : **512 MiB** / **60 s** (était 2 GiB / 540 s). |
+| **Règle #0** | Enrichissement SSOT core ; architecture HITL préservée (injection courtier avant persistance macro). |
+
+**HITL :** le courtier valide toujours les extractions avant injection ; le cache MD5 ne contourne pas la revue humaine sur les nouveaux dépôts identiques.
+
+---
+
+## Optimisation du moteur d'analyse comparative de marché (ACM) et traitement Big Data (V3.2 — 2026-05-29)
+
+**Statut :** **[VALIDÉ PO — commit `feature/v2.8-market-stats-optimization` — build exit 0]**
+
+| Élément | Détail |
+|---------|--------|
+| **Règle #0** | Enrichissement SSOT `@primexpert/core/market/centrisComparableCapRate.ts` — aucun moteur parallèle. |
+| **Calcul TGA réel** | `calculateComparableCapRate()` — taux de capitalisation global (TGA) = revenu net d’exploitation (RNE) ÷ prix vendu × 100. |
+| **Sources Big Data** | Fusion `listings_cache` (Centris Matrix, `source: centris_odata`) + `market_analytics_raw` filtrés par `regionAdministrative` et classe RPA. |
+| **Service client** | `marketAnalyticsService.ts` + `useTerritorialCompetition` — abonnement temps réel, tri par récence. |
+| **Workspace ACM** | `AcmValuationWorkspace.tsx` — taux de capitalisation global (TGA) médian dynamique ; ajustement qualitatif courtier (ex. +0,25 % vétusté) recalcule la valorisation SSOT instantanément. |
+| **UI Marché** | `TerritorialCentrisCompetitionSection` — sous-onglet **Concurrence territoriale** (`MarcheConcurrenceTab`). |
+| **Sécurité** | `firestore.rules` — lecture `listings_cache` pour utilisateurs authentifiés ; écriture serveur uniquement. |
+| **Nettoyage** | Suppression des doublons `useTerritorialCentrisComparables` / `TerritorialCompetitionSection`. |
+
+**HITL :** le courtier conserve la main sur le taux de capitalisation global (TGA) cible (saisie manuelle, réinitialisation au médian territorial) ; les comparables alimentent la diligence raisonnable, sans persistance automatique du prix suggéré.
+
+---
+
+## Mise en place du pipeline d'auto-alimentation décentralisé (Data Flywheel) et protocole d'anonymisation (chantier parallèle — 2026-05-29)
+
+**Statut :** **[EN REVUE PR #3 — branche `automation/rpa-transaction-test-coverage`]** *(numéro de version distinct du jalon assembleur V3.5 scellé ci-dessous)*
+
+| Élément | Détail |
+|---------|--------|
+| **Règle #0** | SSOT `@primexpert/core/market/internalMarketFlywheel.ts` — enrichit le pipeline Big Data existant (`market_analytics_raw`, `marketSnapshots/v1`). |
+| **Déclencheur** | Cloud Function `onTransactionConcludedFlywheel` — `onDocumentUpdated` sur `residences/{residenceId}`. |
+| **Conditions** | Transition vers **promesse d'achat acceptée** (`promise` / `pa-acceptee`) ou **vendu** (`sold` / `vendue`) depuis un statut non terminal. |
+| **Anonymisation** | Variables de performance seulement : classe d'actif, prix réel, taux de capitalisation global (TGA) via `calculateComparableCapRate`, prix au pi², région, ville, FSALDU-3. Purge : noms, UID, orgId, adresses exactes, cadastre, numéro d'inscription lié. |
+| **Injection** | Collection `market_analytics_raw` — `dataSource: 'internal_flywheel'`, empreinte `internalFlywheelFingerprint`. |
+| **Snapshot** | `refreshRegionalMarketSnapshotForFlywheel()` dans `injectMarketMacroStats.ts` — recalcul immédiat `marketSnapshots/v1` pour la région. |
+| **Idempotence** | Marqueur `internalFlywheelIngestion` sur la fiche résidence (`promiseAtMillis` / `soldAtMillis`). |
+
+**HITL :** l'alimentation provinciale est automatique et anonyme ; la fiche CRM résidence demeure sous contrôle du courtier titulaire de permis — aucune diffusion publique des données identifiantes.
+
+---
+
+## Intégration du module d'évaluation du ratio dépenses/revenus (OER) et benchmarks automatisés par classe d'actif (V3.7 — 2026-05-29)
+
+**Statut :** **[LIVRÉ — scellé V3.7]**
+
+| Élément | Détail |
+|---------|--------|
+| **Règle #0** | SSOT `@primexpert/core/analytics/marketMetrics.ts` — enrichit extraction IA, snapshots et workspace ACM existants. |
+| **Modèle** | `operatingExpenseRatio` (%) — ratio des dépenses d'exploitation (RDE) = dépenses normalisées ÷ revenu brut effectif (RBE) × 100. |
+| **Extraction IA** | `geminiExtract.ts` — prompt Vertex + validation par classe (`rpa`, `plex`, `commercial_pure`, `industrial`). |
+| **Snapshots** | `injectMarketMacroStats.ts` — `provincialOerAggregates.operatingExpenseRatioMedian` par région / silo. |
+| **UI ACM** | `AcmValuationWorkspace` — bannière jaune HITL si écart > 7 points vs médiane régionale `market_analytics_raw`. |
+
+**HITL :** l'alerte recommande une révision des charges ; le courtier titulaire de permis valide avant toute conclusion de bancabilité.
+
+---
+
+## Évaluation d'infrastructure moderne — Recalage et unification des états financiers inter-onglets (SSOT Fix) (2026-05-30)
+
+**Statut :** **[VALIDÉ PO — Build Global et Functions Exit 0 — Éradication des coquilles d'états inter-onglets]**
+
+| Élément | Détail |
+|---------|--------|
+| **Règle #0** | `ResidenceDataContext` — fusion prop liste + listener Firestore ; enrichit `ResidenceDocumentContext` existant. |
+| **Prix SSOT** | `getListingPrice()` — champ `price` prime sur `prixAnnonce` legacy ; normalisation inter-onglets. |
+| **Calcul pur** | `getListingPricePerUnit()` — prix demandé ÷ unités totales (ex. 2 558 000 $ ÷ 23 → 111 217,39 $ / unité). |
+| **Onglets alignés** | Synthèse, Identité, Finances, Déclaration, Marché, Promesse, Diffusion — consommation `useUnifiedResidence()`. |
+| **Flywheel** | `internalMarketFlywheel.ts` — `computeFlywheelCapRatePct()` ; correction portée `closedAtMillis` (build functions exit 0). |
+| **En-tête** | `ResidenceDetail` — prix unique via contexte ; mutation crayon → Firestore global + rafraîchissement en-tête. |
+
+**HITL :** toute modification du prix demandé demeure validée par le courtier titulaire de permis avant diffusion ou conclusion.
+
+---
+
+## Évaluation d'infrastructure moderne — Redressement complet de la cohérence financière inter-onglets et élimination des données fantômes (2026-05-30)
+
+**Statut :** **[VALIDÉ PO — commit `d232673` — build + hosting deploy 2026-05-30]**
+
+| Élément | Détail |
+|---------|--------|
+| **Prix SSOT** | `resolvePrixDemande()` — interdit le `calc.prixDemande` legacy (3,5 M$) ; force `getListingPrice()` (2 558 000 $). |
+| **RNE** | `resolveAdmissibleOpex()` — `depensesTotales` déclaré prioritaire si grille Firestore incomplète ; RNE = RBE − dépenses (**529 489 $** = 1 129 749 $ − 600 260 $). |
+| **TGA réel** | Recalculé : 529 489 $ ÷ 2 558 000 $ = **20,70 %** (`syncCalcWithCanonicalListingPrice`). |
+| **Emprunt + MFR** | Réalignement automatique quand le prix canonique diffère du `calculatedResults` figé ; somme = prix demandé. |
+| **Hub Finance** | `useResidenceFinancialHints()` + `buildResidenceFinancialHints()` — hints unifiés sur tous les sous-onglets. |
+| **Crash UI** | `ResidenceTabErrorBoundary` ; contextes `ResidenceDocument` / `FinancialData` mémoïsés ; gardes `ResidenceDetail`. |
+| **Onglets** | Hub, Bilan, Finançabilité, Revenus & Dépenses, Ratios, Synthèse, Analyse 360° — consommation hints SSOT. |
+
+**HITL :** le courtier valide les montants avant toute conclusion de bancabilité ou diffusion ACM.
+
+---
+
+## Intégration du protocole de gestion des inscriptions hors marché (Off-Market) (2026-05-29)
+
+**Statut :** **[EN REVUE PR #3 — branche `automation/rpa-transaction-test-coverage`]**
+
+| Élément | Détail |
+|---------|--------|
+| **Schéma** | `listingSource: 'centris' \| 'off_market'` sur `residences` (inscriptions CRM) ; défaut `'centris'` pour l'historique. |
+| **Création** | `CreateInscriptionForm` — sélecteur Centris vs hors marché sur « Nouv. Inscription ». |
+| **Statut UI** | `InscriptionStatusDropdown` — édition libre si Off-Market ; Centris verrouillé MLS avec override manuel (`isManuallyOverridden`). |
+| **PDF** | Filigrane « DOCUMENT CONFIDENTIEL — DIFFUSION RESTREINTE » sur rapports Hub Finance, ACM présentation et ACM vendeur. |
+| **Sync** | `centrisListingsSyncNightly` — ignore catégoriquement `listingSource === 'off_market'`. |
+| **Règle #0** | SSOT `@primexpert/core/residence/listingSource.ts` + `inscriptionBrokerageStatus.ts`. |
+
+**HITL :** les fiches hors marché demeurent sous la responsabilité du courtier titulaire de permis ; la mention confidentielle protège le secret commercial du client vendeur.
+
+---
+
 ## Session 2026-05-29 — Portail vendeur autonome, briefing matin, radar off-market, SPA (`c407c60` → `f9a4f23` → `194a5ea`)
 
 ### Accès Vendeur V2.8 — portail client autonome
@@ -643,7 +788,7 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 | `brokerProfileCompliance.ts` | `profilePhotoUploadedAtMillis`, `isProfilePhotoExpired` (> 1826 j), `validateBrokerProfilePhotoForPublication` |
 | `index.ts` | Barrel |
 
-**Hors périmètre sprint (branchement prod planifié) :** collections Firestore `legal_vault` + `compliance_log`, `firestore.rules` deny update/delete si `isFinalWormLocked`, Function Montréal append journal sur READ/WRITE/LOCK/EXPORT_ZIP, extension `UserProfile` côté `users/{uid}`.
+**Suite déployée en V3.0 :** collections Firestore `legal_vault` + `compliance_logs`, règles WORM deny update/delete si `isFinalWormLocked`, Function Montréal `onVaultDocumentWrite` et extension profil courtier `profilePhotoUploadedAtMillis` côté `users/{uid}`.
 
 ---
 
@@ -657,14 +802,43 @@ Statut officiel consolidé (conseil d'administration) :
 | Analyse de mise en marché (ACM) & benchmark taux de capitalisation (TGA) | **[OPÉRATIONNEL — PRODUCTION LIVE]** |
 | Hub omnicanal (SMS / Nylas) | **[OPÉRATIONNEL — PRODUCTION LIVE]** |
 | Clauses négociation Gemini | **[CÂBLÉ — MOTEUR DYNAMIQUE ACTIF]** |
-| Coffre-fort WORM & sécurité | **[CÂBLÉ — INTÉGRATION CORE CERTIFIÉE]** |
+| Coffre-fort WORM & sécurité | **[OPÉRATIONNEL — PRODUCTION LIVE]** |
 
 **URL production :** https://primexpert-app-v2.web.app  
 **Modules V2.8 complémentaires (hors registre exécutif) :** portail vendeur autonome (85 pièces), briefing matin, radar off-market — voir section session 2026-05-29 ci-dessus.
 
 ---
 
-## Fin de cycle technique V2.9 — projet configuré et stable (mai 2026)
+## Registre global des architectures sécurisées — mai 2026
+
+Statut officiel post-déploiement V3.0 :
+
+| Élément | Statut certifié |
+|---------|-----------------|
+| **URL officielle** | https://primexpert-app-v2.web.app |
+| **Statut Firestore** | Règles WORM actives & verrouillées en prod |
+| **Statut Cloud Function** | `onVaultDocumentWrite` — **[PROD LIVE — MONTRÉAL]** |
+| **Registre exécutif** | 5 piliers d'élite majeurs certifiés et actifs |
+
+---
+
+## Mandat infrastructure V3.0 — Firestore WORM & journal Montréal (2026-05-29)
+
+| Livrable | Emplacement | Statut |
+|----------|-------------|--------|
+| Règles WORM `legal_vault` | `firestore.rules` | **DEPLOYE — prod active** |
+| Journal `compliance_logs` | Sous-collection append-only (Admin SDK) | **DEPLOYE** |
+| Trigger journalisation | `onVaultDocumentWrite` — `northamerica-northeast1` | **PROD LIVE — MONTRÉAL** |
+| Writer SHA-256 chaîné | `legalComplianceLogWriter.ts` | **ACTIF** |
+| Prebuild | `sync-core-security.cjs` | **ACTIF** |
+
+**Déploiement exécuté (2026-05-29) :**
+```bash
+firebase deploy --only firestore:rules                                    # ✔
+FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions:onVaultDocumentWrite  # ✔ create northamerica-northeast1
+```
+
+---
 
 Clôture officielle du cycle de développement V2.9 :
 
@@ -672,12 +846,131 @@ Clôture officielle du cycle de développement V2.9 :
 |---------|--------|
 | **URL officielle** | https://primexpert-app-v2.web.app |
 | **Monorepo** | **Archivé, validé, zéro dérive** — `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2` |
-| **Mode sécurisation** | **Cockpit technique en attente d'ordres opérationnels** |
+| **Mode sécurisation** | **Architectures sécurisées V3.0 — PROD LIVE** |
 
-**Interprétation ops :** aucun déploiement ni refactor non mandaté ; prochaines actions = ordres PO explicites (ex. branchement Firestore Vault WORM, `firestore.rules`, Functions Montréal journal de conformité).
+**Interprétation ops :** WORM Firestore + `onVaultDocumentWrite` Montréal déployés ; raccordement UI client V3.1 codé (déploiement hosting à exécuter).
 
 **Repo :** https://github.com/alain-blip/primexpert-v2-core.git — branche `main`.
 
 ---
 
-*Journal mis à jour : 2026-05-29 — Fin de cycle V2.9. Registre global mai 2026 certifié. Cockpit en attente d'ordres opérationnels.*
+## 2026-05-29 — STATUT DE PRODUCTION ET RACCORDEMENT UI V3.1
+
+**Statut sprint :** **[CODÉ — PRÊT DÉPLOIEMENT HOSTING]**
+
+| Livrable | Emplacement | Statut |
+|----------|-------------|--------|
+| Orchestration onglet Documents | `DocumentsDiligenceTab.tsx` | **BRANCHÉ** — abonnement `legal_vault`, props org/licence/prix |
+| Indicateur + action WORM | `LegalVaultWormPanel.tsx` | **ACTIF** — badge Brouillon / Sécurisé WORM·OACIQ, bouton verrouillage |
+| Modale confirmation LCI | `LegalVaultWormLockModal.tsx` | **ACTIF** — validation nom au permis, type de permis, prix au contrat |
+| Service mutation atomique | `legalVaultService.ts` | **ACTIF** — `ensureLegalVaultDraft` + `lockLegalVaultDocument`, IP client, gestion 403 |
+| Liste documents (badges) | `DocumentUploadPanel.tsx` | **ÉTENDU** — badges WORM compacts par ligne |
+| Panneau métadonnées | `DocumentMetadataPanel.tsx` | **ÉTENDU** — section « Verrouillage légal OACIQ » |
+| Mapping types | `legalVaultDocumentMapping.ts` | **ACTIF** — ID déterministe `{propertyId}__{documentId}` |
+
+**Mutation Firestore (verrouillage définitif) :**
+```typescript
+{
+  isFinalWormLocked: true,
+  lockedAtMillis: Date.now(),
+  lastWriteClientIp: "<IP résolue ou 0.0.0.0>"
+}
+```
+Chemin : `organizations/{orgId}/legal_vault/{documentId}` — règles V3.0 inchangées (transition `false → true` uniquement).
+
+**Validation UX :**
+- **Mobile-First** : modale bottom sheet (`items-end` → `sm:items-center`), boutons pleine largeur mobile, badges `flex-wrap`, layout Documents empilé (`flex-col lg:flex-row`).
+- **Laptop Cockpit** : panneau métadonnées `lg:w-[300px]`, trois colonnes Documents / liste / détail.
+- **Purge lexicale** : **0 occurrence** du mot banni « audit » dans l'UI V3.1 (libellés, modale, infobulles) — conformité OACIQ / vérification / verrouillage légal uniquement.
+
+**Correctif build (alias Vite) :** `@primexpert/core/security` ajouté à `vite.config.ts` + `tsconfig.json` (résolution Rollup).
+
+**Déploiement hosting recommandé :**
+```bash
+npm run build && firebase deploy --only hosting
+```
+Cible : https://primexpert-app-v2.web.app
+
+---
+
+---
+
+## Assembleur de mandats — moteur de contrat natif & champs entre parenthèses (V3.5 — 2026-05-30)
+
+**Statut :** **[SCELLÉ — commit `63286dc` — branche `feature/v2.8-market-stats-optimization` — HEAD = origin]**
+
+| Élément | Détail |
+|---------|--------|
+| **Règle #0** | SSOT `@primexpert/core/forms/` — zéro docxtemplater ; export HTML natif (print / PDF navigateur). |
+| **Legacy expulsée** | Copilote-RPA : `docxGenerator.js` (docxtemplater + PizZip) — **identifiée, non portée en V2**. Gabarit référence : `00_RPA_SYSTEME_APP/…/gabarits-v3/Promesse d'achat ACTIFS.docx`. |
+| **Schéma parenthèses** | `annexeFieldSchema.ts` — `AnnexePrixFields.nouveauPrixNumerique` `( $ )`, `AnnexeRFields.retributionPct` `( % )`, `AnnexeGFields.ccvReference` `CCV-…` ; `ContractAssemblerFieldState`. |
+| **Rendu dynamique** | `renderDynamicParenthesis.ts` — `.dynamic-value` / `.is-empty` ; `renderParenthesisMoney`, `renderParenthesisPercent`, `renderCcvReference`. |
+| **Defaults ACM** | `buildContractAssemblerDefaults.ts` — prix annexe depuis RNE ÷ taux de capitalisation global (TGA) ajusté (`resolveCanonicalRne`, bootstrap ACM). |
+| **Dossier HTML** | `renderContractAssemblerToHtml.ts` — contrat courtage + annexes cochées + promesse d'achat actifs (V3.4 `renderPaActifsToHtml`). |
+| **UI** | `ContractAssemblerPanel.tsx` — checkboxes annexes, champs conditionnels, export HTML ; câblé dans `PromesseAchatTab` (`955410e` + `63286dc`). |
+| **Alias build** | `@primexpert/core/forms` — `vite.config.ts` + `tsconfig.json`. |
+| **Build racine** | `npm run build` — **SUCCESS exit 0** (validé avant propulsion). |
+
+**HITL :** l'assembleur produit un brouillon HTML ; le courtier titulaire de permis valide le contenu juridique avant signature ou remise au client. Persistance Firestore de l'état assembleur — **hors périmètre V3.5** (été 2026).
+
+**Commits de référence :**
+
+| Commit | Contenu |
+|--------|---------|
+| `7ee43cb` | PA Actifs V3.4 — `paActifsTypes`, `renderPaActifsToHtml`, couplage ACM |
+| `955410e` | Câblage `PromesseAchatTab` + unification SSOT onglets résidence |
+| `63286dc` | V3.5 — `ContractAssemblerPanel`, schémas parenthèses, rendu HTML assembleur |
+
+**Hors périmètre scellé (local non commité) :** docs PDF RPA (dossiers investissement).
+
+---
+
+## Déploiement production — redressement finance fiche résidence (2026-05-30)
+
+| Point | Détail |
+|-------|--------|
+| **Commit** | `d232673` — `fix(finance): cohérence SSOT RNE et prix canonique sur toute la fiche résidence` |
+| **Branche** | `feature/v2.8-market-stats-optimization` |
+| **Build** | `npm run build` — exit 0 |
+| **Hosting** | `firebase deploy --only hosting` → https://primexpert-app-v2.web.app |
+| **Référence étalon** | 198 chemin du Roy — prix 2 558 000 $, RNE 529 489 $, TGA 20,70 % |
+
+---
+
+## PR #3 — Couverture tests flux RPA + alignement modules marché/sécurité/formulaires (2026-06-01)
+
+**Déclencheur :** PR [#3](https://github.com/alain-blip/primexpert-v2-core/pull/3) — branche `automation/rpa-transaction-test-coverage` (`d13dadc` → `38a7779`).
+
+**Statut :** **[EN VALIDATION HUMAINE ALAIN — documentation alignée en PR dédiée]**
+
+| Volet | Ajouts / impacts |
+|-------|------------------|
+| **Couverture RPA** | Workflow `.github/workflows/rpa-transaction-test-coverage.yml`, `vitest.config.ts`, script `npm run test:rpa-coverage`, garde `scripts/check-resolveColumnId-coverage.mjs`. |
+| **Kanban** | `src/config/__tests__/resolveColumnId.test.ts` couvre les alias `pa-acceptee`, `vendue` et colonnes actives. |
+| **Promesse acceptée** | `packages/core/src/transaction/__tests__/paAccepteeCriticalDeadlines.test.ts` valide les 7 échéances critiques : réponse, visite, documents, inspection, financement, permis, **dédit LCI art. 73.2**. |
+| **Marché / Centris** | `listings_cache` lecture seule, `centrisComparableCapRate.ts`, `TerritorialCentrisCompetitionSection`, `marketAnalyticsService`, `useTerritorialCompetition`. |
+| **Flywheel / OER** | `onTransactionConcludedFlywheel` alimente `market_analytics_raw` anonymisé ; `@primexpert/core/analytics/marketMetrics.ts` calcule le ratio des dépenses d'exploitation (RDE/OER). |
+| **Sécurité WORM** | `legal_vault` + `compliance_logs` documentés comme collections canoniques ; `onVaultDocumentWrite` reste le point serveur Montréal. |
+| **Inscriptions** | `listingSource: 'centris' \| 'off_market'`, override manuel `isManuallyOverridden`, `CreateInscriptionForm`, `InscriptionStatusDropdown`, sync nocturne `centrisListingsSyncNightly`. |
+| **Routage auth SPA** | `ProtectedWorkhub` / `AccesVendeurRoute` sortent via `PublicLandingRedirect` ; garde `signInPending` pour ne pas interrompre la connexion popup. |
+
+**Règle de non-duplication appliquée :** les informations sont fusionnées dans les sections existantes (`README`, `arborescence`, dictionnaire canonique) ; aucune collection parallèle (`buyerPipeline/`, `organizations/.../market_documents`, coffre-fort bis) n'est créée ni documentée comme cible.
+
+**HITL :** la PR de documentation doit rester en brouillon jusqu'à validation d'Alain ; aucun merge ni push direct sur `main`.
+
+---
+
+## Verrouillage technique fin de sprint — Primexpert V3.5 (2026-05-30)
+
+| Point de contrôle | Statut |
+|-------------------|--------|
+| Jalon moteur de contrat | **[NATIVEMENT INTÉGRÉ AU CORE — ÉTANCHE]** |
+| Gestion des parenthèses `( )` | **[SCHÉMAS TYPÉS & RENDU COMPILÉ]** |
+| Synchronisation Git distante | **[PROPULSÉE — `d232673` sur `feature/v2.8-market-stats-optimization`]** |
+| Build production racine | **[SUCCESS — exit 0]** |
+| Hosting prod finance SSOT | **[DÉPLOYÉ — 2026-05-30]** |
+| UI polish été 2026 | **[EN ATTENTE]** — PDF-A CraftMyPDF, persistance Firestore assembleur, gabarits annexes complets depuis `gabarits-v3` |
+
+---
+
+*Journal mis à jour : 2026-06-01 — PR #3 documentée (couverture RPA, Centris/off-market, flywheel/OER, WORM canonique).*
