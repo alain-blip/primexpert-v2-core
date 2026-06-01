@@ -8,6 +8,10 @@ import {
   type FinancialDataV2Doc,
   type ResidenceFinancialHints,
 } from '../financial/normalizeFinancialData';
+import {
+  computeCapitalizedValueFromNoi,
+  normalizeCapitalizationRatePct,
+} from '../financial/capitalizationMetrics';
 import { applyCanonicalMetricsToCalc, resolveCanonicalFinancialMetrics } from '../financial/resolveCanonicalRne';
 import type { MarketGpsTransaction } from '../market/marketGpsViewModel';
 import {
@@ -301,13 +305,9 @@ export function bootstrapResidenceAcm(
   const marketContext = resolveMarketContext(residence, residenceDoc);
 
   const calcTgaPct =
-    finiteNum(calc.tauxCapitalisation) != null
-      ? finiteNum(calc.tauxCapitalisation)! > 1
-        ? finiteNum(calc.tauxCapitalisation)!
-        : finiteNum(calc.tauxCapitalisation)! * 100
-      : valuationInputs.targetCapRate > 0
-        ? valuationInputs.targetCapRate * 100
-        : 8.5;
+    normalizeCapitalizationRatePct(finiteNum(calc.tauxCapitalisation)) ??
+    normalizeCapitalizationRatePct(valuationInputs.targetCapRate) ??
+    8.5;
 
   const gpsSelection = selectGpsCapRateMedian({
     transactions: options?.marketTransactions ?? [],
@@ -329,10 +329,9 @@ export function bootstrapResidenceAcm(
     ...valuationInputs,
     valuationMode: 'acm_unified_cap',
   });
-  const regionalCapRatePerformanceValue =
-    rne > 0 && suggestedCapRatePct > 0
-      ? roundToNearestThousand(rne / (suggestedCapRatePct / 100))
-      : 0;
+  const regionalCapRatePerformanceValue = roundToNearestThousand(
+    computeCapitalizedValueFromNoi(rne, suggestedCapRatePct) ?? 0
+  );
 
   return {
     residenceLabel: resolveResidenceLabel(residence, residenceDoc),

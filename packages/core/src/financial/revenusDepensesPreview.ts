@@ -2,6 +2,12 @@
  * Aperçu live RNE / TGA — colonne « Normalisé » (Hub Finance).
  */
 
+import {
+  computeCapitalizationRateFromNoi,
+  computeCapitalizedValueFromNoi,
+  normalizeCapitalizationRatePct,
+} from './capitalizationMetrics';
+
 export interface RevenusDepensesLiveKpis {
   rbe: number | null;
   depensesNormalisees: number | null;
@@ -23,13 +29,14 @@ export function computeRevenusDepensesLiveKpis(
 
   let tgaPct: number | null = null;
   if (rne != null && rne > 0 && prixDemande != null && prixDemande > 0) {
-    tgaPct = (rne / prixDemande) * 100;
+    tgaPct = normalizeCapitalizationRatePct(
+      computeCapitalizationRateFromNoi(rne, prixDemande)
+    );
   } else if (tgaReferencePct != null && Number.isFinite(tgaReferencePct)) {
-    tgaPct = tgaReferencePct > 1 ? tgaReferencePct : tgaReferencePct * 100;
+    tgaPct = normalizeCapitalizationRatePct(tgaReferencePct);
   }
 
-  const valeurCapitalisation =
-    rne != null && rne > 0 && tgaPct != null && tgaPct > 0 ? rne / (tgaPct / 100) : null;
+  const valeurCapitalisation = computeCapitalizedValueFromNoi(rne, tgaPct);
 
   return {
     rbe,

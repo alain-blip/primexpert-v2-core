@@ -49,6 +49,7 @@ import type {
   FinancialDataV2Doc,
   TerritorialAcmMedians,
 } from '@primexpert/core/financial';
+import { computeCapitalizedValueFromNoi } from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
 import {
@@ -425,10 +426,10 @@ export function AcmValuationWorkspace({
     const marketAligned = territorialMedians?.prixParUnite
       ? territorialMedians.prixParUnite * Math.max(1, bootstrap.units)
       : null;
-    const performanceBased =
-      territorialMedians?.tgaPct && territorialMedians.tgaPct > 0
-        ? bootstrap.revenuNetExploitation / (territorialMedians.tgaPct / 100)
-        : null;
+    const performanceBased = computeCapitalizedValueFromNoi(
+      bootstrap.revenuNetExploitation,
+      territorialMedians?.tgaPct
+    );
     const maxPotential = stressSummary?.occ100 ?? null;
     const rows = [
       {

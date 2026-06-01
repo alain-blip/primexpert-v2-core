@@ -25,6 +25,7 @@ import {
 } from './valuationProfiles';
 
 import { formatCurrency } from '@primexpert/core/utils/formatting';
+import { computeCapitalizedValueFromNoi } from '../financial/capitalizationMetrics';
 
 import {
   type ComparableCapRateSample,
@@ -584,9 +585,7 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
 
   // Méthode 1: Capitalisation (RNE comptable / TGA)
   // Utilise le RNE comptable (avant ajustements) comme demandé
-  const valueByCap = inputs.targetCapRate > 0
-    ? noiAccounting / inputs.targetCapRate
-    : 0;
+  const valueByCap = computeCapitalizedValueFromNoi(noiAccounting, inputs.targetCapRate) ?? 0;
 
   // Méthode 2: Multiple du Revenu Brut (RBE × MRB)
   // Utilise le RBE (revenu brut effectif)
@@ -675,7 +674,7 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
     : 0;
 
   const canonicalValueByCap =
-    inputs.targetCapRate > 0 ? noiAccounting / inputs.targetCapRate : 0;
+    computeCapitalizedValueFromNoi(noiAccounting, inputs.targetCapRate) ?? 0;
 
   let suggestedPrice: number;
   let suggestedLow: number;
@@ -813,9 +812,9 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
   const capRateMarketSelected = marketCapRateMeta.capRateMarketSelected;
 
   // Calculer la valeur par revenu au TGA de marché
-  const valueByIncomeMarket = capRateMarketSelected > 0
-    ? roundToThousand(noiAccounting / capRateMarketSelected)
-    : 0;
+  const valueByIncomeMarket = roundToThousand(
+    computeCapitalizedValueFromNoi(noiAccounting, capRateMarketSelected) ?? 0
+  );
 
   // Calculer le TGA implicite au prix demandé
   const capRateImpliedAtAsking = computeCapRateImpliedAtAsking(

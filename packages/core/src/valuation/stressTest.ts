@@ -3,6 +3,7 @@
  * Mode RBP (ACM) : RNE scénario = RBP × occ − dépenses, valeur = RNE / TGA unique.
  */
 
+import { computeCapitalizedValueFromNoi } from '../financial/capitalizationMetrics';
 import { projectNOIAtOccupancy, projectNoiFromRbpAtOccupancy } from './projectNoiAtOccupancy';
 import type { RangeWithMedian, StressTestResult, StressTests } from './valuationStressTypes';
 
@@ -26,8 +27,8 @@ function buildStressTestResult(
     occupancyRate: targetOccupancy,
     noi: projectedNoi,
     valueRange: {
-      min: Math.round(projectedNoi / maxCap),
-      max: Math.round(projectedNoi / minCap),
+      min: Math.round(computeCapitalizedValueFromNoi(projectedNoi, maxCap) ?? 0),
+      max: Math.round(computeCapitalizedValueFromNoi(projectedNoi, minCap) ?? 0),
     },
   };
 }
@@ -40,7 +41,7 @@ function buildStressTestFromRbp(
 ): StressTestResult {
   const projectedNoi = projectNoiFromRbpAtOccupancy(rbp, operatingExpenses, targetOccupancy);
   const cap = Math.max(capRate, 0.0001);
-  const value = Math.round(projectedNoi / cap);
+  const value = Math.round(computeCapitalizedValueFromNoi(projectedNoi, cap) ?? 0);
 
   return {
     occupancyRate: targetOccupancy,

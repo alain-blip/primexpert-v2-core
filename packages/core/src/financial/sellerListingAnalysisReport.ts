@@ -20,6 +20,10 @@ import {
   formatCertifiableReportTimestamp,
   type CertifiableReportBrokerFooter,
 } from './certifiableFinancialReport';
+import {
+  computeCapitalizationRateFromNoi,
+  normalizeCapitalizationRatePct,
+} from './capitalizationMetrics';
 import type { FinancialCalc, FinancialDataV2Doc, ResidenceFinancialHints } from './normalizeFinancialData';
 
 export interface SellerListingAnalysisModel {
@@ -98,8 +102,9 @@ export function buildSellerListingAnalysisModel(
           : null;
 
   const noi = kpis.revenuNetExploitation ?? calc?.revenuNetExploitation ?? 0;
-  const capRateImpliedPct =
-    askingPrice != null && askingPrice > 0 && noi > 0 ? (noi / askingPrice) * 100 : null;
+  const capRateImpliedPct = normalizeCapitalizationRatePct(
+    computeCapitalizationRateFromNoi(noi, askingPrice)
+  );
 
   const units =
     typeof residence.nombreUnitesTotal === 'number'
