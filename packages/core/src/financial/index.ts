@@ -19,6 +19,12 @@ export {
   type CanonicalFinancialMetrics,
 } from './resolveCanonicalRne';
 export {
+  computeCapitalizationRateDecimal,
+  computeCapitalizationRatePct,
+  capitalizeNoiAtCapRateDecimal,
+  capitalizeNoiAtCapRatePct,
+} from './capitalization';
+export {
   assessFinancialDataOverwrite,
   residenceHasExistingFinancialSsot,
   inferExistingFinancialYear,
