@@ -225,7 +225,7 @@ Côté client : `resolveEffectiveBillingStatus()` — règle 72 h si Firestore e
 ### Acheteur — typologie dérivée (`deriveBuyerTier`)
 
 - **Acheteur privilégié** : NDA téléversée + (mise de fonds **ou** lettre bancaire **ou** préapprobation).
-- **Acheteur confidentiel** : préapprobation seule.
+- **Acheteur qualifié** : NDA **ou** preuve financière seule (typologie core actuelle `QUALIFIED` ; ancien libellé « confidentiel » retiré du code).
 - Pièces : `buyerCriteria.ndaFile`, `proofOfFundsFile`, `bankLetterFile`, `mortgagePreApprovalFile` — Storage `buyer_documents/{kind}/`.
 
 ### Vendeur — mandat & conformité
@@ -644,6 +644,23 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 | `index.ts` | Barrel |
 
 **Hors périmètre sprint (branchement prod planifié) :** collections Firestore `legal_vault` + `compliance_log`, `firestore.rules` deny update/delete si `isFinalWormLocked`, Function Montréal append journal sur READ/WRITE/LOCK/EXPORT_ZIP, extension `UserProfile` côté `users/{uid}`.
+
+---
+
+## Run documentaire groupé — 2026-06-01 (`cursor/rapport-documentation-code-6a1a`)
+
+**Constat diff :** la branche de rapport est alignée sur `origin/main` (`d13dadc`) ; aucun fichier applicatif n'est en avance sur `main`. Le passage documente donc le **diff main récent** déjà intégré (`194a5ea`, `f9a4f23`, `c407c60`, `d13dadc`) au lieu de créer une PR par fichier.
+
+| Volet inspecté | Décision documentaire |
+|----------------|-----------------------|
+| **Portail vendeur autonome** | Canoniser `vendor_portal_invites/{token}` (lecture/écriture client interdites), custom claims `vendorPortal`, TTL 30 j, `patchVendorPortalResidence`, notification téléversement et champs résidence `vendorPortalLastUploadAtMillis` / `vendorPortalLastUploadLabel`. |
+| **Catalogue vendeur** | Maintenir SSOT `vendorPortalCatalogue.ts` : **82 types canoniques** + **3 hors liste** = 85 lignes UI ; métadonnées documents `vendorPortalTypeId`, `vendorPortalLabelFr`, `uploadSource`. |
+| **Briefing matin / radar off-market** | Ajouter Firestore `organizations/{orgId}/morning_briefings/{brokerId}` et `organizations/{orgId}/prospects_radar/{id}` ; cron `morningBriefingGenerator` à 06:00 America/Toronto ; signaux `occupancy_drop`, `certification_expiry`. |
+| **Négociation OACIQ / LOI** | Documenter `packages/core/src/ai/*` : génération Gemini/Vertex en brouillon HITL `pending_human_review`, supports `OACIQ_FORM`, `CUSTOM_CONTRACT`, `LETTER_OF_INTENT`; aucune transmission sans validation courtier. |
+| **Closing PA acceptée** | Documenter `packages/core/src/market/closingEngine.ts` : 3 tâches `residences/{id}/tasks` (`closingPackId`, `closingTaskCode`, `source: 'closing_pipeline'`) idempotentes après `promesseAchat.dateAcceptation`. |
+| **Sécurité WORM** | Vérification du dépôt courant : le branchement Firestore `legal_vault` / `compliance_log` demeure **hors périmètre code actif** dans ce passage ; conserver la section précédente comme registre de conception tant que les fichiers runtime ne sont pas présents. |
+
+**Règle appliquée :** enrichissement des sections existantes seulement (`README`, `arborescence`, `project_canonical_fields`, `project_pipeline_gps`) ; aucune duplication de rubrique.
 
 ---
 

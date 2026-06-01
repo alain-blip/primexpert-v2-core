@@ -81,18 +81,24 @@ Fiche V2 (Listings → ResidenceDetail)
     ├─ Marché            [✅ MarcheConcurrenceTab]
     ├─ Documents         [✅ Espace Documents + scan + parse IA Vertex + distribution / courriel]
     ├─ Intelligence      [✅ call_analyses + courriels email_threads/messages (ex-mailbox_analyses)]
-    ├─ Accès Vendeur     [✅ bouton fiche → /acces-vendeur — timeline + jauge mandat + docs]
-    └─ Promesse          [✅ PromesseAchatTab — offre SSOT + conditions & délais RPA + clôture]
+    ├─ Accès Vendeur     [✅ bouton fiche → /acces-vendeur — jeton 30 j + catalogue 85 lignes + docs]
+    └─ Promesse          [✅ PromesseAchatTab — offre SSOT + conditions & délais RPA + date notaire + closing]
 ```
 
-**Accès Vendeur (portail externe) :**
+**Accès Vendeur (portail externe autonome) :**
 
 ```text
 ResidenceDetail — « Ouvrir l'Accès Vendeur » (ResidenceAccesVendeurButton)
     ↓ contact VENDEUR dans partiesImpliquees
-Route /acces-vendeur (AccesVendeurPage)
+createVendorPortalInvite → vendor_portal_invites/{token} (TTL 30 j)
+    ↓
+Route /acces-vendeur?token=… (AccesVendeurPage)
+    ↓ validateVendorPortalToken → custom token vendorPortal
     ↓ vendorPortalService — onSnapshot contact + résidence liée
-Core vendorPortalTimeline + mandateCompleteness (preuves de conformité mandat)
+    ↓ VendorDocumentDropzone
+        → documents/{docId}.vendorPortalTypeId / uploadSource
+        → notifyVendorPortalDocumentUpload → tâche courtier + vendorPortalLastUpload*
+Core vendorPortalTimeline + mandateCompleteness + vendorPortalCompliance
 ```
 
 **Inscriptions :** vue **pipeline** en **4 colonnes** (prospect · mandat · promesse · vendu) ; statut `expired` conservé en données mais **hors** colonnes actives (`PIPELINE_ACTIVE_STATUSES`). **Phase 2 (2026-05-24)** : totaux $ + commissions par colonne, badge conformité mandat, **drag-and-drop** (`@hello-pangea/dnd`), filtres **régions Québec** (portal), blocage DnD vers `promise` sans `prixAccepte`.
@@ -180,6 +186,10 @@ Sans `dataV2` : messages institutionnels + chiffres dérivés de `price` uniquem
 | **Statistiques du marché (Big Data)** | ✅ `MarketLibraryDashboard`, parse Vertex massif (2 GiB / 540 s), injection HITL idempotente |
 | **Benchmark finance global** | ✅ `getGlobalFinancialBenchmark`, hook `useGlobalFinancialBenchmark` |
 | **Anti-doublons Big Data** | ✅ `marketDeduplication.ts` — merge par empreinte sur `market_analytics_raw` / `market_macro_stats` |
+| **Portail vendeur autonome** | ✅ `vendor_portal_invites`, custom token vendeur, catalogue 85 lignes UI |
+| **Briefing matin + radar off-market** | ✅ Cron 06:00, `morning_briefings`, `prospects_radar` |
+| **Négociation OACIQ / LOI** | ✅ Core AI + Vertex/Gemini, brouillon HITL `pending_human_review` |
+| **Closing PA acceptée** | ✅ Core `closingEngine` — 3 tâches idempotentes sous `residences/{id}/tasks` |
 
 ---
 
@@ -192,7 +202,7 @@ Commits poussés sur `main` : `b9fe455`, `0e64e83`, `1c4f3c6`, `9b8a70c`, `da105
 | Jalon | Détail |
 |-------|--------|
 | **SSOT contacts** | `organizations/{orgId}/contacts` — interdit `clients/`, `vendors/`, `buyerPipeline/` |
-| **Qualification acheteur** | `buyerCriteria` + pièces Storage ; typologie `deriveBuyerTier` (privilégié / confidentiel) |
+| **Qualification acheteur** | `buyerCriteria` + pièces Storage ; typologie `deriveBuyerTier` (privilégié / qualifié) |
 | **Qualification vendeur** | `sellerCriteria` — contrat courtage, titre, déclaration ; mandat corporatif partagé |
 | **Coacheteurs / covendeurs** | `coBuyerIds` / `coSellerIds` — liaison bidirectionnelle writeBatch (`coBuyers.ts`, `coSellers.ts`) |
 | **UI Workhub** | `ContactsListPage`, `ContactFormDrawer`, filtres, `BuyerTierBadge` |
@@ -273,7 +283,7 @@ injectMarketMacroStats
 
 ---
 
-## G. Session 2026-05-20 (soir) — Analyse de mise en marché (ACM) résidence (`c1b5e62` → `e1a900c`)
+## E. Session 2026-05-20 (soir) — Analyse de mise en marché (ACM) résidence (`c1b5e62` → `e1a900c`)
 
 | Jalon | Détail |
 |-------|--------|
@@ -332,7 +342,39 @@ SMS entrant (Twilio)
 
 ---
 
-## E. Prochaines priorités (au choix du PO — prochaine session)
+## H. Session 2026-05-29 / alignement 2026-06-01 — V2.8/V2.9 opérationnel
+
+| Jalon | Détail |
+|-------|--------|
+| **Portail vendeur autonome** | `createVendorPortalInvite` → `vendor_portal_invites/{token}` ; `validateVendorPortalToken` → custom token vendeur ; `patchVendorPortalResidence` pour identité / déclaration |
+| **Catalogue documents vendeur** | `vendorPortalCatalogue.ts` : 82 types canoniques + 3 hors liste ; `vendorPortalCompliance.ts` calcule le pourcentage sur les requis |
+| **Téléversement vendeur** | `VendorDocumentDropzone` → `residences/{id}/documents/{docId}` avec `vendorPortalTypeId`, `vendorPortalLabelFr`, `uploadSource`; notification courtier via tâche org |
+| **Briefing du matin** | `morningBriefingGenerator` (06:00 America/Toronto) agrège tâches critiques, rendez-vous et `hotLeadsTop3` |
+| **Radar off-market** | `scoreRadarOpportunities()` produit `occupancy_drop` et `certification_expiry` dans `organizations/{orgId}/prospects_radar` |
+| **Négociation OACIQ / LOI** | `generateCommercialContextualClause()` route `OACIQ_FORM`, `CUSTOM_CONTRACT`, `LETTER_OF_INTENT`; statut HITL `pending_human_review` obligatoire |
+| **Closing PA acceptée** | `generateClosingSequenceTasks()` prépare les tâches hypothèque RPA, inspection et notaire avec `closingPackId` idempotent |
+
+```text
+PA acceptée (promesseAchat.dateAcceptation)
+  → closingEngine.buildClosingPackId(residenceId, dateAcceptation)
+  → résidences/{id}/tasks
+      ├─ CLOSING_RPA_DOSSIER_HYPOTHEQUE (J+1)
+      ├─ CLOSING_SUIVI_INSPECTION (J+2)
+      └─ CLOSING_ENVOI_NOTAIRE (dateNotairePrevue - 10 j ou J+30 provisoire)
+```
+
+```text
+Cron 06:00 America/Toronto
+  → users/{uid} avec orgId
+  → residences où courtiersResponsables == uid
+  → prospects_radar (signaux faibles)
+  → organizations/{orgId}/tasks + email_threads/messages
+  → morning_briefings/{uid}
+```
+
+---
+
+## I. Prochaines priorités (au choix du PO — prochaine session)
 
 | Option | Thème |
 |--------|--------|
@@ -343,6 +385,7 @@ SMS entrant (Twilio)
 | **D** | Mes inscriptions Phase 3 — actions bulk, export pipeline, alertes stagnation |
 | **F** | Déployer webhooks SMS/Meta + secrets Twilio ; activer VoIP prod |
 | **G** | Migration maillons 2+ — résidences, finance, documents Storage |
+| **H** | Brancher runtime closing PA acceptée (trigger Firestore) si Alain confirme l'automatisation post-acceptation |
 
 ### Backlog technique (inchangé)
 
@@ -354,4 +397,4 @@ SMS entrant (Twilio)
 
 ---
 
-*Dernière mise à jour : 2026-05-28 — CRM Storage, notes vocales, hub omnicanal, Matchmaker Raphaël.*
+*Dernière mise à jour : 2026-06-01 — alignement groupé V2.8/V2.9 : portail vendeur autonome, briefing/radar, négociation OACIQ/LOI, closing PA acceptée.*

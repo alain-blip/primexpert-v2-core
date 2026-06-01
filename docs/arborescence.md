@@ -37,9 +37,13 @@
 │           │   ├── contactUiHelpers.ts
 │           │   ├── coBuyers.ts / coSellers.ts
 │           │   ├── legacyContactImport.ts
+│           │   ├── morningBriefing.ts / radarOpportunitesEngine.ts
 │           │   └── raphaelEngine.ts   # Matchmaker acheteurs QUALIFIED ↔ résidence
 │           ├── ai/
-│           │   └── voiceParser.ts     # Intentions note vocale → note + tâche
+│           │   ├── voiceParser.ts     # Intentions note vocale → note + tâche
+│           │   ├── oaciqSpecsTypes.ts
+│           │   ├── negotiationPrompts.ts
+│           │   └── negotiationEngine.ts  # Brouillons clauses OACIQ / LOI en HITL
 │           ├── telephony/             # VoIP — canUseVoip, types Twilio
 │           ├── scripts/               # migrateLegacyContacts, testVoiceNote, testIncomingSms
 │           ├── diffusion/             # Syndication Web (rpaavendre.com, guardrails OACIQ)
@@ -51,9 +55,11 @@
 │           ├── intelligence/        # Priorités suivi KISS, rapport vendeur, contactTimeline
 │           ├── residence/             # partiesImpliquees, complianceChecklist, listingCommission, quebecRegions, pipelineDragRules
 │           │   ├── vendorPortalTimeline.ts   # Accès Vendeur — étapes timeline (Règle #0)
+│           │   ├── vendorPortalCatalogue.ts  # Catalogue vendeur 82 + 3 hors liste
+│           │   ├── vendorPortalCompliance.ts # Jauge conformité catalogue vendeur
 │           │   └── mandateCompleteness.ts    # Jauge preuves de conformité mandat (portail vendeur)
 │           ├── documents/             # extraction rapports marché, schémas Gemini (MARKET_REPORT omnivore)
-│           ├── market/                # haversine, zonePenetration, gpsCapRateByRegionClass, marketDeduplication
+│           ├── market/                # haversine, zonePenetration, gpsCapRateByRegionClass, marketDeduplication, closingEngine
 │           ├── quality/             # Score qualité fiche
 │           ├── sources/             # Sources externes
 │           ├── export/              # Export dataset / politique
@@ -89,6 +95,9 @@
 │       │   ├── hydrateThreadMessages.ts
 │       │   └── mailMessageAnalysis.ts
 │       ├── messaging/               # Hub omnicanal — ingestOmnichannelMessage, webhooks SMS/Meta (Montréal)
+│       ├── vendor/                  # Portail vendeur autonome — invitations, token, patch résidence
+│       ├── cron/                    # morningBriefingGenerator — briefing 06:00 + radar off-market
+│       ├── ai/                      # negotiationWithVertex + vendoring @primexpert/core/ai
 │       ├── audio/                   # onVoiceNoteUploaded (us-east1), hydrateVoiceNote, geminiTranscribe
 │       └── telephony/               # getTwilioToken, twilioVoiceResponse ; sync-core-telephony.cjs
 ├── scripts/
@@ -115,6 +124,7 @@
     ├── App.tsx                      # Routes, garde billing, lazy routes Workhub
     ├── components/
     │   ├── Layout.tsx               # Sidebar Radar, header
+    │   ├── layout/                  # Chrome responsive, contexte layout, tokens adaptatifs
     │   ├── Settings.tsx             # Profil + Finance (admin_system) + comptes courriel
     │   ├── settings/
     │   │   └── EmailAccountsSettings.tsx
@@ -240,6 +250,9 @@
     │   ├── stripePortal.ts
     │   ├── trialTimeline.ts
     │   └── …
+    ├── pages/
+    │   ├── LandingPage.tsx
+    │   └── PublicEntryShell.tsx       # Entrée publique SPA / portail vendeur
     ├── services/
     │   ├── contacts.ts              # organizations/{orgId}/contacts
     │   ├── communicationTimelineService.ts
@@ -255,6 +268,9 @@
     │   ├── marketDocumentsService.ts
     │   ├── globalFinancialBenchmarkService.ts
     │   ├── financialDataService.ts
+    │   ├── vendorPortalService.ts
+    │   ├── vendorPortalAccessService.ts
+    │   ├── morningBriefingService.ts
     │   ├── invoicePdfService.ts
     │   ├── nurtureEmailService.ts
     │   └── …
@@ -308,8 +324,8 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | **Hosting** | `dist/` — SPA, réécriture `**` → `index.html` |
 | **URL prod** | https://primexpert-app-v2.web.app |
 | **Firestore** | Bases `(default)` + `ai-studio-1214d671-efd2-47da-93b7-425feb92155a` (même rules/indexes) |
-| **Storage** | `primexpert/{orgId}/contacts/…` ; `primexpert/{brokerId}/properties/{id}/documents/…` ; **`primexpert/{brokerId}/market_documents/…`** |
-| **Functions** | `functions/` — Nylas, Espace Documents, **Statistiques du marché**, benchmark global |
+| **Storage** | `primexpert/{orgId}/contacts/…` ; `primexpert/{brokerId}/properties/{id}/documents/…` ; **`primexpert/{brokerId}/market_documents/…`** ; `organizations/{orgId}/voice_notes/…` |
+| **Functions** | `functions/` — Nylas, Espace Documents, **Statistiques du marché**, benchmark global, portail vendeur, briefing/radar |
 | **Compte de service Functions** | `250702494735-compute@developer.gserviceaccount.com` (`roles/aiplatform.user`) |
 | **Vertex AI** | `aiplatform.googleapis.com` — modèle `gemini-2.0-flash-001`, région `us-central1` |
 
@@ -346,6 +362,10 @@ Huit onglets ; coquille bleue institutionnelle (`InstitutionalResidenceTabShell`
 | Import CRM Storage | `migrateLegacyContacts.ts` — `npm run migrate:contacts` |
 | Identité — courtier responsable | `ResponsibleBrokerCard.tsx`, champ `courtiersResponsables` |
 | Hub Finance master | `FinanceHubMasterPanel.tsx`, `FinanceHubLockContext.tsx`, rapports PDF |
+| Portail vendeur autonome | `vendorPortalAccess.ts`, `vendorPortalAccessService.ts`, `vendorPortalCatalogue.ts`, `vendorPortalCompliance.ts`, `VendorDocumentDropzone.tsx` |
+| Briefing matin / radar off-market | `morningBriefingGenerator.ts`, `morningBriefing.ts`, `radarOpportunitesEngine.ts`, `morningBriefingService.ts` |
+| Négociation OACIQ / LOI | `packages/core/src/ai/negotiationEngine.ts`, `oaciqSpecsTypes.ts`, `functions/src/ai/negotiationWithVertex.ts` |
+| Closing PA acceptée | `packages/core/src/market/closingEngine.ts`, `residences/{id}/tasks` |
 
 ### Cloud Functions — Espace Documents
 
@@ -369,6 +389,19 @@ Déploiement parse : `FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only func
 
 ---
 
+### Cloud Functions — Portail vendeur, IA et opérations planifiées
+
+| Fonction | Région / type | Rôle |
+|----------|---------------|------|
+| `createVendorPortalInvite` | Callable | Crée `vendor_portal_invites/{token}` (TTL 30 j) pour un contact VENDEUR lié à une résidence |
+| `validateVendorPortalToken` | Callable public | Valide le jeton, émet un custom token Firebase avec claims `vendorPortal` |
+| `notifyVendorPortalDocumentUpload` | Callable | Crée une tâche courtier après téléversement vendeur et met à jour `vendorPortalLastUpload*` |
+| `patchVendorPortalResidence` | Callable | Autorise le vendeur authentifié par jeton à patcher identité / déclaration dans le périmètre résidence |
+| `morningBriefingGenerator` | Scheduler 06:00 America/Toronto | Génère `morning_briefings` + signaux `prospects_radar` |
+| `negotiationWithVertex` | Service Functions | Miroir serveur Gemini/Vertex pour clauses commerciales OACIQ / LOI en brouillon HITL |
+
+---
+
 | Analyse de mise en marché (ACM) | `AcmValuationWorkspace`, `ResidenceAcmValuationPanel`, `residenceAcmBootstrap.ts`, `gpsCapRateByRegionClass.ts` |
 
-*Dernière mise à jour : 2026-05-28 — CRM Storage, Matchmaker, notes vocales, hub omnicanal, VoIP parallèle.*
+*Dernière mise à jour : 2026-06-01 — alignement V2.8/V2.9 : portail vendeur autonome, briefing/radar, négociation OACIQ/LOI, closing PA acceptée.*
