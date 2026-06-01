@@ -54,7 +54,14 @@ import type {
   FinancialDataV2Doc,
   TerritorialAcmMedians,
 } from '@primexpert/core/financial';
-import { noiGapToMarketValue } from '@primexpert/core/financial';
+import {
+  addCapRatePctAdjustments,
+  hasCapRatePctMaterialDelta,
+  noiGapToMarketValue,
+  normalizeCapRateDecimal,
+  normalizeCapRatePct,
+  roundCapRatePct,
+} from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
 import {
@@ -115,6 +122,16 @@ function parseCapRateInput(raw: string): number | null {
 function fmtMoneyField(value: number): string {
   if (!Number.isFinite(value)) return '—';
   return formatCurrency(value, { maxDecimals: 0 });
+}
+
+function fmtCapRatePct(value: number | null | undefined): string {
+  const pct = normalizeCapRatePct(value);
+  return pct != null ? `${pct.toFixed(2)}%` : '—';
+}
+
+function capRateInputString(valuePct: number | null | undefined): string {
+  const rounded = roundCapRatePct(valuePct);
+  return rounded != null ? String(rounded) : '';
 }
 
 function fmtCountField(value: number | null | undefined): string {
@@ -194,7 +211,9 @@ export function AcmValuationWorkspace({
   const [tgaInput, setTgaInput] = useState(() => String(dynamicMarketTgaPct));
   const [targetCapRatePct, setTargetCapRatePct] = useState(dynamicMarketTgaPct);
   /** TGA réellement appliqué au moteur (après ajustement pénétration). */
-  const [effectiveCapRate, setEffectiveCapRate] = useState(dynamicMarketTgaPct / 100);
+  const [effectiveCapRate, setEffectiveCapRate] = useState(
+    normalizeCapRateDecimal(dynamicMarketTgaPct) ?? 0
+  );
   const [penetrationRatePct, setPenetrationRatePct] = useState(bootstrap.penetrationRatePct);
   const [tgaManuallyAdjusted, setTgaManuallyAdjusted] = useState(false);
   const [result, setResult] = useState<ValuationOutputs | null>(null);
@@ -224,7 +243,7 @@ export function AcmValuationWorkspace({
 
   const appliedCapRatePct = useMemo(() => {
     if (tgaManuallyAdjusted) return targetCapRatePct;
-    return dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
+    return addCapRatePctAdjustments(dynamicMarketTgaPct, qualitativeTgaAdjustmentPct) ?? 0;
   }, [
     tgaManuallyAdjusted,
     targetCapRatePct,
@@ -255,8 +274,8 @@ export function AcmValuationWorkspace({
     if (lastBootstrapSyncRef.current === bootstrapSyncKey) return;
     lastBootstrapSyncRef.current = bootstrapSyncKey;
     if (!tgaManuallyAdjusted) {
-      const next = dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
-      setTgaInput(String(Number(next.toFixed(2))));
+      const next = addCapRatePctAdjustments(dynamicMarketTgaPct, qualitativeTgaAdjustmentPct) ?? 0;
+      setTgaInput(capRateInputString(next));
       setTargetCapRatePct(next);
     }
     setPenetrationRatePct(bootstrap.penetrationRatePct);
@@ -270,8 +289,8 @@ export function AcmValuationWorkspace({
 
   useEffect(() => {
     if (tgaManuallyAdjusted) return;
-    const next = dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
-    setTgaInput(String(Number(next.toFixed(2))));
+    const next = addCapRatePctAdjustments(dynamicMarketTgaPct, qualitativeTgaAdjustmentPct) ?? 0;
+    setTgaInput(capRateInputString(next));
     setTargetCapRatePct(next);
   }, [dynamicMarketTgaPct, qualitativeTgaAdjustmentPct, tgaManuallyAdjusted]);
 
@@ -298,7 +317,7 @@ export function AcmValuationWorkspace({
       }
       setError(null);
       try {
-        let adjustedCap = capPct / 100;
+        let adjustedCap = normalizeCapRateDecimal(capPct) ?? 0;
         let adj: TgaAdjustmentResult | null = null;
         if (penPct > 0) {
           adj = computeTgaAdjustment({
@@ -425,13 +444,13 @@ export function AcmValuationWorkspace({
       return;
     }
     setTargetCapRatePct(parsed);
-    const autoTarget = dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
-    setTgaManuallyAdjusted(Math.abs(parsed - autoTarget) > 0.04);
+    const autoTarget = addCapRatePctAdjustments(dynamicMarketTgaPct, qualitativeTgaAdjustmentPct);
+    setTgaManuallyAdjusted(hasCapRatePctMaterialDelta(parsed, autoTarget));
   };
 
   const resetTgaToMarket = () => {
-    const next = dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
-    setTgaInput(String(Number(next.toFixed(2))));
+    const next = addCapRatePctAdjustments(dynamicMarketTgaPct, qualitativeTgaAdjustmentPct) ?? 0;
+    setTgaInput(capRateInputString(next));
     setTargetCapRatePct(next);
     setTgaManuallyAdjusted(false);
   };
@@ -549,10 +568,7 @@ export function AcmValuationWorkspace({
           'Taux de capitalisation global (TGA) implicite',
           'Implied global capitalization rate (cap rate)'
         ),
-        value:
-          result.capRateImpliedAtAsking !== undefined
-            ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%`
-            : '—',
+        value: fmtCapRatePct(result.capRateImpliedAtAsking),
       },
       {
         label: t('Multiple du revenu brut réel (MRB)', 'Actual gross rent multiplier (GRM)'),
@@ -958,7 +974,7 @@ export function AcmValuationWorkspace({
                 )}
               </p>
               <p className={`text-sm ${ACM_METRIC_VALUE_CLASS}`}>
-                {(tgaAdjustment.baseTga * 100).toFixed(2)} % → {(tgaAdjustment.finalTga * 100).toFixed(2)} %
+                {fmtCapRatePct(tgaAdjustment.baseTga)} → {fmtCapRatePct(tgaAdjustment.finalTga)}
               </p>
             </div>
           ) : null}

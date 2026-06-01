@@ -5,6 +5,7 @@
 import {
   capitalizeNoiAtCapRatePct,
   computeCapitalizationRatePct,
+  normalizeCapRatePct,
   resolveNetOperatingIncome,
 } from './capitalization';
 
@@ -34,7 +35,7 @@ export function computeRevenusDepensesLiveKpis(
   if (rne != null && rne > 0 && prixDemande != null && prixDemande > 0) {
     tgaPct = computeCapitalizationRatePct(rne, prixDemande, 2);
   } else if (tgaReferencePct != null && Number.isFinite(tgaReferencePct)) {
-    tgaPct = tgaReferencePct > 1 ? tgaReferencePct : tgaReferencePct * 100;
+    tgaPct = normalizeCapRatePct(tgaReferencePct);
   }
 
   const valeurCapitalisation =

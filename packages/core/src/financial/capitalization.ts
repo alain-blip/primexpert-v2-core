@@ -53,6 +53,45 @@ export function computeCapitalizationRatePct(
   return Number((decimal * 100).toFixed(fractionDigits));
 }
 
+export function normalizeCapRateDecimal(capRate: number | null | undefined): number | null {
+  if (capRate == null || !Number.isFinite(capRate) || capRate <= 0) return null;
+  return capRate > 1 ? capRate / 100 : capRate;
+}
+
+export function normalizeCapRatePct(capRate: number | null | undefined): number | null {
+  if (capRate == null || !Number.isFinite(capRate) || capRate <= 0) return null;
+  return capRate > 1 ? capRate : capRate * 100;
+}
+
+export function roundCapRatePct(capRatePct: number | null | undefined, fractionDigits = 2): number | null {
+  if (capRatePct == null || !Number.isFinite(capRatePct)) return null;
+  return Number(capRatePct.toFixed(fractionDigits));
+}
+
+export function addCapRatePctAdjustments(
+  baseCapRatePct: number | null | undefined,
+  ...adjustmentsPct: Array<number | null | undefined>
+): number | null {
+  const base = normalizeCapRatePct(baseCapRatePct);
+  if (base == null) return null;
+  const adjusted = adjustmentsPct.reduce((sum, adjustment) => {
+    const value = typeof adjustment === 'number' && Number.isFinite(adjustment) ? adjustment : 0;
+    return sum + value;
+  }, base);
+  return adjusted > 0 ? adjusted : null;
+}
+
+export function hasCapRatePctMaterialDelta(
+  valuePct: number | null | undefined,
+  referencePct: number | null | undefined,
+  tolerancePct = 0.04
+): boolean {
+  const value = normalizeCapRatePct(valuePct);
+  const reference = normalizeCapRatePct(referencePct);
+  if (value == null || reference == null) return false;
+  return Math.abs(value - reference) > tolerancePct;
+}
+
 export function capitalizeNoiAtCapRatePct(
   netOperatingIncome: number,
   capRatePct: number | null | undefined
@@ -60,4 +99,14 @@ export function capitalizeNoiAtCapRatePct(
   if (!Number.isFinite(netOperatingIncome) || netOperatingIncome <= 0) return null;
   if (capRatePct == null || !Number.isFinite(capRatePct) || capRatePct <= 0) return null;
   return netOperatingIncome / (capRatePct / 100);
+}
+
+export function computeNoiVariancePct(
+  firstNoi: number | null | undefined,
+  secondNoi: number | null | undefined
+): number | null {
+  if (firstNoi == null || secondNoi == null) return null;
+  if (!Number.isFinite(firstNoi) || !Number.isFinite(secondNoi)) return null;
+  if (firstNoi <= 0 || secondNoi <= 0) return null;
+  return (Math.abs(firstNoi - secondNoi) / Math.max(firstNoi, secondNoi)) * 100;
 }

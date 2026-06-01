@@ -10,6 +10,7 @@ import {
   resolveAdmissibleOpex,
   resolveEmpruntMaximumAutorise,
   resolveMiseDeFondsRequiseAcheteur,
+  normalizeCapRateDecimal,
   type CertifiableReportBrokerFooter,
   type FinancialCalc,
   type FinancialDataV2Doc,
@@ -268,12 +269,7 @@ export function buildAcmVendorCraftMyPdfPayload(
   const liste_depenses = mapGrilleRowsToListe(grilleDepenses);
 
   const opexAmount = resolveOpexAmount(valuation, banking.depensesTotales, financialData);
-  const capPct =
-    Number.isFinite(input.effectiveCapRate) && input.effectiveCapRate > 0
-      ? input.effectiveCapRate > 1
-        ? input.effectiveCapRate / 100
-        : input.effectiveCapRate
-      : valuation.actualCapRateAtAsking;
+  const capPct = normalizeCapRateDecimal(input.effectiveCapRate) ?? valuation.actualCapRateAtAsking;
 
   const nomResidence = textOrDash(bootstrap.residenceLabel);
   const adresseResidence = textOrDash(input.residenceAddress);

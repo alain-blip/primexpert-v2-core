@@ -21,6 +21,7 @@ import {
   subscribeMarketDocuments,
   uploadMarketDocument,
 } from '../../services/marketDocumentsService';
+import { formatStorageBytes } from '../../lib/quotaStorageService';
 import type { MarketDocumentRecord } from '../../types/marketDocument';
 import { MarketDataGrid } from './MarketDataGrid';
 import {
@@ -32,12 +33,6 @@ import {
 } from '@primexpert/core/documents';
 
 type MarketInnerTab = 'dashboard' | 'ingestion';
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} o`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
-}
 
 function formatDate(ms: number, locale: 'fr' | 'en'): string {
   return new Date(ms).toLocaleString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
@@ -522,7 +517,7 @@ export function MarketLibraryDashboard() {
                   <div className="min-w-0">
                     <p className="text-[11px] font-bold truncate">{doc.fileName}</p>
                     <p className="text-[9px] opacity-70 mt-0.5">
-                      {formatSize(doc.sizeBytes)} · {formatDate(doc.uploadedAtMillis, locale)}
+                      {formatStorageBytes(doc.sizeBytes, locale)} · {formatDate(doc.uploadedAtMillis, locale)}
                     </p>
                     <p className="text-[9px] font-bold uppercase mt-1 opacity-80">
                       {parsingLabel(doc.parsingStatus, locale)}

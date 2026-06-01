@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { AlertTriangle, FileText, Loader2, Upload } from 'lucide-react';
 import { cn } from '../../../lib/utils';
+import { formatStorageBytes } from '../../../lib/quotaStorageService';
 import {
   ALLOWED_DOCUMENT_MIME_TYPES,
   validatePropertyDocumentFile,
@@ -17,12 +18,6 @@ import { inst } from '../institutional/InstitutionalUi';
 import { LegalVaultWormListBadge } from './LegalVaultWormPanel';
 
 const ACCEPT_ATTR = ALLOWED_DOCUMENT_MIME_TYPES.join(',');
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} o`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
-}
 
 function formatDate(ms: number, locale: 'fr' | 'en'): string {
   return new Date(ms).toLocaleString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
@@ -104,7 +99,7 @@ function DocumentRow({
             <p className="truncate text-[12px] font-semibold text-[#142c6a]">{doc.fileName}</p>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <p className="text-[10px] text-slate-500">
-                {formatSize(doc.sizeBytes)} · {formatDate(doc.uploadedAtMillis, locale)}
+                {formatStorageBytes(doc.sizeBytes, locale)} · {formatDate(doc.uploadedAtMillis, locale)}
               </p>
               {showWormBadge ? (
                 <LegalVaultWormListBadge locked={wormLocked === true} locale={locale} />

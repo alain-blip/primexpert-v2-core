@@ -6,6 +6,7 @@ import {
 } from '../../../lib/propertyDocumentValidation';
 import { renamePropertyDocument } from '../../../services/propertyDocumentsService';
 import { cn } from '../../../lib/utils';
+import { formatStorageBytes } from '../../../lib/quotaStorageService';
 import {
   canDownloadPropertyDocument,
   documentNeedsIaParse,
@@ -38,16 +39,11 @@ import {
   injectCertificateLocalisationToResidence,
   injectExtractedDataToResidence,
 } from '../../../services/extractedDataInjectionService';
+import { normalizeCapRatePct } from '@primexpert/core/financial';
 import { useFinancialHubDraft } from '../../../context/FinancialHubDraftContext';
 import { inst } from '../institutional/InstitutionalUi';
 import { LegalVaultWormPanel } from './LegalVaultWormPanel';
 import type { LegalVaultFirestoreRecord } from '../../../services/legalVaultService';
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} o`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
-}
 
 function formatDate(ms: number, locale: 'fr' | 'en'): string {
   return new Date(ms).toLocaleString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
@@ -522,7 +518,7 @@ export function DocumentMetadataPanel({
                 label={labels.name}
                 busy={busy}
               />
-              <MetaField label={labels.size} value={formatSize(document.sizeBytes)} mono />
+              <MetaField label={labels.size} value={formatStorageBytes(document.sizeBytes, locale)} mono />
               <MetaField label={labels.date} value={formatDate(document.uploadedAtMillis, locale)} />
               <MetaField label={labels.type} value={document.mimeType} small />
               {labels.taxonomy && document.extractedData?.documentType ? (
@@ -1063,10 +1059,7 @@ function ExtractionVerificationSection({
                   <li>
                     TGA :{' '}
                     <span className="font-black text-[#142c6a]">
-                      {(evaluationSubject.tgaRetenu > 1
-                        ? evaluationSubject.tgaRetenu
-                        : evaluationSubject.tgaRetenu * 100
-                      ).toFixed(2)}
+                      {normalizeCapRatePct(evaluationSubject.tgaRetenu)?.toFixed(2) ?? '—'}
                       %
                     </span>
                   </li>
