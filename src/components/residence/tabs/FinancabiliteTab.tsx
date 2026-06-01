@@ -6,6 +6,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Building2, CheckCircle2, Info, Landmark, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
 import {
+  assessNoiEvidence,
   computeFinancabilite,
   DSCR_RULES,
   getMinimumDscrForProgram,
@@ -514,39 +515,7 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
 
     const noiAudit = model.noiAudit;
     const noiDeclared = model.noiDeclare;
-    let noiStatus: ChecklistStatus = 'unknown';
-    let noiNoteFr = 'Aucune donnée RNE disponible — compléter Revenus & Dépenses.';
-    let noiNoteEn = 'No NOI data available — complete Revenue & Expenses.';
-    if (noiAudit != null && noiDeclared != null && noiAudit > 0 && noiDeclared > 0) {
-      const variance = Math.abs(noiAudit - noiDeclared) / Math.max(noiAudit, noiDeclared);
-      if (variance <= 0.05) {
-        noiStatus = 'ok';
-        noiNoteFr =
-          'RNE déclaré et RNE vérifié concordent (écart ≤ 5 %). Pièces justificatives en ordre côté prêteur.';
-        noiNoteEn =
-          'Declared and verified NOI match (≤ 5% variance). Supporting evidence is aligned with lender expectations.';
-      } else if (variance <= 0.15) {
-        noiStatus = 'warn';
-        noiNoteFr = `Écart de ${(variance * 100).toFixed(1)} % entre RNE déclaré et RNE vérifié — justifier la normalisation des dépenses.`;
-        noiNoteEn = `${(variance * 100).toFixed(1)}% gap between declared and verified NOI — justify expense normalization.`;
-      } else {
-        noiStatus = 'fail';
-        noiNoteFr = `Écart majeur de ${(variance * 100).toFixed(1)} % entre RNE déclaré et RNE vérifié — vérifier les sources avant présentation prêteur.`;
-        noiNoteEn = `Major ${(variance * 100).toFixed(1)}% gap between declared and verified NOI — verify sources before lender submission.`;
-      }
-    } else if (noiAudit != null && noiAudit > 0) {
-      noiStatus = 'warn';
-      noiNoteFr =
-        'Seul le RNE vérifié (calculé) est disponible — manque la déclaration vendeur pour pleinement convaincre le prêteur.';
-      noiNoteEn =
-        'Only verified NOI (computed) is available — missing seller statement to fully convince the lender.';
-    } else if (noiDeclared != null && noiDeclared > 0) {
-      noiStatus = 'warn';
-      noiNoteFr =
-        'Seul le RNE déclaré est disponible — recommander une normalisation par dépenses vérifiées.';
-      noiNoteEn =
-        'Only declared NOI is available — recommend normalization with verified expenses.';
-    }
+    const noiEvidence = assessNoiEvidence(noiDeclared, noiAudit);
 
     return [
       {
@@ -593,11 +562,11 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
         id: 'noi_evidence',
         labelFr: 'Adéquation du RNE documenté',
         labelEn: 'Documented NOI adequacy',
-        status: noiStatus,
+        status: noiEvidence.status,
         valueFr: `${fmt(noiDeclared)} · ${fmt(noiAudit)}`,
         valueEn: `${fmt(noiDeclared)} · ${fmt(noiAudit)}`,
-        noteFr: noiNoteFr,
-        noteEn: noiNoteEn,
+        noteFr: noiEvidence.noteFr,
+        noteEn: noiEvidence.noteEn,
       },
     ];
   })();

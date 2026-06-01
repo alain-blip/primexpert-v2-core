@@ -54,7 +54,12 @@ import type {
   FinancialDataV2Doc,
   TerritorialAcmMedians,
 } from '@primexpert/core/financial';
-import { noiGapToMarketValue } from '@primexpert/core/financial';
+import {
+  capRatePctToDecimal,
+  formatCapitalizationRateDecimal,
+  isCapitalizationRatePctManuallyAdjusted,
+  noiGapToMarketValue,
+} from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
 import {
@@ -194,7 +199,9 @@ export function AcmValuationWorkspace({
   const [tgaInput, setTgaInput] = useState(() => String(dynamicMarketTgaPct));
   const [targetCapRatePct, setTargetCapRatePct] = useState(dynamicMarketTgaPct);
   /** TGA réellement appliqué au moteur (après ajustement pénétration). */
-  const [effectiveCapRate, setEffectiveCapRate] = useState(dynamicMarketTgaPct / 100);
+  const [effectiveCapRate, setEffectiveCapRate] = useState(
+    capRatePctToDecimal(dynamicMarketTgaPct) ?? 0
+  );
   const [penetrationRatePct, setPenetrationRatePct] = useState(bootstrap.penetrationRatePct);
   const [tgaManuallyAdjusted, setTgaManuallyAdjusted] = useState(false);
   const [result, setResult] = useState<ValuationOutputs | null>(null);
@@ -298,7 +305,7 @@ export function AcmValuationWorkspace({
       }
       setError(null);
       try {
-        let adjustedCap = capPct / 100;
+        let adjustedCap = capRatePctToDecimal(capPct) ?? 0;
         let adj: TgaAdjustmentResult | null = null;
         if (penPct > 0) {
           adj = computeTgaAdjustment({
@@ -426,7 +433,7 @@ export function AcmValuationWorkspace({
     }
     setTargetCapRatePct(parsed);
     const autoTarget = dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
-    setTgaManuallyAdjusted(Math.abs(parsed - autoTarget) > 0.04);
+    setTgaManuallyAdjusted(isCapitalizationRatePctManuallyAdjusted(parsed, autoTarget));
   };
 
   const resetTgaToMarket = () => {
@@ -550,9 +557,7 @@ export function AcmValuationWorkspace({
           'Implied global capitalization rate (cap rate)'
         ),
         value:
-          result.capRateImpliedAtAsking !== undefined
-            ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%`
-            : '—',
+          formatCapitalizationRateDecimal(result.capRateImpliedAtAsking, 2),
       },
       {
         label: t('Multiple du revenu brut réel (MRB)', 'Actual gross rent multiplier (GRM)'),
@@ -958,7 +963,8 @@ export function AcmValuationWorkspace({
                 )}
               </p>
               <p className={`text-sm ${ACM_METRIC_VALUE_CLASS}`}>
-                {(tgaAdjustment.baseTga * 100).toFixed(2)} % → {(tgaAdjustment.finalTga * 100).toFixed(2)} %
+                {formatCapitalizationRateDecimal(tgaAdjustment.baseTga, 2)} →{' '}
+                {formatCapitalizationRateDecimal(tgaAdjustment.finalTga, 2)}
               </p>
             </div>
           ) : null}

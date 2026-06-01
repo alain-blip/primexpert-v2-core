@@ -19,6 +19,7 @@ import type {
 } from '../../../types/propertyDocument';
 import type { AssetNiche } from '../../../types/residence';
 import type { MarketSiloType } from '../../../types/marketAnalytics';
+import { formatCapitalizationRate } from '@primexpert/core/financial';
 import {
   MARKET_SILO_OPTIONS,
   formatCertificateDate,
@@ -1063,11 +1064,7 @@ function ExtractionVerificationSection({
                   <li>
                     TGA :{' '}
                     <span className="font-black text-[#142c6a]">
-                      {(evaluationSubject.tgaRetenu > 1
-                        ? evaluationSubject.tgaRetenu
-                        : evaluationSubject.tgaRetenu * 100
-                      ).toFixed(2)}
-                      %
+                      {formatCapitalizationRate(evaluationSubject.tgaRetenu, 2)}
                     </span>
                   </li>
                 ) : null}

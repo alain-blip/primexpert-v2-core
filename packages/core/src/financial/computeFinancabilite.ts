@@ -53,6 +53,13 @@ import { resolveCanonicalFinancialMetrics } from './resolveCanonicalRne';
 import { safeDscrTarget, safeNum, safeRatePercent, safeRatioDecimal } from './safeNumbers';
 
 export type FinancingVerdict = 'financable' | 'financable_conditions' | 'insufficient_data';
+export type NoiEvidenceStatus = 'unknown' | 'ok' | 'warn' | 'fail';
+
+export interface NoiEvidenceAssessment {
+  status: NoiEvidenceStatus;
+  noteFr: string;
+  noteEn: string;
+}
 
 export interface FinancabiliteScenarioRow {
   labelFr: string;
@@ -195,6 +202,66 @@ export function buildResidenceFinancialHints(
     price: listingPrice,
     prixDemande: listingPrice,
     askingPrice: listingPrice,
+  };
+}
+
+export function assessNoiEvidence(
+  noiDeclared: number | null | undefined,
+  noiVerified: number | null | undefined
+): NoiEvidenceAssessment {
+  const declared = Number.isFinite(noiDeclared) ? Number(noiDeclared) : null;
+  const verified = Number.isFinite(noiVerified) ? Number(noiVerified) : null;
+
+  if (verified != null && declared != null && verified > 0 && declared > 0) {
+    const variance = Math.abs(verified - declared) / Math.max(verified, declared);
+    const variancePct = (variance * 100).toFixed(1);
+    if (variance <= 0.05) {
+      return {
+        status: 'ok',
+        noteFr:
+          'RNE déclaré et RNE vérifié concordent (écart ≤ 5 %). Pièces justificatives en ordre côté prêteur.',
+        noteEn:
+          'Declared and verified NOI match (≤ 5% variance). Supporting evidence is aligned with lender expectations.',
+      };
+    }
+    if (variance <= 0.15) {
+      return {
+        status: 'warn',
+        noteFr: `Écart de ${variancePct} % entre RNE déclaré et RNE vérifié — justifier la normalisation des dépenses.`,
+        noteEn: `${variancePct}% gap between declared and verified NOI — justify expense normalization.`,
+      };
+    }
+    return {
+      status: 'fail',
+      noteFr: `Écart majeur de ${variancePct} % entre RNE déclaré et RNE vérifié — vérifier les sources avant présentation prêteur.`,
+      noteEn: `Major ${variancePct}% gap between declared and verified NOI — verify sources before lender submission.`,
+    };
+  }
+
+  if (verified != null && verified > 0) {
+    return {
+      status: 'warn',
+      noteFr:
+        'Seul le RNE vérifié (calculé) est disponible — manque la déclaration vendeur pour pleinement convaincre le prêteur.',
+      noteEn:
+        'Only verified NOI (computed) is available — missing seller statement to fully convince the lender.',
+    };
+  }
+
+  if (declared != null && declared > 0) {
+    return {
+      status: 'warn',
+      noteFr:
+        'Seul le RNE déclaré est disponible — recommander une normalisation par dépenses vérifiées.',
+      noteEn:
+        'Only declared NOI is available — recommend normalization with verified expenses.',
+    };
+  }
+
+  return {
+    status: 'unknown',
+    noteFr: 'Aucune donnée RNE disponible — compléter Revenus & Dépenses.',
+    noteEn: 'No NOI data available — complete Revenue & Expenses.',
   };
 }
 
