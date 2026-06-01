@@ -10,6 +10,7 @@ import {
   mergeExtractedIntoFinancialDataV2,
   recomputeFinancialCalculatedResults,
   sumNormalizedOperatingExpenses,
+  type DepensesGrid,
   type FinancialBaseData,
   type FinancialDataV2Doc,
 } from '@primexpert/core/financial';
@@ -284,8 +285,8 @@ export async function saveManualFinancialEntry(
     if (amount > 0) depensesPatch[key] = Math.round(amount);
   }
 
-  const existingDep = (existing?.baseData?.depenses ?? {}) as Record<string, unknown>;
-  const mergedDepenses = { ...existingDep, ...depensesPatch };
+  const existingDep = (existing?.baseData?.depenses ?? {}) as DepensesGrid;
+  const mergedDepenses: DepensesGrid = { ...existingDep, ...depensesPatch };
 
   const existingFin = (existing?.baseData?.financement ?? {}) as Record<string, unknown>;
   const mergedFinancement = {
@@ -314,10 +315,11 @@ export async function saveManualFinancialEntry(
       _confidence: options?.humanValidatedFromIa ? 'human_validated' : 'validation_required',
       ...(prix > 0 ? { prixDemande: prix } : {}),
     };
-    const rne = calculatedResults.revenuNetExploitation;
-    if (rne != null && rne > 0 && prix > 0) {
-      calculatedResults.tauxCapitalisation = rne / prix;
-    }
+    const tauxCapitalisation = calculateCapitalizationRateFromNoi(
+      calculatedResults.revenuNetExploitation,
+      prix
+    );
+    if (tauxCapitalisation != null) calculatedResults.tauxCapitalisation = tauxCapitalisation;
     const mensuel = parseNum(draft.financement.paiementMensuel);
     if (mensuel > 0) {
       calculatedResults.paiementMensuel = mensuel;
