@@ -1,5 +1,6 @@
 /**
- * SSOT — RNE = RBE − OPEX admissibles (jamais copier le RBE dans le RNE).
+ * SSOT — RNE = RBE − OPEX admissibles déclarés (jamais copier le RBE dans le RNE).
+ * OPEX normalisé (761 k$) ne doit jamais réduire le RNE déclaré (529 k$).
  */
 
 import type { FinancialBaseData, FinancialCalc } from './normalizeFinancialData';
@@ -38,28 +39,48 @@ function sumDepensesObjectValues(depenses: Record<string, unknown>): number {
   return has ? total : 0;
 }
 
-/** Résout OPEX admissibles (priorité grille normalisée, puis totaux extraits). */
+/**
+ * OPEX admissibles pour RNE = RBE − dépenses déclarées.
+ * Priorité : agrégat déclaré calculatedResults → grille CPA complète → clés brutes.
+ * Interdit : depensesTotalesNormalisees en premier (source du RNE fantôme 368 338 $).
+ */
 export function resolveAdmissibleOpex(
   calc: FinancialCalc | null,
   baseData: FinancialBaseData | null
 ): number | null {
   const depenses = baseData?.depenses;
   const adj = baseData?.expenseAdjustments as Record<string, unknown> | undefined;
+  const declaredFromCalc = finiteNum(calc?.depensesTotales);
+  const normalizedFromCalc = finiteNum(calc?.depensesTotalesNormalisees);
 
   if (depenses && typeof depenses === 'object') {
-    const normalized = sumNormalizedOperatingExpenses(depenses, adj ?? {});
-    if (normalized != null && normalized > 0) return Math.round(normalized);
+    const declaredGrid = sumDeclaredOperatingExpensesGrid(depenses);
 
-    const declared = sumDeclaredOperatingExpensesGrid(depenses);
-    if (declared != null && declared > 0) return Math.round(declared);
+    if (declaredFromCalc != null && declaredFromCalc > 0) {
+      const gridIncomplete =
+        declaredGrid == null || declaredGrid <= 0 || declaredGrid < declaredFromCalc * 0.9;
+      if (gridIncomplete) {
+        return Math.round(declaredFromCalc);
+      }
+      return Math.round(Math.max(declaredGrid!, declaredFromCalc));
+    }
+
+    if (declaredGrid != null && declaredGrid > 0) return Math.round(declaredGrid);
 
     const fromKeys = sumDepensesObjectValues(depenses as Record<string, unknown>);
     if (fromKeys > 0) return Math.round(fromKeys);
+
+    const normalized = sumNormalizedOperatingExpenses(depenses, adj ?? {});
+    if (normalized != null && normalized > 0) return Math.round(normalized);
   }
 
-  const fromCalc =
-    finiteNum(calc?.depensesTotalesNormalisees) ?? finiteNum(calc?.depensesTotales);
-  if (fromCalc != null && fromCalc > 0) return Math.round(fromCalc);
+  if (declaredFromCalc != null && declaredFromCalc > 0) {
+    return Math.round(declaredFromCalc);
+  }
+
+  if (normalizedFromCalc != null && normalizedFromCalc > 0) {
+    return Math.round(normalizedFromCalc);
+  }
 
   return null;
 }
@@ -126,7 +147,6 @@ export function applyCanonicalMetricsToCalc(
 
   if (m.opex != null && m.opex > 0) {
     next.depensesTotales = m.opex;
-    next.depensesTotalesNormalisees = m.opex;
     next.facteurDepenses = m.rbe > 0 ? m.opex / m.rbe : null;
   }
 

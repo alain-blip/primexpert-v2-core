@@ -2,7 +2,7 @@
  * FinancialDataContext — listener unique Firestore financial/dataV2 (SSOT).
  */
 
-import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { FinancialDataV2Doc } from '@primexpert/core/financial';
 import { db } from '../lib/firebase';
@@ -67,13 +67,16 @@ export function FinancialDataProvider({ residenceId, children }: FinancialDataPr
     return () => unsubscribe();
   }, [residenceId]);
 
-  const value: FinancialDataContextValue = {
-    financialData,
-    loading,
-    error,
-    residenceId: residenceId ?? null,
-    isInProvider: true,
-  };
+  const value = useMemo(
+    (): FinancialDataContextValue => ({
+      financialData,
+      loading,
+      error,
+      residenceId: residenceId ?? null,
+      isInProvider: true,
+    }),
+    [financialData, loading, error, residenceId]
+  );
 
   return (
     <FinancialDataContext.Provider value={value}>{children}</FinancialDataContext.Provider>

@@ -3,7 +3,7 @@
  */
 
 import React, { Suspense, lazy, useEffect, useState } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
 import { isAccountSuspended } from './lib/billingAccess';
 import { SuspendedAccountScreen } from './components/SuspendedAccountScreen';
@@ -151,10 +151,17 @@ function Workhub() {
 }
 
 function ProtectedWorkhub() {
-  const { user, loading, profile } = useAuth();
+  const { user, loading, profile, signInPending } = useAuth();
 
   if (loading) return <LoadingScreen />;
-  if (!user) return <Navigate to="/" replace />;
+  if (!user) {
+    // Connexion Google en cours (popup / retour `?signin=1`) : ne pas rediriger, attendre la session.
+    const signingIn =
+      signInPending ||
+      new URLSearchParams(window.location.search).get('signin') === '1';
+    if (signingIn) return <LoadingScreen />;
+    return <PublicLandingRedirect />;
+  }
   if (isAccountSuspended(profile)) return <SuspendedAccountScreen />;
 
   return (
@@ -180,7 +187,7 @@ function AccesVendeurRoute() {
   }
 
   if (loading) return <LoadingScreen />;
-  if (!user) return <Navigate to="/" replace />;
+  if (!user) return <PublicLandingRedirect />;
   return (
     <Suspense fallback={<RouteSuspense />}>
       <AccesVendeurPage forcedMode="broker" />
@@ -206,6 +213,18 @@ function SignInFromQuery() {
   return null;
 }
 
+/**
+ * Sortie de la SPA vers la page d'accueil publique (HTML statique servi par `index.html`).
+ * Un `<Navigate to="/">` client ne suffit pas : la SPA n'a aucune route `/` et `bootstrap-spa`
+ * a déjà masqué la page d'accueil statique → rechargement complet requis pour la réafficher.
+ */
+function PublicLandingRedirect() {
+  useEffect(() => {
+    window.location.replace('/');
+  }, []);
+  return <LoadingScreen />;
+}
+
 export default function AuthenticatedApp() {
   return (
     <AuthProvider>
@@ -213,7 +232,7 @@ export default function AuthenticatedApp() {
       <Routes>
         <Route path="/workhub" element={<ProtectedWorkhub />} />
         <Route path="/acces-vendeur" element={<AccesVendeurRoute />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<PublicLandingRedirect />} />
       </Routes>
     </AuthProvider>
   );

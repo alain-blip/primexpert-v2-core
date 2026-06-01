@@ -6,8 +6,8 @@
 import {
   computeFinancingScenario,
   resolvePrixDemande,
-  type ResidenceFinancialHints,
 } from './computeFinancabilite';
+import type { ResidenceFinancialHints } from './normalizeFinancialData';
 import {
   getAuditNormalizedNoi,
   normalizeFinancialData,

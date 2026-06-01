@@ -14,6 +14,7 @@ import {
 } from '../../../lib/propertyDocumentTaxonomy';
 import type { PropertyDocumentRecord } from '../../../types/propertyDocument';
 import { inst } from '../institutional/InstitutionalUi';
+import { LegalVaultWormListBadge } from './LegalVaultWormPanel';
 
 const ACCEPT_ATTR = ALLOWED_DOCUMENT_MIME_TYPES.join(',');
 
@@ -51,6 +52,10 @@ export interface DocumentUploadPanelProps {
     empty: string;
     loading: string;
   };
+  /** État WORM par identifiant de pièce résidence. */
+  wormLockedByDocId?: Record<string, boolean>;
+  /** Affiche les badges Brouillon / WORM lorsque l'organisation est connue. */
+  wormIndicatorsEnabled?: boolean;
 }
 
 function DocumentRow({
@@ -60,6 +65,8 @@ function DocumentRow({
   locale,
   onSelect,
   onToggleCheck,
+  wormLocked,
+  showWormBadge,
 }: {
   doc: PropertyDocumentRecord;
   active: boolean;
@@ -67,6 +74,8 @@ function DocumentRow({
   locale: 'fr' | 'en';
   onSelect: () => void;
   onToggleCheck: () => void;
+  wormLocked?: boolean;
+  showWormBadge?: boolean;
 }) {
   const scanPending = doc.virusScanStatus === 'pending';
 
@@ -93,9 +102,14 @@ function DocumentRow({
           <FileText className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-[12px] font-semibold text-[#142c6a]">{doc.fileName}</p>
-            <p className="mt-0.5 text-[10px] text-slate-500">
-              {formatSize(doc.sizeBytes)} · {formatDate(doc.uploadedAtMillis, locale)}
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              <p className="text-[10px] text-slate-500">
+                {formatSize(doc.sizeBytes)} · {formatDate(doc.uploadedAtMillis, locale)}
+              </p>
+              {showWormBadge ? (
+                <LegalVaultWormListBadge locked={wormLocked === true} locale={locale} />
+              ) : null}
+            </div>
             {scanPending ? (
               <p className="mt-1 text-[9px] font-bold uppercase tracking-wider text-amber-700">
                 {locale === 'fr' ? 'Vérification en cours' : 'Scan in progress'}
@@ -140,6 +154,8 @@ export function DocumentUploadPanel({
   onUpload,
   locale,
   labels,
+  wormLockedByDocId = {},
+  wormIndicatorsEnabled = false,
 }: DocumentUploadPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -201,6 +217,8 @@ export function DocumentUploadPanel({
               locale={locale}
               onSelect={() => onSelect(doc)}
               onToggleCheck={() => onToggleCheck(doc.id)}
+              wormLocked={wormLockedByDocId[doc.id] === true}
+              showWormBadge={wormIndicatorsEnabled}
             />
           ))}
         </ul>
@@ -235,6 +253,8 @@ export function DocumentUploadPanel({
                     locale={locale}
                     onSelect={() => onSelect(doc)}
                     onToggleCheck={() => onToggleCheck(doc.id)}
+                    wormLocked={wormLockedByDocId[doc.id] === true}
+                    showWormBadge={wormIndicatorsEnabled}
                   />
                 ))}
               </ul>

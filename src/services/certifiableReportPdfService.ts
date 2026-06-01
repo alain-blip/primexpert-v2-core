@@ -50,7 +50,22 @@ function drawInstitutionalHeader(pdf: jsPDF, model: CertifiableFinancialReportMo
   );
 
   pdf.setTextColor(0, 0, 0);
-  return 36;
+  y = 36;
+
+  if (model.confidentialBanner) {
+    pdf.setFillColor(255, 243, 224);
+    pdf.setDrawColor(...GOLD_RGB);
+    pdf.setLineWidth(0.4);
+    pdf.rect(MARGIN, y - 2, w - MARGIN * 2, 10, 'FD');
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(8);
+    pdf.setTextColor(120, 53, 15);
+    pdf.text(model.confidentialBanner, w / 2, y + 5, { align: 'center' });
+    pdf.setTextColor(0, 0, 0);
+    y += 14;
+  }
+
+  return y;
 }
 
 function drawFooterOnAllPages(pdf: jsPDF, model: CertifiableFinancialReportModel): void {

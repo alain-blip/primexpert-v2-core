@@ -19,6 +19,7 @@ import {
 } from '../../../services/financialDataService';
 import { inst } from '../institutional/InstitutionalUi';
 import type { Residence } from '../../../services/residences';
+import { useResidenceFinancialHints } from '../../../context/ResidenceDataContext';
 
 const INPUT_CLASS =
   'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-right font-mono text-sm font-semibold text-[#142c6a] tabular-nums focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/40';
@@ -78,10 +79,13 @@ export function FinanceManualEntryPanel({
     pendingDraft,
     iaMeta,
     clearIaPending,
+    expandManualPanel,
     consumeExpandManualPanel,
   } = useFinancialHubDraft();
   const { inputsLocked } = useFinanceHubLock();
   const { showSuccess, showError } = useInstitutionalToast();
+  const financialHints = useResidenceFinancialHints(residence);
+  const listingPrice = financialHints.prixDemande ?? residence.price;
 
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [draft, setDraft] = useState<ManualFinancialEntryDraft>(() =>
@@ -109,8 +113,10 @@ export function FinanceManualEntryPanel({
   }, [financialData, unitHint, pendingIaReview, pendingDraft]);
 
   useEffect(() => {
-    if (consumeExpandManualPanel()) setExpanded(true);
-  }, [consumeExpandManualPanel]);
+    if (expandManualPanel && consumeExpandManualPanel()) {
+      setExpanded(true);
+    }
+  }, [expandManualPanel, consumeExpandManualPanel]);
 
   useEffect(() => {
     if (!loading && defaultExpanded) setExpanded(true);
@@ -147,7 +153,7 @@ export function FinanceManualEntryPanel({
     const wasIaReview = pendingIaReview;
     setSaving(true);
     try {
-      await saveManualFinancialEntry(residenceId, financialData, draft, residence.price, {
+      await saveManualFinancialEntry(residenceId, financialData, draft, listingPrice, {
         humanValidatedFromIa: wasIaReview,
         sourceDocumentId: iaMeta?.documentId,
       });
@@ -171,7 +177,7 @@ export function FinanceManualEntryPanel({
     inputsLocked,
     draft,
     financialData,
-    residence.price,
+    listingPrice,
     locale,
     showSuccess,
     showError,
