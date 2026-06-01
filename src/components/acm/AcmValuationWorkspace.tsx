@@ -52,6 +52,7 @@ import { AcmHistoricalTrendsSection } from './AcmHistoricalTrendsSection';
 import type {
   CertifiableReportBrokerFooter,
   FinancialDataV2Doc,
+  ResidenceFinancialHints,
   TerritorialAcmMedians,
 } from '@primexpert/core/financial';
 import {
@@ -64,7 +65,6 @@ import {
   resolveAppliedTgaPct,
   resolveDynamicMarketTgaPct,
 } from '@primexpert/core/financial';
-import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
 import {
   institutionalListingsCardHeaderClass,
@@ -137,7 +137,7 @@ export interface AcmValuationPdfExportContext {
   broker: CertifiableReportBrokerFooter;
   locale: 'fr' | 'en';
   financialData: FinancialDataV2Doc;
-  residence: Residence;
+  residence: ResidenceFinancialHints;
 }
 
 export interface AcmValuationWorkspaceProps {

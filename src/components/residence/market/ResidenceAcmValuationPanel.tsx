@@ -6,7 +6,7 @@ import React, { useMemo } from 'react';
 import { buildBrokerFooterFromProfile } from '../../../services/certifiableReportPdfService';
 import { AlertTriangle } from 'lucide-react';
 import { bootstrapResidenceAcm } from '@primexpert/core/valuation';
-import type { FinancialDataV2Doc } from '@primexpert/core/financial';
+import type { FinancialDataV2Doc, ResidenceFinancialHints } from '@primexpert/core/financial';
 import { useLanguage } from '../../../lib/i18n';
 import { useAuth } from '../../../lib/auth';
 import { useFinancialData } from '../../../context/FinancialDataContext';
@@ -113,7 +113,7 @@ export function ResidenceAcmValuationPanel({
       broker: buildBrokerFooterFromProfile(profile),
       locale: language === 'fr' ? ('fr' as const) : ('en' as const),
       financialData: financialData as FinancialDataV2Doc,
-      residence: residenceLive,
+      residence: residenceLive as unknown as ResidenceFinancialHints,
     };
   }, [residenceLive, financialData, profile, language]);
 

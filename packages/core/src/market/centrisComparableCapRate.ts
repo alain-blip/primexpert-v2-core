@@ -39,9 +39,10 @@ export interface TerritorialComparableMergeResult {
 
 export type TerritorialCompetitionSnapshot = Omit<
   TerritorialComparableMergeResult,
-  'comparables'
+  'comparables' | 'filterScope'
 > & {
   comparables: CentrisComparableListing[];
+  filterScope?: TerritorialComparableMergeResult['filterScope'];
   regionAdministrative: string | null;
   classeImmeuble: string | null;
 };
