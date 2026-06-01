@@ -369,7 +369,7 @@ export function AcmValuationWorkspace({
         residenceId: pdfExport.residenceId,
         residenceAddress: pdfExport.residenceAddress,
         financialData: pdfExport.financialData,
-        residence: pdfExport.residence as ResidenceFinancialHints,
+        residence: pdfExport.residence as unknown as ResidenceFinancialHints,
         effectiveCapRate,
         recommendedPrice,
         sellerNarrative: narrative?.signedReading ?? null,
