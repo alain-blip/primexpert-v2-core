@@ -154,7 +154,7 @@ export function ACM() {
           inferMarketType(''),
           classifyAssetSize(form.units),
           occupancy
-        )
+        ).recommendedListPrice
       );
     } catch (e) {
       console.error(e);
