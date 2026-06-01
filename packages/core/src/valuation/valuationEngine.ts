@@ -25,6 +25,7 @@ import {
 } from './valuationProfiles';
 
 import { formatCurrency } from '@primexpert/core/utils/formatting';
+import { computeCapitalizedValueFromNoi } from '../financial/capitalizationMetrics';
 
 import {
   type ComparableCapRateSample,
@@ -813,9 +814,9 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
   const capRateMarketSelected = marketCapRateMeta.capRateMarketSelected;
 
   // Calculer la valeur par revenu au TGA de marché
-  const valueByIncomeMarket = capRateMarketSelected > 0
-    ? roundToThousand(noiAccounting / capRateMarketSelected)
-    : 0;
+  const valueByIncomeMarket = roundToThousand(
+    computeCapitalizedValueFromNoi(noiAccounting, capRateMarketSelected) ?? 0
+  );
 
   // Calculer le TGA implicite au prix demandé
   const capRateImpliedAtAsking = computeCapRateImpliedAtAsking(

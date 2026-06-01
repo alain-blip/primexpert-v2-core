@@ -47,8 +47,10 @@ import { AcmHistoricalTrendsSection } from './AcmHistoricalTrendsSection';
 import type {
   CertifiableReportBrokerFooter,
   FinancialDataV2Doc,
+  ResidenceFinancialHints,
   TerritorialAcmMedians,
 } from '@primexpert/core/financial';
+import { computeCapitalizedValueFromNoi } from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
 import {
@@ -393,7 +395,7 @@ export function AcmValuationWorkspace({
         residenceId: pdfExport.residenceId,
         residenceAddress: pdfExport.residenceAddress,
         financialData: pdfExport.financialData,
-        residence: pdfExport.residence,
+        residence: pdfExport.residence as unknown as ResidenceFinancialHints,
         effectiveCapRate,
         recommendedPrice,
         sellerNarrative: narrative?.signedReading ?? null,
@@ -427,7 +429,7 @@ export function AcmValuationWorkspace({
       : null;
     const performanceBased =
       territorialMedians?.tgaPct && territorialMedians.tgaPct > 0
-        ? bootstrap.revenuNetExploitation / (territorialMedians.tgaPct / 100)
+        ? computeCapitalizedValueFromNoi(bootstrap.revenuNetExploitation, territorialMedians.tgaPct)
         : null;
     const maxPotential = stressSummary?.occ100 ?? null;
     const rows = [
