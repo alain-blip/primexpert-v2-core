@@ -8,6 +8,7 @@
  * @author Copilote IA - RPAaVendre.com
  */
 
+import { describe, expect, it } from 'vitest';
 import {
   selectMarketCapRate,
   computeStats,
