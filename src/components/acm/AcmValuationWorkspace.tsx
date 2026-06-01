@@ -49,7 +49,11 @@ import type {
   FinancialDataV2Doc,
   TerritorialAcmMedians,
 } from '@primexpert/core/financial';
-import { computeCapitalizedValueFromRneAndTga } from '@primexpert/core/financial';
+import {
+  computeCapitalizedValueFromRneAndTga,
+  normalizeTgaPct,
+  normalizeTgaRatio,
+} from '@primexpert/core/financial';
 import type { Residence } from '../../services/residences';
 import { downloadAcmVendorReportPdf } from '../../services/acmVendorPdfService';
 import {
@@ -112,6 +116,11 @@ function fmtMoneyField(value: number): string {
   return formatCurrency(value, { maxDecimals: 0 });
 }
 
+function fmtTgaPctField(value: number | null | undefined, decimals = 2, spaced = false): string {
+  const pct = normalizeTgaPct(value);
+  return pct == null ? '—' : `${pct.toFixed(decimals)}${spaced ? ' %' : '%'}`;
+}
+
 function fmtCountField(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value) || value <= 0) return '—';
   return formatPopulationCount(Math.round(value));
@@ -157,7 +166,9 @@ export function AcmValuationWorkspace({
   const [tgaInput, setTgaInput] = useState(() => String(suggestedCapRatePct));
   const [targetCapRatePct, setTargetCapRatePct] = useState(suggestedCapRatePct);
   /** TGA réellement appliqué au moteur (après ajustement pénétration). */
-  const [effectiveCapRate, setEffectiveCapRate] = useState(suggestedCapRatePct / 100);
+  const [effectiveCapRate, setEffectiveCapRate] = useState(
+    normalizeTgaRatio(suggestedCapRatePct) ?? 0
+  );
   const [penetrationRatePct, setPenetrationRatePct] = useState(bootstrap.penetrationRatePct);
   const [tgaManuallyAdjusted, setTgaManuallyAdjusted] = useState(false);
   const [result, setResult] = useState<ValuationOutputs | null>(null);
@@ -234,7 +245,7 @@ export function AcmValuationWorkspace({
       }
       setError(null);
       try {
-        let adjustedCap = capPct / 100;
+        let adjustedCap = normalizeTgaRatio(capPct) ?? 0;
         let adj: TgaAdjustmentResult | null = null;
         if (penPct > 0) {
           adj = computeTgaAdjustment({
@@ -482,7 +493,7 @@ export function AcmValuationWorkspace({
         ),
         value:
           result.capRateImpliedAtAsking !== undefined
-            ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%`
+            ? fmtTgaPctField(result.capRateImpliedAtAsking)
             : '—',
       },
       {
@@ -813,7 +824,7 @@ export function AcmValuationWorkspace({
                 )}
               </p>
               <p className={`text-sm ${ACM_METRIC_VALUE_CLASS}`}>
-                {(tgaAdjustment.baseTga * 100).toFixed(2)} % → {(tgaAdjustment.finalTga * 100).toFixed(2)} %
+                {fmtTgaPctField(tgaAdjustment.baseTga, 2, true)} → {fmtTgaPctField(tgaAdjustment.finalTga, 2, true)}
               </p>
             </div>
           ) : null}

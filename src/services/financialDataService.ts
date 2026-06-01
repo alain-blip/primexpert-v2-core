@@ -312,8 +312,9 @@ export async function saveManualFinancialEntry(
       ...(prix > 0 ? { prixDemande: prix } : {}),
     };
     const rne = calculatedResults.revenuNetExploitation;
-    if (rne != null && rne > 0 && prix > 0) {
-      calculatedResults.tauxCapitalisation = rne / prix;
+    const tauxCapitalisation = computeTgaRatioFromRneAndPrice(rne, prix);
+    if (tauxCapitalisation != null) {
+      calculatedResults.tauxCapitalisation = tauxCapitalisation;
     }
     const mensuel = parseNum(draft.financement.paiementMensuel);
     if (mensuel > 0) {

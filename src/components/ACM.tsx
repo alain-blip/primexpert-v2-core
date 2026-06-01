@@ -25,10 +25,16 @@ import {
   DEFAULT_MARKET_BENCHMARKS,
   computeTgaAdjustment,
   runStressTests,
+  capRateRangeFromMedian,
+  selectBaselineStressTest,
+  classifyAssetSize,
+  inferMarketType,
+  calculatePriceRecommendation,
   type ValuationInputs,
   type ValuationOutputs,
   type TgaAdjustmentResult,
 } from '@primexpert/core/valuation';
+import { normalizeTgaPct, normalizeTgaRatio } from '@primexpert/core/financial';
 import {
   selectSellerNarrative,
   type SellerNarrativeDecision,
@@ -59,6 +65,7 @@ const INITIAL_FORM: SimpleForm = {
 };
 
 function buildInputs(form: SimpleForm, targetCapRateOverride?: number): ValuationInputs {
+  const targetCapRate = normalizeTgaRatio(targetCapRateOverride ?? form.targetCapRate) ?? 0;
   return createDefaultValuationInputs({
     askingPrice: form.askingPrice,
     units: form.units,
@@ -67,10 +74,15 @@ function buildInputs(form: SimpleForm, targetCapRateOverride?: number): Valuatio
     vacancyRate: form.vacancyRate / 100,
     operatingExpenses: { total: form.operatingExpensesTotal },
     customExpenses: [],
-    targetCapRate: targetCapRateOverride ?? form.targetCapRate / 100,
+    targetCapRate,
     valuationMode: 'acm_unified_cap',
     weights: { capRate: 1, mrb: 0, mrn: 0, pricePerUnit: 0 },
   });
+}
+
+function formatTgaPct(value: number | null | undefined, decimals = 2, spaced = false): string {
+  const pct = normalizeTgaPct(value);
+  return pct == null ? '—' : `${pct.toFixed(decimals)}${spaced ? ' %' : '%'}`;
 }
 
 function PositioningBadge({ positioning, t }: { positioning: ValuationOutputs['pricePositioning']; t: ReturnType<typeof useLanguage>['t'] }) {
@@ -115,7 +127,7 @@ export function ACM() {
     setRecommendedPrice(null);
     setStressSummary(null);
     try {
-      let adjustedCap = form.targetCapRate / 100;
+      let adjustedCap = normalizeTgaRatio(form.targetCapRate) ?? 0;
       if (form.penetrationRatePct > 0) {
         const adj = computeTgaAdjustment({
           baseTga: adjustedCap,
@@ -138,13 +150,13 @@ export function ACM() {
         occ90: stress.occ90.valueRange.min,
         occ100: stress.occ100.valueRange.min,
       });
-      setPriceRecommendation(
+      setRecommendedPrice(
         calculatePriceRecommendation(
           baseline,
           inferMarketType(''),
           classifyAssetSize(form.units),
           occupancy
-        )
+        ).recommendedListPrice
       );
     } catch (e) {
       console.error(e);
@@ -173,7 +185,7 @@ export function ACM() {
     selectSellerNarrative(
       financials,
       DEFAULT_MARKET_BENCHMARKS,
-      { capRateMedian: form.targetCapRate / 100 },
+      { capRateMedian: normalizeTgaRatio(form.targetCapRate) ?? DEFAULT_MARKET_BENCHMARKS.capRateAvg },
       { narrativeMode: 'RULES' }
     )
       .then((decision) => {
@@ -190,12 +202,12 @@ export function ACM() {
     return () => {
       cancelled = true;
     };
-  }, [result, form.askingPrice]);
+  }, [result, form.askingPrice, form.targetCapRate]);
 
   const ratios = useMemo(() => {
     if (!result) return null;
     return [
-      { label: t('Taux de capitalisation implicite (TGA)', 'Implied capitalization rate (cap rate)'), value: result.capRateImpliedAtAsking !== undefined ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%` : '—' },
+      { label: t('Taux de capitalisation implicite (TGA)', 'Implied capitalization rate (cap rate)'), value: formatTgaPct(result.capRateImpliedAtAsking) },
       { label: t('Multiple du revenu brut réel (MRB)', 'Actual gross rent multiplier (GRM)'), value: result.actualMrbAtAsking.toFixed(2) },
       { label: t('Ratio de couverture du service de la dette (DSCR)', 'Debt service coverage ratio (DSCR)'), value: result.dscrAtAsking.toFixed(2) },
       { label: t('Revenu net d’exploitation comptable (RNE)', 'Accounting net operating income (NOI)'), value: formatCurrency(result.noiAccounting, { maxDecimals: 2 }) },
@@ -338,7 +350,7 @@ export function ACM() {
                 {t('Ajustement TGA — pénétration & taille', 'Cap rate adjustment — penetration & size')}
               </p>
               <p className="text-sm font-bold text-white">
-                {(tgaAdjustment.baseTga * 100).toFixed(2)} % → {(tgaAdjustment.finalTga * 100).toFixed(2)} %
+                {formatTgaPct(tgaAdjustment.baseTga, 2, true)} → {formatTgaPct(tgaAdjustment.finalTga, 2, true)}
               </p>
               <ul className="text-[11px] text-blue-100 space-y-1">
                 {tgaAdjustment.rationale.slice(0, 3).map((line) => (
