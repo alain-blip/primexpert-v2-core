@@ -34,6 +34,7 @@ import {
   type SellerNarrativeDecision,
   type ResidenceFinancials,
 } from '@primexpert/core/narrative';
+import { normalizeTgaPct, tgaPctToRate } from '@primexpert/core/financial';
 
 interface SimpleForm {
   askingPrice: number;
@@ -45,6 +46,11 @@ interface SimpleForm {
   targetCapRate: number;     // entré en % (8 → 0.08)
   /** Taux pénétration RPA 75+ (ex. 3.5 = 3,5 %) — ajuste le TGA cible. */
   penetrationRatePct: number;
+}
+
+function formatTgaPct(value: number | null | undefined): string {
+  const pct = normalizeTgaPct(value);
+  return pct == null ? '—' : `${pct.toFixed(2)}%`;
 }
 
 const INITIAL_FORM: SimpleForm = {
@@ -169,11 +175,12 @@ export function ACM() {
       totalExpenses: result.operatingExpensesTotal,
       prixDemande: form.askingPrice,
     };
+    const capRateMedian = tgaPctToRate(form.targetCapRate) ?? 0.085;
 
     selectSellerNarrative(
       financials,
       DEFAULT_MARKET_BENCHMARKS,
-      { capRateMedian: form.targetCapRate / 100 },
+      { capRateMedian },
       { narrativeMode: 'RULES' }
     )
       .then((decision) => {
@@ -190,12 +197,12 @@ export function ACM() {
     return () => {
       cancelled = true;
     };
-  }, [result, form.askingPrice]);
+  }, [result, form.askingPrice, form.targetCapRate]);
 
   const ratios = useMemo(() => {
     if (!result) return null;
     return [
-      { label: t('Taux de capitalisation implicite (TGA)', 'Implied capitalization rate (cap rate)'), value: result.capRateImpliedAtAsking !== undefined ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%` : '—' },
+      { label: t('Taux de capitalisation implicite (TGA)', 'Implied capitalization rate (cap rate)'), value: formatTgaPct(result.capRateImpliedAtAsking) },
       { label: t('Multiple du revenu brut réel (MRB)', 'Actual gross rent multiplier (GRM)'), value: result.actualMrbAtAsking.toFixed(2) },
       { label: t('Ratio de couverture du service de la dette (DSCR)', 'Debt service coverage ratio (DSCR)'), value: result.dscrAtAsking.toFixed(2) },
       { label: t('Revenu net d’exploitation comptable (RNE)', 'Accounting net operating income (NOI)'), value: formatCurrency(result.noiAccounting, { maxDecimals: 2 }) },
@@ -338,7 +345,7 @@ export function ACM() {
                 {t('Ajustement TGA — pénétration & taille', 'Cap rate adjustment — penetration & size')}
               </p>
               <p className="text-sm font-bold text-white">
-                {(tgaAdjustment.baseTga * 100).toFixed(2)} % → {(tgaAdjustment.finalTga * 100).toFixed(2)} %
+                {formatTgaPct(tgaAdjustment.baseTga)} → {formatTgaPct(tgaAdjustment.finalTga)}
               </p>
               <ul className="text-[11px] text-blue-100 space-y-1">
                 {tgaAdjustment.rationale.slice(0, 3).map((line) => (

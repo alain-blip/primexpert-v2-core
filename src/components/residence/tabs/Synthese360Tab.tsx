@@ -34,7 +34,7 @@ import { useUnifiedResidence, useResidenceFinancialHints } from '../../../contex
 import { useFinancialData } from '../../../context/FinancialDataContext';
 import type { Residence } from '../../../services/residences';
 import { buildCommissionFirestorePatch, buildListingPriceFirestorePatch } from '../../../services/residences';
-import { fmtBuyerPercent } from '../../../services/buyerReportPdfService';
+import { fmtBuyerTgaPct } from '../../../services/buyerReportPdfService';
 import type { PropertyDocumentExtractedData, PropertyDocumentRecord } from '../../../types/propertyDocument';
 import { ResidenceActivitiesPanel } from '../activities/ResidenceActivitiesPanel';
 import { ResidenceTasksPanel } from '../tasks/ResidenceTasksPanel';
@@ -241,7 +241,7 @@ function formatUnknownDate(value: unknown): string {
 
 function formatTgaFromCalc(ratio: number | null | undefined): string {
   if (ratio == null || !Number.isFinite(ratio) || ratio <= 0) return '—';
-  return fmtBuyerPercent(ratio);
+  return fmtBuyerTgaPct(ratio);
 }
 
 function formatDscrFromCalc(value: number | null | undefined): string {

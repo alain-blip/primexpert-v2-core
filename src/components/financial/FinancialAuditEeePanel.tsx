@@ -4,8 +4,9 @@
 
 import React, { useMemo } from 'react';
 import { Landmark, Info } from 'lucide-react';
-import { computeFinancialAuditEee } from '@primexpert/core/financial';
+import { computeFinancialAuditEee, normalizeTgaPct } from '@primexpert/core/financial';
 import { useFinancialData } from '../../context/FinancialDataContext';
+import { useResidenceFinancialHints } from '../../context/ResidenceDataContext';
 import { useLanguage } from '../../lib/i18n';
 import { formatCurrency } from '../../lib/utils';
 import type { Residence } from '../../services/residences';
@@ -23,32 +24,37 @@ export function FinancialAuditEeePanel({
 }: FinancialAuditEeePanelProps) {
   const { t, language } = useLanguage();
   const { financialData } = useFinancialData();
+  const financialHints = useResidenceFinancialHints(residence);
   const calc = financialData?.calculatedResults;
   const baseData = financialData?.baseData ?? null;
+  const canonicalPrixDemande = prixDemande ?? financialHints.prixDemande ?? financialHints.askingPrice ?? 0;
 
   const audit = useMemo(
     () =>
       computeFinancialAuditEee({
         residence: {
           ...residence,
-          nombreUnitesTotal: residence.nicheMetadata?.nombreUnites,
-          nombreUnites: residence.nicheMetadata?.nombreUnites,
-          prixDemande: prixDemande ?? residence.price,
+          nombreUnitesTotal:
+            financialHints.nombreUnitesTotal ?? residence.nicheMetadata?.nombreUnites,
+          nombreUnites: financialHints.nombreUnites ?? residence.nicheMetadata?.nombreUnites,
+          prixDemande: canonicalPrixDemande,
         },
         calc,
         baseData,
-        prixDemande: prixDemande ?? residence.price ?? 0,
+        prixDemande: canonicalPrixDemande,
         paiementAnnuelDette,
       }),
-    [residence, calc, baseData, prixDemande, paiementAnnuelDette]
+    [residence, financialHints, calc, baseData, canonicalPrixDemande, paiementAnnuelDette]
   );
 
   if (!calc || (audit.noiReported <= 0 && audit.alerts.length === 0)) return null;
 
   const L = language === 'fr';
   const fmt = (n: number) => formatCurrency(n, { maxDecimals: 0 });
-  const fmtPct = (x: number | null) =>
-    x != null && Number.isFinite(x) ? `${(x * 100).toFixed(2)} %` : '—';
+  const fmtTga = (x: number | null) => {
+    const pct = normalizeTgaPct(x);
+    return pct != null ? `${pct.toFixed(2)} %` : '—';
+  };
   const fmtX = (x: number | null) =>
     x != null && Number.isFinite(x) ? `${x.toFixed(2)}×` : '—';
 
@@ -83,11 +89,11 @@ export function FinancialAuditEeePanel({
         />
         <EeeMetric
           label={t('Taux de capitalisation (TGA) — déclaré', 'Cap rate — declared')}
-          value={fmtPct(audit.capRateReported)}
+          value={fmtTga(audit.capRateReported)}
         />
         <EeeMetric
           label={t('Taux de capitalisation (TGA) — normalisé', 'Cap rate — normalized')}
-          value={fmtPct(audit.capRateNormalized)}
+          value={fmtTga(audit.capRateNormalized)}
           highlight
         />
         <EeeMetric

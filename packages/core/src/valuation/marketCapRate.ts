@@ -10,6 +10,11 @@
  * @version 1.0.0
  */
 
+import {
+  computeCapRateRatioFromRneAndPrice,
+  resolveRneFromRevenueAndExpenses,
+} from '../financial/capitalization';
+
 // ============================================================================
 // INTERFACES
 // ============================================================================
@@ -235,18 +240,20 @@ export function mapComparablesToCapRateSamples(
   return comparables
     .filter(c => c.salePrice > 0)
     .map(c => {
-      // Calculer le NOI si non fourni
-      let noi = c.noi || 0;
-      if (!noi && c.rbe && c.totalExpenses !== undefined) {
-        noi = c.rbe - c.totalExpenses;
-      }
-      if (!noi && c.rbp && c.totalExpenses !== undefined) {
-        // Estimer RBE à 95% du RBP si RBE non disponible
-        noi = (c.rbp * 0.95) - c.totalExpenses;
-      }
+      const estimatedRbe = c.rbe ?? (c.rbp != null ? c.rbp * 0.95 : undefined);
+      const noi =
+        resolveRneFromRevenueAndExpenses({
+          netOperatingIncome: c.noi,
+          revenuBrutEffectif: estimatedRbe,
+          depensesExploitation: c.totalExpenses,
+        }) ?? 0;
 
-      // Calculer le cap rate
-      const capRate = noi > 0 && c.salePrice > 0 ? noi / c.salePrice : 0;
+      const capRate =
+        computeCapRateRatioFromRneAndPrice({
+          rne: noi,
+          price: c.salePrice,
+          decimals: 4,
+        }) ?? 0;
 
       return {
         id: c.id,
@@ -272,7 +279,11 @@ export function computeCapRateImpliedAtAsking(
   if (noi <= 0 || askingPrice <= 0) {
     return undefined;
   }
-  return Math.round((noi / askingPrice) * 10000) / 10000;
+  return computeCapRateRatioFromRneAndPrice({
+    rne: noi,
+    price: askingPrice,
+    decimals: 4,
+  }) ?? undefined;
 }
 
 /**

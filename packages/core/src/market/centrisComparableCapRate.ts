@@ -7,6 +7,7 @@ import { normalizeRpaBuildingClass } from './gpsCapRateByRegionClass';
 import {
   computeCapRatePctFromRneAndPrice,
   computeRneFromPriceAndTgaPct,
+  resolveRneFromRevenueAndExpenses,
 } from '../financial/capitalization';
 
 export interface CentrisComparableListing {
@@ -42,11 +43,12 @@ export function calculateComparableCapRate(
   listing: Omit<CentrisComparableListing, 'calculatedCapRate'>
 ): number {
   if (!listing.soldPrice || listing.soldPrice <= 0) return 0;
-  const rne =
-    listing.netOperatingIncome > 0
-      ? listing.netOperatingIncome
-      : listing.revenuBrutEffectif - listing.densesExploitation;
-  if (!Number.isFinite(rne) || rne <= 0) return 0;
+  const rne = resolveRneFromRevenueAndExpenses({
+    netOperatingIncome: listing.netOperatingIncome,
+    revenuBrutEffectif: listing.revenuBrutEffectif,
+    depensesExploitation: listing.densesExploitation,
+  });
+  if (rne == null) return 0;
   return computeCapRatePctFromRneAndPrice({ rne, price: listing.soldPrice }) ?? 0;
 }
 

@@ -17,6 +17,8 @@
  * @version 1.0.0
  */
 
+import { normalizeTgaPct } from '../financial/capitalization';
+
 // ============================================================================
 // INTERFACES
 // ============================================================================
@@ -219,6 +221,7 @@ function generateRationale(
 ): string[] {
   const rationale: string[] = [];
   const bpsToPercent = (bps: number) => (bps / 100).toFixed(2);
+  const formatTgaPct = (value: number) => (normalizeTgaPct(value) ?? 0).toFixed(2);
 
   // Constat de pénétration
   if (penetrationResult.available && input.tauxPenetrationRPA !== null) {
@@ -256,11 +259,11 @@ function generateRationale(
     if (marketResult.deltaBps > 0) adjustmentDetails.push(`marché +${bpsToPercent(marketResult.deltaBps)}%`);
 
     rationale.push(
-      `En conséquence, le taux de capitalisation est ajusté de +${bpsToPercent(totalAdjBps)}% (${adjustmentDetails.join(', ')}) pour refléter le rendement exigé, portant le TGA à ${(finalTga * 100).toFixed(2)}%.`
+      `En conséquence, le taux de capitalisation est ajusté de +${bpsToPercent(totalAdjBps)}% (${adjustmentDetails.join(', ')}) pour refléter le rendement exigé, portant le TGA à ${formatTgaPct(finalTga)}%.`
     );
   } else {
     rationale.push(
-      `Aucun ajustement de risque n'est requis. Le TGA de base de ${(input.baseTga * 100).toFixed(2)}% est maintenu.`
+      `Aucun ajustement de risque n'est requis. Le TGA de base de ${formatTgaPct(input.baseTga)}% est maintenu.`
     );
   }
 
@@ -367,11 +370,11 @@ export function formatTgaAdjustmentForDisplay(result: TgaAdjustmentResult): {
   const totalAdj = result.penetrationDeltaBps + result.sizeDeltaBps + result.marketDeltaBps;
 
   return {
-    baseTgaDisplay: `${(result.baseTga * 100).toFixed(2)}%`,
+    baseTgaDisplay: `${(normalizeTgaPct(result.baseTga) ?? 0).toFixed(2)}%`,
     penetrationAdjDisplay: bpsToPercentStr(result.penetrationDeltaBps),
     sizeAdjDisplay: bpsToPercentStr(result.sizeDeltaBps),
     marketAdjDisplay: bpsToPercentStr(result.marketDeltaBps),
-    finalTgaDisplay: `${(result.finalTga * 100).toFixed(2)}%`,
+    finalTgaDisplay: `${(normalizeTgaPct(result.finalTga) ?? 0).toFixed(2)}%`,
     totalAdjDisplay: bpsToPercentStr(totalAdj),
     rationale: result.rationale,
   };

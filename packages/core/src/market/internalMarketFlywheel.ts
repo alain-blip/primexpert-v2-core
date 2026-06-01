@@ -4,7 +4,10 @@
  */
 
 import { internalFlywheelFingerprint } from './marketDeduplication';
-import { computeCapRatePctFromRneAndPrice } from '../financial/capitalization';
+import {
+  computeCapRatePctFromRneAndPrice,
+  resolveRneFromRevenueAndExpenses,
+} from '../financial/capitalization';
 
 function computeFlywheelCapRatePct(input: {
   soldPrice: number;
@@ -13,11 +16,8 @@ function computeFlywheelCapRatePct(input: {
   netOperatingIncome: number;
 }): number {
   if (!input.soldPrice || input.soldPrice <= 0) return 0;
-  const rne =
-    input.netOperatingIncome > 0
-      ? input.netOperatingIncome
-      : input.revenuBrutEffectif - input.depensesExploitation;
-  if (!Number.isFinite(rne) || rne <= 0) return 0;
+  const rne = resolveRneFromRevenueAndExpenses(input);
+  if (rne == null) return 0;
   return computeCapRatePctFromRneAndPrice({ rne, price: input.soldPrice }) ?? 0;
 }
 

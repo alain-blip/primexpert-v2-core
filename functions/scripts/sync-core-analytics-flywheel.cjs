@@ -66,8 +66,8 @@ function main() {
     "import { internalFlywheelFingerprint } from '../../documents/_vendored/marketDeduplication';"
   );
   body = body.replace(
-    "import { computeCapRatePctFromRneAndPrice } from '../financial/capitalization';",
-    "import { computeCapRatePctFromRneAndPrice } from './financialCapitalization';"
+    "import {\n  computeCapRatePctFromRneAndPrice,\n  resolveRneFromRevenueAndExpenses,\n} from '../financial/capitalization';",
+    "import {\n  computeCapRatePctFromRneAndPrice,\n  resolveRneFromRevenueAndExpenses,\n} from './financialCapitalization';"
   );
 
   fs.writeFileSync(TARGET, HEADER_BANNER + body, 'utf-8');

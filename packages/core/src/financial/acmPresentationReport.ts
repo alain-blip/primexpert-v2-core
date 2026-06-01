@@ -16,6 +16,7 @@ import {
 } from '../valuation';
 import { formatCertifiableReportTimestamp } from './certifiableFinancialReport';
 import type { CertifiableReportBrokerFooter } from './certifiableFinancialReport';
+import { normalizeTgaPct, tgaPctToRate } from './capitalization';
 import {
   isOffMarketListing,
   resolveListingSource,
@@ -151,9 +152,7 @@ function buildValuationOutputs(
         mapped.askingPrice,
       targetCapRate:
         finiteNum(calc.tauxCapitalisation) != null
-          ? (finiteNum(calc.tauxCapitalisation)! > 1
-              ? finiteNum(calc.tauxCapitalisation)! / 100
-              : finiteNum(calc.tauxCapitalisation)!)
+          ? tgaPctToRate(finiteNum(calc.tauxCapitalisation)) ?? mapped.targetCapRate
           : mapped.targetCapRate,
     });
     return calculateValuation(inputs);
@@ -184,18 +183,16 @@ function buildMarketConclusion(
   const capSelection = selectMarketCapRate({
     profileCapRate:
       finiteNum(calc.tauxCapitalisation) != null
-        ? finiteNum(calc.tauxCapitalisation)! > 1
-          ? finiteNum(calc.tauxCapitalisation)! / 100
-          : finiteNum(calc.tauxCapitalisation)!
+        ? tgaPctToRate(finiteNum(calc.tauxCapitalisation)) ?? 0.08
         : valuation?.capRateMarketSelected ?? 0.08,
     comparables,
     minComparables: 3,
   });
 
   const tgaPct =
-    capSelection.capRateComparableMedian != null
-      ? capSelection.capRateComparableMedian * 100
-      : capSelection.capRateMarketSelected * 100;
+    normalizeTgaPct(capSelection.capRateComparableMedian) ??
+    normalizeTgaPct(capSelection.capRateMarketSelected) ??
+    0;
   const capRateDisplay = formatPercentRaw(tgaPct, 2);
   const valueDisplay = fmtMoney(
     valeur ?? valuation?.weightedMarketValue ?? valuation?.suggestedPrice ?? null,

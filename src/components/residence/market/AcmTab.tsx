@@ -7,6 +7,7 @@ import { FileText } from 'lucide-react';
 import { useLanguage } from '../../../lib/i18n';
 import { useAuth } from '../../../lib/auth';
 import { useFinancialData } from '../../../context/FinancialDataContext';
+import { useResidenceFinancialHints } from '../../../context/ResidenceDataContext';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { FinancialDataProvider } from '../../../context/FinancialDataContext';
 import type { Residence } from '../../../services/residences';
@@ -32,6 +33,7 @@ function AcmTabContent({ residence }: AcmTabProps) {
   const { profile } = useAuth();
   const { financialData, loading } = useFinancialData();
   const { residenceDoc } = useResidenceDocument();
+  const financialHints = useResidenceFinancialHints(residence);
   const [pdfPending, setPdfPending] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
 
@@ -62,8 +64,8 @@ function AcmTabContent({ residence }: AcmTabProps) {
           city: residence.city,
           nombreUnites: residence.nicheMetadata?.nombreUnites,
           nombreUnitesTotal: residence.nicheMetadata?.nombreUnites,
-          prixDemande: residence.price,
-          askingPrice: residence.price,
+          prixDemande: financialHints.prixDemande,
+          askingPrice: financialHints.askingPrice,
           listingSource: residence.listingSource,
         },
         residenceDoc: residenceDoc ?? undefined,
@@ -81,7 +83,7 @@ function AcmTabContent({ residence }: AcmTabProps) {
     } finally {
       setPdfPending(false);
     }
-  }, [financialData, residence, residenceDoc, broker, language, t]);
+  }, [financialData, residence, residenceDoc, financialHints, broker, language, t]);
 
   return (
     <section className={`${institutionalListingsCardShellClass} space-y-4 p-5`}>

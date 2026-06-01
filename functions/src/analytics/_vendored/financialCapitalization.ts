@@ -9,8 +9,18 @@ function finitePositive(value: unknown): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+function finiteNumber(value: unknown): number | null {
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 function roundTo(value: number, decimals: number): number {
   return Number(value.toFixed(decimals));
+}
+
+function maybeRound(value: number, options?: { round?: boolean; decimals?: number }): number {
+  if (options?.round) return Math.round(value);
+  return roundTo(value, options?.decimals ?? 2);
 }
 
 export function normalizeTgaPct(value: unknown): number | null {
@@ -48,6 +58,35 @@ export function computeCapRatePctFromRneAndPrice(input: {
   return roundTo((rne / price) * 100, input.decimals ?? 2);
 }
 
+export function computeCapRateRatioFromRneAndPrice(input: {
+  rne: unknown;
+  price: unknown;
+  decimals?: number;
+}): number | null {
+  const pct = computeCapRatePctFromRneAndPrice(input);
+  return tgaPctToRate(pct);
+}
+
+export function resolveRneFromRevenueAndExpenses(input: {
+  netOperatingIncome?: unknown;
+  revenuBrutEffectif?: unknown;
+  depensesExploitation?: unknown;
+  round?: boolean;
+  decimals?: number;
+}): number | null {
+  const directNoi = finitePositive(input.netOperatingIncome);
+  if (directNoi != null) {
+    return maybeRound(directNoi, input);
+  }
+
+  const rbe = finitePositive(input.revenuBrutEffectif);
+  const expenses = finiteNumber(input.depensesExploitation);
+  if (rbe == null || expenses == null) return null;
+
+  const rne = rbe - expenses;
+  return rne > 0 ? maybeRound(rne, input) : null;
+}
+
 export function computeRneFromPriceAndTgaPct(input: {
   price: unknown;
   tgaPct: unknown;
@@ -69,5 +108,5 @@ export function computeCapitalizedValueFromRneAndTgaPct(input: {
   const tgaRate = tgaPctToRate(input.tgaPct);
   if (rne == null || tgaRate == null) return null;
   const value = rne / tgaRate;
-  return input.round ? Math.round(value) : roundTo(value, input.decimals ?? 2);
+  return maybeRound(value, input);
 }

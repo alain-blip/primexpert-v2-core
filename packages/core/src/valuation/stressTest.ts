@@ -5,6 +5,7 @@
 
 import { projectNOIAtOccupancy, projectNoiFromRbpAtOccupancy } from './projectNoiAtOccupancy';
 import type { RangeWithMedian, StressTestResult, StressTests } from './valuationStressTypes';
+import { computeCapitalizedValueFromRneAndTgaPct } from '../financial/capitalization';
 
 const STRESS_OCCUPANCY_LEVELS = {
   CONSERVATIVE: 0.85,
@@ -26,8 +27,16 @@ function buildStressTestResult(
     occupancyRate: targetOccupancy,
     noi: projectedNoi,
     valueRange: {
-      min: Math.round(projectedNoi / maxCap),
-      max: Math.round(projectedNoi / minCap),
+      min: computeCapitalizedValueFromRneAndTgaPct({
+        rne: projectedNoi,
+        tgaPct: maxCap,
+        round: true,
+      }) ?? 0,
+      max: computeCapitalizedValueFromRneAndTgaPct({
+        rne: projectedNoi,
+        tgaPct: minCap,
+        round: true,
+      }) ?? 0,
     },
   };
 }
@@ -40,7 +49,9 @@ function buildStressTestFromRbp(
 ): StressTestResult {
   const projectedNoi = projectNoiFromRbpAtOccupancy(rbp, operatingExpenses, targetOccupancy);
   const cap = Math.max(capRate, 0.0001);
-  const value = Math.round(projectedNoi / cap);
+  const value =
+    computeCapitalizedValueFromRneAndTgaPct({ rne: projectedNoi, tgaPct: cap, round: true }) ??
+    0;
 
   return {
     occupancyRate: targetOccupancy,

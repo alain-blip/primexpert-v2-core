@@ -10,6 +10,7 @@ import {
   computeFinancabilite,
   EXPENSE_FIELDS,
   normalizeFinancialData,
+  normalizeTgaPct,
   normalizedOperatingAmount,
   resolvePrixDemande,
   type BuildCertifiableFinancialReportInput,
@@ -101,6 +102,13 @@ export function fmtBuyerPercent(ratio: number | null | undefined): string {
   const n = finiteNum(ratio);
   if (n == null) return '0,00 %';
   const pct = n > 1 && n <= 100 ? n : n * 100;
+  return `${pct.toFixed(2).replace('.', ',')} %`;
+}
+
+/** TGA stocké en ratio ou pourcentage → pourcentage fr-CA (ex. « 7,50 % »). */
+export function fmtBuyerTgaPct(value: number | null | undefined): string {
+  const pct = normalizeTgaPct(value);
+  if (pct == null) return '0,00 %';
   return `${pct.toFixed(2).replace('.', ',')} %`;
 }
 
@@ -476,7 +484,7 @@ export function buildBuyerCraftMyPdfPayload(
     DSCR: fmtBuyerDscr(metrics.dscr),
     Emprunt_Max: fmtBuyerCad(metrics.empruntMax),
     MFR: fmtBuyerCad(metrics.mfr),
-    TGA: fmtBuyerPercent(metrics.tga),
+    TGA: fmtBuyerTgaPct(metrics.tga),
     Ratio_Depenses: fmtBuyerPercent(metrics.ratioDepenses),
     Rendement_Mise_Fonds: fmtBuyerPercent(metrics.rendementMiseFonds),
     Grille_Revenus: grilleRevenus,

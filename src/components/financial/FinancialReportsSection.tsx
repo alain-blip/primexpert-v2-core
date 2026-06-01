@@ -19,6 +19,7 @@ import {
   sumSectorRpaUnits,
   getSubjectUnitCount,
 } from '@primexpert/core/market';
+import { useResidenceFinancialHints } from '../../context/ResidenceDataContext';
 
 const GOLD_BTN =
   'inline-flex items-center justify-center gap-2 rounded-lg border-2 border-black bg-[#D4AF37] px-4 py-3 text-[13px] font-black text-black hover:bg-[#c9a432] transition disabled:opacity-50 disabled:cursor-not-allowed';
@@ -31,6 +32,7 @@ export function FinancialReportsSection({ residence }: FinancialReportsSectionPr
   const { t, language } = useLanguage();
   const { profile } = useAuth();
   const { financialData, loading } = useFinancialData();
+  const financialHints = useResidenceFinancialHints(residence);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,11 +71,12 @@ export function FinancialReportsSection({ residence }: FinancialReportsSectionPr
           residenceName: residence.residenceName,
           nomCommercial: residence.nomCommercial,
           name: residence.name,
-          prixDemande: residence.price,
-          askingPrice: residence.price,
-          price: residence.price,
-          nombreUnites: residence.nicheMetadata?.nombreUnites,
-          nombreUnitesTotal: residence.nicheMetadata?.nombreUnites,
+          prixDemande: financialHints.prixDemande,
+          askingPrice: financialHints.askingPrice,
+          price: financialHints.price,
+          nombreUnites: financialHints.nombreUnites ?? residence.nicheMetadata?.nombreUnites,
+          nombreUnitesTotal:
+            financialHints.nombreUnitesTotal ?? residence.nicheMetadata?.nombreUnites,
           region: residence.region,
         },
         broker: buildBrokerFooterFromProfile(profile),
@@ -90,7 +93,7 @@ export function FinancialReportsSection({ residence }: FinancialReportsSectionPr
     } finally {
       setPending(false);
     }
-  }, [financialData, residence, profile, language, penetrationRate, t]);
+  }, [financialData, residence, financialHints, profile, language, penetrationRate, t]);
 
   return (
     <section className="rounded-[20px] border border-slate-200 bg-white px-6 py-5 shadow-[0_8px_30px_rgba(0,0,0,0.06)]">

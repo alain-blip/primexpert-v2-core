@@ -59,9 +59,9 @@ export function FinanceHubMasterPanel({
       residenceName: residence.residenceName,
       nomCommercial: residence.nomCommercial,
       name: residence.name,
-      price: financialHints.price ?? residence.price,
-      prixDemande: financialHints.prixDemande ?? residence.price,
-      askingPrice: financialHints.askingPrice ?? residence.price,
+      price: financialHints.price,
+      prixDemande: financialHints.prixDemande,
+      askingPrice: financialHints.askingPrice,
       listingSource: residence.listingSource,
     }),
     [
@@ -71,7 +71,6 @@ export function FinanceHubMasterPanel({
       residence.residenceName,
       residence.nomCommercial,
       residence.name,
-      residence.price,
       residence.listingSource,
       financialHints,
     ]

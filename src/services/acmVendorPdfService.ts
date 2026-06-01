@@ -25,6 +25,7 @@ import {
   fmtBuyerCad,
   fmtBuyerDscr,
   fmtBuyerPercent,
+  fmtBuyerTgaPct,
   type CraftMyPdfGridRow,
 } from './buyerReportPdfService';
 
@@ -280,7 +281,7 @@ export function buildAcmVendorCraftMyPdfPayload(
 
   const revenusBrut = bootstrap.revenuBrutEffectif;
   const revenusNet = bootstrap.revenuNetExploitation;
-  const tgaFormatted = fmtBuyerPercent(capPct);
+  const tgaFormatted = fmtBuyerTgaPct(capPct);
 
   const prixDemandeAffiche = getListingPrice(residence) || bootstrap.askingPrice;
   const listingSource = resolveListingSource(

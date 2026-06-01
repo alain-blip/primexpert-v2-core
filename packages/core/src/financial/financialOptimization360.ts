@@ -14,6 +14,7 @@ import {
   type FinancialBaseData,
 } from './normalizeFinancialData';
 import { resolvePrixDemande } from './computeFinancabilite';
+import { normalizeTgaPct } from './capitalization';
 import { safeNum } from './safeNumbers';
 
 const OPS_ENERGY_KEYS = ['energie', 'entretienReparation'] as const;
@@ -197,16 +198,16 @@ function resolveCapRatePct(
 ): { capRatePct: number; source: 'fiche' | 'default' } {
   const fromOverride = safeNum(override);
   if (fromOverride != null && fromOverride > 0) {
-    return { capRatePct: fromOverride > 1 ? fromOverride : fromOverride * 100, source: 'fiche' };
+    return { capRatePct: normalizeTgaPct(fromOverride) ?? fromOverride, source: 'fiche' };
   }
   const tga = safeNum(calc.tauxCapitalisation);
   if (tga != null && tga > 0) {
-    return { capRatePct: tga > 1 ? tga : tga * 100, source: 'fiche' };
+    return { capRatePct: normalizeTgaPct(tga) ?? tga, source: 'fiche' };
   }
   const fin = (baseData?.financement ?? {}) as Record<string, unknown>;
   const tgaFin = safeNum(fin.tgaPreteur) ?? safeNum(fin.tga);
   if (tgaFin != null && tgaFin > 0) {
-    return { capRatePct: tgaFin > 1 ? tgaFin : tgaFin * 100, source: 'fiche' };
+    return { capRatePct: normalizeTgaPct(tgaFin) ?? tgaFin, source: 'fiche' };
   }
   return {
     capRatePct: OPTIMIZATION_360_RULES.DEFAULT_CAP_RATE_PCT,

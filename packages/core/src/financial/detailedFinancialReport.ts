@@ -14,6 +14,7 @@ import {
   formatCertifiableReportTimestamp,
   type CertifiableReportBrokerFooter,
 } from './certifiableFinancialReport';
+import { normalizeTgaPct } from './capitalization';
 import type { FinancialCalc, FinancialDataV2Doc, ResidenceFinancialHints } from './normalizeFinancialData';
 
 export const DETAILED_REPORT_LEGAL_FOOTER_FR =
@@ -174,8 +175,9 @@ function buildYieldRows(
   const rendementMdf =
     cashFlow != null && miseDeFonds != null && miseDeFonds > 0 ? cashFlow / miseDeFonds : null;
   const tga = finiteNum(calc.tauxCapitalisation);
+  const tgaPct = normalizeTgaPct(tga);
   const tgaDisplay =
-    tga != null ? (tga > 1 ? formatPercentRaw(tga, 2) : fmtPctDecimal(tga)) : '—';
+    tgaPct != null ? formatPercentRaw(tgaPct, 2) : '—';
 
   const rows: DetailedReportLabelValue[] = [
     {

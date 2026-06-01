@@ -4,6 +4,7 @@
 
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import {
+  computeCapRateRatioFromRneAndPrice,
   EXPENSE_FIELDS,
   EXPENSE_KEYS,
   mergeExtractedIntoFinancialDataV2,
@@ -65,7 +66,6 @@ export async function saveExpenseAdjustmentsToFinancial(
   financialData: FinancialDataV2Doc,
   draft: ExpenseAdjustmentsDraft
 ): Promise<void> {
-  const dep = financialData.baseData?.depenses ?? {};
   const existingVerified = (
     (financialData.baseData?.expenseAdjustments as Record<string, unknown> | undefined)?.verified ??
     {}
@@ -73,37 +73,34 @@ export async function saveExpenseAdjustmentsToFinancial(
 
   const adjFirestore = buildExpenseAdjustmentsForFirestore(draft, existingVerified);
 
+  const nextBaseData: FinancialBaseData = {
+    ...(financialData.baseData ?? {}),
+    expenseAdjustments: adjFirestore,
+  };
   const depensesTotalesNormalisees =
-    sumNormalizedOperatingExpenses(dep, adjFirestore) ?? 0;
-  const rbe =
-    parseNum(financialData.calculatedResults?.revenuBrutEffectif) ||
-    parseNum(financialData.baseData?.revenusAnnuels);
-  const revenuNetExploitation =
-    rbe > 0 ? Math.round(rbe - depensesTotalesNormalisees) : null;
+    sumNormalizedOperatingExpenses(nextBaseData.depenses, adjFirestore) ?? 0;
 
   const prixDemande = parseNum(
     (financialData.calculatedResults as Record<string, unknown> | undefined)?.prixDemande
   );
-  const tauxCapitalisation =
-    revenuNetExploitation != null &&
-    revenuNetExploitation > 0 &&
-    prixDemande > 0
-      ? revenuNetExploitation / prixDemande
-      : undefined;
+  const calculatedResults = recomputeFinancialCalculatedResults(
+    nextBaseData,
+    financialData.calculatedResults ?? null
+  );
+  const tauxCapitalisation = computeCapRateRatioFromRneAndPrice({
+    rne: calculatedResults?.revenuNetExploitation,
+    price: prixDemande,
+  });
 
   const docRef = doc(db, 'residences', residenceId, 'financial', 'dataV2');
   await setDoc(
     docRef,
     stripUndefinedDeep({
-      baseData: {
-        ...(financialData.baseData ?? {}),
-        expenseAdjustments: adjFirestore,
-      },
+      baseData: nextBaseData,
       lastUpdated: serverTimestamp(),
       calculatedResults: {
-        ...(financialData.calculatedResults ?? {}),
+        ...(calculatedResults ?? financialData.calculatedResults ?? {}),
         depensesTotalesNormalisees,
-        revenuNetExploitation,
         ...(tauxCapitalisation != null ? { tauxCapitalisation } : {}),
       },
     }),
@@ -308,16 +305,17 @@ export async function saveManualFinancialEntry(
 
   const prix = parseNum(prixDemande);
   if (calculatedResults) {
+    const tauxCapitalisation = computeCapRateRatioFromRneAndPrice({
+      rne: calculatedResults.revenuNetExploitation,
+      price: prix,
+    });
     calculatedResults = {
       ...calculatedResults,
       _source: options?.humanValidatedFromIa ? 'ai_extraction' : 'manual_entry',
       _confidence: options?.humanValidatedFromIa ? 'human_validated' : 'validation_required',
       ...(prix > 0 ? { prixDemande: prix } : {}),
+      ...(tauxCapitalisation != null ? { tauxCapitalisation } : {}),
     };
-    const rne = calculatedResults.revenuNetExploitation;
-    if (rne != null && rne > 0 && prix > 0) {
-      calculatedResults.tauxCapitalisation = rne / prix;
-    }
     const mensuel = parseNum(draft.financement.paiementMensuel);
     if (mensuel > 0) {
       calculatedResults.paiementMensuel = mensuel;

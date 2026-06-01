@@ -25,6 +25,7 @@ import {
 } from './valuationProfiles';
 
 import { formatCurrency } from '@primexpert/core/utils/formatting';
+import { normalizeTgaPct } from '../financial/capitalization';
 
 import {
   type ComparableCapRateSample,
@@ -34,7 +35,6 @@ import {
   computeCapRateImpliedAtAsking,
   isAggressivePricing,
 } from './marketCapRate';
-
 import {
   type ComparableFinancialData,
   type ComparableBenchmarks,
@@ -45,6 +45,11 @@ import {
 // ============================================================================
 // INTERFACES
 // ============================================================================
+
+function formatTgaPct(value: number | null | undefined): string {
+  const pct = normalizeTgaPct(value);
+  return pct == null ? '0.00' : pct.toFixed(2);
+}
 
 /**
  * Données d'entrée pour le moteur de valorisation
@@ -848,8 +853,8 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
       50 // tolérance 0.5%
     );
     if (warningLowCapRate) {
-      const impliedPct = (capRateImpliedAtAsking * 100).toFixed(2);
-      const minPct = (marketCapRateMeta.capRateComparableMin * 100).toFixed(2);
+      const impliedPct = formatTgaPct(capRateImpliedAtAsking);
+      const minPct = formatTgaPct(marketCapRateMeta.capRateComparableMin);
       warnings.push(
         `Prix agressif: TGA implicite (${impliedPct}%) inférieur au minimum des comparables (${minPct}%)`
       );
@@ -859,8 +864,8 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
     capRateImpliedAtAsking < capRateMarketSelected - 0.005
   ) {
     warningLowCapRate = true;
-    const impliedPct = (capRateImpliedAtAsking * 100).toFixed(2);
-    const marketPct = (capRateMarketSelected * 100).toFixed(2);
+    const impliedPct = formatTgaPct(capRateImpliedAtAsking);
+    const marketPct = formatTgaPct(capRateMarketSelected);
     warnings.push(
       `Rendement sous le marché: TGA implicite (${impliedPct}%) inférieur au TGA de marché (${marketPct}%)`
     );
@@ -868,8 +873,8 @@ export function calculateValuation(inputs: ValuationInputs): ValuationOutputs {
     capRateImpliedAtAsking !== undefined &&
     capRateImpliedAtAsking > capRateMarketSelected + 0.0025
   ) {
-    const impliedPct = (capRateImpliedAtAsking * 100).toFixed(2);
-    const marketPct = (capRateMarketSelected * 100).toFixed(2);
+    const impliedPct = formatTgaPct(capRateImpliedAtAsking);
+    const marketPct = formatTgaPct(capRateMarketSelected);
     warnings.push(
       `Opportunité au prix demandé: TGA implicite (${impliedPct}%) supérieur au TGA cible (${marketPct}%)`
     );

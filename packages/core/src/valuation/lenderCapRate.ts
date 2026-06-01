@@ -9,6 +9,12 @@
  * La banque valorise le RISQUE, pas le POTENTIEL.
  */
 
+import {
+  computeCapRateRatioFromRneAndPrice,
+  computeCapitalizedValueFromRneAndTgaPct,
+  normalizeTgaPct,
+} from '../financial/capitalization';
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -236,7 +242,7 @@ export function calculateAdjustedLenderCapRate(
 
   // 5. Générer l'explication
   const explanationParts: string[] = [
-    `TGA base (${baseInfo.label}): ${(baseInfo.rate * 100).toFixed(2)}%`,
+    `TGA base (${baseInfo.label}): ${(normalizeTgaPct(baseInfo.rate) ?? 0).toFixed(2)}%`,
   ];
 
   if (performanceAdjustment !== 0) {
@@ -252,7 +258,9 @@ export function calculateAdjustedLenderCapRate(
     explanationParts.push(`Risques: ${riskResult.factors.join(', ')}`);
   }
 
-  explanationParts.push(`TGA prêteur ajusté: ${(adjustedCapRate * 100).toFixed(2)}%`);
+  explanationParts.push(
+    `TGA prêteur ajusté: ${(normalizeTgaPct(adjustedCapRate) ?? 0).toFixed(2)}%`
+  );
 
   return {
     adjustedCapRate,
@@ -280,7 +288,11 @@ export function calculateBankValueWithAdjustedCapRate(
   capRateResult: LenderCapRateResult;
 } {
   const capRateResult = calculateAdjustedLenderCapRate(input);
-  const bankValue = noi / capRateResult.adjustedCapRate;
+  const bankValue =
+    computeCapitalizedValueFromRneAndTgaPct({
+      rne: noi,
+      tgaPct: capRateResult.adjustedCapRate,
+    }) ?? 0;
 
   return {
     bankValue,
@@ -311,7 +323,11 @@ export function compareSellerVsBankValue(
   explanation: string;
 } {
   const { bankValue, capRateResult } = calculateBankValueWithAdjustedCapRate(noi, input);
-  const sellerCapRate = noi / sellerValue;
+  const sellerCapRate = computeCapRateRatioFromRneAndPrice({
+    rne: noi,
+    price: sellerValue,
+    decimals: 4,
+  }) ?? 0;
   const gap = sellerValue - bankValue;
   const gapPercent = (gap / bankValue) * 100;
 
