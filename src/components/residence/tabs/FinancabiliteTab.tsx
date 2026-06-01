@@ -153,7 +153,7 @@ function AuditRneToggle({
   const optionA = useAuditRne === false;
   const optionB = useAuditRne === true;
   const labelA = language === 'fr' ? 'A · Sur le RNE Déclaré' : 'A · Declared NOI basis';
-  const labelB = language === 'fr' ? 'B · Sur le RNE Audité (RPA enrichi)' : 'B · Audited NOI (RPA enriched)';
+  const labelB = language === 'fr' ? 'B · Sur le RNE normalisé (RPA enrichi)' : 'B · Normalized NOI (RPA enriched)';
   const subA = language === 'fr' ? 'Brut du vendeur (RNE rapporté).' : 'Seller-reported NOI.';
   const subB =
     language === 'fr'
@@ -528,30 +528,30 @@ export function FinancabiliteTab({ residence }: FinancabiliteTabProps) {
       if (variance <= 0.05) {
         noiStatus = 'ok';
         noiNoteFr =
-          'RNE déclaré et RNE audité concordent (écart ≤ 5 %). Pièces justificatives en ordre côté prêteur.';
+          'RNE déclaré et RNE normalisé concordent (écart ≤ 5 %). Pièces justificatives en ordre côté prêteur.';
         noiNoteEn =
-          'Declared and audited NOI match (≤ 5% variance). Supporting evidence is aligned with lender expectations.';
+          'Declared and normalized NOI match (≤ 5% variance). Supporting evidence is aligned with lender expectations.';
       } else if (variance <= 0.15) {
         noiStatus = 'warn';
-        noiNoteFr = `Écart de ${(variance * 100).toFixed(1)} % entre RNE déclaré et RNE audité — justifier la normalisation des dépenses.`;
-        noiNoteEn = `${(variance * 100).toFixed(1)}% gap between declared and audited NOI — justify expense normalization.`;
+        noiNoteFr = `Écart de ${(variance * 100).toFixed(1)} % entre RNE déclaré et RNE normalisé — justifier la normalisation des dépenses.`;
+        noiNoteEn = `${(variance * 100).toFixed(1)}% gap between declared and normalized NOI — justify expense normalization.`;
       } else {
         noiStatus = 'fail';
-        noiNoteFr = `Écart majeur de ${(variance * 100).toFixed(1)} % entre RNE déclaré et RNE audité — auditer les sources avant présentation prêteur.`;
-        noiNoteEn = `Major ${(variance * 100).toFixed(1)}% gap between declared and audited NOI — audit sources before lender submission.`;
+        noiNoteFr = `Écart majeur de ${(variance * 100).toFixed(1)} % entre RNE déclaré et RNE normalisé — vérifier les sources avant présentation prêteur.`;
+        noiNoteEn = `Major ${(variance * 100).toFixed(1)}% gap between declared and normalized NOI — validate sources before lender submission.`;
       }
     } else if (noiAudit != null && noiAudit > 0) {
       noiStatus = 'warn';
       noiNoteFr =
-        'Seul le RNE audité (calculé) est disponible — manque la déclaration vendeur pour pleinement convaincre le prêteur.';
+        'Seul le RNE normalisé (calculé) est disponible — manque la déclaration vendeur pour pleinement convaincre le prêteur.';
       noiNoteEn =
-        'Only audited NOI (computed) is available — missing seller statement to fully convince the lender.';
+        'Only normalized NOI (computed) is available — missing seller statement to fully convince the lender.';
     } else if (noiDeclared != null && noiDeclared > 0) {
       noiStatus = 'warn';
       noiNoteFr =
-        'Seul le RNE déclaré est disponible — recommander une normalisation par dépenses auditées.';
+        'Seul le RNE déclaré est disponible — recommander une normalisation par dépenses vérifiées.';
       noiNoteEn =
-        'Only declared NOI is available — recommend normalization with audited expenses.';
+        'Only declared NOI is available — recommend normalization with verified expenses.';
     }
 
     return [
