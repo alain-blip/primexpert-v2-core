@@ -14,9 +14,15 @@ import {
   getSubjectUnitCount,
 } from '@primexpert/core/market';
 import { computeTgaAdjustment } from '@primexpert/core/valuation';
+import { normalizeCapitalizationRatePct } from '@primexpert/core/financial';
 import { useLanguage } from '../../../lib/i18n';
 import { useResidenceDocument } from '../../../context/ResidenceDocumentContext';
 import { InstitutionalKpi, InstitutionalSection } from '../institutional/InstitutionalUi';
+
+function formatTgaPct(value: number): string {
+  const pct = normalizeCapitalizationRatePct(value);
+  return pct != null ? `${pct.toFixed(2)} %` : '—';
+}
 
 export function MarketPenetrationSection() {
   const { t, language } = useLanguage();
@@ -134,7 +140,7 @@ export function MarketPenetrationSection() {
                 )}
               </p>
               <p className="mt-1 text-sm font-black text-[#142c6a] tabular-nums">
-                {(tgaRisk.baseTga * 100).toFixed(2)} % → {(tgaRisk.finalTga * 100).toFixed(2)} %
+                {formatTgaPct(tgaRisk.baseTga)} → {formatTgaPct(tgaRisk.finalTga)}
                 <span className="text-xs font-semibold text-slate-600 ml-2">
                   (+{tgaRisk.penetrationDeltaBps + tgaRisk.sizeDeltaBps + tgaRisk.marketDeltaBps} bps)
                 </span>

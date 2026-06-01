@@ -18,6 +18,7 @@ export {
   applyCanonicalMetricsToCalc,
   type CanonicalFinancialMetrics,
 } from './resolveCanonicalRne';
+export * from './capitalization';
 export {
   assessFinancialDataOverwrite,
   residenceHasExistingFinancialSsot,

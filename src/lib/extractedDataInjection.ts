@@ -3,7 +3,7 @@
  * Logique pure (SSOT locale documents ; pas de calcul CFO ici).
  */
 
-import { findRegion } from '@primexpert/core/financial';
+import { findRegion, normalizeCapitalizationRatePct } from '@primexpert/core/financial';
 import type { ExpenseKey } from '@primexpert/core/financial';
 import { EXPENSE_KEYS, isNonOpexExpenseLabel } from '@primexpert/core/financial';
 import type { AssetNiche } from '../types/residence';
@@ -306,7 +306,8 @@ export function formatComparableDisplayLabel(
     );
   }
   if (capRatePct != null && capRatePct > 0) {
-    const pct = capRatePct > 1 ? capRatePct : capRatePct * 100;
+    const pct = normalizeCapitalizationRatePct(capRatePct);
+    if (pct == null) return parts.join(' - ');
     parts.push(locale === 'fr' ? `TGA ${pct.toFixed(2)} %` : `Cap rate ${pct.toFixed(2)}%`);
   }
   return parts.join(' - ');

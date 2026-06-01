@@ -25,6 +25,11 @@ import {
   DEFAULT_MARKET_BENCHMARKS,
   computeTgaAdjustment,
   runStressTests,
+  selectBaselineStressTest,
+  capRateRangeFromMedian,
+  classifyAssetSize,
+  inferMarketType,
+  calculatePriceRecommendation,
   type ValuationInputs,
   type ValuationOutputs,
   type TgaAdjustmentResult,
@@ -34,6 +39,10 @@ import {
   type SellerNarrativeDecision,
   type ResidenceFinancials,
 } from '@primexpert/core/narrative';
+import {
+  capitalizationRatePctToRatio,
+  normalizeCapitalizationRatePct,
+} from '@primexpert/core/financial';
 
 interface SimpleForm {
   askingPrice: number;
@@ -58,6 +67,11 @@ const INITIAL_FORM: SimpleForm = {
   penetrationRatePct: 0,
 };
 
+function formatCapRatePct(value: number | null | undefined): string {
+  const pct = normalizeCapitalizationRatePct(value);
+  return pct != null ? `${pct.toFixed(2)}%` : '—';
+}
+
 function buildInputs(form: SimpleForm, targetCapRateOverride?: number): ValuationInputs {
   return createDefaultValuationInputs({
     askingPrice: form.askingPrice,
@@ -67,7 +81,7 @@ function buildInputs(form: SimpleForm, targetCapRateOverride?: number): Valuatio
     vacancyRate: form.vacancyRate / 100,
     operatingExpenses: { total: form.operatingExpensesTotal },
     customExpenses: [],
-    targetCapRate: targetCapRateOverride ?? form.targetCapRate / 100,
+    targetCapRate: targetCapRateOverride ?? capitalizationRatePctToRatio(form.targetCapRate) ?? 0,
     valuationMode: 'acm_unified_cap',
     weights: { capRate: 1, mrb: 0, mrn: 0, pricePerUnit: 0 },
   });
@@ -115,7 +129,7 @@ export function ACM() {
     setRecommendedPrice(null);
     setStressSummary(null);
     try {
-      let adjustedCap = form.targetCapRate / 100;
+      let adjustedCap = capitalizationRatePctToRatio(form.targetCapRate) ?? 0;
       if (form.penetrationRatePct > 0) {
         const adj = computeTgaAdjustment({
           baseTga: adjustedCap,
@@ -138,13 +152,13 @@ export function ACM() {
         occ90: stress.occ90.valueRange.min,
         occ100: stress.occ100.valueRange.min,
       });
-      setPriceRecommendation(
+      setRecommendedPrice(
         calculatePriceRecommendation(
           baseline,
           inferMarketType(''),
           classifyAssetSize(form.units),
           occupancy
-        )
+        ).recommendedListPrice
       );
     } catch (e) {
       console.error(e);
@@ -173,7 +187,7 @@ export function ACM() {
     selectSellerNarrative(
       financials,
       DEFAULT_MARKET_BENCHMARKS,
-      { capRateMedian: form.targetCapRate / 100 },
+      { capRateMedian: capitalizationRatePctToRatio(form.targetCapRate) ?? 0 },
       { narrativeMode: 'RULES' }
     )
       .then((decision) => {
@@ -195,7 +209,7 @@ export function ACM() {
   const ratios = useMemo(() => {
     if (!result) return null;
     return [
-      { label: t('Taux de capitalisation implicite (TGA)', 'Implied capitalization rate (cap rate)'), value: result.capRateImpliedAtAsking !== undefined ? `${(result.capRateImpliedAtAsking * 100).toFixed(2)}%` : '—' },
+      { label: t('Taux de capitalisation implicite (TGA)', 'Implied capitalization rate (cap rate)'), value: formatCapRatePct(result.capRateImpliedAtAsking) },
       { label: t('Multiple du revenu brut réel (MRB)', 'Actual gross rent multiplier (GRM)'), value: result.actualMrbAtAsking.toFixed(2) },
       { label: t('Ratio de couverture du service de la dette (DSCR)', 'Debt service coverage ratio (DSCR)'), value: result.dscrAtAsking.toFixed(2) },
       { label: t('Revenu net d’exploitation comptable (RNE)', 'Accounting net operating income (NOI)'), value: formatCurrency(result.noiAccounting, { maxDecimals: 2 }) },
@@ -338,7 +352,7 @@ export function ACM() {
                 {t('Ajustement TGA — pénétration & taille', 'Cap rate adjustment — penetration & size')}
               </p>
               <p className="text-sm font-bold text-white">
-                {(tgaAdjustment.baseTga * 100).toFixed(2)} % → {(tgaAdjustment.finalTga * 100).toFixed(2)} %
+                {formatCapRatePct(tgaAdjustment.baseTga)} → {formatCapRatePct(tgaAdjustment.finalTga)}
               </p>
               <ul className="text-[11px] text-blue-100 space-y-1">
                 {tgaAdjustment.rationale.slice(0, 3).map((line) => (
