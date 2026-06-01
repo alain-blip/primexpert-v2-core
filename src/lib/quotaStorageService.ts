@@ -42,11 +42,20 @@ export function bytesUsedByDriveDocuments(docs: DriveDocument[]): number {
   return docs.reduce((sum, d) => sum + (d.type === 'folder' ? 0 : d.size || 0), 0);
 }
 
-export function formatStorageBytes(bytes: number): string {
-  const gb = bytes / (1024 * 1024 * 1024);
-  if (gb >= 1) return `${gb.toFixed(gb >= 10 ? 0 : 1)} Go`;
-  const mb = bytes / (1024 * 1024);
-  return `${mb.toFixed(mb >= 10 ? 0 : 1)} Mo`;
+export function formatStorageBytes(bytes: number, locale: 'fr' | 'en' = 'fr'): string {
+  const units = locale === 'fr'
+    ? { bytes: 'o', kb: 'Ko', mb: 'Mo', gb: 'Go' }
+    : { bytes: 'B', kb: 'KB', mb: 'MB', gb: 'GB' };
+  if (bytes < 1024) return `${bytes} ${units.bytes}`;
+
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} ${units.kb}`;
+
+  const mb = kb / 1024;
+  if (mb < 1024) return `${mb.toFixed(mb >= 10 ? 0 : 1)} ${units.mb}`;
+
+  const gb = mb / 1024;
+  return `${gb.toFixed(gb >= 10 ? 0 : 1)} ${units.gb}`;
 }
 
 export function buildStorageQuotaLabel(usedBytes: number, tier: StorageTier): string {

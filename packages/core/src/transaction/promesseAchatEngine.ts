@@ -4,6 +4,7 @@
  */
 
 import type {
+  PaAccepteeCriticalDeadlineKey,
   PromesseAchatInput,
   PromesseAchatViewModel,
   PromesseCollaborator,
@@ -36,6 +37,20 @@ export const WORM_LOCK_MESSAGE_EN =
   '🔒 Final classified document — mandatory 6-year OACIQ retention protocol active.';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** Délai légal de dédit — Loi sur le courtage immobilier (C-73.2), art. 73.2. */
+export const DEDIT_LCI_ART_73_2_JOURS = 3;
+
+/** SSOT — 7 échéances critiques dès qu'une PA passe à « acceptée » / statut Kanban `pa-acceptee`. */
+export const PA_ACCEPTEE_CRITICAL_DEADLINE_KEYS: readonly PaAccepteeCriticalDeadlineKey[] = [
+  'dateLimiteReponse',
+  'dateLimiteVisiteLieux',
+  'dateLimiteVerificationDocuments',
+  'dateLimiteInspection',
+  'dateLimiteFinancement',
+  'dateLimitePermis',
+  'dateLimiteDeduitLci',
+] as const;
 
 function parseDelayDays(raw: unknown): PromesseDelayDays | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
@@ -145,6 +160,7 @@ export function computeDeadlinesFromAcceptance(
   | 'dateLimiteInspection'
   | 'dateLimiteFinancement'
   | 'dateLimitePermis'
+  | 'dateLimiteDeduitLci'
 > {
   if (!dateAcceptation) {
     return {};
@@ -159,7 +175,27 @@ export function computeDeadlinesFromAcceptance(
     dateLimiteInspection: addCalendarDays(dateAcceptation, d.inspectionJours),
     dateLimiteFinancement: addCalendarDays(dateAcceptation, d.financementJours),
     dateLimitePermis: addCalendarDays(dateAcceptation, d.permisJours),
+    dateLimiteDeduitLci: addCalendarDays(dateAcceptation, DEDIT_LCI_ART_73_2_JOURS),
   };
+}
+
+/** Vérifie que les 7 échéances critiques sont calculables pour une PA acceptée. */
+export function validatePaAccepteeCriticalDeadlines(
+  input: PromesseAchatInput
+): { ok: true } | { ok: false; missing: PaAccepteeCriticalDeadlineKey[] } {
+  if (input.status !== 'accepted') {
+    return { ok: false, missing: [...PA_ACCEPTEE_CRITICAL_DEADLINE_KEYS] };
+  }
+
+  const vm = buildPromesseAchatViewModel(input);
+  const missing = PA_ACCEPTEE_CRITICAL_DEADLINE_KEYS.filter(
+    (key) => vm.deadlines[key] == null || vm.deadlines[key] === ''
+  );
+
+  if (missing.length > 0) {
+    return { ok: false, missing: [...missing] };
+  }
+  return { ok: true };
 }
 
 export function computeCommissionAmounts(input: {

@@ -16,7 +16,13 @@ import {
 } from '../valuation';
 import { formatCertifiableReportTimestamp } from './certifiableFinancialReport';
 import type { CertifiableReportBrokerFooter } from './certifiableFinancialReport';
+import {
+  isOffMarketListing,
+  resolveListingSource,
+  resolveOffMarketConfidentialBanner,
+} from '../residence/listingSource';
 import type { FinancialCalc, FinancialDataV2Doc, ResidenceFinancialHints } from './normalizeFinancialData';
+import { normalizeCapRateDecimal, normalizeCapRatePct } from './capitalization';
 
 export interface AcmPresentationBrokerBlock extends CertifiableReportBrokerFooter {
   phone?: string;
@@ -44,6 +50,8 @@ export interface AcmPresentationReportModel {
   launchActionsEn: readonly string[];
   deontologicalClauseFr: readonly string[];
   deontologicalClauseEn: readonly string[];
+  /** Filigrane hors marché (Off-Market). */
+  confidentialBanner?: string | null;
 }
 
 export const ACM_LAUNCH_ACTIONS_FR = [
@@ -177,9 +185,9 @@ function buildMarketConclusion(
   const capSelection = selectMarketCapRate({
     profileCapRate:
       finiteNum(calc.tauxCapitalisation) != null
-        ? finiteNum(calc.tauxCapitalisation)! > 1
-          ? finiteNum(calc.tauxCapitalisation)! / 100
-          : finiteNum(calc.tauxCapitalisation)!
+        ? normalizeCapRateDecimal(finiteNum(calc.tauxCapitalisation)!) ??
+          valuation?.capRateMarketSelected ??
+          0.08
         : valuation?.capRateMarketSelected ?? 0.08,
     comparables,
     minComparables: 3,
@@ -187,8 +195,8 @@ function buildMarketConclusion(
 
   const tgaPct =
     capSelection.capRateComparableMedian != null
-      ? capSelection.capRateComparableMedian * 100
-      : capSelection.capRateMarketSelected * 100;
+      ? normalizeCapRatePct(capSelection.capRateComparableMedian)
+      : normalizeCapRatePct(capSelection.capRateMarketSelected);
   const capRateDisplay = formatPercentRaw(tgaPct, 2);
   const valueDisplay = fmtMoney(
     valeur ?? valuation?.weightedMarketValue ?? valuation?.suggestedPrice ?? null,
@@ -265,6 +273,7 @@ export interface BuildAcmPresentationReportInput {
     region?: string;
     nombreUnites?: number | null;
     nombreUnitesTotal?: number | null;
+    listingSource?: string;
   };
   residenceDoc?: Record<string, unknown> | null;
   broker: AcmPresentationBrokerBlock;
@@ -303,6 +312,10 @@ export function buildAcmPresentationReportModel(
     input.financialData
   );
 
+  const listingSource = resolveListingSource(
+    input.residence.listingSource ?? input.residenceDoc?.listingSource
+  );
+
   return {
     locale,
     generatedAtDisplay: formatCertifiableReportTimestamp(generatedAt),
@@ -318,5 +331,8 @@ export function buildAcmPresentationReportModel(
     launchActionsEn: ACM_LAUNCH_ACTIONS_EN,
     deontologicalClauseFr: ACM_DEONTOLOGICAL_CLAUSE_FR,
     deontologicalClauseEn: ACM_DEONTOLOGICAL_CLAUSE_EN,
+    confidentialBanner: isOffMarketListing(listingSource)
+      ? resolveOffMarketConfidentialBanner(locale)
+      : null,
   };
 }

@@ -21,6 +21,7 @@ import {
   subscribeMarketDocuments,
   uploadMarketDocument,
 } from '../../services/marketDocumentsService';
+import { formatStorageBytes } from '../../lib/quotaStorageService';
 import type { MarketDocumentRecord } from '../../types/marketDocument';
 import { MarketDataGrid } from './MarketDataGrid';
 import {
@@ -32,12 +33,6 @@ import {
 } from '@primexpert/core/documents';
 
 type MarketInnerTab = 'dashboard' | 'ingestion';
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} o`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
-}
 
 function formatDate(ms: number, locale: 'fr' | 'en'): string {
   return new Date(ms).toLocaleString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
@@ -249,9 +244,9 @@ export function MarketLibraryDashboard() {
   const [dragOver, setDragOver] = useState(false);
 
   useEffect(() => {
-    if (!profile?.uid) return;
-    return subscribeMarketDocuments(profile.uid, setDocs);
-  }, [profile?.uid]);
+    if (!profile?.orgId) return;
+    return subscribeMarketDocuments(profile.orgId, setDocs);
+  }, [profile?.orgId]);
 
   const selectedDoc = useMemo(
     () => docs.find((d) => d.id === selectedId) ?? docs[0] ?? null,
@@ -278,13 +273,13 @@ export function MarketLibraryDashboard() {
 
   const handleUpload = useCallback(
     async (files: FileList | null) => {
-      if (!profile?.uid || !files?.length) return;
+      if (!profile?.uid || !profile?.orgId || !files?.length) return;
       setError(null);
       setSuccess(null);
       setUploading(true);
       try {
         for (const file of Array.from(files)) {
-          const created = await uploadMarketDocument(profile.uid, file);
+          const created = await uploadMarketDocument(profile.uid, profile.orgId, file);
           setSelectedId(created.id);
           setParsing(true);
           try {
@@ -299,7 +294,7 @@ export function MarketLibraryDashboard() {
         setUploading(false);
       }
     },
-    [profile?.uid]
+    [profile?.uid, profile?.orgId]
   );
 
   const handleReparse = useCallback(async () => {
@@ -522,7 +517,7 @@ export function MarketLibraryDashboard() {
                   <div className="min-w-0">
                     <p className="text-[11px] font-bold truncate">{doc.fileName}</p>
                     <p className="text-[9px] opacity-70 mt-0.5">
-                      {formatSize(doc.sizeBytes)} · {formatDate(doc.uploadedAtMillis, locale)}
+                      {formatStorageBytes(doc.sizeBytes, locale)} · {formatDate(doc.uploadedAtMillis, locale)}
                     </p>
                     <p className="text-[9px] font-bold uppercase mt-1 opacity-80">
                       {parsingLabel(doc.parsingStatus, locale)}

@@ -6,6 +6,7 @@ import {
 } from '../../../lib/propertyDocumentValidation';
 import { renamePropertyDocument } from '../../../services/propertyDocumentsService';
 import { cn } from '../../../lib/utils';
+import { formatStorageBytes } from '../../../lib/quotaStorageService';
 import {
   canDownloadPropertyDocument,
   documentNeedsIaParse,
@@ -38,14 +39,11 @@ import {
   injectCertificateLocalisationToResidence,
   injectExtractedDataToResidence,
 } from '../../../services/extractedDataInjectionService';
+import { normalizeCapRatePct } from '@primexpert/core/financial';
 import { useFinancialHubDraft } from '../../../context/FinancialHubDraftContext';
 import { inst } from '../institutional/InstitutionalUi';
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} o`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
-}
+import { LegalVaultWormPanel } from './LegalVaultWormPanel';
+import type { LegalVaultFirestoreRecord } from '../../../services/legalVaultService';
 
 function formatDate(ms: number, locale: 'fr' | 'en'): string {
   return new Date(ms).toLocaleString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
@@ -160,6 +158,11 @@ export interface DocumentMetadataPanelProps {
   document: PropertyDocumentRecord | null;
   propertyId: string;
   brokerId: string;
+  orgId?: string;
+  licenseName?: string;
+  licenseTitle?: string;
+  contractPrice?: number;
+  vaultRecord?: LegalVaultFirestoreRecord | null;
   residenceCity?: string;
   residenceRegionHint?: string;
   assetNiche?: AssetNiche;
@@ -192,6 +195,11 @@ export function DocumentMetadataPanel({
   document,
   propertyId,
   brokerId,
+  orgId,
+  licenseName,
+  licenseTitle,
+  contractPrice,
+  vaultRecord,
   residenceCity,
   residenceRegionHint,
   assetNiche,
@@ -398,7 +406,7 @@ export function DocumentMetadataPanel({
 
   return (
     <>
-    <aside className="flex h-full w-[300px] shrink-0 flex-col rounded-xl border border-slate-200 bg-white shadow-sm">
+    <aside className="flex h-full w-full shrink-0 flex-col rounded-xl border border-slate-200 bg-white shadow-sm lg:w-[300px]">
       <header className={inst.sectionHeader}>
         <h3 className={inst.sectionTitle}>{labels.title}</h3>
       </header>
@@ -416,6 +424,24 @@ export function DocumentMetadataPanel({
               {labels.analysis}
             </p>
             {parsingBadge(document, locale)}
+            {orgId ? (
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                <p className="mb-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+                  {locale === 'fr' ? 'Verrouillage légal OACIQ' : 'OACIQ legal lock'}
+                </p>
+                <LegalVaultWormPanel
+                  orgId={orgId}
+                  propertyId={propertyId}
+                  brokerId={brokerId}
+                  document={document}
+                  licenseName={licenseName}
+                  licenseTitle={licenseTitle}
+                  contractPrice={contractPrice}
+                  locale={locale}
+                  vaultRecord={vaultRecord}
+                />
+              </div>
+            ) : null}
           </div>
 
           {showParseLaunch ? (
@@ -492,7 +518,7 @@ export function DocumentMetadataPanel({
                 label={labels.name}
                 busy={busy}
               />
-              <MetaField label={labels.size} value={formatSize(document.sizeBytes)} mono />
+              <MetaField label={labels.size} value={formatStorageBytes(document.sizeBytes, locale)} mono />
               <MetaField label={labels.date} value={formatDate(document.uploadedAtMillis, locale)} />
               <MetaField label={labels.type} value={document.mimeType} small />
               {labels.taxonomy && document.extractedData?.documentType ? (
@@ -1033,10 +1059,7 @@ function ExtractionVerificationSection({
                   <li>
                     TGA :{' '}
                     <span className="font-black text-[#142c6a]">
-                      {(evaluationSubject.tgaRetenu > 1
-                        ? evaluationSubject.tgaRetenu
-                        : evaluationSubject.tgaRetenu * 100
-                      ).toFixed(2)}
+                      {normalizeCapRatePct(evaluationSubject.tgaRetenu)?.toFixed(2) ?? '—'}
                       %
                     </span>
                   </li>

@@ -7,6 +7,11 @@ import { extractBuyerPreviewKpis } from '../diffusion/buyerPreviewKpis';
 import { formatCurrency, formatPercentRaw } from '../utils/formatting';
 import { buildRevenusDepensesGrid } from './revenusDepensesGrid';
 import type { FinancialCalc, FinancialDataV2Doc, ResidenceFinancialHints } from './normalizeFinancialData';
+import {
+  isOffMarketListing,
+  resolveListingSource,
+  resolveOffMarketConfidentialBanner,
+} from '../residence/listingSource';
 
 export interface CertifiableReportBrokerFooter {
   brokerName: string;
@@ -49,6 +54,8 @@ export interface CertifiableFinancialReportModel {
   legalDisclaimersFr: readonly string[];
   legalDisclaimersEn: readonly string[];
   broker: CertifiableReportBrokerFooter;
+  /** Filigrane hors marché (Off-Market) — secret commercial. */
+  confidentialBanner?: string | null;
 }
 
 export const CERTIFIABLE_REPORT_LEGAL_FR = [
@@ -147,6 +154,7 @@ export interface BuildCertifiableFinancialReportInput {
     residenceName?: string;
     nomCommercial?: string;
     name?: string;
+    listingSource?: string;
   };
   broker: CertifiableReportBrokerFooter;
   locale?: 'fr' | 'en';
@@ -196,6 +204,8 @@ export function buildCertifiableFinancialReportModel(
     pctOfRbe: row.pctOfRbe != null ? formatPercentRaw(row.pctOfRbe, 1) : '—',
   }));
 
+  const listingSource = resolveListingSource(input.residence.listingSource);
+
   return {
     locale,
     generatedAtIso: generatedAt.toISOString(),
@@ -215,5 +225,8 @@ export function buildCertifiableFinancialReportModel(
     legalDisclaimersFr: CERTIFIABLE_REPORT_LEGAL_FR,
     legalDisclaimersEn: CERTIFIABLE_REPORT_LEGAL_EN,
     broker: input.broker,
+    confidentialBanner: isOffMarketListing(listingSource)
+      ? resolveOffMarketConfidentialBanner(locale)
+      : null,
   };
 }

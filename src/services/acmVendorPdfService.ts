@@ -7,15 +7,17 @@
 import {
   buildRevenusDepensesGrid,
   computeFinancabilite,
+  resolveAdmissibleOpex,
   resolveEmpruntMaximumAutorise,
   resolveMiseDeFondsRequiseAcheteur,
+  normalizeCapRateDecimal,
   type CertifiableReportBrokerFooter,
   type FinancialCalc,
   type FinancialDataV2Doc,
   type ResidenceFinancialHints,
 } from '@primexpert/core/financial';
 import type { ResidenceAcmBootstrap, ValuationOutputs } from '@primexpert/core/valuation';
-import { getListingPrice } from '@primexpert/core/residence';
+import { getListingPrice, isOffMarketListing, resolveListingSource, resolveOffMarketConfidentialBanner } from '@primexpert/core/residence';
 import { requestCraftMyPdfBlob, triggerBrowserDownload } from './craftMyPdfClient';
 import {
   buildGrilleDepenses,
@@ -84,6 +86,8 @@ export interface AcmVendorCraftMyPdfPayload
   dscr: string;
   prix_recommande: string;
   lecture_vendeur: string;
+  /** En-tête confidentialité hors marché (CraftMyPDF). */
+  document_confidentiel?: string;
 }
 
 export interface BuildAcmVendorCraftMyPdfPayloadInput {
@@ -137,16 +141,18 @@ function resolveBrokerTitle(broker: CertifiableReportBrokerFooter, locale: 'fr' 
 }
 
 function resolveOpexAmount(
-  bootstrap: ResidenceAcmBootstrap,
   valuation: ValuationOutputs,
-  depensesFromGrid: number
+  depensesFromGrid: number,
+  financialData: FinancialDataV2Doc
 ): number {
   if (depensesFromGrid > 0) return depensesFromGrid;
+  const canonicalOpex = resolveAdmissibleOpex(
+    financialData.calculatedResults ?? null,
+    financialData.baseData ?? null
+  );
+  if (canonicalOpex != null && canonicalOpex > 0) return canonicalOpex;
   const fromEngine = valuation.operatingExpensesTotal;
   if (Number.isFinite(fromEngine) && fromEngine > 0) return fromEngine;
-  const rbe = bootstrap.revenuBrutEffectif;
-  const rne = bootstrap.revenuNetExploitation;
-  if (rbe > 0 && rne >= 0 && rne < rbe) return rbe - rne;
   return 0;
 }
 
@@ -262,13 +268,8 @@ export function buildAcmVendorCraftMyPdfPayload(
   const liste_revenus = mapGrilleRowsToListe(grilleRevenus);
   const liste_depenses = mapGrilleRowsToListe(grilleDepenses);
 
-  const opexAmount = resolveOpexAmount(bootstrap, valuation, banking.depensesTotales);
-  const capPct =
-    Number.isFinite(input.effectiveCapRate) && input.effectiveCapRate > 0
-      ? input.effectiveCapRate > 1
-        ? input.effectiveCapRate / 100
-        : input.effectiveCapRate
-      : valuation.actualCapRateAtAsking;
+  const opexAmount = resolveOpexAmount(valuation, banking.depensesTotales, financialData);
+  const capPct = normalizeCapRateDecimal(input.effectiveCapRate) ?? valuation.actualCapRateAtAsking;
 
   const nomResidence = textOrDash(bootstrap.residenceLabel);
   const adresseResidence = textOrDash(input.residenceAddress);
@@ -281,6 +282,12 @@ export function buildAcmVendorCraftMyPdfPayload(
   const tgaFormatted = fmtBuyerPercent(capPct);
 
   const prixDemandeAffiche = getListingPrice(residence) || bootstrap.askingPrice;
+  const listingSource = resolveListingSource(
+    (residence as { listingSource?: string }).listingSource
+  );
+  const confidentialBanner = isOffMarketListing(listingSource)
+    ? resolveOffMarketConfidentialBanner(locale)
+    : '';
 
   const payload: AcmVendorCraftMyPdfPayload = {
     Nom_Residence: nomResidence,
@@ -317,6 +324,7 @@ export function buildAcmVendorCraftMyPdfPayload(
     dscr: fmtBuyerDscr(banking.rcd),
     prix_recommande: fmtBuyerCad(prixSuggere),
     lecture_vendeur: textOrDash(input.sellerNarrative ?? undefined),
+    document_confidentiel: confidentialBanner,
   };
 
   console.log('PAYLOAD ENVOYÉ À CRAFTMYPDF (ACM vendeur) :', payload);
