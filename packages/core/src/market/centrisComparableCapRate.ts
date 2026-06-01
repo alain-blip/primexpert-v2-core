@@ -35,6 +35,11 @@ export interface TerritorialComparableMergeResult {
   filterScope: 'REGION_CLASS' | 'REGION' | 'ALL';
 }
 
+type TerritorialComparableFilterResult = Pick<
+  TerritorialComparableMergeResult,
+  'comparables' | 'filterScope'
+>;
+
 export function calculateComparableCapRate(
   listing: Omit<CentrisComparableListing, 'calculatedCapRate'>
 ): number {
@@ -177,10 +182,10 @@ export function mapListingsCacheToComparable(
   return { ...built, source: 'listings_cache', docId: id };
 }
 
-export function filterTerritorialComparables(
+function resolveTerritorialComparableFilter(
   rows: CentrisComparableListingWithSource[],
   query: TerritorialComparableQuery
-): CentrisComparableListingWithSource[] {
+): TerritorialComparableFilterResult {
   const regionTarget = normalizeAdministrativeRegion(query.regionAdministrative.trim());
   const classTarget = query.classeImmeuble
     ? normalizeRpaBuildingClass(query.classeImmeuble)
@@ -191,12 +196,23 @@ export function filterTerritorialComparables(
     const classOk = !classTarget || row.classeImmeuble === classTarget;
     return regionOk && classOk;
   });
-  if (regionClass.length >= 2) return regionClass;
+  if (regionClass.length >= 2) {
+    return { comparables: regionClass, filterScope: 'REGION_CLASS' };
+  }
 
   const regionOnly = rows.filter((row) => row.regionAdministrative === regionTarget);
-  if (regionOnly.length >= 2) return regionOnly;
+  if (regionOnly.length >= 2) {
+    return { comparables: regionOnly, filterScope: 'REGION' };
+  }
 
-  return rows;
+  return { comparables: rows, filterScope: 'ALL' };
+}
+
+export function filterTerritorialComparables(
+  rows: CentrisComparableListingWithSource[],
+  query: TerritorialComparableQuery
+): CentrisComparableListingWithSource[] {
+  return resolveTerritorialComparableFilter(rows, query).comparables;
 }
 
 export function sortComparablesByRecencyDesc(
@@ -221,40 +237,13 @@ export function mergeCentrisTerritorialComparables(
   query: TerritorialComparableQuery
 ): TerritorialComparableMergeResult {
   const merged = sortComparablesByRecencyDesc([...cacheRows, ...analyticsRows]);
-  const regionTarget = normalizeAdministrativeRegion(query.regionAdministrative.trim());
-  const classTarget = query.classeImmeuble
-    ? normalizeRpaBuildingClass(query.classeImmeuble)
-    : null;
-
-  const regionClass = merged.filter(
-    (r) =>
-      r.regionAdministrative === regionTarget &&
-      (!classTarget || r.classeImmeuble === classTarget)
-  );
-  if (regionClass.length >= 2) {
-    return {
-      comparables: regionClass,
-      medianTgaPct: medianComparableCapRate(regionClass),
-      sampleCount: regionClass.length,
-      filterScope: 'REGION_CLASS',
-    };
-  }
-
-  const regionOnly = merged.filter((r) => r.regionAdministrative === regionTarget);
-  if (regionOnly.length >= 2) {
-    return {
-      comparables: regionOnly,
-      medianTgaPct: medianComparableCapRate(regionOnly),
-      sampleCount: regionOnly.length,
-      filterScope: 'REGION',
-    };
-  }
+  const { comparables, filterScope } = resolveTerritorialComparableFilter(merged, query);
 
   return {
-    comparables: merged,
-    medianTgaPct: medianComparableCapRate(merged),
-    sampleCount: merged.length,
-    filterScope: 'ALL',
+    comparables,
+    medianTgaPct: medianComparableCapRate(comparables),
+    sampleCount: comparables.length,
+    filterScope,
   };
 }
 

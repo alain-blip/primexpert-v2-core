@@ -222,15 +222,15 @@ export function AcmValuationWorkspace({
     updatedAt: new Date().toISOString(),
   });
 
+  const marketDrivenTargetCapRatePct = useMemo(
+    () => dynamicMarketTgaPct + qualitativeTgaAdjustmentPct,
+    [dynamicMarketTgaPct, qualitativeTgaAdjustmentPct]
+  );
+
   const appliedCapRatePct = useMemo(() => {
     if (tgaManuallyAdjusted) return targetCapRatePct;
-    return dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
-  }, [
-    tgaManuallyAdjusted,
-    targetCapRatePct,
-    dynamicMarketTgaPct,
-    qualitativeTgaAdjustmentPct,
-  ]);
+    return marketDrivenTargetCapRatePct;
+  }, [tgaManuallyAdjusted, targetCapRatePct, marketDrivenTargetCapRatePct]);
 
   const bootstrapSyncKey = useMemo(
     () =>
@@ -254,26 +254,14 @@ export function AcmValuationWorkspace({
   useEffect(() => {
     if (lastBootstrapSyncRef.current === bootstrapSyncKey) return;
     lastBootstrapSyncRef.current = bootstrapSyncKey;
-    if (!tgaManuallyAdjusted) {
-      const next = dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
-      setTgaInput(String(Number(next.toFixed(2))));
-      setTargetCapRatePct(next);
-    }
     setPenetrationRatePct(bootstrap.penetrationRatePct);
-  }, [
-    bootstrapSyncKey,
-    dynamicMarketTgaPct,
-    qualitativeTgaAdjustmentPct,
-    bootstrap.penetrationRatePct,
-    tgaManuallyAdjusted,
-  ]);
+  }, [bootstrapSyncKey, bootstrap.penetrationRatePct]);
 
   useEffect(() => {
     if (tgaManuallyAdjusted) return;
-    const next = dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
-    setTgaInput(String(Number(next.toFixed(2))));
-    setTargetCapRatePct(next);
-  }, [dynamicMarketTgaPct, qualitativeTgaAdjustmentPct, tgaManuallyAdjusted]);
+    setTgaInput(String(Number(marketDrivenTargetCapRatePct.toFixed(2))));
+    setTargetCapRatePct(marketDrivenTargetCapRatePct);
+  }, [marketDrivenTargetCapRatePct, tgaManuallyAdjusted]);
 
   const runValuation = useCallback(
     (capPct: number, penPct: number) => {
@@ -430,9 +418,8 @@ export function AcmValuationWorkspace({
   };
 
   const resetTgaToMarket = () => {
-    const next = dynamicMarketTgaPct + qualitativeTgaAdjustmentPct;
-    setTgaInput(String(Number(next.toFixed(2))));
-    setTargetCapRatePct(next);
+    setTgaInput(String(Number(marketDrivenTargetCapRatePct.toFixed(2))));
+    setTargetCapRatePct(marketDrivenTargetCapRatePct);
     setTgaManuallyAdjusted(false);
   };
 
