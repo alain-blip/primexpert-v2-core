@@ -1,16 +1,16 @@
 # Dictionnaire canonique — données Primexpert V2
 
-Aligné sur `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2`.  
+Aligné sur `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2`.
 Les champs **serveur** (`billingStatus`, `gracePeriodStartedAt`) ne sont **pas** modifiables par le client (absents de `users` `allow update` dans `firestore.rules`).
 
-Référence alias / provenance : `packages/core/src/canonical/`.  
-**Identité Phase 4 (lecture + écriture)** : `packages/core/src/identity/` — définitions UI dans `identitySections.ts`, `buildingAuditSections.ts`, `servicesRecognition.ts`, `rentPricingGrid.ts`.  
-**Promesse d'achat (PA)** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`.  
-**Assembleur contrat / formulaires natifs (V3.4–V3.5)** : `packages/core/src/forms/` — HTML sans OpenXML ; schéma parenthèses `annexeFieldSchema.ts` ; PA Actifs `paActifsTypes.ts`, `renderPaActifsToHtml.ts`.  
-**Messagerie (Hub omnicanal)** : **SSOT unique** `users/{uid}/email_threads` (alias canonique `communication_threads` dans `@primexpert/core/mail`) + `messages` — Nylas, SMS Twilio, Meta ; analyse `@primexpert/core/mail` à l’écriture serveur.  
-**Diffusion Web** : `packages/core/src/diffusion/` — vendoré dans `functions/src/diffusion/_vendored/` au prebuild.  
-**CRM Contacts** : `packages/core/src/crm/` — fiche `organizations/{orgId}/contacts` ; liaisons `coBuyerIds` / `coSellerIds` ; typologie acheteur `deriveBuyerTier` ; **Loi 25** — `QuebecLaw25Consent` + `validateLaw25Compliance()`.  
-**Après-vente (V2.7)** : `packages/core/src/market/closingEngine.ts` — tâches `source: 'closing_pipeline'` dans `residences/{id}/tasks`.  
+Référence alias / provenance : `packages/core/src/canonical/`.
+**Identité Phase 4 (lecture + écriture)** : `packages/core/src/identity/` — définitions UI dans `identitySections.ts`, `buildingAuditSections.ts`, `servicesRecognition.ts`, `rentPricingGrid.ts`.
+**Promesse d'achat (PA)** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`.
+**Assembleur contrat / formulaires natifs (V3.4–V3.5)** : `packages/core/src/forms/` — HTML sans OpenXML ; schéma parenthèses `annexeFieldSchema.ts` ; PA Actifs `paActifsTypes.ts`, `renderPaActifsToHtml.ts`.
+**Messagerie (Hub omnicanal)** : **SSOT unique** `users/{uid}/email_threads` (alias canonique `communication_threads` dans `@primexpert/core/mail`) + `messages` — Nylas, SMS Twilio, Meta ; analyse `@primexpert/core/mail` à l’écriture serveur.
+**Diffusion Web** : `packages/core/src/diffusion/` — vendoré dans `functions/src/diffusion/_vendored/` au prebuild.
+**CRM Contacts** : `packages/core/src/crm/` — fiche `organizations/{orgId}/contacts` ; liaisons `coBuyerIds` / `coSellerIds` ; typologie acheteur `deriveBuyerTier` ; **Loi 25** — `QuebecLaw25Consent` + `validateLaw25Compliance()`.
+**Après-vente (V2.7)** : `packages/core/src/market/closingEngine.ts` — tâches `source: 'closing_pipeline'` dans `residences/{id}/tasks`.
 **Copilote négociation (V2.6)** : `packages/core/src/ai/` — brouillons HITL `manualVerifications` (`kind: 'commercial_negotiation_clause'`).
 
 **Inscriptions Centris / hors marché** : `packages/core/src/residence/listingSource.ts`, `inscriptionBrokerageStatus.ts` — champs racine `listingSource`, `isManuallyOverridden`, `statut`.
@@ -327,7 +327,7 @@ Journal de conformité append-only écrit par Admin SDK (`onVaultDocumentWrite`,
 
 ## Collection `residences/{residenceId}`
 
-Document racine — **SSOT onglet Identité** (`ResidenceDocumentContext`) + Radar + prix affiché.  
+Document racine — **SSOT onglet Identité** (`ResidenceDocumentContext`) + Radar + prix affiché.
 Écriture Phase 4b : `updateDoc` sur ce document (pas de sous-collection identité).
 
 ### Champs racine — multi-tenant & pipeline
@@ -553,7 +553,7 @@ Chaque entrée de `rows.{typeKey}` :
 | `quatreDemie` | `nombre4demie` |
 | `unitesSoins` | `nombreUnitesSoins` |
 
-**Revenu potentiel annuel (dérivé, non stocké obligatoire)** :  
+**Revenu potentiel annuel (dérivé, non stocké obligatoire)** :
 `qty × (occupationPct / 100) × loyerMoyen × 12` — calculé dans `@primexpert/core/identity/rentPricingGrid.ts`.
 
 **Fail-safe finance** : si `financial/dataV2.baseData.revenusAnnuels` est absent, `normalizeFinancialData()` peut dériver le RBE depuis la somme des revenus potentiels du tableau (`deriveRevenusAnnuelsFromTarification()`).
@@ -883,7 +883,7 @@ Agrégat lecture recalculé par `injectMarketMacroStats` et par le flywheel inte
 
 ## Objet racine `residences/{id}.offre` (promesse d'achat — tronc & conditions)
 
-SSOT : `serializeOffreForFirestore(tronc, conditions?, cloture?)` dans `offreConditions.ts`.  
+SSOT : `serializeOffreForFirestore(tronc, conditions?, cloture?)` dans `offreConditions.ts`.
 **Important** : à chaque écriture, envoyer l’objet `offre` **complet** (merge contexte React = shallow).
 
 ### Tronc financier (Sprint 5.1)
