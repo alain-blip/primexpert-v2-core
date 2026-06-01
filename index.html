@@ -57,6 +57,17 @@
       .px-cta-primary { background: #171717; color: #fff; border: 0; }
       .px-cta-secondary { background: transparent; color: #171717; border: 2px solid #171717; }
       .px-footer { border-top: 1px solid #e5e5e5; background: #fafafa; padding: 2.5rem 1.25rem; text-align: center; color: #737373; font-size: .875rem; }
+      .px-video { max-width: 56rem; margin: 3rem auto; padding: 0 1.25rem; }
+      .px-video-head { text-align: center; margin-bottom: 1.5rem; }
+      .px-video-title { font-size: clamp(1.25rem, 3vw, 1.5rem); font-weight: 700; color: #1e293b; margin: 0; }
+      .px-video-sub { font-size: .875rem; color: #64748b; margin: .25rem 0 0; }
+      .px-video-frame {
+        position: relative; width: 100%; padding-top: 56.25%;
+        border-radius: 1rem; overflow: hidden; background: #000;
+        border: 1px solid #f1f5f9;
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,.25);
+      }
+      .px-video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
       #root { display: none; }
       #primexpert-static-landing { display: block; }
       body.px-spa #primexpert-static-landing { display: none; }
@@ -114,25 +125,49 @@
           <div class="px-hero-inner">
             <img class="px-hero-logo" src="/logo-primexpert-noir.png" alt="Primexpert" />
             <h1 id="hero-heading" class="px-h1"
-              data-i18n-fr="Devenez l'expert, devenez Primexpert."
-              data-i18n-en="Become the expert, become Primexpert.">
-              Devenez l'expert, devenez Primexpert.
+              data-i18n-fr="Cessez d’improviser. Devenez l’expert que le marché respecte."
+              data-i18n-en="Stop improvising. Become the expert the market respects.">
+              Cessez d’improviser. Devenez l’expert que le marché respecte.
             </h1>
             <p class="px-lead"
-              data-i18n-fr="Signer, c'est bien. Au juste prix, c'est mieux."
-              data-i18n-en="Signing is good. At the right price is better.">
-              Signer, c'est bien. Au juste prix, c'est mieux.
+              data-i18n-fr="Le premier CRM immobilier et moteur d'Analyse Comparative de Marché (ACM) propulsé par des algorithmes de précision pour les courtiers résidentiels et commerciaux au Québec. Signez vos mandats au juste prix et transformez votre relation avec vos clients pour devenir la référence incontournable de votre secteur."
+              data-i18n-en="The first real estate CRM and Comparative Market Analysis (CMA) engine powered by precision algorithms for residential and commercial brokers in Québec. Sign your mandates at the right price and transform your client relationships to become the undisputed reference in your market.">
+              Le premier CRM immobilier et moteur d'Analyse Comparative de Marché (ACM) propulsé par des algorithmes de précision pour les courtiers résidentiels et commerciaux au Québec. Signez vos mandats au juste prix et transformez votre relation avec vos clients pour devenir la référence incontournable de votre secteur.
             </p>
             <div class="px-cta">
               <a class="px-cta-primary" href="/workhub?signin=1"
                 data-i18n-fr="Initialiser la session"
                 data-i18n-en="Initialize session">Initialiser la session</a>
-              <a class="px-cta-secondary" href="/workhub?signin=1"
-                data-i18n-fr="Voir la démo de l'analyse comparative de marché (ACM)"
-                data-i18n-en="View the comparative market analysis (CMA) demo">
-                Voir la démo de l'analyse comparative de marché (ACM)
+              <a class="px-cta-secondary" href="#px-demo"
+                data-i18n-fr="▷ Écouter le manifeste : Signez au juste prix (2 min)"
+                data-i18n-en="▷ Listen to the manifesto: Sign at the right price (2 min)">
+                ▷ Écouter le manifeste : Signez au juste prix (2 min)
               </a>
             </div>
+          </div>
+        </section>
+
+        <!-- COMPOSANT VIDÉO D'ÉLITE — présentation Primexpert (avant l'analyse de marché) -->
+        <section class="px-video" id="px-demo" aria-labelledby="px-video-heading">
+          <div class="px-video-head">
+            <h3 id="px-video-heading" class="px-video-title"
+              data-i18n-fr="Découvrez le potentiel de votre prochain niveau de performance"
+              data-i18n-en="Discover the potential of your next level of performance">
+              Découvrez le potentiel de votre prochain niveau de performance
+            </h3>
+            <p class="px-video-sub"
+              data-i18n-fr="Voyez comment Primexpert automatise vos vérifications de conformité et vos analyses de mise en marché."
+              data-i18n-en="See how Primexpert automates your compliance verifications and go-to-market analyses.">
+              Voyez comment Primexpert automatise vos vérifications de conformité et vos analyses de mise en marché.
+            </p>
+          </div>
+          <div class="px-video-frame">
+            <iframe
+              src="https://app.heygen.com/embeds/8a72d5f938cc49c29785f9068db973ba"
+              title="Primexpert — Devenez l'expert immobilier de votre marché"
+              frameborder="0"
+              allow="encrypted-media; fullscreen;"
+              allowfullscreen></iframe>
           </div>
         </section>
       </main>
