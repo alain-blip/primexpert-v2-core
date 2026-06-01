@@ -80,10 +80,12 @@ export function addCapRatePctAdjustments(
 ): number | null {
   const base = normalizeCapRatePct(baseCapRatePct);
   if (base == null) return null;
-  const adjusted = adjustmentsPct.reduce((sum, adjustment) => {
-    const value = typeof adjustment === 'number' && Number.isFinite(adjustment) ? adjustment : 0;
-    return sum + value;
-  }, base);
+  let adjusted = base;
+  for (const adjustment of adjustmentsPct) {
+    if (typeof adjustment === 'number' && Number.isFinite(adjustment)) {
+      adjusted += adjustment;
+    }
+  }
   return adjusted > 0 ? adjusted : null;
 }
 
