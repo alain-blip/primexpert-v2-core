@@ -1,7 +1,7 @@
 # Documentation Primexpert V2 (Bible)
 
-**Source unique avec le code :** `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`  
-**URL officielle :** https://primexpert-app-v2.web.app  
+**Source unique avec le code :** `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/docs/`
+**URL officielle :** https://primexpert-app-v2.web.app
 **Cycle technique :** **V3.7 — marché/OER/flywheel + assembleur de mandats V3.5** · **couverture RPA PR #3** (Kanban + délais PA acceptée) · **QA finance PR #14** (RNE/TGA normalisés, lexique vérifié) · architectures sécurisées V3.0 en production
 
 ## Registre global des architectures sécurisées — mai 2026
