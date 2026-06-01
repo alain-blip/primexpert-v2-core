@@ -881,7 +881,7 @@ Chemin : `organizations/{orgId}/legal_vault/{documentId}` — règles V3.0 incha
 **Validation UX :**
 - **Mobile-First** : modale bottom sheet (`items-end` → `sm:items-center`), boutons pleine largeur mobile, badges `flex-wrap`, layout Documents empilé (`flex-col lg:flex-row`).
 - **Laptop Cockpit** : panneau métadonnées `lg:w-[300px]`, trois colonnes Documents / liste / détail.
-- **Purge lexicale** : **0 occurrence** du mot banni « audit » dans l'UI V3.1 (libellés, modale, infobulles) — conformité OACIQ / vérification / verrouillage légal uniquement.
+- **Purge lexicale** : **0 occurrence** du terme proscrit dans l'UI V3.1 (libellés, modale, infobulles) — conformité OACIQ / vérification / verrouillage légal uniquement.
 
 **Correctif build (alias Vite) :** `@primexpert/core/security` ajouté à `vite.config.ts` + `tsconfig.json` (résolution Rollup).
 
@@ -969,10 +969,10 @@ Cible : https://primexpert-app-v2.web.app
 | Volet | Ajouts / impacts |
 |-------|------------------|
 | **Nouveau module core** | `packages/core/src/financial/capitalizationMetrics.ts` centralise `normalizeCapitalizationRate`, `computeCapitalizationRateFromNoi` et `computeCapitalizedValueFromNoi`; exporté par `@primexpert/core/financial`. |
-| **Valorisation / ACM** | `valuationEngine`, `marketCapRate`, `lenderCapRate`, `stressTest`, `comparableBenchmarks`, `residenceAcmBootstrap` et `acmPresentationReport` consomment le helper partagé au lieu de formules `RNE / TGA` locales. |
+| **Valorisation / ACM** | `valuationEngine`, `marketCapRate`, `lenderCapRate`, `stressTest`, `comparableBenchmarks`, `residenceAcmBootstrap` et `acmPresentationReport` consomment le helper partagé au lieu de formules locales de capitalisation. |
 | **Hub Finance** | `financialDataService.ts` recalcule `calculatedResults` après ajustements CPA et saisie manuelle; `tauxCapitalisation` est dérivé uniquement si RNE et prix demandé sont valides. |
 | **Injection documents** | `extractedDataInjection.ts` normalise `tgaRetenu` avant d'écrire `tauxCapitalisation` sur la fiche résidence. |
-| **UI** | `AcmValuationWorkspace` réutilise la valeur capitalisée partagée pour les suggestions multi-angles; `FinancabiliteTab` remplace le vocabulaire « audité » par « vérifié » dans les libellés client. |
+| **UI** | `AcmValuationWorkspace` réutilise la valeur capitalisée partagée pour les suggestions multi-angles; `FinancabiliteTab` remplace l'ancien vocabulaire non conforme par « vérifié » dans les libellés client. |
 | **Routes Cloud Functions** | Aucune nouvelle route ni région; les changements restent dans `@primexpert/core`, React et services Firestore client. |
 | **Firestore** | Aucune nouvelle collection; extension documentaire de `residences/{id}/financial/dataV2` pour `baseData.expenseAdjustments`, `calculatedResults.depensesTotalesNormalisees`, `revenuNetExploitation`, `tauxCapitalisation` et `lastInjection`. |
 
