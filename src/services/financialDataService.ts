@@ -10,6 +10,7 @@ import {
   mergeExtractedIntoFinancialDataV2,
   recomputeFinancialCalculatedResults,
   sumNormalizedOperatingExpenses,
+  type DepensesGrid,
   type FinancialBaseData,
   type FinancialDataV2Doc,
 } from '@primexpert/core/financial';
@@ -284,8 +285,8 @@ export async function saveManualFinancialEntry(
     if (amount > 0) depensesPatch[key] = Math.round(amount);
   }
 
-  const existingDep = (existing?.baseData?.depenses ?? {}) as Record<string, unknown>;
-  const mergedDepenses = { ...existingDep, ...depensesPatch };
+  const existingDep = (existing?.baseData?.depenses ?? {}) as DepensesGrid;
+  const mergedDepenses: DepensesGrid = { ...existingDep, ...depensesPatch };
 
   const existingFin = (existing?.baseData?.financement ?? {}) as Record<string, unknown>;
   const mergedFinancement = {
