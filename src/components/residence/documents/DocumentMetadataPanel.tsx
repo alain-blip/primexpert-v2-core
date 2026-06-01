@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Copy, Download, FileText, Loader2, Pencil, Shield, Trash2 } from 'lucide-react';
-import { safeRatePercent } from '@primexpert/core/financial';
+import { normalizeCapitalizationRatePercent } from '@primexpert/core/financial';
 import {
   ensureOriginalFileExtension,
   splitPropertyDocumentFileName,
@@ -56,8 +56,8 @@ function formatDate(ms: number, locale: 'fr' | 'en'): string {
 }
 
 function formatTgaPercent(value: unknown, locale: 'fr' | 'en'): string {
-  const pct = safeRatePercent(value, Number.NaN);
-  if (!Number.isFinite(pct)) return '—';
+  const pct = normalizeCapitalizationRatePercent(value);
+  if (pct == null || !Number.isFinite(pct)) return '—';
   return pct.toLocaleString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
