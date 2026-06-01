@@ -959,6 +959,7 @@ Cible : https://primexpert-app-v2.web.app
 | **RNE canonique** | `resolveCanonicalRne.ts`, `normalizeFinancialData.ts`, rapports PDF et onglets Finance convergent sur RBE - dépenses admissibles déclarées lorsque la grille normalisée est incomplète. |
 | **Délais PA acceptée** | `promesseAchatEngine.ts` ajoute le septième jalon critique `dateLimiteDeduitLci` (dédit Loi sur le courtage immobilier art. 73.2) et le test `paAccepteeCriticalDeadlines.test.ts`. |
 | **Conformité RPA automatisée** | Workflow `.github/workflows/rpa-transaction-test-coverage.yml`, tests Vitest `resolveColumnId`, règles Kanban PA acceptée et scripts de couverture `check-resolveColumnId-coverage.mjs`. |
+| **Outillage tests** | `npm run test:rpa-coverage` lance Vitest avec couverture V8 (`coverage/rpa-transaction`) puis vérifie le 100 % `resolveColumnId()` ; `packages/core` expose `test:rpa` vers le script racine. |
 | **Données marché** | `market_documents` devient multi-tenant par `orgId`, cache `contentHashMd5` et découpage sémantique; `market_analytics_raw` reçoit flywheel anonymisé, RDE/OER et comparables Centris. |
 | **Firestore** | `organizations/{orgId}/legal_vault`, `compliance_logs`, `listings_cache`, `internalFlywheelIngestion`, `profilePhotoUploadedAtMillis` et `dateLimiteDeduitLci` ajoutés au dictionnaire canonique. |
 

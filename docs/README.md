@@ -111,6 +111,8 @@ npm run build && FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy
 | `npm run test:voice-note` | Pipeline note vocale (Whisper si clé OpenAI) |
 | `npm run test:voice-note:gemini` | Pipeline note vocale — STT Gemini uniquement |
 | `npm run test:incoming-sms` | Injection SMS test → fil `crm_{contactId}` |
+| `npm run test:rpa-coverage` | QA PR #10 — Vitest + couverture 100 % `resolveColumnId()` + 7 délais PA acceptée |
+| `npm test` | Suite Vitest racine (`vitest.config.ts`) |
 
 ---
 

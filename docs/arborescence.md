@@ -13,6 +13,9 @@
 
 ```
 01_PRIMEXPERT_SYSTEME_APP_STABLE_V2/
+├── .github/
+│   └── workflows/
+│       └── rpa-transaction-test-coverage.yml  # QA PR #10 — Kanban RPA + 7 délais PA acceptée
 ├── docs/                          # Bible Primexpert (ce dossier)
 │   ├── README.md
 │   ├── MEMORY.md
@@ -21,7 +24,7 @@
 │   └── project_pipeline_gps.md
 ├── packages/
 │   └── core/                      # @primexpert/core — logique métier SSOT (zéro calcul dans l’UI)
-│       ├── package.json
+│       ├── package.json             # Exports analytics, security, forms, transaction (PR #10)
 │       └── src/
 │           ├── index.ts             # Barrel (canonical, valuation, financial, identity…)
 │           ├── analytics/           # marketMetrics — ratio dépenses/revenus (RDE/OER)
@@ -122,6 +125,7 @@
 ├── scripts/
 │   ├── migrate-legacy-contacts-to-v2.mjs   # Maillon 1 Firestore — contacts Copilote (dry-run défaut)
 │   # npm run migrate:contacts → packages/core/src/scripts/migrateLegacyContacts.ts (Storage legacy)
+│   ├── check-resolveColumnId-coverage.mjs  # Garde 100 % coverage Kanban RPA (`npm run test:rpa-coverage`)
 │   ├── deploy-diffusion-jour-4-5.sh
 │   └── output/                      # Rapports dry-run migration (gitignored)
 ├── audit_tenant_uids.js             # Ops — audit tenant Firestore
@@ -135,6 +139,7 @@
 ├── storage.rules
 ├── index.html
 ├── package.json
+├── vitest.config.ts                 # Couverture `coverage/rpa-transaction` pour QA PR #10
 ├── vite.config.ts                   # Alias @primexpert/core/* + @primexpert/core/forms + code-splitting
 ├── public/                          # Logos silo, Primexpert…
 ├── src/
@@ -307,7 +312,9 @@
     │   └── …
     ├── config/
     │   ├── companyConfig.ts
-    │   └── nurtureEmailTemplates.ts
+    │   ├── nurtureEmailTemplates.ts
+    │   ├── pipelineStages.ts          # `resolveColumnId()` — mapping Kanban testé à 100 %
+    │   └── __tests__/resolveColumnId.test.ts
     └── types/
         ├── residence.ts
         ├── propertyDocument.ts      # virusScanStatus, parsingStatus, extractedData

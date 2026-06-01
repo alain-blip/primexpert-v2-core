@@ -194,7 +194,7 @@ Coffre légal WORM OACIQ — brouillon créable par le courtier, verrouillage fi
 | `isFinalWormLocked` | bool | `false` au brouillon ; `true` après verrouillage final |
 | `createdAtMillis`, `lockedAtMillis` | number | Création et verrouillage |
 | `oaciqRetentionExpiryTimestamp` | number | Rétention minimale 2190 jours |
-| `metadataFieldsCrossChecked` | map | Prix contrat, nom permis validé, type de permis |
+| `metadataFieldsCrossChecked` | map | `contractPrice`, `validatedLicenseName`, `licenseType` — validation croisée avant verrouillage |
 | `lastWriteClientIp` | string | IP client résolue au verrouillage |
 
 **ID déterministe UI :** `{propertyId}__{propertyDocumentId}` via `legalVaultDocumentMapping.ts`.
@@ -205,6 +205,7 @@ Journal de conformité append-only écrit par Admin SDK (`onVaultDocumentWrite`,
 
 | Champ | Type | Description |
 |--------|------|-------------|
+| `entryId` | string | ID journal, identique à l'ID Firestore |
 | `userId`, `userRole` | string | Acteur (`COURTIER`, `ADJOINT`, `DIRIGEANT`, `SUPPORT`) |
 | `actionType` | string | `READ` \| `WRITE` \| `LOCK` \| `EXPORT_ZIP` |
 | `targetDocumentId` | string | Document vault parent |
