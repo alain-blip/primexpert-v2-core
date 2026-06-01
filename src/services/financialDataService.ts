@@ -6,8 +6,10 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import {
   EXPENSE_FIELDS,
   EXPENSE_KEYS,
+  computeCapitalizationRateDecimal,
   mergeExtractedIntoFinancialDataV2,
   recomputeFinancialCalculatedResults,
+  resolveNetOperatingIncome,
   sumNormalizedOperatingExpenses,
   type FinancialBaseData,
   type FinancialDataV2Doc,
@@ -78,8 +80,14 @@ export async function saveExpenseAdjustmentsToFinancial(
   const rbe =
     parseNum(financialData.calculatedResults?.revenuBrutEffectif) ||
     parseNum(financialData.baseData?.revenusAnnuels);
-  const revenuNetExploitation =
-    rbe > 0 ? Math.round(rbe - depensesTotalesNormalisees) : null;
+  const rneCentral = resolveNetOperatingIncome(
+    {
+      revenuBrutEffectif: rbe,
+      depensesExploitation: depensesTotalesNormalisees,
+    },
+    { allowNonPositive: true }
+  );
+  const revenuNetExploitation = rneCentral != null ? Math.round(rneCentral) : null;
 
   const prixDemande = parseNum(
     (financialData.calculatedResults as Record<string, unknown> | undefined)?.prixDemande
@@ -88,7 +96,7 @@ export async function saveExpenseAdjustmentsToFinancial(
     revenuNetExploitation != null &&
     revenuNetExploitation > 0 &&
     prixDemande > 0
-      ? revenuNetExploitation / prixDemande
+      ? computeCapitalizationRateDecimal(revenuNetExploitation, prixDemande)
       : undefined;
 
   const docRef = doc(db, 'residences', residenceId, 'financial', 'dataV2');
@@ -316,7 +324,8 @@ export async function saveManualFinancialEntry(
     };
     const rne = calculatedResults.revenuNetExploitation;
     if (rne != null && rne > 0 && prix > 0) {
-      calculatedResults.tauxCapitalisation = rne / prix;
+      const tga = computeCapitalizationRateDecimal(rne, prix);
+      if (tga != null) calculatedResults.tauxCapitalisation = tga;
     }
     const mensuel = parseNum(draft.financement.paiementMensuel);
     if (mensuel > 0) {
