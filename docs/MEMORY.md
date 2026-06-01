@@ -41,6 +41,7 @@
 ## Règle #0 — SSOT métier
 
 - **Toute logique financière, identité, valuation, mail parser** vit dans `packages/core/` (`@primexpert/core`).
+- **RNE/TGA** : toute conversion revenu net d'exploitation (RNE) ↔ taux de capitalisation (TGA) ↔ valeur passe par `packages/core/src/financial/capitalization.ts` (`resolveNetOperatingIncome`, `computeCapitalizationRatePct`, `capitalizeNoiAtCapRatePct`) ; aucune formule locale divergente dans les écrans, PDF ou moteurs marché.
 - Les composants React **ne calculent pas** le cœur financier : ils consomment des view models (`computeBilanCfoViewModel`, `buildRevenusDepensesGrid`, `buildIdentityViewModel`, etc.). **Exception affichage** : onglet **Synthèse** et cartes **inscriptions** — cascade de **lecture** sur champs `residences` / formatage monétaire (pas de nouveau moteur dans `@primexpert/core`).
 - Firestore listeners : `FinancialDataContext` → `residences/{id}/financial/dataV2` ; `ResidenceDocumentContext` → `residences/{id}`.
 
@@ -101,6 +102,7 @@ Données : sous-collection **`residences/{id}/financial/dataV2`** (migration dep
 - API GCP : `aiplatform.googleapis.com` + IAM `roles/aiplatform.user` sur le compte compute.
 - Client : `functions/src/services/vertexClient.ts` ; erreurs typées (`VERTEX_API_DISABLED`, `VERTEX_MODEL_NOT_FOUND`, …).
 - Réconciliation UI : relance automatique des docs `pending` ou `failed` à l’ouverture de l’onglet.
+- **Extension PR #17 (V3.1)** : raccordement client du coffre-fort WORM OACIQ (`LegalVaultWormPanel`, `LegalVaultWormLockModal`, `legalVaultService.ts`) ; mutation atomique dans `organizations/{orgId}/legal_vault/{documentId}` et journal serveur `compliance_logs`.
 
 ### Phase 4c — Onglets fiche résidence (Synthèse, Déclaration, Marché, Promesse)
 
@@ -110,7 +112,8 @@ Données : sous-collection **`residences/{id}/financial/dataV2`** (migration dep
 - **Promesse** : `PromesseAchatTab` — cockpit promesse d'achat (Sprints 5.1–5.4)
   - **SSOT** : `packages/core/src/transaction/` — `offreTronc.ts`, `offreConditions.ts`, `offreCloture.ts`, `promesseAchatEngine.ts`
   - **Firestore** : objet racine `offre` (tronc financier + conditions + clôture) ; bloc `promesseAchat` (statut, dates, délais en jours, commission, collaborateurs, documents)
-  - **UI** (`src/components/residence/promesse/`) : `OffreTroncFinancierSection`, `OffreConditionsLegalesSection`, `OffreClotureRetributionSection`, `PromesseDelaisPaSection` (jours éditables → dates calculées), `PromesseCommissionPaSection`, `PaConfortPanel` ; `TernaryToggle` partagé
+  - **UI** (`src/components/residence/promesse/`) : `OffreTroncFinancierSection`, `OffreConditionsLegalesSection`, `OffreClotureRetributionSection`, `PromesseDelaisPaSection` (jours éditables → dates calculées), `PromesseCommissionPaSection`, `PaConfortPanel`, `ContractAssemblerPanel` ; `TernaryToggle` partagé
+  - **Assembleur V3.5** : `packages/core/src/forms/` — templates natifs HTML, champs entre parenthèses, valeurs par défaut depuis RNE/TGA, sans OpenXML ni docxtemplater.
   - **Épuration OACIQ (5.4)** : champs retirés de l’UI (Annexe 6, clause RNE/TGA, transfert fiducie, prorata MSSS) — clés core conservées pour migrations
   - **Sérialisation Firestore** : `undefined` → `null` sur `promesseAchat.delais.*` et commission (évite `Unsupported field value: undefined`)
   - **Écriture `offre`** : toujours envoyer l’objet `offre` complet via `serializeOffreForFirestore` (merge contexte = shallow ; un partial efface les autres clés)
@@ -261,7 +264,7 @@ Côté client : `resolveEffectiveBillingStatus()` — règle 72 h si Firestore e
 - UI : `MarketLibraryDashboard.tsx` — upload PDF, HITL adaptatif (régions macro / grille transactions / grille ratios), spinner longue analyse (~3 min).
 - Core : `packages/core/src/documents/` (schémas extraction omnivore, normalisation) ; **`packages/core/src/market/marketDeduplication.ts`** (empreintes déterministes, logique legacy Copilote `marketComparableDedupe.js`).
 - Service : `marketDocumentsService.ts` ; type `marketDocument.ts`.
-- Functions : `marketDocumentParseIA` (**2 GiB**, **540 s** timeout), `injectMarketMacroStats` ; prebuild `sync-core-documents.cjs`, `sync-core-market.cjs`.
+- Functions : `marketDocumentParseIA` (PR #17 : **512 MiB**, **60 s**, découpage sémantique PDF + cache MD5), `injectMarketMacroStats` ; prebuild `sync-core-documents.cjs`, `sync-core-market.cjs`.
 - **Anti-doublons (idempotent merge)** : empreintes Firestore → `doc(fingerprint).set(data, { merge: true })` — transactions `{silo}__tx__{adresse|ville}__{date}__{prix}`, macro `macro__{region}__{annee}__{type}`, ratios `{silo}__bench__…` ; compteurs UI « X nouvelles transactions, Y doublons ignorés ».
 - Firestore (top-level, hors `organizations/`) :
   - `market_documents/{docId}` — vault PDF courtier (`uploadedBy` + index `uploadedAtMillis`)
@@ -270,6 +273,28 @@ Côté client : `resolveEffectiveBillingStatus()` — règle 72 h si Firestore e
   - `marketSnapshots/v1` — agrégat lecture (append dédupliqué par `dedupeFingerprint`)
 - Storage : `primexpert/{brokerId}/market_documents/{fileName}`.
 - **UI grille transactions** : contraste `text-slate-900` sur panneau blanc (héritage `text-white` du shell bleu corrigé).
+- **Multi-tenant PR #17** : `orgId` propagé sur `market_documents`, `market_macro_stats` et `market_analytics_raw` ; index `market_documents(orgId, uploadedAtMillis desc)` et `market_documents(contentHashMd5)` ; lecture rétrocompatible sur `uploadedBy` si `orgId` absent.
+- **ACM Centris** : `listings_cache` lu par `TerritorialCentrisCompetitionSection` / `useTerritorialCompetition` ; calcul TGA comparable via `centrisComparableCapRate.ts`.
+
+---
+
+## Alignement PR #17 — QA RNE/TGA, Centris, WORM et assembleur V3.5 (2026-06-01)
+
+**Statut :** **[EN REVUE HUMAINE — PR documentaire liée au déclencheur #17]**
+
+| Volet | Enrichissement code source détecté | Documentation canonique |
+|-------|------------------------------------|--------------------------|
+| **Capitalisation RNE/TGA** | `packages/core/src/financial/capitalization.ts` centralise `resolveNetOperatingIncome`, `computeCapitalizationRatePct`, `capitalizeNoiAtCapRatePct`; correctifs QA routent les écrans et tests vers le core. | Règle #0 renforcée ; champs financiers détaillés dans `project_canonical_fields.md`. |
+| **ACM territorial Centris** | `centrisComparableCapRate.ts`, `TerritorialCentrisCompetitionSection`, `useTerritorialCompetition`, `marketAnalyticsService.ts`; `listings_cache` en lecture authentifiée. | README, arborescence et dictionnaire Firestore étendus sans créer de section ACM parallèle. |
+| **Pipeline marché V2.8/V3.2** | `marketPdfSemanticAnchors.ts`, `marketPdfSlice.ts`, cache `contentHashMd5`, parseur `marketDocumentParseIA` ramené à 512 MiB / 60 s. | Section Bibliothèque marché enrichie ; `market_documents` documente `orgId`, cache, pages sémantiques et `parseCacheHit`. |
+| **Ratio des dépenses d'exploitation (RDE/OER)** | `packages/core/src/analytics/marketMetrics.ts`; injection de `operatingExpenseRatio` et médianes territoriales. | `market_macro_stats`, `market_analytics_raw` et `marketSnapshots/v1` étendus dans le dictionnaire canonique. |
+| **Coffre-fort WORM V3.0/V3.1** | `firestore.rules` pour `organizations/{orgId}/legal_vault`, sous-journal `compliance_logs`, `onVaultDocumentWrite` en `northamerica-northeast1`. | Sprint V2.9 enrichi plutôt que dupliqué ; schéma légal ajouté dans `project_canonical_fields.md`. |
+| **Data Flywheel** | `onTransactionConcludedFlywheel` sur `residences/{residenceId}` ; anonymisation vers `market_analytics_raw`; marqueur `internalFlywheelIngestion`. | Champ racine résidence et provenance `internal_flywheel` documentés. |
+| **Assembleur V3.5** | `packages/core/src/forms/`, `ContractAssemblerPanel`, templates HTML natifs et champs parenthèses. | Promesse enrichie dans les sections existantes ; persistance Firestore explicitement non active en V3.5. |
+| **Conformité photo courtier** | `brokerProfileCompliance.ts`, `BrokerPhotoComplianceBanner` non bloquant. | Champs `users.profilePhotoUploadedAtMillis` et état dérivé documentés. |
+| **Tests QA** | Couverture Vitest : règles RPA, colonnes Kanban, délais PA acceptée, TGA Centris. | Statut de contrôle qualité ajouté au README et à l'arborescence. |
+
+**Règle de non-duplication appliquée :** les sections existantes `Bibliothèque marché`, `Sprint V2.9`, `Fiche résidence V2`, `Promesse` et `Collections connexes` ont été enrichies ; aucun nouveau silo parallèle `market_documents`, `legal_vault`, `offre` ou `promesseAchat` n'a été créé.
 
 ---
 
@@ -626,7 +651,7 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 
 ## Sprint V2.9 — Vault WORM & journal de conformité légale (core types)
 
-**Statut infrastructure core compilée — 2026-05-29**
+**Statut infrastructure core compilée — 2026-05-29 ; raccordement Firestore/Functions documenté par PR #17**
 
 | Volet | Statut |
 |-------|--------|
@@ -643,7 +668,7 @@ FUNCTIONS_DISCOVERY_TIMEOUT=60 firebase deploy --only functions
 | `brokerProfileCompliance.ts` | `profilePhotoUploadedAtMillis`, `isProfilePhotoExpired` (> 1826 j), `validateBrokerProfilePhotoForPublication` |
 | `index.ts` | Barrel |
 
-**Hors périmètre sprint (branchement prod planifié) :** collections Firestore `legal_vault` + `compliance_log`, `firestore.rules` deny update/delete si `isFinalWormLocked`, Function Montréal append journal sur READ/WRITE/LOCK/EXPORT_ZIP, extension `UserProfile` côté `users/{uid}`.
+**Extension ultérieure (PR #17)** : collections Firestore `organizations/{orgId}/legal_vault` + `compliance_logs`, règles WORM `false → true` seulement, Function Montréal `onVaultDocumentWrite`, et champs profil `profilePhotoUploadedAtMillis` côté `users/{uid}`.
 
 ---
 
@@ -657,7 +682,7 @@ Statut officiel consolidé (conseil d'administration) :
 | Analyse de mise en marché (ACM) & benchmark taux de capitalisation (TGA) | **[OPÉRATIONNEL — PRODUCTION LIVE]** |
 | Hub omnicanal (SMS / Nylas) | **[OPÉRATIONNEL — PRODUCTION LIVE]** |
 | Clauses négociation Gemini | **[CÂBLÉ — MOTEUR DYNAMIQUE ACTIF]** |
-| Coffre-fort WORM & sécurité | **[CÂBLÉ — INTÉGRATION CORE CERTIFIÉE]** |
+| Coffre-fort WORM & sécurité | **[OPÉRATIONNEL — INTÉGRATION FIRESTORE/FUNCTIONS EN REVUE PR #17]** |
 
 **URL production :** https://primexpert-app-v2.web.app  
 **Modules V2.8 complémentaires (hors registre exécutif) :** portail vendeur autonome (85 pièces), briefing matin, radar off-market — voir section session 2026-05-29 ci-dessus.
@@ -672,12 +697,12 @@ Clôture officielle du cycle de développement V2.9 :
 |---------|--------|
 | **URL officielle** | https://primexpert-app-v2.web.app |
 | **Monorepo** | **Archivé, validé, zéro dérive** — `01_PRIMEXPERT_SYSTEME_APP_STABLE_V2` |
-| **Mode sécurisation** | **Cockpit technique en attente d'ordres opérationnels** |
+| **Mode sécurisation** | **Architectures sécurisées V3.0/V3.1 — WORM, journal Montréal et assistant photo en revue PR #17** |
 
-**Interprétation ops :** aucun déploiement ni refactor non mandaté ; prochaines actions = ordres PO explicites (ex. branchement Firestore Vault WORM, `firestore.rules`, Functions Montréal journal de conformité).
+**Interprétation ops :** la base V2.9 demeure l'historique certifié ; le déclencheur PR #17 apporte les raccordements Firestore/Functions/UI à valider humainement avant merge.
 
 **Repo :** https://github.com/alain-blip/primexpert-v2-core.git — branche `main`.
 
 ---
 
-*Journal mis à jour : 2026-05-29 — Fin de cycle V2.9. Registre global mai 2026 certifié. Cockpit en attente d'ordres opérationnels.*
+*Journal mis à jour : 2026-06-01 — alignement PR #17 : QA RNE/TGA, Centris, WORM, flywheel, OER et assembleur V3.5.*
