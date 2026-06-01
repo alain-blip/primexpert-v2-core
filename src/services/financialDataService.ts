@@ -294,7 +294,7 @@ export async function saveManualFinancialEntry(
     ...(existing?.baseData ?? {}),
     ...(revenus > 0 ? { revenusAnnuels: revenus } : {}),
     ...(unites > 0 ? { nombreUnites: unites } : {}),
-    depenses: mergedDepenses,
+    depenses: mergedDepenses as FinancialBaseData['depenses'],
     financement: mergedFinancement,
   };
 

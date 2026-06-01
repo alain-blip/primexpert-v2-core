@@ -15,6 +15,7 @@ import {
   buildAcmBrokerFromProfile,
   downloadAcmPresentationPdf,
 } from '../../../services/acmPresentationPdfService';
+import { getResidenceTotalUnits } from '@primexpert/core/residence';
 import { inst } from '../institutional/InstitutionalUi';
 import {
   institutionalListingsCardShellClass,
@@ -38,6 +39,7 @@ function AcmTabContent({ residence }: AcmTabProps) {
   const [pdfError, setPdfError] = useState<string | null>(null);
 
   const canExport = Boolean(financialData?.calculatedResults) && !loading;
+  const unitCount = getResidenceTotalUnits(financialHints);
 
   const broker = useMemo(
     () => buildAcmBrokerFromProfile(profile, language === 'fr' ? 'fr' : 'en'),
@@ -62,8 +64,8 @@ function AcmTabContent({ residence }: AcmTabProps) {
         residence: {
           id: residence.id,
           city: residence.city,
-          nombreUnites: residence.nicheMetadata?.nombreUnites,
-          nombreUnitesTotal: residence.nicheMetadata?.nombreUnites,
+          nombreUnites: unitCount > 0 ? unitCount : undefined,
+          nombreUnitesTotal: unitCount > 0 ? unitCount : undefined,
           prixDemande: financialHints.prixDemande,
           askingPrice: financialHints.askingPrice,
           listingSource: residence.listingSource,
@@ -83,7 +85,7 @@ function AcmTabContent({ residence }: AcmTabProps) {
     } finally {
       setPdfPending(false);
     }
-  }, [financialData, residence, residenceDoc, financialHints, broker, language, t]);
+  }, [financialData, residence, residenceDoc, financialHints, unitCount, broker, language, t]);
 
   return (
     <section className={`${institutionalListingsCardShellClass} space-y-4 p-5`}>

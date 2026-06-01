@@ -5,6 +5,7 @@
 import React, { useMemo } from 'react';
 import { Landmark, Info } from 'lucide-react';
 import { computeFinancialAuditEee, normalizeTgaPct } from '@primexpert/core/financial';
+import { getResidenceTotalUnits } from '@primexpert/core/residence';
 import { useFinancialData } from '../../context/FinancialDataContext';
 import { useResidenceFinancialHints } from '../../context/ResidenceDataContext';
 import { useLanguage } from '../../lib/i18n';
@@ -28,15 +29,15 @@ export function FinancialAuditEeePanel({
   const calc = financialData?.calculatedResults;
   const baseData = financialData?.baseData ?? null;
   const canonicalPrixDemande = prixDemande ?? financialHints.prixDemande ?? financialHints.askingPrice ?? 0;
+  const unitCount = getResidenceTotalUnits(financialHints);
 
   const audit = useMemo(
     () =>
       computeFinancialAuditEee({
         residence: {
           ...residence,
-          nombreUnitesTotal:
-            financialHints.nombreUnitesTotal ?? residence.nicheMetadata?.nombreUnites,
-          nombreUnites: financialHints.nombreUnites ?? residence.nicheMetadata?.nombreUnites,
+          nombreUnitesTotal: unitCount > 0 ? unitCount : undefined,
+          nombreUnites: unitCount > 0 ? unitCount : undefined,
           prixDemande: canonicalPrixDemande,
         },
         calc,
@@ -44,7 +45,7 @@ export function FinancialAuditEeePanel({
         prixDemande: canonicalPrixDemande,
         paiementAnnuelDette,
       }),
-    [residence, financialHints, calc, baseData, canonicalPrixDemande, paiementAnnuelDette]
+    [residence, financialHints, unitCount, calc, baseData, canonicalPrixDemande, paiementAnnuelDette]
   );
 
   if (!calc || (audit.noiReported <= 0 && audit.alerts.length === 0)) return null;

@@ -19,6 +19,7 @@ import {
   sumSectorRpaUnits,
   getSubjectUnitCount,
 } from '@primexpert/core/market';
+import { getResidenceTotalUnits } from '@primexpert/core/residence';
 import { useResidenceFinancialHints } from '../../context/ResidenceDataContext';
 
 const GOLD_BTN =
@@ -37,6 +38,7 @@ export function FinancialReportsSection({ residence }: FinancialReportsSectionPr
   const [error, setError] = useState<string | null>(null);
 
   const canExport = Boolean(financialData?.calculatedResults) && !loading;
+  const unitCount = getResidenceTotalUnits(financialHints);
 
   const penetrationRate = useMemo(() => {
     const competitors = parseCompetitorsList(residence as unknown as Record<string, unknown>);
@@ -74,9 +76,8 @@ export function FinancialReportsSection({ residence }: FinancialReportsSectionPr
           prixDemande: financialHints.prixDemande,
           askingPrice: financialHints.askingPrice,
           price: financialHints.price,
-          nombreUnites: financialHints.nombreUnites ?? residence.nicheMetadata?.nombreUnites,
-          nombreUnitesTotal:
-            financialHints.nombreUnitesTotal ?? residence.nicheMetadata?.nombreUnites,
+          nombreUnites: unitCount > 0 ? unitCount : undefined,
+          nombreUnitesTotal: unitCount > 0 ? unitCount : undefined,
           region: residence.region,
         },
         broker: buildBrokerFooterFromProfile(profile),
@@ -93,7 +94,7 @@ export function FinancialReportsSection({ residence }: FinancialReportsSectionPr
     } finally {
       setPending(false);
     }
-  }, [financialData, residence, financialHints, profile, language, penetrationRate, t]);
+  }, [financialData, residence, financialHints, unitCount, profile, language, penetrationRate, t]);
 
   return (
     <section className="rounded-[20px] border border-slate-200 bg-white px-6 py-5 shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
