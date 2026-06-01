@@ -4,8 +4,6 @@ import path from 'node:path';
 export default defineConfig({
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, '.'),
-      '@primexpert/core': path.resolve(__dirname, 'packages/core/src/index.ts'),
       '@primexpert/core/financial': path.resolve(
         __dirname,
         'packages/core/src/financial/index.ts'
@@ -27,6 +25,8 @@ export default defineConfig({
         __dirname,
         'packages/core/src/canonical/index.ts'
       ),
+      '@primexpert/core': path.resolve(__dirname, 'packages/core/src/index.ts'),
+      '@': path.resolve(__dirname, '.'),
     },
   },
   test: {
