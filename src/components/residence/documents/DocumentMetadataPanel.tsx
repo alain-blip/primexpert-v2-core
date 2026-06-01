@@ -13,6 +13,7 @@ import {
   isPermanentParseFailure,
 } from '../../../lib/propertyDocumentValidation';
 import { parsePropertyDocumentNow } from '../../../services/propertyDocumentsService';
+import { normalizeTgaPct } from '@primexpert/core/financial';
 import type {
   PropertyDocumentExtractedData,
   PropertyDocumentRecord,
@@ -1063,10 +1064,7 @@ function ExtractionVerificationSection({
                   <li>
                     TGA :{' '}
                     <span className="font-black text-[#142c6a]">
-                      {(evaluationSubject.tgaRetenu > 1
-                        ? evaluationSubject.tgaRetenu
-                        : evaluationSubject.tgaRetenu * 100
-                      ).toFixed(2)}
+                      {normalizeTgaPct(evaluationSubject.tgaRetenu)?.toFixed(2) ?? '—'}
                       %
                     </span>
                   </li>

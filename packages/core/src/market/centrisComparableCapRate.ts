@@ -4,6 +4,10 @@
 
 import { normalizeAdministrativeRegion } from './marketRegionNormalize';
 import { normalizeRpaBuildingClass } from './gpsCapRateByRegionClass';
+import {
+  computeCapRatePctFromRneAndPrice,
+  computeRneFromPriceAndTgaPct,
+} from '../financial/capitalization';
 
 export interface CentrisComparableListing {
   mlsNumber: string;
@@ -43,7 +47,7 @@ export function calculateComparableCapRate(
       ? listing.netOperatingIncome
       : listing.revenuBrutEffectif - listing.densesExploitation;
   if (!Number.isFinite(rne) || rne <= 0) return 0;
-  return Number(((rne / listing.soldPrice) * 100).toFixed(2));
+  return computeCapRatePctFromRneAndPrice({ rne, price: listing.soldPrice }) ?? 0;
 }
 
 function parseNum(v: unknown): number {
@@ -128,7 +132,7 @@ export function mapMarketAnalyticsRawToComparable(
     revenuBrutEffectif: rbe,
     densesExploitation: depenses,
     netOperatingIncome:
-      capRatePct > 0 && soldPrice > 0 ? (soldPrice * capRatePct) / 100 : 0,
+      computeRneFromPriceAndTgaPct({ price: soldPrice, tgaPct: capRatePct }) ?? 0,
     closedAtMillis,
     regionAdministrative: region,
     classeImmeuble: classe,

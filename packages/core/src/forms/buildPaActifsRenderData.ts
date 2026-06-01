@@ -5,6 +5,10 @@
 
 import { normalizeFinancialData } from '../financial/normalizeFinancialData';
 import { resolveCanonicalFinancialMetrics } from '../financial/resolveCanonicalRne';
+import {
+  applyTgaAdjustmentPct,
+  computeCapitalizedValueFromRneAndTgaPct,
+} from '../financial/capitalization';
 import { bootstrapResidenceAcm, type ResidenceAcmIdentity } from '../valuation/residenceAcmBootstrap';
 import { parsePromesseAchatFromDoc } from '../transaction/promesseAchatEngine';
 import { computeSoldeAFinancer, parseOffreTroncFromDoc } from '../transaction/offreTronc';
@@ -98,8 +102,7 @@ export function buildPaActifsRenderData(input: BuildPaActifsRenderDataInput): Pa
 
   const medianTga = input.territorial?.medianTgaPct ?? acmBootstrap?.suggestedCapRatePct ?? null;
   const tgaAdj = input.qualitativeTgaAdjustmentPct ?? 0;
-  const tgaApplique =
-    medianTga != null && medianTga > 0 ? Number((medianTga + tgaAdj).toFixed(2)) : null;
+  const tgaApplique = applyTgaAdjustmentPct(medianTga, tgaAdj);
 
   const rne = metrics.rne ?? acmBootstrap?.revenuNetExploitation ?? null;
   const rbe = metrics.rbe ?? acmBootstrap?.revenuBrutEffectif ?? null;
@@ -120,9 +123,11 @@ export function buildPaActifsRenderData(input: BuildPaActifsRenderDataInput): Pa
   });
 
   const valeurIndicative =
-    rne != null && rne > 0 && tgaApplique != null && tgaApplique > 0
-      ? Math.round(rne / (tgaApplique / 100))
-      : acmBootstrap?.valuationAngles.marketValue ?? null;
+    computeCapitalizedValueFromRneAndTgaPct({
+      rne,
+      tgaPct: tgaApplique,
+      round: true,
+    }) ?? acmBootstrap?.valuationAngles.marketValue ?? null;
 
   const buyerName =
     input.buyer?.fullName ||
