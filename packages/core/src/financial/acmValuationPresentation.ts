@@ -65,6 +65,7 @@ function buildStressSummary(
   result: ValuationOutputs,
   occupancy: number,
   effectiveCapRate: number,
+  units: number,
   marketLabel = '',
   rbp?: number,
   operatingExpenses?: number
@@ -81,7 +82,7 @@ function buildStressSummary(
   const priceRecommendation = calculatePriceRecommendation(
     baseline,
     inferMarketType(marketLabel),
-    classifyAssetSize(result.units),
+    classifyAssetSize(units),
     occupancy
   );
 
@@ -124,6 +125,7 @@ export function computeSimpleAcmValuationPresentation(
     result,
     occupancy,
     effectiveCapRate,
+    input.units,
     input.marketLabel ?? ''
   );
 
@@ -160,6 +162,7 @@ export function computeResidenceAcmValuationPresentation(params: {
     result,
     occupancy,
     effectiveCapRate,
+    bootstrap.units,
     bootstrap.regionLabel ?? '',
     result.grossPotentialIncome,
     result.operatingExpensesTotal
