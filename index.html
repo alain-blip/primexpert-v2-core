@@ -42,12 +42,12 @@
       .px-hero-inner { max-width: 56rem; margin: 0 auto; text-align: center; }
       .px-hero-logo { height: 11.2rem; width: auto; max-width: 100%; margin: 0 auto 3rem; display: block; }
       .px-h1 {
-        font-size: clamp(1.75rem, 5vw, 2.75rem); font-weight: 900; line-height: 1.15;
-        color: #0a0a0a; margin: 0 0 1rem;
+        font-size: clamp(1.75rem, 5vw, 2.75rem); font-weight: 900; line-height: 1.2;
+        color: #0a0a0a; margin: 0;
       }
-      .px-h2 {
-        font-size: clamp(1.25rem, 3.5vw, 1.75rem); font-weight: 700; line-height: 1.3;
-        color: #171717; margin: 0 0 1.5rem;
+      .px-closing-title {
+        font-size: clamp(1.5rem, 4.5vw, 2.25rem); font-weight: 900; line-height: 1.15;
+        color: #0a0a0a; margin: 0 0 1.25rem;
       }
       .px-lead { font-size: 1.125rem; line-height: 1.6; color: #525252; margin: 0 auto 2.5rem; max-width: 42rem; }
       .px-cta { display: flex; flex-direction: column; gap: 1rem; align-items: stretch; justify-content: center; }
@@ -60,6 +60,15 @@
       }
       .px-cta-primary { background: #171717; color: #fff; border: 0; }
       .px-cta-secondary { background: transparent; color: #171717; border: 2px solid #171717; }
+      .px-cta-massive {
+        display: inline-block; text-decoration: none; text-align: center;
+        min-height: 3.5rem; padding: 1.125rem 2.75rem; font-size: 1.125rem; font-weight: 700;
+        background: #171717; color: #fff; border: 0; border-radius: .75rem; cursor: pointer;
+        box-shadow: 0 10px 25px -10px rgba(0,0,0,.35);
+      }
+      .px-cta-massive:hover { background: #000; }
+      .px-closing { border-top: 1px solid #e5e5e5; background: #fff; padding: 3.5rem 1.25rem 4.5rem; }
+      .px-closing-inner { max-width: 48rem; margin: 0 auto; text-align: center; }
       .px-footer { border-top: 1px solid #e5e5e5; background: #fafafa; padding: 2.5rem 1.25rem; text-align: center; color: #737373; font-size: .875rem; }
       .px-video { max-width: 56rem; margin: 3rem auto; padding: 0 1.25rem; }
       .px-video-head { text-align: center; margin-bottom: 1.5rem; }
@@ -129,25 +138,10 @@
           <div class="px-hero-inner">
             <img class="px-hero-logo" src="/logo-primexpert-noir.png" alt="Primexpert" />
             <h1 id="hero-heading" class="px-h1"
-              data-i18n-fr="Devenez l'expert, devenez Primexpert."
-              data-i18n-en="Become the expert, become Primexpert.">
-              Devenez l'expert, devenez Primexpert.
+              data-i18n-fr="Devenez l'expert, devenez Primexpert. Signer, c'est bien. Au juste prix, c'est mieux."
+              data-i18n-en="Become the expert, become Primexpert. Signing is good. At the right price is better.">
+              Devenez l'expert, devenez Primexpert. Signer, c'est bien. Au juste prix, c'est mieux.
             </h1>
-            <h2 class="px-h2"
-              data-i18n-fr="Signer, c'est bien. Au juste prix, c'est mieux."
-              data-i18n-en="Signing is good. At the right price is better.">
-              Signer, c'est bien. Au juste prix, c'est mieux.
-            </h2>
-            <p class="px-lead"
-              data-i18n-fr="Cessez d’improviser. Devenez l’expert que le marché respecte. Le premier CRM immobilier et moteur d'Analyse Comparative de Marché (ACM) propulsé par des algorithmes de précision pour les courtiers résidentiels et commerciaux au Québec. Signez vos mandats au juste prix et transformez votre relation avec vos clients pour devenir la référence incontournable de votre secteur."
-              data-i18n-en="Stop improvising. Become the expert the market respects. The first real estate CRM and Comparative Market Analysis (CMA) engine powered by precision algorithms for residential and commercial brokers in Québec. Sign your mandates at the right price and transform your client relationships to become the undisputed reference in your market.">
-              Cessez d’improviser. Devenez l’expert que le marché respecte. Le premier CRM immobilier et moteur d'Analyse Comparative de Marché (ACM) propulsé par des algorithmes de précision pour les courtiers résidentiels et commerciaux au Québec. Signez vos mandats au juste prix et transformez votre relation avec vos clients pour devenir la référence incontournable de votre secteur.
-            </p>
-            <div class="px-cta">
-              <a class="px-cta-primary" href="/workhub?signin=1"
-                data-i18n-fr="Commencez votre essai gratuit 45 jours"
-                data-i18n-en="Start your free 45-day trial">Commencez votre essai gratuit 45 jours</a>
-            </div>
           </div>
         </section>
 
@@ -172,6 +166,24 @@
               frameborder="0"
               allow="encrypted-media; fullscreen;"
               allowfullscreen></iframe>
+          </div>
+        </section>
+
+        <section class="px-closing" aria-labelledby="closing-heading">
+          <div class="px-closing-inner">
+            <h2 id="closing-heading" class="px-closing-title"
+              data-i18n-fr="Cessez d’improviser. Devenez l’expert que le marché respecte."
+              data-i18n-en="Stop improvising. Become the expert the market respects.">
+              Cessez d’improviser. Devenez l’expert que le marché respecte.
+            </h2>
+            <p class="px-lead"
+              data-i18n-fr="Le premier CRM immobilier et moteur d'Analyse Comparative de Marché (ACM) propulsé par des algorithmes de précision pour les courtiers résidentiels et commerciaux au Québec. Signez vos mandats au juste prix et transformez votre relation avec vos clients pour devenir la référence incontournable de votre secteur."
+              data-i18n-en="The first real estate CRM and Comparative Market Analysis (CMA) engine powered by precision algorithms for residential and commercial brokers in Québec. Sign your mandates at the right price and transform your client relationships to become the undisputed reference in your market.">
+              Le premier CRM immobilier et moteur d'Analyse Comparative de Marché (ACM) propulsé par des algorithmes de précision pour les courtiers résidentiels et commerciaux au Québec. Signez vos mandats au juste prix et transformez votre relation avec vos clients pour devenir la référence incontournable de votre secteur.
+            </p>
+            <a class="px-cta-massive" href="/workhub?signin=1"
+              data-i18n-fr="Commencez votre essai gratuit 45 jours"
+              data-i18n-en="Start your free 45-day trial">Commencez votre essai gratuit 45 jours</a>
           </div>
         </section>
       </main>
