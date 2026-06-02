@@ -33,12 +33,15 @@ export {
   PROPERTY_CONTEXTS,
   DEFAULT_PROPERTY_CONTEXT,
   PROPERTY_CONTEXT_LABELS,
+  PROPERTY_CONTEXT_SELECTOR_LABELS,
   isPropertyContext,
   parsePropertyContext,
   assetNicheToPropertyContext,
   propertyContextToAssetNiche,
   propertyContextUsesRpaModel,
   propertyContextLabel,
+  propertyContextSelectorLabel,
+  resolveResidencePropertyContext,
 } from './propertyContext';
 
 // ============================================================================

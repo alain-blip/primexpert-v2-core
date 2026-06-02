@@ -30,6 +30,10 @@ import { cn, formatCurrency } from '../../../lib/utils';
 import { getListingPrice } from '@primexpert/core/residence';
 import { readCalculatedResultsDisplayMirror, type CalculatedResultsDisplayMirror } from '@primexpert/core/financial';
 import { bootstrapResidenceAcm } from '@primexpert/core/valuation';
+import {
+  resolveResidencePropertyContext,
+  type PropertyContext,
+} from '@primexpert/core/canonical';
 import { useUnifiedResidence, useResidenceFinancialHints } from '../../../context/ResidenceDataContext';
 import { useFinancialData } from '../../../context/FinancialDataContext';
 import type { Residence } from '../../../services/residences';
@@ -38,6 +42,7 @@ import { fmtBuyerPercent } from '../../../services/buyerReportPdfService';
 import type { PropertyDocumentExtractedData, PropertyDocumentRecord } from '../../../types/propertyDocument';
 import { ResidenceActivitiesPanel } from '../activities/ResidenceActivitiesPanel';
 import { ResidenceTasksPanel } from '../tasks/ResidenceTasksPanel';
+import { PropertyContextSelector } from '../PropertyContextSelector';
 import { AudioRecorderButton } from '../../mobile/AudioRecorderButton';
 import {
   institutionalListingsActionButtonClass,
@@ -1392,6 +1397,26 @@ export function Synthese360Tab({ residence: residenceProp, residenceId }: Synthe
     [residenceId, updateResidence]
   );
 
+  const resolvedPropertyContext = useMemo(
+    () =>
+      resolveResidencePropertyContext({
+        propertyContext: loose.propertyContext,
+        assetNiche: loose.assetNiche,
+      }),
+    [loose.propertyContext, loose.assetNiche]
+  );
+
+  const savePropertyContext = useCallback(
+    async (next: PropertyContext) => {
+      if (!residenceId) throw new Error('residenceId manquant');
+      await updateResidence({
+        propertyContext: next,
+        updatedAt: serverTimestamp(),
+      });
+    },
+    [residenceId, updateResidence]
+  );
+
   const saveCommission = useCallback(
     async (next: CommissionDraft) => {
       if (!residenceId) throw new Error('residenceId manquant');
@@ -1707,6 +1732,14 @@ export function Synthese360Tab({ residence: residenceProp, residenceId }: Synthe
               loading={raphaelLoading}
               onOpenContact={workhubNav ? () => workhubNav.setActiveTab('crm') : undefined}
               t={t}
+            />
+          </div>
+          <div className="mt-4">
+            <PropertyContextSelector
+              value={resolvedPropertyContext}
+              onConfirmChange={savePropertyContext}
+              saving={savingResidence}
+              disabled={!residenceId}
             />
           </div>
           <div className="my-4" />

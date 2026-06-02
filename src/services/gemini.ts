@@ -2,6 +2,12 @@ import { GoogleGenAI, Type } from "@google/genai";
 import type { Language } from "../lib/i18n";
 import type { InventoryResidenceRef, MailParseResult } from "@primexpert/core/mail";
 import type { ClientSentiment } from "@primexpert/core/audio";
+import {
+  DEFAULT_PROPERTY_CONTEXT,
+  parsePropertyContext,
+  type PropertyContext,
+} from "@primexpert/core/canonical";
+import { buildListingDescriptionSystemPrompt } from "@primexpert/core/narrative";
 
 let ai: GoogleGenAI | null = null;
 
@@ -16,12 +22,27 @@ function getGeminiClient() {
   return ai;
 }
 
-export async function generateListingDescription(details: any, language: Language = 'fr') {
+export interface ListingDescriptionDetails {
+  address?: string;
+  type?: string;
+  price?: string;
+  features?: string;
+  inclusions?: string;
+  propertyContext?: PropertyContext | string;
+}
+
+export async function generateListingDescription(
+  details: ListingDescriptionDetails,
+  language: Language = 'fr'
+) {
   const model = "gemini-3-flash-preview";
+  const propertyContext =
+    parsePropertyContext(details.propertyContext) ?? DEFAULT_PROPERTY_CONTEXT;
   const responseLanguage = language === 'fr' ? 'français du Québec' : 'English';
-  const systemInstruction = language === 'fr'
-    ? "Tu es l'assistant de Primexpert. Tu dois t'exprimer exclusivement en français impeccable, en utilisant les termes techniques francophones conformes à la loi 101."
-    : "You are Primexpert's assistant. You must write in professional English while preserving Quebec real estate compliance requirements.";
+  const systemInstruction = buildListingDescriptionSystemPrompt(
+    propertyContext,
+    language === 'fr' ? 'fr' : 'en'
+  );
   const prompt = `${systemInstruction}
 
     Générer une description immobilière professionnelle pour Centris (Québec) basée sur ces détails:
@@ -32,7 +53,7 @@ export async function generateListingDescription(details: any, language: Languag
     Inclusions: ${details.inclusions}
     
     Règles:
-    1. Ton professionnel, vendeur, élégant.
+    1. Ton professionnel, vendeur, élégant — conforme au contexte de propriété ci-dessus.
     2. Répondre uniquement en ${responseLanguage}.
     3. Inclure naturellement des clauses de conformité si nécessaire.
     4. Diviser en paragraphes clairs.

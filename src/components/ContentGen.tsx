@@ -35,6 +35,11 @@ import {
   validateAndFixNarrative,
   type NarrativeLintResult,
 } from '@primexpert/core/narrative';
+import {
+  DEFAULT_PROPERTY_CONTEXT,
+  resolveResidencePropertyContext,
+  type PropertyContext,
+} from '@primexpert/core/canonical';
 import { buildResidenceTenantContext, listResidences, type Residence } from '../services/residences';
 import { formatCurrency } from '../lib/utils';
 import { consumeContentGenPrefill } from '../lib/contentGenPrefill';
@@ -59,6 +64,7 @@ export function ContentGen() {
   const [residences, setResidences] = useState<Residence[]>([]);
   const [selectedResidenceId, setSelectedResidenceId] = useState<string>('');
   const [residencesLoading, setResidencesLoading] = useState(false);
+  const [propertyContext, setPropertyContext] = useState<PropertyContext>(DEFAULT_PROPERTY_CONTEXT);
   const prefillConsumedRef = useRef(false);
 
   const [formData, setFormData] = useState({
@@ -113,9 +119,18 @@ export function ContentGen() {
 
   const handleResidenceSelect = (id: string) => {
     setSelectedResidenceId(id);
-    if (!id) return;
+    if (!id) {
+      setPropertyContext(DEFAULT_PROPERTY_CONTEXT);
+      return;
+    }
     const r = residences.find((x) => x.id === id);
     if (!r) return;
+    setPropertyContext(
+      resolveResidencePropertyContext({
+        propertyContext: r.propertyContext,
+        assetNiche: r.assetNiche,
+      })
+    );
     setFormData((prev) => ({
       ...prev,
       address: r.city ? `${r.address}, ${r.city}` : r.address,
@@ -132,7 +147,10 @@ export function ContentGen() {
   const handleGenerate = async () => {
     setLoading(true);
     try {
-      const result = await generateListingDescription(formData, language);
+      const result = await generateListingDescription(
+        { ...formData, propertyContext },
+        language
+      );
       setDescription(result || '');
     } catch (error) {
       console.error(error);

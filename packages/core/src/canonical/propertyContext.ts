@@ -58,6 +58,32 @@ export const PROPERTY_CONTEXT_LABELS: Record<
   },
 };
 
+/**
+ * Libellés explicites pour le sélecteur Synthèse (UI v3.5).
+ * Abréviations toujours accompagnées du texte intégral entre parenthèses.
+ */
+export const PROPERTY_CONTEXT_SELECTOR_LABELS: Record<
+  PropertyContext,
+  { labelFr: string; labelEn: string }
+> = {
+  RESIDENTIAL: {
+    labelFr: 'Résidentiel (Unifamilial, Condo, Plex < 5)',
+    labelEn: 'Residential (Single Family, Condo, Plex < 5)',
+  },
+  COMMERCIAL_PLEX: {
+    labelFr: 'Plex commercial (5 unités et plus)',
+    labelEn: 'Commercial Plex (5 units and more)',
+  },
+  RPA: {
+    labelFr: 'Résidence pour aînés (RPA)',
+    labelEn: 'Senior Housing (RPA)',
+  },
+  CPE: {
+    labelFr: 'Centre de la petite enfance (CPE)',
+    labelEn: 'Childcare Center (CPE)',
+  },
+};
+
 /** Garde de type stricte. */
 export function isPropertyContext(value: unknown): value is PropertyContext {
   return (
@@ -135,4 +161,27 @@ export function propertyContextLabel(
 ): string {
   const entry = PROPERTY_CONTEXT_LABELS[context];
   return lang === 'en' ? entry.labelEn : entry.labelFr;
+}
+
+/** Libellé explicite pour le sélecteur Synthèse. */
+export function propertyContextSelectorLabel(
+  context: PropertyContext,
+  lang: 'fr' | 'en' = 'fr'
+): string {
+  const entry = PROPERTY_CONTEXT_SELECTOR_LABELS[context];
+  return lang === 'en' ? entry.labelEn : entry.labelFr;
+}
+
+/**
+ * Résout le contexte effectif d'une fiche : champ explicite `propertyContext`
+ * prioritaire, sinon déduction depuis `assetNiche` legacy, sinon défaut RPA.
+ */
+export function resolveResidencePropertyContext(input: {
+  propertyContext?: unknown;
+  assetNiche?: LegacyAssetNiche;
+}): PropertyContext {
+  const explicit = parsePropertyContext(input.propertyContext);
+  if (explicit) return explicit;
+  if (input.assetNiche) return assetNicheToPropertyContext(input.assetNiche);
+  return DEFAULT_PROPERTY_CONTEXT;
 }

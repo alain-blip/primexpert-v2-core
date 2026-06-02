@@ -47,3 +47,11 @@ export {
   validateAndFixNarrative,
 } from './narrativeLint';
 export type { NarrativeLintResult } from './narrativeLint';
+
+// Rédacteur IA Centris — prompts contextuels (propertyContext v3.5)
+export {
+  buildListingDescriptionBaseInstruction,
+  buildListingDescriptionContextRules,
+  buildListingDescriptionSystemPrompt,
+} from './listingDescriptionPrompts';
+export type { ListingDescriptionLanguage } from './listingDescriptionPrompts';
