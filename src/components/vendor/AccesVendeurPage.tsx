@@ -36,6 +36,10 @@ import {
 import {
   subscribeVendorPortal,
   vendorPortalResidenceAdapter,
+  buildGhostVendorPortalViewModel,
+  resolveGhostVendorPortalProfile,
+  getGhostFinancialData,
+  type GhostVendorPortalProfile,
   type VendorPortalViewModel,
 } from '../../services/vendorPortalService';
 import {
@@ -62,6 +66,11 @@ import {
   vendorPortalLayoutShellClass,
 } from '../../lib/institutionalTheme';
 import { cn } from '../../lib/utils';
+import {
+  formatCad,
+  getGhostVendorPortalPlan,
+  type GhostVendorPortalMarket,
+} from '../../lib/subscriptionPricing';
 
 export type VendorPortalDisplayMode = 'broker' | 'client';
 
@@ -387,18 +396,20 @@ function VendorPortalTabNav({
   onTabChange,
   t,
   language,
+  tabs = VENDOR_PORTAL_TABS,
 }: {
   activeTab: VendorPortalTabId;
   onTabChange: (tab: VendorPortalTabId) => void;
   t: (fr: string, en: string) => string;
   language: 'fr' | 'en';
+  tabs?: typeof VENDOR_PORTAL_TABS;
 }) {
   return (
     <nav
       className="flex gap-2 overflow-x-auto rounded-xl border-2 border-primexpert-dark/20 bg-white p-2 dark:bg-primexpert-cardDark"
       aria-label={t('Sections portail vendeur', 'Seller portal sections')}
     >
-      {VENDOR_PORTAL_TABS.map((tab) => {
+      {tabs.map((tab) => {
         const Icon = tab.icon;
         const active = activeTab === tab.id;
         const label = language === 'fr' ? tab.labelFr : tab.labelEn;
@@ -427,17 +438,30 @@ function VendorPortalWorkspace({
   vm,
   mode,
   clientSession,
+  ghostProfile,
   children,
 }: {
   vm: VendorPortalViewModel;
   mode: VendorPortalDisplayMode;
   clientSession?: VendorPortalClientSession | null;
+  ghostProfile?: GhostVendorPortalProfile | null;
   children: React.ReactNode;
 }) {
   const vendorToken = mode === 'client' ? clientSession?.token ?? null : null;
   return (
-    <ResidenceDocumentProvider residenceId={vm.residenceId} vendorPortalToken={vendorToken}>
-      <FinancialDataProvider residenceId={vm.residenceId}>{children}</FinancialDataProvider>
+    <ResidenceDocumentProvider
+      residenceId={vm.residenceId}
+      vendorPortalToken={vendorToken}
+      ghostResidenceDoc={ghostProfile ? vm.residenceDoc : undefined}
+    >
+      <FinancialDataProvider
+        residenceId={vm.residenceId}
+        ghostFinancialData={
+          ghostProfile ? getGhostFinancialData(ghostProfile) ?? null : undefined
+        }
+      >
+        {children}
+      </FinancialDataProvider>
     </ResidenceDocumentProvider>
   );
 }
@@ -445,10 +469,104 @@ function VendorPortalWorkspace({
 function VendorPortalWelcomeCard({
   t,
   language,
+  ghostProfile,
 }: {
   t: (fr: string, en: string) => string;
   language: 'fr' | 'en';
+  ghostProfile?: GhostVendorPortalProfile | null;
 }) {
+  if (ghostProfile === 'residential') {
+    const wiifmItems = [
+      t(
+        'Hub omnicanal : courriel, téléphonie et suivi client centralisés pour une mise en marché active sans friction.',
+        'Omnichannel hub: email, telephony and client follow-up centralized for frictionless active listing.'
+      ),
+      t(
+        'Mise en marché active : diffusion, conformité publicitaire et diligence documentaire sous un même GPS immobilier.',
+        'Active listing: distribution, advertising compliance and document diligence in one real estate GPS.'
+      ),
+      t(
+        "Suivi des 7 délais de promesse d'achat : échéances critiques calculées dès l'acceptation de l'offre.",
+        'Tracking of 7 purchase promise deadlines: critical milestones computed from offer acceptance.'
+      ),
+    ];
+    return (
+      <section
+        className={cn(
+          institutionalListingsCardShellClass,
+          'border-l-[6px] border-l-primexpert-gold bg-white p-6 dark:bg-primexpert-cardDark'
+        )}
+      >
+        <p className="text-base font-black leading-snug text-slate-900 dark:font-bold">
+          {t(
+            'Parcours résidentiel — démonstration publique Primexpert.',
+            'Residential journey — public Primexpert demonstration.'
+          )}
+        </p>
+        <ul className="mt-4 space-y-2.5">
+          {wiifmItems.map((item) => (
+            <li
+              key={item}
+              className="flex gap-2.5 text-sm font-semibold leading-relaxed text-slate-900 dark:font-medium"
+            >
+              <span
+                className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primexpert-dark dark:bg-slate-900"
+                aria-hidden
+              />
+              {item}
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+
+  if (ghostProfile === 'commercial') {
+    const wiifmItems = [
+      t(
+        "Panneau d'analyse comparative de marché (ACM) : fourchette de valeur et opinion motivée prête pour validation du courtier.",
+        'Comparative market analysis (CMA) panel: value range and reasoned opinion ready for broker validation.'
+      ),
+      t(
+        'Taux de capitalisation global (TGA) et revenu net d\'exploitation (RNE) : indicateurs de rendement pour immeubles à revenus.',
+        'Global capitalization rate (cap rate) and net operating income (NOI): yield indicators for income properties.'
+      ),
+      t(
+        'Validation du financement : ratio de couverture de la dette (RCD) et scénarios de mise de fonds.',
+        'Financing validation: debt service coverage ratio (DSCR) and down payment scenarios.'
+      ),
+    ];
+    return (
+      <section
+        className={cn(
+          institutionalListingsCardShellClass,
+          'border-l-[6px] border-l-primexpert-gold bg-white p-6 dark:bg-primexpert-cardDark'
+        )}
+      >
+        <p className="text-base font-black leading-snug text-slate-900 dark:font-bold">
+          {t(
+            'Parcours commercial et multiplex — démonstration publique Primexpert.',
+            'Commercial and multiplex journey — public Primexpert demonstration.'
+          )}
+        </p>
+        <ul className="mt-4 space-y-2.5">
+          {wiifmItems.map((item) => (
+            <li
+              key={item}
+              className="flex gap-2.5 text-sm font-semibold leading-relaxed text-slate-900 dark:font-medium"
+            >
+              <span
+                className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primexpert-dark dark:bg-slate-900"
+                aria-hidden
+              />
+              {item}
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+
   const wiifmItems = [
     t(
       'Un contrôle total : suivez l’avancement des offres et la jauge de conformité de votre dossier en temps réel.',
@@ -524,6 +642,138 @@ function VendorPortalWelcomeCard({
   );
 }
 
+function VendorGhostCommercialMetrics({
+  vm,
+  t,
+}: {
+  vm: VendorPortalViewModel;
+  t: (fr: string, en: string) => string;
+}) {
+  const fin = getGhostFinancialData('commercial');
+  const calc = fin?.calculatedResults;
+  const acmEst = vm.residenceDoc.acmValeurEstimee;
+  const acmLow = vm.residenceDoc.acmFourchetteBasse;
+  const acmHigh = vm.residenceDoc.acmFourchetteHaute;
+
+  return (
+    <section className={cn(institutionalListingsCardShellClass, 'bg-white p-6 dark:bg-primexpert-cardDark')}>
+      <h2 className={institutionalListingsCardTitleClass}>
+        {t(
+          "Analyse comparative de marché (ACM) et indicateurs de rendement",
+          'Comparative market analysis (CMA) and yield indicators'
+        )}
+      </h2>
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          {
+            label: t('Valeur estimée — analyse comparative de marché (ACM)', 'Estimated value — comparative market analysis (CMA)'),
+            value:
+              typeof acmEst === 'number'
+                ? new Intl.NumberFormat('fr-CA', {
+                    style: 'currency',
+                    currency: 'CAD',
+                    maximumFractionDigits: 0,
+                  }).format(acmEst)
+                : '—',
+            sub:
+              typeof acmLow === 'number' && typeof acmHigh === 'number'
+                ? t(
+                    `Fourchette ${new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(acmLow)} – ${new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(acmHigh)}`,
+                    `Range ${new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(acmLow)} – ${new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(acmHigh)}`
+                  )
+                : undefined,
+          },
+          {
+            label: t('Taux de capitalisation global (TGA)', 'Global capitalization rate (cap rate)'),
+            value:
+              calc?.tauxCapitalisation != null ? `${calc.tauxCapitalisation} %` : '—',
+          },
+          {
+            label: t("Revenu net d'exploitation (RNE)", 'Net operating income (NOI)'),
+            value:
+              calc?.revenuNetExploitation != null
+                ? new Intl.NumberFormat('fr-CA', {
+                    style: 'currency',
+                    currency: 'CAD',
+                    maximumFractionDigits: 0,
+                  }).format(calc.revenuNetExploitation)
+                : '—',
+          },
+          {
+            label: t('Ratio de couverture de la dette (RCD)', 'Debt service coverage ratio (DSCR)'),
+            value: calc?.ratioCouvertureDette != null ? `${calc.ratioCouvertureDette}×` : '—',
+          },
+        ].map((row) => (
+          <div
+            key={row.label}
+            className="rounded-2xl border-2 border-primexpert-dark/20 bg-white px-5 py-4 dark:bg-primexpert-cardDark"
+          >
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-700">{row.label}</p>
+            <p className="mt-2 text-xl font-black text-black">{row.value}</p>
+            {row.sub ? (
+              <p className="mt-1 text-xs font-semibold text-slate-600">{row.sub}</p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function VendorGhostFloatingBanner({
+  ghostProfile,
+  t,
+  language,
+}: {
+  ghostProfile: GhostVendorPortalProfile;
+  t: (fr: string, en: string) => string;
+  language: 'fr' | 'en';
+}) {
+  const locale = language === 'fr' ? 'fr' : 'en';
+  const plan = getGhostVendorPortalPlan(ghostProfile as GhostVendorPortalMarket);
+  const monthly = formatCad(plan.monthlyRecurringCad, locale);
+  const marketLabel =
+    ghostProfile === 'residential'
+      ? t('marché résidentiel', 'residential market')
+      : t('marché commercial et multiplex', 'commercial and multiplex market');
+
+  return (
+    <aside
+      role="complementary"
+      aria-label={t('Passer au forfait Primexpert', 'Upgrade to a Primexpert plan')}
+      className="fixed inset-x-0 bottom-0 z-[60] border-t-2 border-primexpert-dark bg-white/95 px-4 py-3 shadow-[0_-12px_40px_rgba(0,0,0,0.18)] backdrop-blur-md dark:bg-primexpert-cardDark/95"
+    >
+      <div className="mx-auto flex max-w-4xl flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 text-left">
+          <p className="text-[10px] font-black uppercase tracking-widest text-primexpert-dark">
+            {t('Accès fantôme — démonstration publique', 'Ghost access — public demonstration')}
+          </p>
+          <p className="mt-1 text-sm font-semibold leading-snug text-slate-900">
+            {ghostProfile === 'residential'
+              ? t(
+                  `Vous explorez le parcours ${marketLabel}. Passez au forfait ${plan.labelFr} à ${monthly}/mois pour débloquer le hub omnicanal complet.`,
+                  `You are exploring the ${marketLabel} journey. Upgrade to the ${plan.labelEn} plan at ${monthly}/month to unlock the full omnichannel hub.`
+                )
+              : t(
+                  `Vous explorez le parcours ${marketLabel}. Passez au forfait ${plan.labelFr} à ${monthly}/mois pour débloquer l'analyse comparative de marché (ACM) et la validation du financement.`,
+                  `You are exploring the ${marketLabel} journey. Upgrade to the ${plan.labelEn} plan at ${monthly}/month to unlock comparative market analysis (CMA) and financing validation.`
+                )}
+          </p>
+        </div>
+        <a
+          href="/workhub?signin=1"
+          className="inline-flex shrink-0 items-center justify-center rounded-lg bg-primexpert-dark px-5 py-3 text-center text-sm font-black uppercase tracking-wide text-white hover:bg-neutral-900"
+        >
+          {t(
+            `Commencer l'essai gratuit 45 jours — ${plan.labelFr} (${monthly}/mois)`,
+            `Start free 45-day trial — ${plan.labelEn} (${monthly}/mo)`
+          )}
+        </a>
+      </div>
+    </aside>
+  );
+}
+
 function VendorPortalOverview({
   vm,
   catalogueCompliance,
@@ -532,6 +782,7 @@ function VendorPortalOverview({
   locale,
   showWelcome,
   language,
+  ghostProfile,
 }: {
   vm: VendorPortalViewModel;
   catalogueCompliance: ReturnType<typeof assessVendorPortalCatalogueCompliance>;
@@ -540,10 +791,15 @@ function VendorPortalOverview({
   locale: 'fr' | 'en';
   showWelcome: boolean;
   language: 'fr' | 'en';
+  ghostProfile?: GhostVendorPortalProfile | null;
 }) {
   return (
     <>
-      {showWelcome ? <VendorPortalWelcomeCard t={t} language={language} /> : null}
+      {showWelcome ? (
+        <VendorPortalWelcomeCard t={t} language={language} ghostProfile={ghostProfile} />
+      ) : null}
+
+      {ghostProfile === 'commercial' ? <VendorGhostCommercialMetrics vm={vm} t={t} /> : null}
 
       <section className={cn(institutionalListingsCardShellClass, 'bg-white p-6 dark:bg-primexpert-cardDark')}>
         <h2 className={institutionalListingsCardTitleClass}>
@@ -577,7 +833,13 @@ function VendorPortalOverview({
       </div>
 
       {vm.hasActivePromesse && vm.promesse ? (
-        <VendorOfferPanel promesse={vm.promesse} locale={locale} t={t} />
+        <VendorOfferPanel
+          promesse={vm.promesse}
+          locale={locale}
+          t={t}
+          showSevenCriticalDeadlines={ghostProfile === 'residential'}
+          stressTestFinancingUrgency={ghostProfile === 'residential'}
+        />
       ) : (
         <section
           className={cn(
@@ -603,18 +865,34 @@ function VendorPortalContent({
   clientSession,
   orgId,
   onInviteLink,
+  ghostProfile,
 }: {
   vm: VendorPortalViewModel;
   mode: VendorPortalDisplayMode;
   clientSession?: VendorPortalClientSession | null;
   orgId: string;
   onInviteLink?: (path: string) => void;
+  ghostProfile?: GhostVendorPortalProfile | null;
 }) {
   const { t, language } = useLanguage();
   const locale = language === 'fr' ? 'fr' : 'en';
   const [portalDocs, setPortalDocs] = useState<PropertyDocumentRecord[]>([]);
   const [inviteBusy, setInviteBusy] = useState(false);
   const [activeTab, setActiveTab] = useState<VendorPortalTabId>('overview');
+
+  const visibleTabs = useMemo(() => {
+    if (ghostProfile === 'residential') {
+      return VENDOR_PORTAL_TABS.filter((tab) =>
+        ['overview', 'declaration', 'identity', 'documents'].includes(tab.id)
+      );
+    }
+    if (ghostProfile === 'commercial') {
+      return VENDOR_PORTAL_TABS.filter((tab) =>
+        ['overview', 'finance', 'identity', 'documents'].includes(tab.id)
+      );
+    }
+    return VENDOR_PORTAL_TABS;
+  }, [ghostProfile]);
 
   const residence = useMemo(() => vendorPortalResidenceAdapter(vm), [vm]);
   const isClientMode = mode === 'client';
@@ -665,16 +943,47 @@ function VendorPortalContent({
   };
 
   return (
-    <VendorPortalWorkspace vm={vm} mode={mode} clientSession={clientSession}>
+    <VendorPortalWorkspace
+      vm={vm}
+      mode={mode}
+      clientSession={clientSession}
+      ghostProfile={ghostProfile}
+    >
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className={cn(
-          'mx-auto space-y-6 py-8 pb-16',
+          'mx-auto space-y-6 py-8',
+          ghostProfile ? 'pb-36' : 'pb-16',
           vendorPortalLayoutShellClass,
           institutionalListingsPanelClass
         )}
       >
+        {ghostProfile ? (
+          <div
+            role="status"
+            className="rounded-xl border-2 border-sky-500 bg-sky-50 px-4 py-3 dark:bg-sky-100"
+          >
+            <p className="text-[11px] font-black uppercase tracking-widest text-sky-950">
+              {ghostProfile === 'residential'
+                ? t(
+                    'Parcours résidentiel simulé — promesse d’achat sous tension',
+                    'Simulated residential journey — purchase promise under pressure'
+                  )
+                : t(
+                    'Parcours commercial et multiplex simulé — rendement et financement',
+                    'Simulated commercial and multiplex journey — yield and financing'
+                  )}
+            </p>
+            <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-900">
+              {t(
+                'Données fictives locales — aucune lecture Firestore, aucune écriture en production.',
+                'Local fictional data — no Firestore reads, no production writes.'
+              )}
+            </p>
+          </div>
+        ) : null}
+
         {mode === 'broker' ? (
           <div
             role="status"
@@ -736,6 +1045,7 @@ function VendorPortalContent({
           onTabChange={setActiveTab}
           t={t}
           language={language}
+          tabs={visibleTabs}
         />
 
         {activeTab === 'overview' ? (
@@ -747,6 +1057,7 @@ function VendorPortalContent({
             locale={locale}
             showWelcome={isClientMode}
             language={language}
+            ghostProfile={ghostProfile}
           />
         ) : null}
 
@@ -771,18 +1082,34 @@ function VendorPortalContent({
         ) : null}
 
         {activeTab === 'documents' ? (
-          <VendorDocumentDropzone
-            propertyId={vm.residenceId}
-            brokerId={vm.brokerId}
-            orgId={orgId}
-            contactId={vm.contact.id}
-            contactName={buildContactDisplayName(vm.contact)}
-            inviteToken={clientSession?.token}
-            uploadSource={mode === 'client' ? 'vendor_portal' : 'broker'}
-            t={t}
-            locale={locale}
-            onDocumentsChange={setPortalDocs}
-          />
+          ghostProfile ? (
+            <section
+              className={cn(
+                institutionalListingsCardShellClass,
+                'bg-white px-6 py-8 text-center dark:bg-primexpert-cardDark'
+              )}
+            >
+              <p className="text-sm font-semibold text-slate-900">
+                {t(
+                  'Mode démonstration : le téléversement documentaire est désactivé. Contactez un courtier Primexpert pour activer votre espace vendeur sécurisé.',
+                  'Demonstration mode: document upload is disabled. Contact a Primexpert broker to activate your secure seller space.'
+                )}
+              </p>
+            </section>
+          ) : (
+            <VendorDocumentDropzone
+              propertyId={vm.residenceId}
+              brokerId={vm.brokerId}
+              orgId={orgId}
+              contactId={vm.contact.id}
+              contactName={buildContactDisplayName(vm.contact)}
+              inviteToken={clientSession?.token}
+              uploadSource={mode === 'client' ? 'vendor_portal' : 'broker'}
+              t={t}
+              locale={locale}
+              onDocumentsChange={setPortalDocs}
+            />
+          )
         ) : null}
 
         <p className="text-center text-[10px] font-semibold leading-relaxed text-white dark:text-white/90">
@@ -792,6 +1119,9 @@ function VendorPortalContent({
           )}
         </p>
       </motion.div>
+      {ghostProfile ? (
+        <VendorGhostFloatingBanner ghostProfile={ghostProfile} t={t} language={language} />
+      ) : null}
     </VendorPortalWorkspace>
   );
 }
@@ -867,9 +1197,19 @@ export function AccesVendeurPage({ forcedMode }: { forcedMode?: VendorPortalDisp
     mode === 'client' ? clientSession?.residenceId : residenceIdParam;
   const orgId = portalCtx?.orgId ?? '';
 
+  const ghostProfile = useMemo(
+    () => (inviteToken ? resolveGhostVendorPortalProfile(inviteToken) : null),
+    [inviteToken]
+  );
+
   useEffect(() => {
     if (!portalCtx || !activeContactId) {
       setVm(null);
+      setPortalLoading(false);
+      return;
+    }
+    if (ghostProfile && mode === 'client') {
+      setVm(buildGhostVendorPortalViewModel(ghostProfile));
       setPortalLoading(false);
       return;
     }
@@ -885,7 +1225,7 @@ export function AccesVendeurPage({ forcedMode }: { forcedMode?: VendorPortalDisp
       onError: () => setPortalLoading(false),
     });
     return unsub;
-  }, [portalCtx, activeContactId, activeResidenceId]);
+  }, [portalCtx, activeContactId, activeResidenceId, ghostProfile, mode]);
 
   const handleSelectContact = (id: string) => {
     setSearchParams({ contactId: id });
@@ -960,6 +1300,7 @@ export function AccesVendeurPage({ forcedMode }: { forcedMode?: VendorPortalDisp
           clientSession={clientSession}
           orgId={orgId}
           onInviteLink={mode === 'broker' ? setInvitePath : undefined}
+          ghostProfile={ghostProfile}
         />
       )}
     </AccesVendeurShell>

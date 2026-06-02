@@ -29,15 +29,28 @@ const DEFAULT_OUTSIDE_PROVIDER: FinancialDataContextValue = {
 
 export interface FinancialDataProviderProps {
   residenceId: string | null | undefined;
+  /** Données mock — accès fantôme public (sans listener Firestore). */
+  ghostFinancialData?: FinancialDataV2Doc | null;
   children: ReactNode;
 }
 
-export function FinancialDataProvider({ residenceId, children }: FinancialDataProviderProps) {
+export function FinancialDataProvider({
+  residenceId,
+  ghostFinancialData,
+  children,
+}: FinancialDataProviderProps) {
   const [financialData, setFinancialData] = useState<FinancialDataV2Doc | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (ghostFinancialData !== undefined) {
+      setFinancialData(ghostFinancialData);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     if (!residenceId) {
       setFinancialData(null);
       setLoading(false);
@@ -65,7 +78,7 @@ export function FinancialDataProvider({ residenceId, children }: FinancialDataPr
     );
 
     return () => unsubscribe();
-  }, [residenceId]);
+  }, [residenceId, ghostFinancialData]);
 
   const value = useMemo(
     (): FinancialDataContextValue => ({

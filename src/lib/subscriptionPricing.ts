@@ -87,6 +87,19 @@ export function getPlan(id: PlanId): PlanDefinition {
   return PLAN_MAP[id];
 }
 
+/** Marché cible des jetons d'accès fantôme public (One Pager → portail vendeur). */
+export type GhostVendorPortalMarket = 'residential' | 'commercial';
+
+const GHOST_VENDOR_PORTAL_PLAN_ID: Record<GhostVendorPortalMarket, PlanId> = {
+  residential: 'solo',
+  commercial: 'pro',
+};
+
+/** Forfait catalogue aligné sur la grille tarifaire (Solo résidentiel / Pro commercial & plex). */
+export function getGhostVendorPortalPlan(market: GhostVendorPortalMarket): PlanDefinition {
+  return getPlan(GHOST_VENDOR_PORTAL_PLAN_ID[market]);
+}
+
 export type BillingLifecycle = 'trial' | 'paying' | 'at_risk';
 
 export interface Subscriber {

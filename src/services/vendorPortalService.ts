@@ -26,9 +26,9 @@ import {
   resolveResidenceStatus,
   type ResidenceStatus,
 } from '../config/pipelineStages';
+import type { FinancialDataV2Doc } from '@primexpert/core/financial';
 import type { MandateCompletenessResult } from '@primexpert/core/residence';
 import type { Residence } from './residences';
-import type { ResidenceStatus } from '../config/pipelineStages';
 
 export interface VendorPortalViewModel {
   contact: OrganizationContact;
@@ -200,5 +200,223 @@ export function subscribeVendorPortal(input: SubscribeVendorPortalInput): Unsubs
   return () => {
     contactUnsub();
     teardownResidence();
+  };
+}
+
+/** Jetons d'accès fantôme publics (One Pager — sans Firestore). */
+export const GHOST_VENDOR_PORTAL_TOKEN_RESIDENTIAL = 'demo-visiteur-residentiel';
+export const GHOST_VENDOR_PORTAL_TOKEN_COMMERCIAL = 'demo-visiteur-commercial';
+
+export type GhostVendorPortalProfile = 'residential' | 'commercial';
+
+const GHOST_BROKER_ID = 'ghost-broker-demo';
+const GHOST_ORG_ID = 'ghost-demo-org';
+
+export function resolveGhostVendorPortalProfile(token: string): GhostVendorPortalProfile | null {
+  if (token === GHOST_VENDOR_PORTAL_TOKEN_RESIDENTIAL) return 'residential';
+  if (token === GHOST_VENDOR_PORTAL_TOKEN_COMMERCIAL) return 'commercial';
+  return null;
+}
+
+export function isGhostVendorPortalToken(token: string): boolean {
+  return resolveGhostVendorPortalProfile(token) != null;
+}
+
+function ghostResidentialContact(): OrganizationContact {
+  return {
+    id: 'ghost-contact-residentiel',
+    orgId: GHOST_ORG_ID,
+    ownerId: GHOST_BROKER_ID,
+    silo: 'RESIDENTIEL',
+    visibility: 'PRIVATE',
+    leadSource: 'BROKER_GENERATED',
+    nom: 'Tremblay',
+    prenom: 'Sophie',
+    relationRoles: ['seller'],
+    residenceIds: ['ghost-residence-residentiel'],
+    email: 'sophie.tremblay@exemple.ca',
+    telephone: '514-555-0142',
+  };
+}
+
+function ghostCommercialContact(): OrganizationContact {
+  return {
+    id: 'ghost-contact-commercial',
+    orgId: GHOST_ORG_ID,
+    ownerId: GHOST_BROKER_ID,
+    silo: 'RES_COM',
+    visibility: 'PRIVATE',
+    leadSource: 'BROKER_GENERATED',
+    nom: 'Groupe Laval',
+    prenom: 'Investissements',
+    relationRoles: ['seller'],
+    residenceIds: ['ghost-residence-commercial'],
+    email: 'contact@investissements-laval.ca',
+    telephone: '514-555-0198',
+  };
+}
+
+function ghostResidentialPromesseStressDates(): {
+  dateReception: string;
+  dateAcceptation: string;
+  delais: {
+    visiteLieuxJours: number;
+    verificationDocumentsJours: number;
+    inspectionJours: number;
+    financementJours: number;
+    permisJours: number;
+  };
+} {
+  const now = new Date();
+  const toIso = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const addDays = (base: Date, days: number) => {
+    const d = new Date(base);
+    d.setDate(d.getDate() + days);
+    return d;
+  };
+  /** Stress-test J-3 : délai de financement bancaire dans exactement 3 jours civils. */
+  const financeDeadline = addDays(now, 3);
+  const dateAcceptation = addDays(now, -18);
+  const acceptanceMs = new Date(`${toIso(dateAcceptation)}T12:00:00`).getTime();
+  const financementJours = Math.max(
+    1,
+    Math.round((financeDeadline.getTime() - acceptanceMs) / 86_400_000)
+  );
+  return {
+    dateReception: toIso(addDays(now, -21)),
+    dateAcceptation: toIso(dateAcceptation),
+    delais: {
+      visiteLieuxJours: 5,
+      verificationDocumentsJours: 7,
+      inspectionJours: 10,
+      financementJours,
+      permisJours: 30,
+    },
+  };
+}
+
+function ghostResidentialResidenceDoc(): Record<string, unknown> {
+  const promesseDates = ghostResidentialPromesseStressDates();
+  return {
+    name: 'Maison unifamiliale — Saint-Lambert',
+    address: '842, boulevard Saint-Jean',
+    city: 'Saint-Lambert',
+    region: 'Montérégie',
+    prixDemande: 875_000,
+    residenceType: 'unifamilial',
+    pipelineStatus: 'pa-acceptee',
+    courtiersResponsables: GHOST_BROKER_ID,
+    promesseAchat: {
+      status: 'accepted',
+      prixOffert: 875_000,
+      prixAccepte: 875_000,
+      delaiReponseJours: 3,
+      ...promesseDates,
+    },
+  };
+}
+
+function ghostCommercialResidenceDoc(): Record<string, unknown> {
+  return {
+    name: 'Immeuble à revenus — 6 logements, Plateau-Mont-Royal',
+    address: '4550, avenue du Parc',
+    city: 'Montréal',
+    region: 'Montréal',
+    prixDemande: 1_890_000,
+    nombreUnitesTotal: 6,
+    residenceType: 'plex',
+    pipelineStatus: 'mandate',
+    courtiersResponsables: GHOST_BROKER_ID,
+    acmValeurEstimee: 1_925_000,
+    acmFourchetteBasse: 1_860_000,
+    acmFourchetteHaute: 1_990_000,
+  };
+}
+
+/** ViewModel mock — court-circuite Firestore pour les jetons démo publics. */
+export function buildGhostVendorPortalViewModel(
+  profile: GhostVendorPortalProfile
+): VendorPortalViewModel {
+  const contact =
+    profile === 'residential' ? ghostResidentialContact() : ghostCommercialContact();
+  const residenceId =
+    profile === 'residential' ? 'ghost-residence-residentiel' : 'ghost-residence-commercial';
+  const residenceDoc =
+    profile === 'residential'
+      ? ghostResidentialResidenceDoc()
+      : ghostCommercialResidenceDoc();
+
+  const pipelineStatus = resolveResidenceStatus(
+    extractPipelineStatusRaw(residenceDoc)
+  );
+  const timelineStageId = resolveVendorTimelineStage(pipelineStatus, residenceDoc);
+  const mandateResult = assessMandateCompleteness(residenceDoc);
+  const mandatePercent = mandateCompletenessPercent(residenceDoc);
+  const promesseInput = parsePromesseAchatFromDoc(residenceDoc);
+  const promesse = buildPromesseAchatViewModel(promesseInput);
+  const hasActivePromesse =
+    profile === 'residential' &&
+    timelineStageId === 'promesse_en_cours' &&
+    promesseInput.status === 'accepted';
+
+  return {
+    contact,
+    residenceId,
+    propertyLabel: resolvePropertyLabel(residenceDoc, residenceId),
+    pipelineStatus,
+    timelineStageId,
+    mandatePercent,
+    mandateResult,
+    promesse: hasActivePromesse ? promesse : null,
+    hasActivePromesse,
+    brokerId: GHOST_BROKER_ID,
+    residenceDoc,
+  };
+}
+
+/** Données financières mock (profil commercial — TGA, RNE, financement). */
+export function getGhostFinancialData(
+  profile: GhostVendorPortalProfile
+): FinancialDataV2Doc | null {
+  if (profile !== 'commercial') return null;
+
+  const revenuBrutEffectif = 198_000;
+  const depensesTotalesNormalisees = 56_000;
+  const revenuNetExploitation = revenuBrutEffectif - depensesTotalesNormalisees;
+  const tauxCapitalisation = 5.75;
+  const valeurCapitalisation = Math.round(revenuNetExploitation / (tauxCapitalisation / 100));
+  const prixDemande = 1_890_000;
+  const ratioCouvertureDette = 1.24;
+  const paiementAnnuelDette = Math.round(revenuNetExploitation / ratioCouvertureDette);
+
+  return {
+    calculatedResults: {
+      revenuBrutEffectif,
+      depensesTotalesNormalisees,
+      revenuNetExploitation,
+      tauxCapitalisation,
+      valeurCapitalisation,
+      prixDemande,
+      ratioCouvertureDette,
+      hypothequeMaxRecommandee: 1_512_000,
+      miseDeFondsRequise: prixDemande - 1_512_000,
+      nombreUnites: 6,
+      prixParUnite: Math.round(prixDemande / 6),
+      paiementAnnuel: paiementAnnuelDette,
+      cashFlow: revenuNetExploitation - paiementAnnuelDette,
+    },
+    baseData: {
+      revenusAnnuels: revenuBrutEffectif,
+      nombreUnites: 6,
+      financement: {
+        programmeSchl: 'schl_standard',
+        categorieBien: 'multilogement_regulier',
+      },
+    },
   };
 }

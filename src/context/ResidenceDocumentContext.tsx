@@ -49,12 +49,15 @@ export interface ResidenceDocumentProviderProps {
   residenceId: string | null | undefined;
   /** Jeton portail vendeur — écritures via Cloud Function patchVendorPortalResidence. */
   vendorPortalToken?: string | null;
+  /** Document mock — accès fantôme public (sans listener Firestore). */
+  ghostResidenceDoc?: ResidenceFirestoreDoc | null;
   children: ReactNode;
 }
 
 export function ResidenceDocumentProvider({
   residenceId,
   vendorPortalToken,
+  ghostResidenceDoc,
   children,
 }: ResidenceDocumentProviderProps) {
   const [residenceDoc, setResidenceDoc] = useState<ResidenceFirestoreDoc | null>(null);
@@ -64,6 +67,13 @@ export function ResidenceDocumentProvider({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (ghostResidenceDoc !== undefined) {
+      setResidenceDoc(ghostResidenceDoc);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     if (!residenceId) {
       setResidenceDoc(null);
       setLoading(false);
@@ -91,12 +101,16 @@ export function ResidenceDocumentProvider({
     );
 
     return () => unsubscribe();
-  }, [residenceId]);
+  }, [residenceId, ghostResidenceDoc]);
 
   const updateResidence = useCallback(
     async (patch: Record<string, unknown>) => {
       if (!residenceId) {
         throw new Error('residenceId manquant');
+      }
+      if (ghostResidenceDoc !== undefined) {
+        setResidenceDoc((prev) => ({ ...(prev ?? {}), ...patch }));
+        return;
       }
       setSaving(true);
       setSaveError(null);
@@ -118,7 +132,7 @@ export function ResidenceDocumentProvider({
         setSaving(false);
       }
     },
-    [residenceId, vendorPortalToken]
+    [residenceId, vendorPortalToken, ghostResidenceDoc]
   );
 
   const value = useMemo(

@@ -71,6 +71,17 @@
         box-shadow: 0 10px 25px -10px rgba(0,0,0,.35);
       }
       .px-cta-massive:hover { background: #000; }
+      .px-ghost-access { max-width: 56rem; margin: 0 auto; padding: 0 1.25rem 2.5rem; text-align: center; }
+      .px-ghost-access-lead { font-size: .875rem; line-height: 1.5; color: #64748b; margin: 0 auto 1.25rem; max-width: 36rem; }
+      .px-ghost-buttons { display: flex; flex-direction: column; gap: 1rem; align-items: stretch; justify-content: center; max-width: 42rem; margin: 0 auto; }
+      @media (min-width: 640px) { .px-ghost-buttons { flex-direction: row; } }
+      .px-ghost-btn {
+        display: inline-block; text-decoration: none; text-align: center; flex: 1;
+        min-height: 3rem; padding: .875rem 1.25rem; font-size: .9375rem; font-weight: 700;
+        border-radius: .5rem; cursor: pointer;
+      }
+      .px-ghost-btn-res { background: #171717; color: #fff; border: 0; }
+      .px-ghost-btn-com { background: transparent; color: #171717; border: 2px solid #171717; }
       .px-closing { border-top: 1px solid #e5e5e5; background: #fff; padding: 3.5rem 1.25rem 4.5rem; }
       .px-closing-inner { max-width: 48rem; margin: 0 auto; text-align: center; }
       .px-footer { border-top: 1px solid #e5e5e5; background: #fafafa; padding: 2.5rem 1.25rem; text-align: center; color: #737373; font-size: .875rem; }
@@ -175,6 +186,29 @@
               frameborder="0"
               allow="encrypted-media; fullscreen;"
               allowfullscreen></iframe>
+          </div>
+        </section>
+
+        <section class="px-ghost-access" aria-labelledby="px-ghost-heading">
+          <h2 id="px-ghost-heading" class="px-video-title"
+            data-i18n-fr="Explorez Primexpert sans compte"
+            data-i18n-en="Explore Primexpert without an account">
+            Explorez Primexpert sans compte
+          </h2>
+          <p class="px-ghost-access-lead"
+            data-i18n-fr="Parcours démonstration : accédez à un espace vendeur simulé selon votre marché cible."
+            data-i18n-en="Demonstration journey: access a simulated seller space for your target market.">
+            Parcours démonstration : accédez à un espace vendeur simulé selon votre marché cible.
+          </p>
+          <div class="px-ghost-buttons">
+            <a class="px-ghost-btn px-ghost-btn-res"
+              href="/acces-vendeur?token=demo-visiteur-residentiel"
+              data-i18n-fr="Résidentiel"
+              data-i18n-en="Residential">Résidentiel</a>
+            <a class="px-ghost-btn px-ghost-btn-com"
+              href="/acces-vendeur?token=demo-visiteur-commercial"
+              data-i18n-fr="Commercial et multiplex"
+              data-i18n-en="Commercial &amp; Plex">Commercial et multiplex</a>
           </div>
         </section>
 

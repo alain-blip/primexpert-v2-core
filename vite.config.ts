@@ -68,6 +68,7 @@ export default defineConfig(({mode}) => {
         input: {
           main: path.resolve(__dirname, 'index.html'),
           'bootstrap-spa': path.resolve(__dirname, 'src/bootstrap-spa.tsx'),
+          gate: path.resolve(__dirname, 'src/gate.ts'),
         },
         output: {
           manualChunks(id: string) {

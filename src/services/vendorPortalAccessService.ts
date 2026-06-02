@@ -1,6 +1,11 @@
 /**
  * Portail vendeur — jeton d'invitation et notifications (Cloud Functions).
  */
+import { buildContactDisplayName } from '@primexpert/core/crm';
+import {
+  buildGhostVendorPortalViewModel,
+  resolveGhostVendorPortalProfile,
+} from './vendorPortalService';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { signInWithCustomToken, signOut } from 'firebase/auth';
 import { app, auth } from '../lib/firebase';
@@ -41,6 +46,9 @@ export async function createVendorPortalInviteLink(input: {
 export async function redeemVendorPortalToken(
   token: string
 ): Promise<VendorPortalClientSession> {
+  const ghostSession = buildGhostVendorPortalClientSession(token);
+  if (ghostSession) return ghostSession;
+
   const callable = httpsCallable<
     { token: string },
     VendorPortalClientSession & { customToken: string; ok: boolean }
@@ -88,6 +96,30 @@ export async function notifyVendorPortalDocumentUpload(input: {
 }): Promise<void> {
   const callable = httpsCallable(functions, 'notifyVendorPortalDocumentUpload');
   await callable(input);
+}
+
+/** Session client mock pour les jetons démo publics (sans Cloud Function ni Auth). */
+export function buildGhostVendorPortalClientSession(
+  token: string
+): VendorPortalClientSession | null {
+  const profile = resolveGhostVendorPortalProfile(token);
+  if (!profile) return null;
+
+  const vm = buildGhostVendorPortalViewModel(profile);
+  return {
+    orgId: vm.contact.orgId,
+    contactId: vm.contact.id,
+    residenceId: vm.residenceId,
+    brokerId: vm.brokerId,
+    contactName: buildContactDisplayName(vm.contact),
+    propertyLabel: vm.propertyLabel,
+    token,
+    brokerContact: {
+      displayName: 'Courtier démo Primexpert',
+      email: 'demo@primexpert.ca',
+      phone: '514-555-0100',
+    },
+  };
 }
 
 /** Patch résidence depuis le portail vendeur (déclaration, identité). */
