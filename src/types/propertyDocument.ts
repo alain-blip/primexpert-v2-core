@@ -1,6 +1,15 @@
 /** Diligence raisonnable — documents rattachés à une fiche résidence. */
 
-export type PropertyDocumentCategory = 'financier' | 'technique' | 'legal';
+/**
+ * Catégories de stockage documentaire.
+ * `acm_comparables` : comparables vendus (Centris PDF) ingérés pour l'analyse
+ * comparative de marché (ACM) résidentielle — masqué de la vue diligence standard.
+ */
+export type PropertyDocumentCategory =
+  | 'financier'
+  | 'technique'
+  | 'legal'
+  | 'acm_comparables';
 
 export type VirusScanStatus = 'pending' | 'clean' | 'infected';
 

@@ -478,6 +478,9 @@ export function inferDocumentCategoryForRecord(doc: {
 }): PropertyDocumentCategory {
   if (doc.promesseScope) return doc.category;
 
+  // Comparables ACM (Centris PDF) : catégorie hermétique — jamais reclassée.
+  if (doc.category === 'acm_comparables') return 'acm_comparables';
+
   const extractedType = resolveTaxonomyType(doc.extractedData?.documentType as string | undefined);
   if (extractedType) return extractedType.storageCategory;
 

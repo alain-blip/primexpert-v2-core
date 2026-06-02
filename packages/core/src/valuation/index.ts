@@ -132,3 +132,19 @@ export {
   bootstrapResidenceAcm,
   buildValuationInputsFromAcmBootstrap,
 } from './residenceAcmBootstrap';
+
+// Triple moteur ACM quad-contexte (parités physiques + revenu)
+export {
+  type ResidentialPropertyFeatures,
+  type ResidentialComparable,
+  type ResidentialSubject,
+  type ResidentialAdjustmentGrid,
+  type AdjustedResidentialComparable,
+  type PhysicalAcmResult,
+  type ResolveResidenceAcmInput,
+  type AcmEngineResult,
+  DEFAULT_RESIDENTIAL_ADJUSTMENT_GRID,
+  executePhysicalAcmMatch,
+  executeFinancialAcmMatch,
+  resolveResidenceAcm,
+} from './residenceAcmBootstrap';

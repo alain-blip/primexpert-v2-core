@@ -29,6 +29,7 @@ import {
   mapFirestoreDataToValuationInputs,
   type ValuationInputs,
 } from './valuationEngine';
+import type { PropertyContext } from '../canonical/propertyContext';
 
 export interface ResidenceAcmIdentity {
   id?: string;
@@ -377,4 +378,233 @@ export function buildValuationInputsFromAcmBootstrap(
     valuationMode: 'acm_unified_cap',
     weights: { capRate: 1, mrb: 0, mrn: 0, pricePerUnit: 0 },
   };
+}
+
+// ============================================================================
+// TRIPLE MOTEUR ACM — aiguillage hermétique par contexte de propriété
+// ----------------------------------------------------------------------------
+// RESIDENTIAL                  → méthode des PARITÉS (comparables physiques).
+// COMMERCIAL_PLEX | RPA | CPE  → méthode du REVENU (revenu net d'exploitation
+//                                (RNE) / taux de capitalisation global (TGA)),
+//                                réutilise `bootstrapResidenceAcm` (SSOT financier).
+//                                CPE est le miroir de RPA.
+// ============================================================================
+
+/** Caractéristiques physiques d'une propriété résidentielle (sujet ou comparable). */
+export interface ResidentialPropertyFeatures {
+  /** Superficie habitable (pi²). */
+  livingAreaSqft?: number | null;
+  /** Superficie du terrain (pi²). */
+  lotSizeSqft?: number | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  garageSpaces?: number | null;
+  /** Année de construction. */
+  yearBuilt?: number | null;
+}
+
+/** Comparable vendu — fiche Centris extraite par l'analyse IA. */
+export interface ResidentialComparable extends ResidentialPropertyFeatures {
+  id?: string;
+  address?: string;
+  /** Prix de vente confirmé ($). */
+  salePrice: number;
+  /** Date de vente (ISO). */
+  saleDate?: string | null;
+}
+
+/** Propriété sujet à évaluer (méthode des parités). */
+export interface ResidentialSubject extends ResidentialPropertyFeatures {
+  id?: string;
+  address?: string;
+  askingPrice?: number | null;
+}
+
+/**
+ * Grille d'ajustements résidentiels québécois — paramètres INJECTABLES.
+ * Chaque taux exprime la valeur marchande d'une unité de différence entre le
+ * sujet et un comparable (méthode des parités).
+ */
+export interface ResidentialAdjustmentGrid {
+  /** $ / pi² habitable. */
+  pricePerLivingSqft: number;
+  /** $ / pi² de terrain. */
+  pricePerLotSqft: number;
+  /** $ par chambre. */
+  pricePerBedroom: number;
+  /** $ par salle de bain. */
+  pricePerBathroom: number;
+  /** $ par espace de garage. */
+  pricePerGarageSpace: number;
+  /** $ par année de construction plus récente. */
+  pricePerYearNewer: number;
+  /** Plafond d'ajustement net (% du prix de vente du comparable) — garde-fou. */
+  maxNetAdjustmentPct: number;
+}
+
+/**
+ * Grille de DÉMARRAGE — valeurs indicatives à CALIBRER par le courtier / PO
+ * selon le secteur (norme OACIQ : aucune valeur figée comme vérité absolue).
+ */
+export const DEFAULT_RESIDENTIAL_ADJUSTMENT_GRID: ResidentialAdjustmentGrid = {
+  pricePerLivingSqft: 150,
+  pricePerLotSqft: 8,
+  pricePerBedroom: 7000,
+  pricePerBathroom: 9000,
+  pricePerGarageSpace: 12000,
+  pricePerYearNewer: 1200,
+  maxNetAdjustmentPct: 25,
+};
+
+/** Comparable après application de la grille de parités. */
+export interface AdjustedResidentialComparable extends ResidentialComparable {
+  /** Ajustement net appliqué au prix de vente ($). */
+  netAdjustment: number;
+  /** Valeur indiquée par ce comparable (prix de vente + ajustement net). */
+  adjustedValue: number;
+  /** Ajustement net en % du prix de vente. */
+  netAdjustmentPct: number;
+  /** Ajustement plafonné par le garde-fou `maxNetAdjustmentPct`. */
+  capped: boolean;
+}
+
+/** Résultat de la méthode des parités (ACM résidentiel physique). */
+export interface PhysicalAcmResult {
+  method: 'physical_parity';
+  /** Valeur indiquée (médiane des comparables ajustés), arrondie au millier. */
+  indicatedValue: number;
+  valueLow: number;
+  valueHigh: number;
+  comparableCount: number;
+  adjustedComparables: AdjustedResidentialComparable[];
+  rationaleFr: string;
+  rationaleEn: string;
+}
+
+function featureDelta(subject?: number | null, comparable?: number | null): number {
+  const s = finiteNum(subject);
+  const c = finiteNum(comparable);
+  if (s == null || c == null) return 0;
+  return s - c;
+}
+
+function median(values: number[]): number {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0
+    ? sorted[mid]
+    : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * Méthode des PARITÉS — ACM résidentiel par comparables physiques.
+ * Chaque comparable est ajusté vers le sujet ; la valeur indiquée est la médiane
+ * des valeurs ajustées (robuste aux comparables aberrants).
+ */
+export function executePhysicalAcmMatch(
+  subject: ResidentialSubject,
+  comparables: ResidentialComparable[],
+  grid: ResidentialAdjustmentGrid = DEFAULT_RESIDENTIAL_ADJUSTMENT_GRID
+): PhysicalAcmResult {
+  const adjustedComparables: AdjustedResidentialComparable[] = comparables
+    .filter((c) => finiteNum(c.salePrice) != null && (finiteNum(c.salePrice) ?? 0) > 0)
+    .map((c) => {
+      const rawAdjustment =
+        featureDelta(subject.livingAreaSqft, c.livingAreaSqft) * grid.pricePerLivingSqft +
+        featureDelta(subject.lotSizeSqft, c.lotSizeSqft) * grid.pricePerLotSqft +
+        featureDelta(subject.bedrooms, c.bedrooms) * grid.pricePerBedroom +
+        featureDelta(subject.bathrooms, c.bathrooms) * grid.pricePerBathroom +
+        featureDelta(subject.garageSpaces, c.garageSpaces) * grid.pricePerGarageSpace +
+        featureDelta(subject.yearBuilt, c.yearBuilt) * grid.pricePerYearNewer;
+
+      const cap = (Math.abs(grid.maxNetAdjustmentPct) / 100) * c.salePrice;
+      const capped = Math.abs(rawAdjustment) > cap;
+      const netAdjustment = capped ? Math.sign(rawAdjustment) * cap : rawAdjustment;
+      const adjustedValue = c.salePrice + netAdjustment;
+
+      return {
+        ...c,
+        netAdjustment,
+        adjustedValue,
+        netAdjustmentPct: c.salePrice > 0 ? (netAdjustment / c.salePrice) * 100 : 0,
+        capped,
+      };
+    });
+
+  const adjustedValues = adjustedComparables.map((c) => c.adjustedValue);
+  const indicatedValue = roundToNearestThousand(median(adjustedValues));
+  const valueLow = adjustedValues.length
+    ? roundToNearestThousand(Math.min(...adjustedValues))
+    : 0;
+  const valueHigh = adjustedValues.length
+    ? roundToNearestThousand(Math.max(...adjustedValues))
+    : 0;
+
+  const n = adjustedComparables.length;
+  return {
+    method: 'physical_parity',
+    indicatedValue,
+    valueLow,
+    valueHigh,
+    comparableCount: n,
+    adjustedComparables,
+    rationaleFr:
+      n > 0
+        ? `Analyse comparative de marché (ACM) résidentielle par la méthode des parités sur ${n} comparable(s) vendu(s) ajusté(s).`
+        : 'Aucun comparable vendu exploitable pour la méthode des parités.',
+    rationaleEn:
+      n > 0
+        ? `Residential comparative market analysis (CMA) using the parity method on ${n} adjusted sold comparable(s).`
+        : 'No usable sold comparable for the parity method.',
+  };
+}
+
+/** Entrée unifiée de l'aiguilleur ACM quad-contexte. */
+export interface ResolveResidenceAcmInput {
+  /** Contexte de propriété (SSOT `@primexpert/core/canonical`). */
+  context: PropertyContext;
+  // --- Voie financière (COMMERCIAL_PLEX | RPA | CPE) ---
+  residence?: ResidenceAcmIdentity;
+  residenceDoc?: Record<string, unknown> | null;
+  financialData?: FinancialDataV2Doc | Record<string, unknown> | null;
+  financialOptions?: { marketTransactions?: MarketGpsTransaction[] };
+  // --- Voie physique (RESIDENTIAL) ---
+  subject?: ResidentialSubject;
+  comparables?: ResidentialComparable[];
+  adjustmentGrid?: ResidentialAdjustmentGrid;
+}
+
+export type AcmEngineResult = PhysicalAcmResult | ResidenceAcmBootstrap | null;
+
+/** Méthode du revenu (RNE / TGA) — réutilise le SSOT financier existant. */
+export function executeFinancialAcmMatch(
+  input: ResolveResidenceAcmInput
+): ResidenceAcmBootstrap | null {
+  if (!input.residence) return null;
+  return bootstrapResidenceAcm(
+    input.residence,
+    input.residenceDoc,
+    input.financialData,
+    input.financialOptions
+  );
+}
+
+/**
+ * Aiguilleur hermétique du triple moteur ACM par contexte de propriété.
+ * RESIDENTIAL → parités physiques ; COMMERCIAL_PLEX / RPA / CPE → revenu.
+ */
+export function resolveResidenceAcm(input: ResolveResidenceAcmInput): AcmEngineResult {
+  switch (input.context) {
+    case 'RESIDENTIAL':
+      return executePhysicalAcmMatch(
+        input.subject ?? {},
+        input.comparables ?? [],
+        input.adjustmentGrid
+      );
+    case 'COMMERCIAL_PLEX':
+    case 'RPA':
+    case 'CPE':
+      return executeFinancialAcmMatch(input);
+  }
 }

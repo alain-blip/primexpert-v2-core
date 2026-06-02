@@ -145,10 +145,12 @@ export function DocumentsDiligenceTab({
     const unsub = subscribeAllPropertyDocuments(
       propertyId,
       (rows) => {
-        setAllDocs(rows);
+        // Les comparables ACM (Centris PDF) sont hermétiques : masqués de la vue diligence.
+        const visibleRows = rows.filter((d) => d.category !== 'acm_comparables');
+        setAllDocs(visibleRows);
         setLoading(false);
         if (uploadAllowed) {
-          void reconcilePropertyDocumentCategories(propertyId, rows)
+          void reconcilePropertyDocumentCategories(propertyId, visibleRows)
             .then((count) => {
               if (count > 0) {
                 console.info('[DocumentsDiligenceTab] taxonomy categories reconciled', { count });

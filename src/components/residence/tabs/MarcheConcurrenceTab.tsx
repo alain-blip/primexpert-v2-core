@@ -14,6 +14,7 @@ import { TerritorialDiagnosticSection } from '../market/TerritorialDiagnosticSec
 import { VisitorRegistrySection } from '../market/VisitorRegistrySection';
 import { WorkforceBasinSection } from '../market/WorkforceBasinSection';
 import { ResidenceAcmValuationPanel } from '../market/ResidenceAcmValuationPanel';
+import { AcmComparablesDropzone } from '../market/AcmComparablesDropzone';
 import { TerritorialCentrisCompetitionSection } from '../market/TerritorialCentrisCompetitionSection';
 import { useTerritorialCompetition } from '../../../hooks/useTerritorialCompetition';
 import { FinancialDataProvider } from '../../../context/FinancialDataContext';
@@ -75,6 +76,13 @@ export function MarcheConcurrenceTab({ residence: residenceProp }: MarcheConcurr
           {saveError}
         </p>
       )}
+
+      {residence.propertyContext === 'RESIDENTIAL' ? (
+        <AcmComparablesDropzone
+          propertyId={residence.id}
+          brokerId={residence.courtiersResponsables}
+        />
+      ) : null}
 
       <FinancialDataProvider residenceId={residence.id}>
         <ResidenceAcmValuationPanel

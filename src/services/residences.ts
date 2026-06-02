@@ -40,6 +40,7 @@ import type {
   ResidenceBuildingNode,
   ResidenceOperationsNode,
 } from '@primexpert/core/residence';
+import { parsePropertyContext, type PropertyContext } from '@primexpert/core/canonical';
 import { buildResidenceTenantContext, isAgencyAdminRole } from '../lib/tenantContext';
 
 export { buildResidenceTenantContext, isAgencyAdminRole };
@@ -139,6 +140,11 @@ export interface Residence {
   prixAccepte?: number;
   /** Niche active (RPA / CPE / PLEX). Absent = visible dans toutes les vues. */
   assetNiche?: AssetNiche;
+  /**
+   * Contexte de propriété (SSOT quad-contexte v3.5) : RESIDENTIAL | COMMERCIAL_PLEX | RPA | CPE.
+   * Aiguille la méthode d'analyse comparative de marché (ACM) — parités vs revenu.
+   */
+  propertyContext?: PropertyContext;
   /** Type Radar explicite (sinon déduit de `assetNiche`). */
   propertyType?: RadarPropertyType;
   nicheMetadata?: AssetNicheMetadata;
@@ -496,6 +502,7 @@ function mapResidenceDoc(doc: DocumentSnapshot<DocumentData>): Residence {
     date: String(data.date ?? data.updatedAt ?? ''),
     courtiersResponsables: data[TENANT_FIELD],
     assetNiche: parseAssetNiche(data.assetNiche ?? data.niche),
+    propertyContext: parsePropertyContext(data.propertyContext),
     propertyType: parseRadarPropertyType(data.propertyType),
     nicheMetadata: meta,
     syndication,

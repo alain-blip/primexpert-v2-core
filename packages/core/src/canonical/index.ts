@@ -24,6 +24,24 @@ export type {
 } from './types';
 
 // ============================================================================
+// CONTEXTE DE PROPRIÉTÉ (SSOT quad-contexte v3.5)
+// ============================================================================
+
+export type { PropertyContext, LegacyAssetNiche } from './propertyContext';
+
+export {
+  PROPERTY_CONTEXTS,
+  DEFAULT_PROPERTY_CONTEXT,
+  PROPERTY_CONTEXT_LABELS,
+  isPropertyContext,
+  parsePropertyContext,
+  assetNicheToPropertyContext,
+  propertyContextToAssetNiche,
+  propertyContextUsesRpaModel,
+  propertyContextLabel,
+} from './propertyContext';
+
+// ============================================================================
 // ALIAS ET DÉFINITIONS
 // ============================================================================
 

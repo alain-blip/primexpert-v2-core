@@ -376,6 +376,68 @@ export async function uploadPropertyDocument(
   }
 }
 
+/** Catégorie de stockage hermétique des comparables vendus (ACM résidentiel). */
+export const ACM_COMPARABLES_CATEGORY: PropertyDocumentCategory = 'acm_comparables';
+
+/** Maximum de PDF ingérables d'un coup : 1 propriété sujet + 10 comparables. */
+export const ACM_COMPARABLES_MAX_FILES = 11;
+
+export interface UploadAcmComparablePdfsResult {
+  uploaded: PropertyDocumentRecord[];
+  rejected: Array<{ fileName: string; reason: 'not_pdf' | 'over_limit' | 'failed' }>;
+}
+
+/**
+ * Ingestion instantanée de comparables vendus (Centris PDF) — analyse comparative
+ * de marché (ACM) résidentielle. Réutilise `uploadPropertyDocument` (chemin Storage
+ * `…/documents/acm_comparables/`, scan antivirus + `propertyDocumentParseIA`).
+ * PDF uniquement, maximum 11 fichiers (1 sujet + 10 comparables).
+ */
+export async function uploadAcmComparablePdfs(input: {
+  propertyId: string;
+  brokerId: string;
+  files: File[];
+}): Promise<UploadAcmComparablePdfsResult> {
+  const { propertyId, brokerId, files } = input;
+  if (!propertyId || !brokerId) {
+    throw new Error('propertyId et brokerId requis.');
+  }
+
+  const uploaded: PropertyDocumentRecord[] = [];
+  const rejected: UploadAcmComparablePdfsResult['rejected'] = [];
+
+  const accepted: File[] = [];
+  for (const file of files) {
+    if (accepted.length >= ACM_COMPARABLES_MAX_FILES) {
+      rejected.push({ fileName: file.name, reason: 'over_limit' });
+      continue;
+    }
+    const validation = validatePropertyDocumentFile(file);
+    if (!validation.ok || validation.mimeType !== 'application/pdf') {
+      rejected.push({ fileName: file.name, reason: 'not_pdf' });
+      continue;
+    }
+    accepted.push(file);
+  }
+
+  for (const file of accepted) {
+    try {
+      const record = await uploadPropertyDocument({
+        propertyId,
+        category: ACM_COMPARABLES_CATEGORY,
+        file,
+        uploadedBy: brokerId,
+      });
+      uploaded.push(record);
+    } catch (e) {
+      console.error('[uploadAcmComparablePdfs] upload failed', file.name, e);
+      rejected.push({ fileName: file.name, reason: 'failed' });
+    }
+  }
+
+  return { uploaded, rejected };
+}
+
 export async function getPropertyDocumentDownloadUrl(storagePath: string): Promise<string> {
   return getDownloadURL(ref(storage, storagePath));
 }
